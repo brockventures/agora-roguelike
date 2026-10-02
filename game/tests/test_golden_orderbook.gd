@@ -27,7 +27,7 @@ func test_fixtures_present() -> String:
 	for c in EXPECTED_CASES:
 		if not found.has(c):
 			return "missing fixture '%s' (found %s)" % [c, found]
-	return ""
+	return "ok"
 
 
 func test_every_fixture_loads_and_has_required_keys() -> String:
@@ -43,7 +43,7 @@ func test_every_fixture_loads_and_has_required_keys() -> String:
 			return "%s: %s" % [p.get_file(), err]
 		if res["data"]["case"] != p.get_file().get_basename():
 			return "%s: case name '%s' does not match file name" % [p.get_file(), res["data"]["case"]]
-	return ""
+	return "ok"
 
 
 func test_every_step_has_input_response_and_book() -> String:
@@ -55,7 +55,7 @@ func test_every_step_has_input_response_and_book() -> String:
 				if not step.has(k):
 					return "%s step %d missing '%s'" % [p.get_file(), n, k]
 			n += 1
-	return ""
+	return "ok"
 
 
 func test_validator_rejects_malformed() -> String:
@@ -65,11 +65,12 @@ func test_validator_rejects_malformed() -> String:
 		"initial_accounts": [{}], "steps": [{}]}
 	if Loader.validate(bad) == "":
 		return "wrong referee_commit should not validate"
-	return ""
+	return "ok"
 
 
 func test_parity_with_core_order_book_pending() -> String:
 	if not ResourceLoader.exists("res://core/order_book.gd"):
-		return ""  # PENDING until #3 adds core/order_book.gd; not a failure.
-	# Parity assertions land with #3.
-	return ""
+		return "ok"  # PENDING until #3 adds core/order_book.gd; not a failure.
+	# Once the engine exists this placeholder must be replaced by real parity
+	# assertions in the same PR (#3); failing here stops a vacuous pass.
+	return "core/order_book.gd exists but the parity test is not implemented yet (#3 must add it)"
