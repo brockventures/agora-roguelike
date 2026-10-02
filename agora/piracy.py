@@ -282,19 +282,26 @@ class PiracyDesk:
             "ORDER BY start_round LIMIT 1", (target, round_num, round_num)).fetchone()
 
     def chance(self, agent: str, origin: str, dest: str, tolled: bool, commodity: str, qty: int,
-               escort: bool, round_num: int, hold_value: Optional[int] = None) -> Dict[str, Any]:
-        """Raid chance for one trip and how it was built."""
+               escort: bool, round_num: int, hold_value: Optional[int] = None,
+               for_quote: bool = False) -> Dict[str, Any]:
+        """Raid chance for one trip and how it was built (#288)."""
         value = hold_value if hold_value is not None else cargo_value(commodity, qty)
         if not self.odds or value <= 0:
-            return {'odds': 0.0, 'base': 0.0, 'hot': False, 'value': value,
-                    'value_mult': 0.0, 'privateers': False, 'escort': bool(escort)}
+            res = {'odds': 0.0, 'base': 0.0, 'hot': False, 'value': value,
+                   'value_mult': 0.0, 'privateers': False, 'escort': bool(escort),
+                   'armor': 1.0, 'armor_tier': 0, 'stealth': 1.0, 'stealth_tier': 0,
+                   'tolled': bool(tolled), 'salvage_surge': False}
+            if for_quote:
+                res['excludes'] = ['privateers']
+                res['privateer_add'] = PRIV_ADD
+            return res
         p_belt, p_inner = self.odds
         base = p_belt if tolled else p_inner
         hot = self.hot_station(round_num) in (origin, dest)
         vm = min(VALUE_MULT[1], max(VALUE_MULT[0], value / VALUE_REF))
         vm = min(VALUE_MULT[1], max(VALUE_MULT[0], round(vm / VALUE_STEP) * VALUE_STEP))
         p = base * (HOT_MULT if hot else 1.0) * vm
-        priv = self.active_contract(agent, round_num) is not None
+        priv = False if for_quote else (self.active_contract(agent, round_num) is not None)
         if priv:
             p += PRIV_ADD
         if escort:
@@ -320,10 +327,14 @@ class PiracyDesk:
                     p = min(1.0, p * 2.0)
                     salvage_surge = True
 
-        return {'odds': round(min(1.0, p), 4), 'exact_odds': min(1.0, p), 'base': base, 'hot': hot, 'value': value,
-                'value_mult': round(vm, 3), 'privateers': priv, 'escort': bool(escort), 'armor': armor,
-                'armor_tier': armor_tier, 'stealth': stealth, 'stealth_tier': stealth_tier, 'tolled': bool(tolled),
-                'salvage_surge': salvage_surge}
+        out = {'odds': round(min(1.0, p), 4), 'exact_odds': min(1.0, p), 'base': base, 'hot': hot, 'value': value,
+               'value_mult': round(vm, 3), 'privateers': priv, 'escort': bool(escort), 'armor': armor,
+               'armor_tier': armor_tier, 'stealth': stealth, 'stealth_tier': stealth_tier, 'tolled': bool(tolled),
+               'salvage_surge': salvage_surge}
+        if for_quote:
+            out['excludes'] = ['privateers']
+            out['privateer_add'] = PRIV_ADD
+        return out
 
     @staticmethod
     def raid_key(vessel_id: str, c: Dict[str, Any]) -> str:
