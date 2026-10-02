@@ -14,7 +14,8 @@
       "zero",
       "marvin",
       "aerial"
-    ]
+    ],
+    "prep": []
   },
   "initial_accounts": [
     {
@@ -58,6 +59,32 @@
       "balance": 1000
     }
   ],
+  "initial_ship_accounts": {
+    "aerial": {
+      "aerial/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "amos": {
+      "amos/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "marvin": {
+      "marvin/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "zero": {
+      "zero/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    }
+  },
   "steps": [
     {
       "call": "submit_envelope",
@@ -125,7 +152,15 @@
           "instrument": "FRAG",
           "balance": 1000
         }
-      ]
+      ],
+      "ship_accounts": {
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
     },
     {
       "call": "submit_envelope",
@@ -202,7 +237,15 @@
           "instrument": "FRAG",
           "balance": 1000
         }
-      ]
+      ],
+      "ship_accounts": {
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
     },
     {
       "call": "submit_envelope",
@@ -288,7 +331,15 @@
           "instrument": "FRAG",
           "balance": 1000
         }
-      ]
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
     },
     {
       "call": "submit_envelope",
@@ -384,7 +435,15 @@
           "instrument": "FRAG",
           "balance": 1000
         }
-      ]
+      ],
+      "ship_accounts": {
+        "amos": {
+          "amos/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
     },
     {
       "call": "submit_envelope",
@@ -489,7 +548,15 @@
           "instrument": "FRAG",
           "balance": 1000
         }
-      ]
+      ],
+      "ship_accounts": {
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
     }
   ]
 }

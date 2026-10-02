@@ -1,6 +1,6 @@
 {
-  "case": "cancel_resting",
-  "description": "Cancel a resting order, then cancel it again and cancel an unknown order.",
+  "case": "reject_unfunded_ask",
+  "description": "Asks with no goods behind them are rejected insufficient_balance: an empty second ship, then an ask beyond ship 1 balance less what its resting ask already commits.",
   "referee_commit": "587b07f",
   "station_id": "mars",
   "instrument": "FRAG",
@@ -15,7 +15,17 @@
       "marvin",
       "aerial"
     ],
-    "prep": []
+    "prep": [
+      {
+        "op": "mint_cr",
+        "agent": "amos",
+        "qty": 30000
+      },
+      {
+        "op": "buy_ship",
+        "agent": "amos"
+      }
+    ]
   },
   "initial_accounts": [
     {
@@ -31,7 +41,7 @@
     {
       "agent_id": "amos",
       "instrument": "CR",
-      "balance": 10000
+      "balance": 15000
     },
     {
       "agent_id": "amos",
@@ -70,7 +80,8 @@
       "amos/1": {
         "FRAG": 1000,
         "FUEL": 500
-      }
+      },
+      "amos/2": {}
     },
     "marvin": {
       "marvin/1": {
@@ -92,11 +103,71 @@
         "v": 1,
         "kind": "order",
         "payload": {
-          "order_id": "b1",
-          "agent_id": "marvin",
-          "side": "bid",
+          "order_id": "u1",
+          "agent_id": "amos",
+          "side": "ask",
+          "qty": 1,
+          "limit_price": 13,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 0,
+          "vessel_id": "amos/2"
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "reject",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "order_id": "u1",
+          "agent_id": "amos",
+          "seq": 0,
+          "reason": "insufficient_balance",
+          "detail": "Account 'amos/2' available FRAG balance 0 (balance 0 - committed 0) insufficient for ask requirement 1"
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": []
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 15000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ],
+      "ship_accounts": {
+        "amos": {
+          "amos/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          },
+          "amos/2": {}
+        }
+      }
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "u2",
+          "agent_id": "amos",
+          "side": "ask",
           "qty": 5,
-          "limit_price": 12,
+          "limit_price": 13,
           "instrument": "FRAG",
           "station_id": "mars",
           "seq_seen": 0
@@ -113,13 +184,13 @@
           "seq": 1,
           "station_id": "mars",
           "instrument": "FRAG",
-          "best_bid": 12,
-          "best_ask": null,
+          "best_bid": null,
+          "best_ask": 13,
           "last_price": null,
           "last_qty": null,
           "status": "open",
           "trades_count": 0,
-          "order_id": "b1",
+          "order_id": "u2",
           "order_status": "resting",
           "filled_qty": 0,
           "remaining_qty": 5
@@ -128,37 +199,38 @@
       "fills": [],
       "book": {
         "instrument": "FRAG",
-        "bids": [
+        "bids": [],
+        "asks": [
           {
-            "order_id": "b1",
-            "agent_id": "marvin",
-            "side": "bid",
+            "order_id": "u2",
+            "agent_id": "amos",
+            "side": "ask",
             "qty": 5,
-            "limit_price": 12,
+            "limit_price": 13,
             "seq_seen": 0,
-            "vessel_id": "marvin/1"
+            "vessel_id": "amos/1"
           }
-        ],
-        "asks": []
+        ]
       },
       "balances": [
         {
-          "agent_id": "marvin",
+          "agent_id": "amos",
           "instrument": "CR",
-          "balance": 10000
+          "balance": 15000
         },
         {
-          "agent_id": "marvin",
+          "agent_id": "amos",
           "instrument": "FRAG",
           "balance": 1000
         }
       ],
       "ship_accounts": {
-        "marvin": {
-          "marvin/1": {
+        "amos": {
+          "amos/1": {
             "FRAG": 1000,
             "FUEL": 500
-          }
+          },
+          "amos/2": {}
         }
       }
     },
@@ -168,11 +240,11 @@
         "v": 1,
         "kind": "order",
         "payload": {
-          "order_id": "a1",
+          "order_id": "u3",
           "agent_id": "amos",
           "side": "ask",
-          "qty": 5,
-          "limit_price": 14,
+          "qty": 996,
+          "limit_price": 13,
           "instrument": "FRAG",
           "station_id": "mars",
           "seq_seen": 1
@@ -180,49 +252,31 @@
       },
       "response": {
         "v": 1,
-        "kind": "market_tick",
+        "kind": "reject",
         "reply": "optional",
         "floor": "open",
         "scope": "channel",
         "subject": "agent-collaborative-project",
         "payload": {
-          "seq": 2,
-          "station_id": "mars",
-          "instrument": "FRAG",
-          "best_bid": 12,
-          "best_ask": 14,
-          "last_price": null,
-          "last_qty": null,
-          "status": "open",
-          "trades_count": 0,
-          "order_id": "a1",
-          "order_status": "resting",
-          "filled_qty": 0,
-          "remaining_qty": 5
+          "order_id": "u3",
+          "agent_id": "amos",
+          "seq": 1,
+          "reason": "insufficient_balance",
+          "detail": "Account 'amos/1' available FRAG balance 995 (balance 1000 - committed 5) insufficient for ask requirement 996"
         }
       },
       "fills": [],
       "book": {
         "instrument": "FRAG",
-        "bids": [
+        "bids": [],
+        "asks": [
           {
-            "order_id": "b1",
-            "agent_id": "marvin",
-            "side": "bid",
+            "order_id": "u2",
+            "agent_id": "amos",
+            "side": "ask",
             "qty": 5,
-            "limit_price": 12,
+            "limit_price": 13,
             "seq_seen": 0,
-            "vessel_id": "marvin/1"
-          }
-        ],
-        "asks": [
-          {
-            "order_id": "a1",
-            "agent_id": "amos",
-            "side": "ask",
-            "qty": 5,
-            "limit_price": 14,
-            "seq_seen": 1,
             "vessel_id": "amos/1"
           }
         ]
@@ -231,7 +285,7 @@
         {
           "agent_id": "amos",
           "instrument": "CR",
-          "balance": 10000
+          "balance": 15000
         },
         {
           "agent_id": "amos",
@@ -244,179 +298,8 @@
           "amos/1": {
             "FRAG": 1000,
             "FUEL": 500
-          }
-        }
-      }
-    },
-    {
-      "call": "cancel_order",
-      "input": {
-        "agent_id": "marvin",
-        "order_id": "b1"
-      },
-      "response": {
-        "v": 1,
-        "kind": "status",
-        "reply": "none",
-        "status": "cancelled",
-        "floor": "open",
-        "payload": {
-          "order_id": "b1",
-          "agent_id": "marvin",
-          "seq": 3,
-          "released_qty": 5
-        }
-      },
-      "fills": [],
-      "book": {
-        "instrument": "FRAG",
-        "bids": [],
-        "asks": [
-          {
-            "order_id": "a1",
-            "agent_id": "amos",
-            "side": "ask",
-            "qty": 5,
-            "limit_price": 14,
-            "seq_seen": 1,
-            "vessel_id": "amos/1"
-          }
-        ]
-      },
-      "balances": [
-        {
-          "agent_id": "marvin",
-          "instrument": "CR",
-          "balance": 10000
-        },
-        {
-          "agent_id": "marvin",
-          "instrument": "FRAG",
-          "balance": 1000
-        }
-      ],
-      "ship_accounts": {
-        "marvin": {
-          "marvin/1": {
-            "FRAG": 1000,
-            "FUEL": 500
-          }
-        }
-      }
-    },
-    {
-      "call": "cancel_order",
-      "input": {
-        "agent_id": "marvin",
-        "order_id": "b1"
-      },
-      "response": {
-        "v": 1,
-        "kind": "reject",
-        "reply": "optional",
-        "floor": "open",
-        "scope": "channel",
-        "subject": "agent-collaborative-project",
-        "payload": {
-          "order_id": "b1",
-          "agent_id": "marvin",
-          "seq": 3,
-          "reason": "order_not_cancellable",
-          "detail": "Order 'b1' is already 'cancelled', not resting"
-        }
-      },
-      "fills": [],
-      "book": {
-        "instrument": "FRAG",
-        "bids": [],
-        "asks": [
-          {
-            "order_id": "a1",
-            "agent_id": "amos",
-            "side": "ask",
-            "qty": 5,
-            "limit_price": 14,
-            "seq_seen": 1,
-            "vessel_id": "amos/1"
-          }
-        ]
-      },
-      "balances": [
-        {
-          "agent_id": "marvin",
-          "instrument": "CR",
-          "balance": 10000
-        },
-        {
-          "agent_id": "marvin",
-          "instrument": "FRAG",
-          "balance": 1000
-        }
-      ],
-      "ship_accounts": {
-        "marvin": {
-          "marvin/1": {
-            "FRAG": 1000,
-            "FUEL": 500
-          }
-        }
-      }
-    },
-    {
-      "call": "cancel_order",
-      "input": {
-        "agent_id": "amos",
-        "order_id": "nope"
-      },
-      "response": {
-        "v": 1,
-        "kind": "reject",
-        "reply": "optional",
-        "floor": "open",
-        "scope": "channel",
-        "subject": "agent-collaborative-project",
-        "payload": {
-          "order_id": "nope",
-          "agent_id": "amos",
-          "seq": 3,
-          "reason": "order_not_cancellable",
-          "detail": "No order 'nope' found for agent 'amos'"
-        }
-      },
-      "fills": [],
-      "book": {
-        "instrument": "FRAG",
-        "bids": [],
-        "asks": [
-          {
-            "order_id": "a1",
-            "agent_id": "amos",
-            "side": "ask",
-            "qty": 5,
-            "limit_price": 14,
-            "seq_seen": 1,
-            "vessel_id": "amos/1"
-          }
-        ]
-      },
-      "balances": [
-        {
-          "agent_id": "amos",
-          "instrument": "CR",
-          "balance": 10000
-        },
-        {
-          "agent_id": "amos",
-          "instrument": "FRAG",
-          "balance": 1000
-        }
-      ],
-      "ship_accounts": {
-        "amos": {
-          "amos/1": {
-            "FRAG": 1000,
-            "FUEL": 500
-          }
+          },
+          "amos/2": {}
         }
       }
     }

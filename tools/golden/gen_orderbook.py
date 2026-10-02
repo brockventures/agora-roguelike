@@ -43,12 +43,45 @@ def balances(ref, agents):
     return rows
 
 
+def ship_accounts(ref, agents):
+    """get_ship_accounts per corp: {corp: {ship_account: {instrument: balance}}}.
+
+    A corp's goods live on its ships ('<corp>/<n>'); get_accounts shows only the
+    corp total. A port that settles goods on agent_id instead of the ship
+    diverges here.
+    """
+    return {a: ref.get_ship_accounts(a) for a in sorted(agents)}
+
+
 class Stream:
-    def __init__(self, description):
+    def __init__(self, description, prep=None):
+        """prep: optional list of setup ops applied before the first step and
+        recorded in setup['prep'] so a port can reproduce the starting state.
+        Ops: {'op': 'mint_cr', 'agent', 'qty'}, {'op': 'buy_ship', 'agent'},
+        {'op': 'transfer', 'agent', 'src', 'dst', 'instrument', 'qty'}."""
         self.ref = fresh_referee()
         self.description = description
+        self.prep = prep or []
+        for op in self.prep:
+            self._apply_prep(op)
         self.initial = balances(self.ref, AGENTS)
+        self.initial_ships = ship_accounts(self.ref, AGENTS)
         self.steps = []
+
+    def _apply_prep(self, op):
+        ref = self.ref
+        if op['op'] == 'mint_cr':
+            with ref.lock, ref.conn:
+                ref.fleet._move('golden-mint-%s' % op['agent'],
+                                ((op['agent'], 'CR', op['qty']), ('SYSTEM', 'CR', -op['qty'])))
+        elif op['op'] == 'buy_ship':
+            r = ref.fleet.buy(op['agent'])
+            assert r['kind'] == 'ship_bought', r
+        elif op['op'] == 'transfer':
+            r = ref.fleet.transfer(op['agent'], op['src'], op['dst'], op['instrument'], op['qty'])
+            assert r.get('kind') != 'reject', r
+        else:
+            raise ValueError(op)
 
     def _record(self, call, inp, response, before_seq, agents):
         fills = [t['payload'] for t in self.ref.get_ticks(before_seq) if t['kind'] == 'trade']
@@ -64,13 +97,16 @@ class Stream:
             'fills': fills,
             'book': self.ref.get_book_snapshot(STATION, INSTRUMENT),
             'balances': balances(self.ref, touched),
+            'ship_accounts': ship_accounts(self.ref, touched),
         })
 
-    def order(self, order_id, agent, side, qty, price):
+    def order(self, order_id, agent, side, qty, price, vessel=None):
         env = {'v': 1, 'kind': 'order', 'payload': {
             'order_id': order_id, 'agent_id': agent, 'side': side, 'qty': qty,
             'limit_price': price, 'instrument': INSTRUMENT, 'station_id': STATION,
             'seq_seen': self.ref.current_seq}}
+        if vessel is not None:
+            env['payload']['vessel_id'] = vessel
         before = self.ref.current_seq
         inp = json.loads(json.dumps(env))  # copy: the referee may mutate the payload
         resp = self.ref.submit_envelope(env)
@@ -88,8 +124,9 @@ class Stream:
             'referee_commit': REFEREE_COMMIT,
             'station_id': STATION,
             'instrument': INSTRUMENT,
-            'setup': SETUP,
+            'setup': dict(SETUP, prep=self.prep),
             'initial_accounts': self.initial,
+            'initial_ship_accounts': self.initial_ships,
             'steps': self.steps,
         }
 
@@ -149,6 +186,41 @@ def case_sweep_multi_level():
     return s
 
 
+def case_two_ship_settlement():
+    s = Stream('Corp amos owns two ships. Goods settle on the ship named in vessel_id (amos/2 sells, amos/1 buys), '
+               'CR on the corp. A per-ship ask beyond that ship hold is rejected although the corp total would cover it.',
+               prep=[{'op': 'mint_cr', 'agent': 'amos', 'qty': 30000},
+                     {'op': 'buy_ship', 'agent': 'amos'},
+                     {'op': 'transfer', 'agent': 'amos', 'src': 'amos/1', 'dst': 'amos/2',
+                      'instrument': INSTRUMENT, 'qty': 10}])
+    s.order('a1', 'amos', 'ask', 6, 13, vessel='amos/2')
+    s.order('m1', 'marvin', 'bid', 4, 13)
+    s.order('z1', 'zero', 'ask', 3, 12)
+    s.order('a2', 'amos', 'bid', 3, 12, vessel='amos/1')
+    s.order('a3', 'amos', 'ask', 7, 14, vessel='amos/2')
+    return s
+
+
+def case_reject_unfunded_ask():
+    s = Stream('Asks with no goods behind them are rejected insufficient_balance: an empty second ship, then an '
+               'ask beyond ship 1 balance less what its resting ask already commits.',
+               prep=[{'op': 'mint_cr', 'agent': 'amos', 'qty': 30000}, {'op': 'buy_ship', 'agent': 'amos'}])
+    s.order('u1', 'amos', 'ask', 1, 13, vessel='amos/2')
+    s.order('u2', 'amos', 'ask', 5, 13)
+    s.order('u3', 'amos', 'ask', 996, 13)
+    return s
+
+
+def case_reject_insufficient_cr_bid():
+    s = Stream('Bids the corp cannot pay for are rejected insufficient_balance: one over the CR balance, then one '
+               'over the balance less what a resting bid already commits. Rejects leave the book untouched.')
+    s.order('r1', 'marvin', 'bid', 1001, 12)
+    s.order('r2', 'marvin', 'bid', 800, 12)
+    s.order('r3', 'marvin', 'bid', 40, 12)
+    s.order('r4', 'marvin', 'bid', 33, 12)
+    return s
+
+
 CASES = {
     'rest_no_cross': case_rest_no_cross,
     'price_time_priority': case_price_time_priority,
@@ -156,6 +228,9 @@ CASES = {
     'cancel_resting': case_cancel_resting,
     'self_cross': case_self_cross,
     'sweep_multi_level': case_sweep_multi_level,
+    'two_ship_settlement': case_two_ship_settlement,
+    'reject_unfunded_ask': case_reject_unfunded_ask,
+    'reject_insufficient_cr_bid': case_reject_insufficient_cr_bid,
 }
 
 
