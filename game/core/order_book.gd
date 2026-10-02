@@ -152,6 +152,17 @@ func add_order(order: Order, current_seq: int) -> Array:
 		push_error("Invalid order side: %s" % order.side)
 		return [trades, null]
 
+func remove_order(order_id: String, agent_id: String) -> Variant:
+	## Remove a resting order by (order_id, agent_id) from whichever side it's
+	## resting on. Returns the removed Order, or null if no matching resting
+	## order was found (already filled, already cancelled, or never existed).
+	for side_list in [bids, asks]:
+		for idx in range(side_list.size()):
+			var o: Order = side_list[idx]
+			if o.order_id == order_id and o.agent_id == agent_id:
+				return side_list.pop_at(idx)
+	return null
+
 func to_dict() -> Dictionary:
 	var bid_dicts: Array = []
 	for o in bids:
