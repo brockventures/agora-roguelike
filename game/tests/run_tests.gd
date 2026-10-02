@@ -3,9 +3,11 @@ extends SceneTree
 ## Discovers res://tests/**/test_*.gd, runs every method named test_*,
 ## prints PASS/FAIL per test and exits 1 on any failure.
 ##
-## A test script extends RefCounted and defines test_* methods. A test passes
-## if it returns "" (or nothing) and fails if it returns a non-empty String
-## (the failure message).
+## A test script extends RefCounted and defines test_* methods typed `-> String`.
+## A test passes only if it returns exactly "" and fails on a non-empty String
+## (the failure message). Anything else, including null from a method that hit a
+## script error partway through, counts as a failure, so a crashing test can
+## never pass.
 
 const TEST_DIR := "res://tests"
 
@@ -25,12 +27,13 @@ func _init() -> void:
 				continue
 			var label := "%s::%s" % [path.get_file(), name]
 			var result = inst.call(name)
-			if result is String and result != "":
-				print("FAIL  %s: %s" % [label, result])
-				failed += 1
-			else:
+			if result is String and result == "":
 				print("PASS  %s" % label)
 				passed += 1
+			else:
+				var why: String = result if result is String else "returned %s (script error or missing return)" % [result]
+				print("FAIL  %s: %s" % [label, why])
+				failed += 1
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 

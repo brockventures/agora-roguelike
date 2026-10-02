@@ -32,4 +32,4 @@ jobs:
       - name: Import project
         run: .godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game --import || true
       - name: Run headless tests
-        run: .godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game -s res://tests/run_tests.gd
+        run: game/tests/run.sh "$PWD/.godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
