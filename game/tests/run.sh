@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Run the Godot headless tests and fail on any script error.
-# Godot aborts a test method that hits a script error and returns the typed
-# default ("" for String), which the runner counts as a pass, so the runner's
-# exit code alone cannot catch a crashing test. This wrapper also fails the run
-# if the output contains "SCRIPT ERROR" or an engine "ERROR:" line.
+# The runner passes a test only on the exact return value "ok", so a method that
+# aborts on a script error (typed default "") shows FAIL. This wrapper is a
+# second guard: it also fails the run if the output contains "SCRIPT ERROR" or
+# an engine "ERROR:" line.
 # Usage: game/tests/run.sh [path-to-godot-binary]   (default: godot on PATH)
 set -uo pipefail
 GODOT="${1:-${GODOT:-godot}}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# A fresh clone has no .godot import cache; without an import pass the -s run
+# below hangs indefinitely (seen 2026-10-02 on a clean checkout).
+"$GODOT" --headless --path "$HERE" --import >/dev/null 2>&1 || true
 out="$("$GODOT" --headless --path "$HERE" -s res://tests/run_tests.gd 2>&1)"
 rc=$?
 printf '%s\n' "$out"

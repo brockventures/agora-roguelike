@@ -1,0 +1,313 @@
+{
+  "case": "partial_fill_remainder",
+  "description": "A partial fill leaves the remainder of the incoming order resting, then the reverse on the ask side.",
+  "referee_commit": "587b07f",
+  "station_id": "mars",
+  "instrument": "FRAG",
+  "setup": {
+    "asymmetric": true,
+    "seed": 1,
+    "warmup_rounds": 0,
+    "ships_docked_at": "mars",
+    "agents": [
+      "amos",
+      "zero",
+      "marvin",
+      "aerial"
+    ]
+  },
+  "initial_accounts": [
+    {
+      "agent_id": "aerial",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "FRAG",
+      "balance": 1000
+    }
+  ],
+  "steps": [
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "a1",
+          "agent_id": "amos",
+          "side": "ask",
+          "qty": 4,
+          "limit_price": 13,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 0
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 1,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 13,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "a1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 4
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "a1",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 4,
+            "limit_price": 13,
+            "seq_seen": 0,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "m1",
+          "agent_id": "marvin",
+          "side": "bid",
+          "qty": 10,
+          "limit_price": 14,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 1
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 3,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": 14,
+          "best_ask": null,
+          "last_price": 13,
+          "last_qty": 4,
+          "status": "open",
+          "trades_count": 1,
+          "order_id": "m1",
+          "order_status": "partially_filled",
+          "filled_qty": 4,
+          "remaining_qty": 6
+        }
+      },
+      "fills": [
+        {
+          "trade_id": "trd-2-1",
+          "buyer_id": "marvin",
+          "seller_id": "amos",
+          "buyer_vessel": "marvin/1",
+          "seller_vessel": "amos/1",
+          "price": 13,
+          "qty": 4,
+          "cost": 52,
+          "station_id": "mars",
+          "instrument": "FRAG"
+        }
+      ],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [
+          {
+            "order_id": "m1",
+            "agent_id": "marvin",
+            "side": "bid",
+            "qty": 6,
+            "limit_price": 14,
+            "seq_seen": 1,
+            "vessel_id": "marvin/1"
+          }
+        ],
+        "asks": []
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10052
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 996
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 9948
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1004
+        }
+      ]
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "z1",
+          "agent_id": "zero",
+          "side": "ask",
+          "qty": 10,
+          "limit_price": 14,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 3
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 5,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 14,
+          "last_price": 14,
+          "last_qty": 6,
+          "status": "open",
+          "trades_count": 1,
+          "order_id": "z1",
+          "order_status": "partially_filled",
+          "filled_qty": 6,
+          "remaining_qty": 4
+        }
+      },
+      "fills": [
+        {
+          "trade_id": "trd-4-2",
+          "buyer_id": "marvin",
+          "seller_id": "zero",
+          "buyer_vessel": "marvin/1",
+          "seller_vessel": "zero/1",
+          "price": 14,
+          "qty": 6,
+          "cost": 84,
+          "station_id": "mars",
+          "instrument": "FRAG"
+        }
+      ],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "z1",
+            "agent_id": "zero",
+            "side": "ask",
+            "qty": 4,
+            "limit_price": 14,
+            "seq_seen": 3,
+            "vessel_id": "zero/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 9864
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1010
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10084
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 994
+        }
+      ]
+    }
+  ]
+}

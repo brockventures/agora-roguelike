@@ -4,13 +4,14 @@ extends SceneTree
 ## prints PASS/FAIL per test and exits 1 on any failure.
 ##
 ## A test script extends RefCounted and defines test_* methods typed `-> String`.
-## A test passes only if it returns exactly "" and fails on a non-empty String
-## (the failure message). Note that Godot aborts a method that hits a script error
-## and returns the typed default ("" for String), which the runner counts as a
-## pass. Crashing tests are caught by the game/tests/run.sh wrapper, which fails
-## the run on SCRIPT ERROR or engine ERROR: output.
+## A test passes only if it returns exactly "ok"; any other String is the failure
+## message. Godot aborts a method that hits a script error and returns the typed
+## default ("" for String), so "" is deliberately a FAIL: a crashing test shows
+## FAIL in the runner itself. The game/tests/run.sh wrapper is a second guard and
+## also fails the run on SCRIPT ERROR or engine ERROR: output.
 
 const TEST_DIR := "res://tests"
+const PASS_SENTINEL := "ok"
 
 func _init() -> void:
 	var passed := 0
@@ -28,11 +29,15 @@ func _init() -> void:
 				continue
 			var label := "%s::%s" % [path.get_file(), name]
 			var result = inst.call(name)
-			if result is String and result == "":
+			if result is String and result == PASS_SENTINEL:
 				print("PASS  %s" % label)
 				passed += 1
 			else:
-				var why: String = result if result is String else "returned %s (script error or missing return)" % [result]
+				var why: String
+				if result is String and result != "":
+					why = result
+				else:
+					why = "returned %s, not \"ok\" (script error or missing return)" % [var_to_str(result)]
 				print("FAIL  %s: %s" % [label, why])
 				failed += 1
 	print("%d passed, %d failed" % [passed, failed])
