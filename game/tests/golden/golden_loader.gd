@@ -2,12 +2,16 @@ extends RefCounted
 ## Loads and validates golden fixture files generated from the Python referee
 ## (tools/golden/gen_*.py, #5). Shape checks only: this file knows nothing about
 ## the GDScript engine.
+##
+## Fixture `qty` (in book bids/asks) means REMAINING quantity: the Python book's
+## to_dict writes Order.remaining_qty into `qty`, unlike Order.to_dict, which
+## writes the original qty. The order as submitted is in each step's `input`.
 
 const REFEREE_COMMIT := "587b07f"
 const ORDERBOOK_DIR := "res://tests/golden/orderbook"
 
-const REQUIRED_KEYS := ["case", "referee_commit", "station_id", "instrument", "initial_accounts", "steps"]
-const REQUIRED_STEP_KEYS := ["call", "input", "response", "fills", "book", "balances"]
+const REQUIRED_KEYS := ["case", "referee_commit", "station_id", "instrument", "initial_accounts", "initial_ship_accounts", "steps"]
+const REQUIRED_STEP_KEYS := ["call", "input", "response", "fills", "book", "balances", "ship_accounts"]
 const REQUIRED_BOOK_KEYS := ["bids", "asks"]
 const REQUIRED_BOOK_ORDER_KEYS := ["order_id", "agent_id", "side", "qty", "limit_price"]
 const REQUIRED_FILL_KEYS := ["trade_id", "buyer_id", "seller_id", "price", "qty"]
