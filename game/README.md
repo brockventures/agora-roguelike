@@ -12,4 +12,4 @@ game/tests/run.sh            # uses `godot` on PATH, or pass the binary path
 
 The runner (`tests/run_tests.gd`) finds every `test_*.gd` under `res://tests`,
 runs each `test_*` method, prints PASS/FAIL, and exits 1 if anything failed.
-A test method is typed `-> String` and returns `""` to pass or a failure message to fail. Anything else, such as null after a script error, counts as a failure.
+A test method is typed `-> String` and returns exactly `"ok"` to pass or a failure message to fail. Anything else counts as a failure, including `""`, which is what Godot returns for a method that aborted on a script error, so a crashing test shows FAIL in the runner itself.
