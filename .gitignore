@@ -4,3 +4,6 @@ __pycache__/
 *.sqlite
 *.sqlite3
 .env
+.tools/
+.godot/
+.godot-bin/
