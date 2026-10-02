@@ -106,15 +106,16 @@ func test_order_book_to_dict_structure() -> String:
 		return "vessel_id mismatch in to_dict"
 	return "ok"
 
-func test_order_book_rest_no_cross_full_replay() -> String:
-	var fix_path := "res://tests/golden/orderbook/rest_no_cross.json"
+func _replay_golden_fixture(fixture_name: String) -> String:
+	var fix_path := "res://tests/golden/orderbook/%s.json" % fixture_name
 	var res := Loader.load_fixture(fix_path)
 	if res["error"] != "":
-		return "could not load golden fixture: %s" % res["error"]
+		return "could not load golden fixture '%s': %s" % [fixture_name, res["error"]]
 
 	var fixture_data: Dictionary = res["data"]
 	var steps: Array = fixture_data["steps"]
 	var ob = OrderBook.new(str(fixture_data["instrument"]))
+	var current_seq: int = 0
 
 	for step_idx in range(steps.size()):
 		var step: Dictionary = steps[step_idx]
@@ -139,15 +140,53 @@ func test_order_book_rest_no_cross_full_replay() -> String:
 			null,
 			vessel_id
 		)
-		ob.insert_order(order)
+
+		var next_seq: int = current_seq + 1
+		var add_res: Array = ob.add_order(order, next_seq)
+		var actual_trades: Array = add_res[0]
+		current_seq = next_seq + actual_trades.size()
+
+		# Verify fills/trades against step["fills"]
+		var expected_fills: Array = step.get("fills", [])
+		if actual_trades.size() != expected_fills.size():
+			return "%s step %d: expected %d fills, got %d" % [fixture_name, step_idx, expected_fills.size(), actual_trades.size()]
+
+		for fill_idx in range(expected_fills.size()):
+			var ef: Dictionary = expected_fills[fill_idx]
+			var at: Order.Trade = actual_trades[fill_idx]
+			if at.trade_id != str(ef["trade_id"]):
+				return "%s step %d fill %d: expected trade_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["trade_id"], at.trade_id]
+			if at.buyer_id != str(ef["buyer_id"]):
+				return "%s step %d fill %d: expected buyer_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["buyer_id"], at.buyer_id]
+			if at.seller_id != str(ef["seller_id"]):
+				return "%s step %d fill %d: expected seller_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["seller_id"], at.seller_id]
+			if at.price != int(ef["price"]):
+				return "%s step %d fill %d: expected price %d, got %d" % [fixture_name, step_idx, fill_idx, ef["price"], at.price]
+			if at.qty != int(ef["qty"]):
+				return "%s step %d fill %d: expected qty %d, got %d" % [fixture_name, step_idx, fill_idx, ef["qty"], at.qty]
 
 		# Compare entire snapshot dictionary using JSON normalization
 		var actual_normalized = JSON.parse_string(JSON.stringify(ob.to_dict()))
 		var expected_normalized = JSON.parse_string(JSON.stringify(expected_book))
 		if actual_normalized != expected_normalized:
-			return "step %d snapshot mismatch.\nActual: %s\nExpected: %s" % [step_idx, actual_normalized, expected_normalized]
+			return "%s step %d snapshot mismatch.\nActual: %s\nExpected: %s" % [fixture_name, step_idx, actual_normalized, expected_normalized]
 
 	return "ok"
+
+func test_golden_replay_rest_no_cross() -> String:
+	return _replay_golden_fixture("rest_no_cross")
+
+func test_golden_replay_price_time_priority() -> String:
+	return _replay_golden_fixture("price_time_priority")
+
+func test_golden_replay_partial_fill_remainder() -> String:
+	return _replay_golden_fixture("partial_fill_remainder")
+
+func test_golden_replay_self_cross() -> String:
+	return _replay_golden_fixture("self_cross")
+
+func test_golden_replay_sweep_multi_level() -> String:
+	return _replay_golden_fixture("sweep_multi_level")
 
 func test_add_order_no_cross_rests_on_book() -> String:
 	var ob = OrderBook.new("ORE")

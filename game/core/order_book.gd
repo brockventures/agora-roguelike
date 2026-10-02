@@ -1,7 +1,7 @@
 class_name OrderBook
 extends RefCounted
 ## Two-sided limit order book for a single commodity instrument against credits (CR).
-## Ported from market-sandbox Python referee (agora/order_book.py:59-198, 211-227 at commit e7fb174).
+## Ported from market-sandbox Python referee (agora/order_book.py:59-198, 211-227 at commit 587b07f).
 ##
 ## Bids sorted: price descending, arrival time (seq_seen / insertion) ascending.
 ## Asks sorted: price ascending, arrival time (seq_seen / insertion) ascending.
