@@ -1,7 +1,7 @@
 class_name Order
 extends RefCounted
 ## Core Order and Trade data classes ported from market-sandbox Python referee
-## (agora/order_book.py at commit e7fb174).
+## (agora/order_book.py at commit 587b07f).
 
 var order_id: String = ""
 var agent_id: String = ""

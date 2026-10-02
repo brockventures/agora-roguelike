@@ -104,9 +104,9 @@ func test_parity_with_core_order_book_pending() -> String:
 		return "ok"  # PENDING until #3 adds core/order_book.gd; not a failure.
 	var script = load("res://core/order_book.gd")
 	var ob = script.new()
-	if not ob.has_method("add_order"):
-		# OrderBook storage and depth ported (PR 2 of #3); matching engine lands in PR 3.
+	if not ob.has_method("remove_order"):
+		# Matching engine ported (PR 3 of #3); cancellation lands in PR 4 and full parity harness in PR 5.
 		return "ok"
-	# Once the matching engine exists this placeholder must be replaced by real parity
-	# assertions in the same PR (#3 / PR 5); failing here stops a vacuous pass.
-	return "core/order_book.gd has add_order but parity test is not implemented yet (PR 5 must add it)"
+	# Once order cancellation exists this placeholder must be replaced by real parity
+	# assertions across all golden fixtures in PR 5; failing here stops a vacuous pass.
+	return "core/order_book.gd has remove_order but full parity test is not implemented yet (PR 5 must add it)"
