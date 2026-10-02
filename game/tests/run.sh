@@ -8,6 +8,9 @@
 set -uo pipefail
 GODOT="${1:-${GODOT:-godot}}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# A fresh clone has no .godot import cache; without an import pass the -s run
+# below hangs indefinitely (seen 2026-10-02 on a clean checkout).
+"$GODOT" --headless --path "$HERE" --import >/dev/null 2>&1 || true
 out="$("$GODOT" --headless --path "$HERE" -s res://tests/run_tests.gd 2>&1)"
 rc=$?
 printf '%s\n' "$out"

@@ -1,0 +1,357 @@
+{
+  "case": "cancel_resting",
+  "description": "Cancel a resting order, then cancel it again and cancel an unknown order.",
+  "referee_commit": "587b07f",
+  "station_id": "mars",
+  "instrument": "FRAG",
+  "setup": {
+    "asymmetric": true,
+    "seed": 1,
+    "warmup_rounds": 0,
+    "ships_docked_at": "mars",
+    "agents": [
+      "amos",
+      "zero",
+      "marvin",
+      "aerial"
+    ]
+  },
+  "initial_accounts": [
+    {
+      "agent_id": "aerial",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "FRAG",
+      "balance": 1000
+    }
+  ],
+  "steps": [
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "b1",
+          "agent_id": "marvin",
+          "side": "bid",
+          "qty": 5,
+          "limit_price": 12,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 0
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 1,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": 12,
+          "best_ask": null,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "b1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 5
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [
+          {
+            "order_id": "b1",
+            "agent_id": "marvin",
+            "side": "bid",
+            "qty": 5,
+            "limit_price": 12,
+            "seq_seen": 0,
+            "vessel_id": "marvin/1"
+          }
+        ],
+        "asks": []
+      },
+      "balances": [
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "a1",
+          "agent_id": "amos",
+          "side": "ask",
+          "qty": 5,
+          "limit_price": 14,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 1
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 2,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": 12,
+          "best_ask": 14,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "a1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 5
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [
+          {
+            "order_id": "b1",
+            "agent_id": "marvin",
+            "side": "bid",
+            "qty": 5,
+            "limit_price": 12,
+            "seq_seen": 0,
+            "vessel_id": "marvin/1"
+          }
+        ],
+        "asks": [
+          {
+            "order_id": "a1",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 5,
+            "limit_price": 14,
+            "seq_seen": 1,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    },
+    {
+      "call": "cancel_order",
+      "input": {
+        "agent_id": "marvin",
+        "order_id": "b1"
+      },
+      "response": {
+        "v": 1,
+        "kind": "status",
+        "reply": "none",
+        "status": "cancelled",
+        "floor": "open",
+        "payload": {
+          "order_id": "b1",
+          "agent_id": "marvin",
+          "seq": 3,
+          "released_qty": 5
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "a1",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 5,
+            "limit_price": 14,
+            "seq_seen": 1,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    },
+    {
+      "call": "cancel_order",
+      "input": {
+        "agent_id": "marvin",
+        "order_id": "b1"
+      },
+      "response": {
+        "v": 1,
+        "kind": "reject",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "order_id": "b1",
+          "agent_id": "marvin",
+          "seq": 3,
+          "reason": "order_not_cancellable",
+          "detail": "Order 'b1' is already 'cancelled', not resting"
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "a1",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 5,
+            "limit_price": 14,
+            "seq_seen": 1,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    },
+    {
+      "call": "cancel_order",
+      "input": {
+        "agent_id": "amos",
+        "order_id": "nope"
+      },
+      "response": {
+        "v": 1,
+        "kind": "reject",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "order_id": "nope",
+          "agent_id": "amos",
+          "seq": 3,
+          "reason": "order_not_cancellable",
+          "detail": "No order 'nope' found for agent 'amos'"
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "a1",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 5,
+            "limit_price": 14,
+            "seq_seen": 1,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ]
+    }
+  ]
+}
