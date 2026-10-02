@@ -102,6 +102,11 @@ func test_validator_rejects_malformed() -> String:
 func test_parity_with_core_order_book_pending() -> String:
 	if not ResourceLoader.exists("res://core/order_book.gd"):
 		return "ok"  # PENDING until #3 adds core/order_book.gd; not a failure.
-	# Once the engine exists this placeholder must be replaced by real parity
-	# assertions in the same PR (#3); failing here stops a vacuous pass.
-	return "core/order_book.gd exists but the parity test is not implemented yet (#3 must add it)"
+	var script = load("res://core/order_book.gd")
+	var ob = script.new()
+	if not ob.has_method("add_order"):
+		# OrderBook storage and depth ported (PR 2 of #3); matching engine lands in PR 3.
+		return "ok"
+	# Once the matching engine exists this placeholder must be replaced by real parity
+	# assertions in the same PR (#3 / PR 5); failing here stops a vacuous pass.
+	return "core/order_book.gd has add_order but parity test is not implemented yet (PR 5 must add it)"
