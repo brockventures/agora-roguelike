@@ -225,23 +225,73 @@ class FogEngine:
         out.sort(key=lambda x: x.get('net_worth', 0), reverse=True)
         return out
 
-    def filter_ticks(self, ref, viewer: Optional[str], ticks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Trade prints carry exact prices, so a fleet sees prints only from
-        the station it is docked at; the public sees none."""
-        has_telemetry = bool(viewer and getattr(ref, 'upgrades_enabled', False) and
-                             getattr(ref, 'upgrades', None) and ref.upgrades.has_telemetry(viewer))
+    @classmethod
+    def mask_transit_ticks(cls, ticks: List[Dict[str, Any]], viewer: Optional[str], cur_round: int, has_telemetry: bool = False) -> List[Dict[str, Any]]:
+        """Applies strict allowlist in-flight transit masking (Issue #290).
+
+        For any non-owner viewer without telemetry, in-flight transits (arrival_round > cur_round)
+        are pared strictly down to:
+          {transit_id, agent_id, vessel_id, departure_round, arrival_round, in_flight: True}
+        plus a public raid demand if present (Issue #153).
+        All destination, commodity, cargo, pricing, fuel, hazard, and route
+        fingerprints are stripped until the vessel arrives.
+        """
         if viewer == ADMIN or has_telemetry:
             return ticks
-        live_at = self.docked_everywhere(ref, viewer)
+
+        out = []
+        for t in ticks:
+            kind = t.get('kind')
+            p = t.get('payload')
+            if kind == 'transit' and isinstance(p, dict):
+                owner = p.get('agent_id')
+                arr_round = p.get('arrival_round')
+                if viewer != owner and arr_round is not None and arr_round > cur_round:
+                    redacted = dict(t)
+                    payload = {
+                        'transit_id': p.get('transit_id'),
+                        'agent_id': owner,
+                        'vessel_id': p.get('vessel_id'),
+                        'departure_round': p.get('departure_round'),
+                        'arrival_round': arr_round,
+                        'in_flight': True,
+                    }
+                    piracy = p.get('piracy')
+                    if isinstance(piracy, dict) and piracy.get('demand') is not None:
+                        # Public raid signal without leaking cargo, destination, odds, ransom, or surrender amounts (#153, #290)
+                        demand = piracy.get('demand')
+                        public_demand: Dict[str, Any] = {'pending': True}
+                        if isinstance(demand, dict) and demand.get('deadline'):
+                            public_demand['deadline'] = demand['deadline']
+                        payload['piracy'] = {'demand': public_demand}
+                    redacted['payload'] = payload
+                    out.append(redacted)
+                    continue
+            out.append(t)
+        return out
+
+    def filter_ticks(self, ref, viewer: Optional[str], ticks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Trade prints carry exact prices, so a fleet sees prints only from
+        the station it is docked at; the public sees none. In-flight transits
+        are masked (destination, commodity, cargo_qty) for non-owners until
+        arrival round (Issue #290)."""
+        has_telemetry = bool(viewer and getattr(ref, 'upgrades_enabled', False) and
+                             getattr(ref, 'upgrades', None) and ref.upgrades.has_telemetry(viewer))
+        if viewer == ADMIN:
+            return ticks
+        cur_round = getattr(ref, 'current_round', 0)
+        ticks = self.mask_transit_ticks(ticks, viewer=viewer, cur_round=cur_round, has_telemetry=has_telemetry)
+        live_at = self.docked_everywhere(ref, viewer) if not has_telemetry else set()
         out = []
         for t in ticks:
             p = t.get('payload')
+            # Priced trade filtering:
             st = (p.get('station_id') or p.get('station')) if isinstance(p, dict) else None
             priced = isinstance(p, dict) and any(k in p for k in ('price', 'limit_price', 'fill_price', 'trades'))
             inst = (p.get('instrument') or '') if isinstance(p, dict) else ''
             if str(inst).startswith('EQ_'):
                 priced = False  # the stock exchange is public: no fog on stocks
-            if priced and (st is None or st not in live_at):
+            if not has_telemetry and priced and (st is None or st not in live_at):
                 continue
             out.append(t)
         return out

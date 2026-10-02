@@ -230,6 +230,47 @@ class TestTransitManifestCargo282(unittest.TestCase):
         ok, errs = ref.verify_ledger_invariants()
         self.assertTrue(ok, f"Ledger invariant error after surrender: {errs}")
 
+    def test_split_escrow_and_hold_piracy_surrender_settles_and_ledger_balances(self):
+        """Marvin's review variant: Manifested cargo in escrow + unmanifested cargo in hold.
+        Surrender takes from both escrow (SYSTEM) and hold (acct), and ledger invariants hold."""
+        ref = self.ref
+        agent = 'marvin'
+        vessel = 'marvin/1'
+        loc = ref.get_vessel_location(agent)
+        st = loc['station_id']
+        dest = 'ceres' if st != 'ceres' else 'earth'
+
+        give(ref, vessel, 'FOOD', 100)
+        give(ref, vessel, 'ORE', 150)
+        give(ref, vessel, 'FUEL', 300)
+
+        # Force piracy odds to 100% raid chance
+        ref.piracy.odds = (1.0, 1.0)
+
+        # Move with cargo_qty=50 FOOD manifested (in escrow) + 50 FOOD & 150 ORE unmanifested in hold
+        res = ref.initiate_transit(agent_id=agent, destination=dest, commodity='FOOD', cargo_qty=50, vessel_id=vessel)
+        self.assertEqual(res['status'], 'in_transit')
+        payload = res['payload']
+        tid = payload['transit_id']
+
+        self.assertTrue(payload.get('piracy', {}).get('raided', False))
+
+        # Check pending raid
+        raid_row = ref.conn.execute("SELECT * FROM piracy_raids WHERE transit_id = ?", (tid,)).fetchone()
+        self.assertIsNotNone(raid_row)
+        surrender_qty = raid_row['surrender_qty']
+        self.assertGreater(surrender_qty, 50)  # Demands more than escrowed 50
+
+        # Respond with surrender
+        resp = ref.piracy.respond(agent, tid, 'surrender')
+        self.assertEqual(resp.get('kind'), 'piracy_respond_ok')
+        self.assertEqual(resp['payload']['status'], 'surrendered')
+        self.assertEqual(resp['payload']['qty_taken'], surrender_qty)
+
+        # Verify ledger invariants
+        ok, errs = ref.verify_ledger_invariants()
+        self.assertTrue(ok, f"Ledger invariant error after split surrender: {errs}")
+
     def test_unmanifested_hold_hazard_hull_breach_drops_hold_and_ledger_balances(self):
         """Amos's review finding: 100 FRAG + 150 ORE aboard, move with qty omitted
         and forced hull breach: hold balances drop by lost_qty, ledger balances."""
@@ -267,6 +308,38 @@ class TestTransitManifestCargo282(unittest.TestCase):
         # Invariants must hold
         ok, errs = ref.verify_ledger_invariants()
         self.assertTrue(ok, f"Ledger invariant error after hazard: {errs}")
+
+    def test_split_escrow_and_hold_hazard_hull_breach_drops_balances_and_ledger_balances(self):
+        """Marvin's review gap: Manifested cargo in escrow + unmanifested cargo in hold under hull breach hazard.
+        Hold and escrow both debit correctly without double count, and ledger invariants hold."""
+        ref = AgoraReferee(hazards='0.0,1.0')
+        ref.new_game(seed=42, warmup_rounds=2, hazards='0.0,1.0')
+        agent = 'amos'
+        vessel = 'amos/1'
+
+        frag_bal = ref._account_balance(vessel, 'FRAG')
+        give(ref, vessel, 'FRAG', 100 - frag_bal)
+        give(ref, vessel, 'FOOD', 100)
+        give(ref, vessel, 'ORE', 150)
+        give(ref, vessel, 'FUEL', 300)
+
+        self.assertEqual(ref._account_balance(vessel, 'FOOD'), 100)
+        self.assertEqual(ref._account_balance(vessel, 'ORE'), 150)
+
+        loc = ref.get_vessel_location(agent)
+        dest = 'ceres' if loc['station_id'] != 'ceres' else 'earth'
+
+        # Move with 50 FOOD manifested (in escrow) + 50 FOOD & 150 ORE loose in hold
+        res = ref.initiate_transit(agent_id=agent, destination=dest, commodity='FOOD', cargo_qty=50, vessel_id=vessel)
+        self.assertEqual(res['status'], 'in_transit')
+        hazard = res['payload'].get('hazard')
+        self.assertIsNotNone(hazard)
+        lost_qty = hazard.get('lost_qty', 0)
+        self.assertGreater(lost_qty, 0)
+
+        # Invariants must hold
+        ok, errs = ref.verify_ledger_invariants()
+        self.assertTrue(ok, f"Ledger invariant error after split hazard: {errs}")
 
 if __name__ == '__main__':
     unittest.main()
