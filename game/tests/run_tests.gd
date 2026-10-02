@@ -5,9 +5,10 @@ extends SceneTree
 ##
 ## A test script extends RefCounted and defines test_* methods typed `-> String`.
 ## A test passes only if it returns exactly "" and fails on a non-empty String
-## (the failure message). Anything else, including null from a method that hit a
-## script error partway through, counts as a failure, so a crashing test can
-## never pass.
+## (the failure message). Note that Godot aborts a method that hits a script error
+## and returns the typed default ("" for String), which the runner counts as a
+## pass. Crashing tests are caught by the game/tests/run.sh wrapper, which fails
+## the run on SCRIPT ERROR or engine ERROR: output.
 
 const TEST_DIR := "res://tests"
 
