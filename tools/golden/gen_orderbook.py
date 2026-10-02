@@ -203,11 +203,13 @@ def case_two_ship_settlement():
 
 def case_reject_unfunded_ask():
     s = Stream('Asks with no goods behind them are rejected insufficient_balance: an empty second ship, then an '
-               'ask beyond ship 1 balance less what its resting ask already commits.',
+               'ask beyond ship 1 balance less what its resting ask already commits, then an ask for exactly that '
+               'available quantity, which rests.',
                prep=[{'op': 'mint_cr', 'agent': 'amos', 'qty': 30000}, {'op': 'buy_ship', 'agent': 'amos'}])
     s.order('u1', 'amos', 'ask', 1, 13, vessel='amos/2')
     s.order('u2', 'amos', 'ask', 5, 13)
     s.order('u3', 'amos', 'ask', 996, 13)
+    s.order('u4', 'amos', 'ask', 995, 13)  # exactly the available 1000 - 5: must rest (pins < vs <=)
     return s
 
 
