@@ -29,8 +29,8 @@ const SIDEBAR_RECT: Rect2 = Rect2(880.0, 64.0, 400.0, 672.0)
 const TICKER_RECT: Rect2 = Rect2(0.0, 736.0, 1280.0, 64.0)
 const MODAL_OVERLAY_RECT: Rect2 = Rect2(200.0, 120.0, 880.0, 560.0)
 
-## Supported commodities and stations for cycling.
-const COMMODITIES: Array[String] = ["ORE", "FRAG", "FOOD", "WATER", "FUEL", "MACHINERY"]
+## Supported commodities for cycling, canonical from Transit.
+const COMMODITIES: Array[String] = Transit.COMMODITIES
 
 var controller: RunController = null
 var tactical_map: SolTacticalMap = null
@@ -121,10 +121,11 @@ func unbind_controller() -> void:
 # --- Header Telemetry ---
 
 func get_header_telemetry() -> Dictionary:
-	var cr_val: int = 10000
-	var debt_val: int = 50000
-	var int_rate: int = 300
-	var ticks_rem: int = 36000
+	var cr_val: int = Chapter11.FRESH_START_CR
+	var debt_val: int = DoomsdayClock.DEFAULT_DEBT
+	var principal_debt_val: int = DoomsdayClock.DEFAULT_DEBT
+	var int_rate: int = DoomsdayClock.DEFAULT_INTEREST_RATE_BPS_PER_MINUTE
+	var ticks_rem: int = DoomsdayClock.DEFAULT_TOTAL_TICKS
 	var stage_name: String = "NORMAL"
 	var is_paused: bool = false
 	var sim_speed: int = 1
@@ -136,7 +137,8 @@ func get_header_telemetry() -> Dictionary:
 		cr_val = controller.cr
 		if controller.doomsday != null:
 			var d: DoomsdayClock = controller.doomsday
-			debt_val = d.principal_debt
+			debt_val = d.get_total_debt()
+			principal_debt_val = d.principal_debt
 			int_rate = d.interest_rate_bps_per_minute
 			ticks_rem = d.ticks_remaining
 			stage_name = _stage_to_name(d.stage)
@@ -150,7 +152,8 @@ func get_header_telemetry() -> Dictionary:
 	return {
 		"viewport_size": [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
 		"cr": cr_val,
-		"principal_debt": debt_val,
+		"total_debt": debt_val,
+		"principal_debt": principal_debt_val,
 		"interest_bps": int_rate,
 		"ticks_remaining": ticks_rem,
 		"stage_name": stage_name,
@@ -185,7 +188,7 @@ func get_market_quote() -> Dictionary:
 	if Transit.BASE_PRICES.has(active_station) and Transit.BASE_PRICES[active_station].has(active_commodity):
 		price = float(Transit.BASE_PRICES[active_station][active_commodity])
 
-	var is_perish: bool = (active_commodity == "FOOD")
+	var is_perish: bool = Transit.is_perishable(active_commodity)
 	return {
 		"station": active_station,
 		"commodity": active_commodity,
@@ -212,6 +215,7 @@ func get_order_book_ladder() -> Dictionary:
 		asks.append({"price": snappedf(a_px, 0.5), "quantity": a_vol})
 
 	return {
+		"synthetic": true,
 		"spread": snappedf(best_ask - best_bid, 0.5),
 		"best_bid": best_bid,
 		"best_ask": best_ask,
@@ -266,14 +270,14 @@ func set_commodity(p_commodity: String) -> bool:
 	return true
 
 func cycle_commodity(direction: int = 1) -> String:
-	var idx: int = COMMODITIES.find(active_commodity)
+	var idx: int = Transit.COMMODITIES.find(active_commodity)
 	if idx == -1:
 		idx = 0
-	var count: int = COMMODITIES.size()
+	var count: int = Transit.COMMODITIES.size()
 	var new_idx: int = (idx + direction) % count
 	if new_idx < 0:
 		new_idx += count
-	set_commodity(COMMODITIES[new_idx])
+	set_commodity(Transit.COMMODITIES[new_idx])
 	return active_commodity
 
 # --- Trading Overlay Modal Routing ---
@@ -372,7 +376,9 @@ func _on_controller_round_advanced(r: int) -> void:
 		post_headline("QUARTERLY REFINANCING: Central bank debt tranche rolled at current interest rate.", "DEBT", "INFO")
 
 func _on_controller_bankruptcy_pending(assessment: Dictionary) -> void:
-	var alert_msg: String = "CHAPTER 11 WARNING: Negative cash flow trip (Net Worth: %s)" % str(assessment.get("net_worth", 0))
+	var shortfall: int = int(assessment.get("shortfall", 0))
+	var total_debt: int = int(assessment.get("total_debt", 0))
+	var alert_msg: String = "CHAPTER 11 WARNING: Insolvent (Shortfall: %d CR, Total Debt: %d CR)" % [shortfall, total_debt]
 	post_headline(alert_msg, "INSOLVENCY", "CRITICAL")
 	emergency_alert.emit(alert_msg)
 
@@ -407,12 +413,7 @@ func _stage_to_name(st: int) -> String:
 	return "NORMAL"
 
 func _normalize_commodity(c: String) -> String:
-	var up: String = c.to_upper().strip_edges()
-	if up == "BANANA" or up == "BANANAS":
-		return "FRAG"
-	if COMMODITIES.has(up):
-		return up
-	return ""
+	return Transit.normalize_commodity(c)
 
 # --- JSON Snapshot Serialization ---
 

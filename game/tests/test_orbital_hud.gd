@@ -19,6 +19,12 @@ func test_init_defaults() -> String:
 		return "ticker rect size mismatch"
 	if hud.galnet_headlines.size() != 3:
 		return "default headlines count should be 3"
+	# Check fallback constants without bound controller
+	var h: Dictionary = hud.get_header_telemetry()
+	if h["cr"] != Chapter11.FRESH_START_CR or h["total_debt"] != DoomsdayClock.DEFAULT_DEBT:
+		return "fallback constants mismatch in unbound header"
+	if h["interest_bps"] != DoomsdayClock.DEFAULT_INTEREST_RATE_BPS_PER_MINUTE or h["ticks_remaining"] != DoomsdayClock.DEFAULT_TOTAL_TICKS:
+		return "fallback clock constants mismatch in unbound header"
 	return "ok"
 
 func test_station_and_commodity_cycling() -> String:
@@ -47,33 +53,44 @@ func test_station_and_commodity_cycling() -> String:
 	if s_prev != "ceres":
 		return "cycle_station backward wrap to ceres failed"
 
-	# Commodity forward cycle: ORE -> FRAG -> FOOD -> WATER -> FUEL -> MACHINERY -> ORE
+	# Commodity forward cycle: Transit.COMMODITIES is ["FRAG", "FUEL", "FOOD", "ORE", "MACHINERY"]
+	# Initial is ORE (idx 3) -> MACHINERY (idx 4) -> FRAG (idx 0) -> FUEL (idx 1)
 	var c1 := hud.cycle_commodity(1)
-	if c1 != "FRAG" or hud.active_commodity != "FRAG" or hud.trading_overlay.selected_commodity != "FRAG":
-		return "cycle_commodity forward failed on FRAG"
+	if c1 != "MACHINERY" or hud.active_commodity != "MACHINERY" or hud.trading_overlay.selected_commodity != "MACHINERY":
+		return "cycle_commodity forward failed on MACHINERY"
 	var c2 := hud.cycle_commodity(1)
-	if c2 != "FOOD":
-		return "cycle_commodity forward failed on FOOD"
+	if c2 != "FRAG":
+		return "cycle_commodity forward wrap failed on FRAG"
+	var c3 := hud.cycle_commodity(1)
+	if c3 != "FUEL":
+		return "cycle_commodity forward failed on FUEL"
 
-	# Commodity backward cycle
+	# Commodity backward cycle: FUEL (idx 1) -> FRAG (idx 0)
 	var c_back := hud.cycle_commodity(-1)
 	if c_back != "FRAG":
 		return "cycle_commodity backward failed"
 
-	if station_signals.size() != 5 or commodity_signals.size() != 3:
+	if station_signals.size() != 5 or commodity_signals.size() != 4:
 		return "signal dispatch count mismatch"
 
 	return "ok"
 
 func test_header_telemetry_controller_binding() -> String:
-	var d := DoomsdayClock.new(36000, 0, 0, 0)
+	# Test with compounding interest and burn, ensuring solvency (CR > total debt)
+	var d := DoomsdayClock.new(36000, 10000, 10, 500)
+	d.accrued_burn = 250
+	d.accrued_interest = 150
 	var rc := RunController.new(null, 100, d, {}, 60)
-	rc.cr = 9200
+	rc.cr = 20000
 	var hud := OrbitalHUD.new(rc)
 
 	var h: Dictionary = hud.get_header_telemetry()
-	if h["cr"] != 9200 or h["principal_debt"] != 0:
-		return "cr or debt mismatch in header"
+	if h["cr"] != 20000:
+		return "cr mismatch in header"
+	if h["total_debt"] != 10400 or h["total_debt"] != d.get_total_debt():
+		return "total_debt mismatch: expected 10400, got %d" % h["total_debt"]
+	if h["principal_debt"] != 10000:
+		return "principal_debt mismatch"
 	if h["current_round"] != 0 or h["stage_name"] != "NORMAL":
 		return "round or stage mismatch"
 
@@ -107,7 +124,20 @@ func test_sidebar_and_order_book_ladder() -> String:
 	if side["cargo_held"] != 50:
 		return "cargo_held mismatch for ORE: %d" % side["cargo_held"]
 
+	var quote: Dictionary = side["market_quote"]
+	if bool(quote["is_perishable"]):
+		return "ORE should not be perishable"
+
+	# Switch to FOOD and verify perishable flag
+	hud.set_commodity("FOOD")
+	var food_quote: Dictionary = hud.get_market_quote()
+	if not bool(food_quote["is_perishable"]):
+		return "FOOD must be perishable via Transit.is_perishable"
+
 	var ladder: Dictionary = side["order_book_ladder"]
+	if not ladder.has("synthetic") or not bool(ladder["synthetic"]):
+		return "order book ladder must be explicitly flagged synthetic: true"
+
 	var bids: Array = ladder["bids"]
 	var asks: Array = ladder["asks"]
 	if bids.size() != 5 or asks.size() != 5:
@@ -197,10 +227,12 @@ func test_controller_event_reactions() -> String:
 	var alerts: Array = []
 	hud.emergency_alert.connect(func(a): alerts.append(a))
 
-	# Trigger insolvency interrupt
-	rc.bankruptcy_pending.emit({"net_worth": -500})
+	# Trigger insolvency interrupt with canonical Chapter 11 assessment shape
+	rc.bankruptcy_pending.emit({"insolvent": true, "total_debt": 50000, "shortfall": 2500})
 	if alerts.size() != 1 or not alerts[0].begins_with("CHAPTER 11"):
 		return "insolvency alert failed to forward"
+	if not "Shortfall: 2500 CR" in alerts[0] or not "Total Debt: 50000 CR" in alerts[0]:
+		return "insolvency alert missing shortfall or total_debt: %s" % alerts[0]
 
 	# Trigger collapse
 	rc.run_collapsed.emit()
