@@ -191,6 +191,14 @@ func reset(new_seed: int) -> void:
 	if bags != null:
 		bags.reset(new_seed)
 
+## Golden Parachutes hazard odds factor (#11): integer bps, 10000 = x1.0, from
+## RunController.hazard_odds_bps(). Exactly 1.0 at the default, so the existing
+## float math (and every golden stream) is untouched without perks.
+static func _bps_factor(odds_bps: int) -> float:
+	if odds_bps == 10000:
+		return 1.0
+	return float(maxi(0, odds_bps)) / 10000.0
+
 ## Quotes hazard odds and loss ranges without drawing any marbles.
 ## Matches agora/hazards.py:HazardEngine.quote.
 func quote(
@@ -198,7 +206,8 @@ func quote(
 	loss_factor: float = 1.0,
 	loss_size_factor: float = 1.0,
 	_agent_id: String = "",
-	total_qty: Variant = null
+	total_qty: Variant = null,
+	odds_bps: int = 10000
 ) -> Dictionary:
 	if odds == null:
 		return {
@@ -213,8 +222,8 @@ func quote(
 		}
 	var p_delay: float = float(odds[0])
 	var p_loss: float = float(odds[1])
-	var p_delay_adj: float = py_round4(clampf(p_delay * delay_factor, 0.0, 1.0))
-	var p_loss_adj: float = py_round4(clampf(p_loss * loss_factor, 0.0, 1.0))
+	var p_delay_adj: float = py_round4(clampf(p_delay * delay_factor * _bps_factor(odds_bps), 0.0, 1.0))
+	var p_loss_adj: float = py_round4(clampf(p_loss * loss_factor * _bps_factor(odds_bps), 0.0, 1.0))
 	var effective_qty: int = maxi(0, int(total_qty)) if total_qty != null else 0
 	var min_loss: int = int(float(effective_qty) * LOSS_FRACTION[0] * loss_size_factor) if effective_qty > 0 else 0
 	var max_loss: int = int(float(effective_qty) * LOSS_FRACTION[1] * loss_size_factor) if effective_qty > 0 else 0
@@ -238,7 +247,8 @@ func roll(
 	loss_factor: float = 1.0,
 	loss_size_factor: float = 1.0,
 	agent_id: String = "",
-	total_qty: Variant = null
+	total_qty: Variant = null,
+	odds_bps: int = 10000
 ) -> Dictionary:
 	if odds == null:
 		return {"delay": 0, "lost": 0, "note": ""}
@@ -246,10 +256,10 @@ func roll(
 	var p_loss: float = float(odds[1])
 	var d: int = draw_source.randint(DELAY_ROUNDS[0], DELAY_ROUNDS[1])
 	var f: float = draw_source.uniform(LOSS_FRACTION[0], LOSS_FRACTION[1])
-	var delay_hit: bool = bags.draw("delay", agent_id, p_delay * delay_factor)
+	var delay_hit: bool = bags.draw("delay", agent_id, p_delay * delay_factor * _bps_factor(odds_bps))
 	var delay: int = d if delay_hit else 0
 	var effective_qty: int = int(total_qty) if total_qty != null else cargo_qty
-	var loss_hit: bool = (effective_qty > 0) and bags.draw("loss", agent_id, p_loss * loss_factor)
+	var loss_hit: bool = (effective_qty > 0) and bags.draw("loss", agent_id, p_loss * loss_factor * _bps_factor(odds_bps))
 	var lost: int = int(float(effective_qty) * f * loss_size_factor) if loss_hit else 0
 	var notes: Array[String] = []
 	if delay > 0:
@@ -269,9 +279,10 @@ func roll_tuple(
 	loss_factor: float = 1.0,
 	loss_size_factor: float = 1.0,
 	agent_id: String = "",
-	total_qty: Variant = null
+	total_qty: Variant = null,
+	odds_bps: int = 10000
 ) -> Array:
-	var res := roll(cargo_qty, delay_factor, loss_factor, loss_size_factor, agent_id, total_qty)
+	var res := roll(cargo_qty, delay_factor, loss_factor, loss_size_factor, agent_id, total_qty, odds_bps)
 	return [res["delay"], res["lost"], res["note"]]
 
 ## Records an in-flight hazard event into in-memory ledger storage.

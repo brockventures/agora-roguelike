@@ -293,7 +293,8 @@ static func calculate_fuel_burn(
 	round_num: int = 0,
 	engine_tier: int = 0,
 	has_refinery_loop: bool = false,
-	corp_fuel_discount: float = 0.0
+	corp_fuel_discount: float = 0.0,
+	fuel_discount_bps: int = 0
 ) -> int:
 	var r = get_route(origin, destination, round_num)
 	if r == null:
@@ -316,6 +317,11 @@ static func calculate_fuel_burn(
 	# 4. Corporate discount truncated with int() (agora/referee.py:2024)
 	if corp_fuel_discount > 0.0:
 		required_fuel = maxi(1, int(float(required_fuel) * (1.0 - corp_fuel_discount)))
+
+	# 5. Golden Parachutes fuel discount (#11), integer bps, truncating, min 1.
+	#    RunController.fuel_discount_bps(). 0 leaves the result untouched.
+	if fuel_discount_bps > 0:
+		required_fuel = maxi(1, required_fuel * (10000 - mini(fuel_discount_bps, 10000)) / 10000)
 
 	return required_fuel
 

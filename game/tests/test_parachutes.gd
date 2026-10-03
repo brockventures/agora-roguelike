@@ -285,8 +285,8 @@ func test_golden_handshake_sets_fresh_start_cr() -> String:
 	var report := rc.file_bankruptcy()
 	if report.is_empty():
 		return "should have filed"
-	if rc.cr != Chapter11.FRESH_START_CR + 2000:
-		return "fresh start cr %d" % rc.cr
+	if rc.next_run().cr != Chapter11.FRESH_START_CR + 2000:
+		return "fresh start cr %d" % rc.next_run().cr
 	return "ok"
 
 func test_asset_protection_raises_haircut() -> String:

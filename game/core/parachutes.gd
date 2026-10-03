@@ -18,28 +18,32 @@ extends RefCounted
 ##   result = (base + add) * mul_bps / 10000   (integer division)
 ## Perks fold in sorted-id order, so the result never depends on purchase order.
 ##
-## Stats and who consumes them (STATS below):
-##   LIVE, applied by RunController today:
-##     starting_cr, fresh_start_cr, interest_bps, burn_rate, liquidation_haircut_bps
-##   PENDING, exposed in the dict but not wired (RunController does not own these
-##   knobs yet); consumed by the future transit and encounter wiring:
-##     fuel_discount_bps (Transit.calculate_fuel_burn engine discount),
-##     hazard_odds_bps (Hazards odds factor), piracy_odds_bps (Piracy odds factor)
+## Stats and who consumes them (STATS below), all LIVE as of #11 PR 2:
+##   starting_cr, fresh_start_cr, interest_bps, burn_rate, liquidation_haircut_bps:
+##     applied by RunController.
+##   fuel_discount_bps: Transit.calculate_fuel_burn(..., fuel_discount_bps), read
+##     via RunController.fuel_discount_bps() (0..10000).
+##   hazard_odds_bps: Hazards.quote/roll(..., odds_bps), via
+##     RunController.hazard_odds_bps() (base 10000 = x1.0).
+##   piracy_odds_bps: Piracy.chance/roll_departure(..., odds_bps), via
+##     RunController.piracy_odds_bps() (base 10000 = x1.0).
+## RunController derives modifiers from the profile's owned perks when none are
+## passed, and banks Severance at run end (RunController.end_run).
 
 const DEFAULT_PATH := "res://data/parachutes.json"
 const OPS: Array[String] = ["add", "mul_bps"]
 const BPS: int = 10000
 
-## stat -> "live" | "pending"
+## stat -> "live" (has a consumer) | "pending" (stored, no consumer yet)
 const STATS: Dictionary = {
 	"starting_cr": "live",
 	"fresh_start_cr": "live",
 	"interest_bps": "live",
 	"burn_rate": "live",
 	"liquidation_haircut_bps": "live",
-	"fuel_discount_bps": "pending",
-	"hazard_odds_bps": "pending",
-	"piracy_odds_bps": "pending",
+	"fuel_discount_bps": "live",
+	"hazard_odds_bps": "live",
+	"piracy_odds_bps": "live",
 }
 
 ## Severance formula, placeholder constants (Ryan may overrule).
