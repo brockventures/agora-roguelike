@@ -36,6 +36,7 @@ var controller: RunController = null
 var tactical_map: SolTacticalMap = null
 var trading_overlay: TradingOverlay = null
 var gamepad_focus: GamepadFocus = null
+var vector_orrery: VectorOrrery = null
 
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
@@ -63,6 +64,7 @@ func _init(p_controller: RunController = null, p_station: String = "earth", p_co
 	trading_overlay = TradingOverlay.new(p_controller, active_station)
 	trading_overlay.set_commodity(active_commodity)
 	gamepad_focus = GamepadFocus.new(self)
+	vector_orrery = VectorOrrery.new(tactical_map, p_controller)
 
 	# Seed baseline GalNet headlines
 	_seed_default_headlines()
@@ -79,6 +81,8 @@ func bind_controller(rc: RunController) -> void:
 			tactical_map.bind_controller(rc)
 		if trading_overlay != null:
 			trading_overlay.bind_controller(rc)
+		if vector_orrery != null:
+			vector_orrery.bind_controller(rc)
 
 		_round_callable = Callable(self, "_on_controller_round_advanced")
 		_bankruptcy_callable = Callable(self, "_on_controller_bankruptcy_pending")
@@ -117,6 +121,8 @@ func unbind_controller() -> void:
 			tactical_map.unbind_controller()
 		if trading_overlay != null:
 			trading_overlay.unbind_controller()
+		if vector_orrery != null:
+			vector_orrery.unbind_controller()
 
 	controller = null
 
@@ -455,5 +461,7 @@ func to_dict() -> Dictionary:
 		"headlines_count": galnet_headlines.size(),
 		"tactical_map": tactical_map.to_dict() if tactical_map != null else {},
 		"trading_overlay": trading_overlay.to_dict() if trading_overlay != null else {},
-		"gamepad_focus": gamepad_focus.to_dict() if gamepad_focus != null else {}
+		"gamepad_focus": gamepad_focus.to_dict() if gamepad_focus != null else {},
+		"vector_orrery": vector_orrery.to_dict() if vector_orrery != null else {},
+		"crt_preset": vector_orrery.current_preset if vector_orrery != null else ""
 	}
