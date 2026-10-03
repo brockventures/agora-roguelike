@@ -283,7 +283,7 @@ static func py_round(val: float) -> int:
 	var rounded := roundi(val)
 	var fl: int = int(floor(val))
 	var diff: float = val - float(fl)
-	if absf(diff - 0.5) < 0.0001:
+	if diff == 0.5:
 		return fl if (fl % 2 == 0) else (fl + 1)
 	return rounded
 
@@ -347,8 +347,7 @@ static func calculate_arrival_decay(
 	var is_perish: bool = bool(perishable_override) if perishable_override != null else is_perishable(commodity)
 	if not is_perish:
 		return 0
-	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(transit_rounds)
-	var raw_decay: int = int(floor(float(cargo_qty) * total_decay_pct))
+	var raw_decay: int = int(floor(float(cargo_qty) * BELT_CARGO_DECAY_RATE * float(transit_rounds)))
 	return mini(cargo_qty, raw_decay)
 
 ## Calculates live projected cargo decay mid-transit for fleet status queries.
@@ -374,8 +373,7 @@ static func calculate_projected_decay(
 	var effective_elapsed: int = elapsed_rounds
 	if total_rounds > 0:
 		effective_elapsed = mini(elapsed_rounds, total_rounds)
-	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(effective_elapsed)
-	var raw_decay: int = py_round(float(cargo_qty) * total_decay_pct)
+	var raw_decay: int = py_round(float(cargo_qty) * BELT_CARGO_DECAY_RATE * float(effective_elapsed))
 	return mini(cargo_qty, raw_decay)
 
 ## Direct alias for calculate_arrival_decay matching Marvin's specification.

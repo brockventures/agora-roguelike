@@ -174,6 +174,12 @@ func test_perishable_cargo_decay_and_cap() -> String:
 	if d_proj != 2:
 		return "decay_projected expected 2, got %d" % d_proj
 
+	# Marvin tie-breaking precision check (referee.py:1432 left-to-right multiply):
+	# 58 FOOD * 0.05 * 5 = 14.500000000000002 -> round(14.500000000000002) = 15
+	var d_58 = Transit.decay_projected("FOOD", 58, 5, "earth", "ceres", 5)
+	if d_58 != 15:
+		return "decay_projected for 58 FOOD / 5 rounds expected 15, got %d" % d_58
+
 	# Clamping elapsed_rounds to total_rounds (referee.py:1429)
 	var d_clamped = Transit.decay_projected("FOOD", 100, 5, "earth", "ceres", 2)
 	if d_clamped != 10:
