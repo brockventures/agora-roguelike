@@ -78,7 +78,7 @@ static func py_round4(x: float) -> float:
 	if s - fl == 0.5:
 		k = fl + 1.0 if e > 0.0 else (fl if e < 0.0 else (fl if fmod(fl, 2.0) == 0.0 else fl + 1.0))
 	else:
-		k = floorf(s + 0.5)
+		k = fl if s - fl < 0.5 else fl + 1.0
 	return k / 10000.0
 
 

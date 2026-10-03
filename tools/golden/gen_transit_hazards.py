@@ -27,19 +27,6 @@ REFEREE_COMMIT = '587b07f'
 DEFAULT_OUT_DIR = os.path.join(ROOT, 'game', 'tests', 'golden', 'transit_hazards')
 OUT_FILE = os.path.join(DEFAULT_OUT_DIR, 'transit_hazards_golden.json')
 
-ENGINE_FUEL_CUT = (0.0, 0.0, 0.40)
-
-
-def calc_fuel_py(fuel: int, engine_tier: int, has_refinery_loop: bool, corp_discount: float = 0.0) -> int:
-    """Computes fuel burn according to agora/upgrades.py:191-202 and agora/referee.py:2024."""
-    cut = ENGINE_FUEL_CUT[min(engine_tier, len(ENGINE_FUEL_CUT) - 1)] if engine_tier > 0 else 0.0
-    burn = fuel * (1.0 - cut) if cut else float(fuel)
-    if has_refinery_loop:
-        burn *= 0.80
-    required = max(1, int(round(burn)))
-    if corp_discount > 0.0:
-        required = max(1, int(float(required) * (1.0 - corp_discount)))
-    return required
 
 
 def generate(out_dir=None):
@@ -89,6 +76,23 @@ def generate(out_dir=None):
     data["spatial"]["route_cases"] = route_cases
 
     # Fuel burn cases: engine tiers 0..2 x refinery loop x corp discount x base & aligned fuels
+    # Driven directly via AgoraReferee.upgrades.engine_fuel and corporate discount (agora/referee.py:1646-1650)
+    ref_fuel = AgoraReferee()
+    ref_fuel.new_game(seed=42)
+    ref_fuel.upgrades_enabled = True
+
+    def get_fuel(fuel: int, tier: int, refinery_loop: bool, corp_discount: float) -> int:
+        agent = f"trader_{tier}_{int(refinery_loop)}"
+        ref_fuel.conn.execute("INSERT OR REPLACE INTO fleet_upgrades (agent_id, kind, tier, round) VALUES (?, 'engines', ?, 1)", (agent, tier))
+        if refinery_loop:
+            ref_fuel.conn.execute("INSERT OR REPLACE INTO fleet_upgrades (agent_id, kind, tier, round) VALUES (?, 'refinery_loop', 1, 1)", (agent,))
+        else:
+            ref_fuel.conn.execute("DELETE FROM fleet_upgrades WHERE agent_id = ? AND kind = 'refinery_loop'", (agent,))
+        req = ref_fuel.upgrades.engine_fuel(agent, fuel)
+        if corp_discount > 0.0:
+            req = max(1, int(float(req) * (1.0 - corp_discount)))
+        return req
+
     fuel_cases = []
     routes_to_test = [
         ("earth", "luna", 0),  # base 5
@@ -105,7 +109,7 @@ def generate(out_dir=None):
         for t in [0, 1, 2]:
             for r_loop in [False, True]:
                 for corp in [0.0, 0.35, 0.40]:
-                    exp_fuel = calc_fuel_py(base_fuel, t, r_loop, corp)
+                    exp_fuel = get_fuel(base_fuel, t, r_loop, corp)
                     fuel_cases.append({
                         "origin": orig,
                         "dest": dest,
@@ -124,7 +128,7 @@ def generate(out_dir=None):
         is_belt = (f"{orig}:{dest}" in S.BELT_ROUTES) or ((orig, dest) in S.BELT_ROUTES)
         rate = S.BELT_CARGO_DECAY_RATE if is_belt else 0.0
         for q in [30, 50, 58, 70]:
-            for el in [1, 2, 3]:
+            for el in [1, 2, 3, 5]:
                 decay_cases.append({
                     "commodity": "FOOD",
                     "origin": orig,
@@ -141,7 +145,14 @@ def generate(out_dir=None):
     conn = sqlite3.connect(':memory:')
     h_engine = H.HazardEngine(conn=conn, odds=(0.10, 0.05), seed=7)
     hazard_quotes = []
-    for (df, lf, q) in [(1.0, 1.0, 1000), (0.5, 1.0, 500), (1.0, 0.5, 2000), (2.0, 1.5, 100)]:
+    for (df, lf, q) in [
+        (1.0, 1.0, 1000),
+        (0.5, 1.0, 500),
+        (1.0, 0.5, 2000),
+        (2.0, 1.5, 100),
+        (0.1875, 1.0, 100),  # tie case: 0.10 * 0.1875 == 0.01875 -> tests hazards.gd py_round4 tie-breaker
+        (15.0, 1.0, 100),    # clamp case: 0.10 * 15.0 == 1.5 -> clamp at 1.0
+    ]:
         quote = h_engine.quote(delay_factor=df, loss_factor=lf, total_qty=q)
         hazard_quotes.append({
             "delay_factor": df,

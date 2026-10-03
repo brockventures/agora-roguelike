@@ -189,9 +189,9 @@ func test_hazards_constants_and_quotes_parity() -> String:
 		var exp_q: Dictionary = q_case["quote"]
 
 		var act_q := engine.quote(df, lf, 1.0, "", qty)
-		if absf(float(act_q["p_delay"]) - float(exp_q["p_delay"])) > 1e-4:
+		if float(act_q["p_delay"]) != float(exp_q["p_delay"]):
 			return "quote p_delay mismatch"
-		if absf(float(act_q["p_loss"]) - float(exp_q["p_loss"])) > 1e-4:
+		if float(act_q["p_loss"]) != float(exp_q["p_loss"]):
 			return "quote p_loss mismatch"
 		if int(act_q["delay_rounds"][0]) != int(exp_q["delay_rounds"][0]) or int(act_q["delay_rounds"][1]) != int(exp_q["delay_rounds"][1]):
 			return "quote delay_rounds mismatch"
