@@ -106,7 +106,7 @@ func test_order_book_to_dict_structure() -> String:
 		return "vessel_id mismatch in to_dict"
 	return "ok"
 
-func _replay_golden_fixture(fixture_name: String) -> String:
+func _replay_golden_fixture(fixture_name: String, max_steps: int = -1) -> String:
 	var fix_path := "res://tests/golden/orderbook/%s.json" % fixture_name
 	var res := Loader.load_fixture(fix_path)
 	if res["error"] != "":
@@ -117,53 +117,69 @@ func _replay_golden_fixture(fixture_name: String) -> String:
 	var ob = OrderBook.new(str(fixture_data["instrument"]))
 	var current_seq: int = 0
 
-	for step_idx in range(steps.size()):
+	var step_count: int = steps.size() if max_steps <= 0 else mini(max_steps, steps.size())
+	for step_idx in range(step_count):
 		var step: Dictionary = steps[step_idx]
-		var payload: Dictionary = step["input"]["payload"]
 		var expected_book: Dictionary = step["book"]
+		var step_input: Dictionary = step["input"]
 
-		# Derive vessel_id from payload or default to <agent_id>/1 (per referee resolve without peeking at expected book)
-		var vessel_id = payload.get("vessel_id")
-		if vessel_id == null or str(vessel_id) == "":
-			vessel_id = "%s/1" % payload["agent_id"]
+		if step_input.has("payload"):
+			var payload: Dictionary = step_input["payload"]
+			var vessel_id = payload.get("vessel_id")
+			if vessel_id == null or str(vessel_id) == "":
+				vessel_id = "%s/1" % payload["agent_id"]
 
-		var order = Order.new(
-			str(payload["order_id"]),
-			str(payload["agent_id"]),
-			str(payload["instrument"]),
-			str(payload["side"]),
-			int(payload["qty"]),
-			int(payload["limit_price"]),
-			int(payload["seq_seen"]),
-			-1.0,
-			0,
-			null,
-			vessel_id
-		)
+			var order = Order.new(
+				str(payload["order_id"]),
+				str(payload["agent_id"]),
+				str(payload["instrument"]),
+				str(payload["side"]),
+				int(payload["qty"]),
+				int(payload["limit_price"]),
+				int(payload["seq_seen"]),
+				-1.0,
+				0,
+				vessel_id,
+				vessel_id
+			)
 
-		var next_seq: int = current_seq + 1
-		var add_res: Array = ob.add_order(order, next_seq)
-		var actual_trades: Array = add_res[0]
-		current_seq = next_seq + actual_trades.size()
+			var next_seq: int = current_seq + 1
+			var add_res: Array = ob.add_order(order, next_seq)
+			var actual_trades: Array = add_res[0]
+			current_seq = next_seq + actual_trades.size()
 
-		# Verify fills/trades against step["fills"]
-		var expected_fills: Array = step.get("fills", [])
-		if actual_trades.size() != expected_fills.size():
-			return "%s step %d: expected %d fills, got %d" % [fixture_name, step_idx, expected_fills.size(), actual_trades.size()]
+			# Verify fills/trades against step["fills"]
+			var expected_fills: Array = step.get("fills", [])
+			if actual_trades.size() != expected_fills.size():
+				return "%s step %d: expected %d fills, got %d" % [fixture_name, step_idx, expected_fills.size(), actual_trades.size()]
 
-		for fill_idx in range(expected_fills.size()):
-			var ef: Dictionary = expected_fills[fill_idx]
-			var at: Order.Trade = actual_trades[fill_idx]
-			if at.trade_id != str(ef["trade_id"]):
-				return "%s step %d fill %d: expected trade_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["trade_id"], at.trade_id]
-			if at.buyer_id != str(ef["buyer_id"]):
-				return "%s step %d fill %d: expected buyer_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["buyer_id"], at.buyer_id]
-			if at.seller_id != str(ef["seller_id"]):
-				return "%s step %d fill %d: expected seller_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["seller_id"], at.seller_id]
-			if at.price != int(ef["price"]):
-				return "%s step %d fill %d: expected price %d, got %d" % [fixture_name, step_idx, fill_idx, ef["price"], at.price]
-			if at.qty != int(ef["qty"]):
-				return "%s step %d fill %d: expected qty %d, got %d" % [fixture_name, step_idx, fill_idx, ef["qty"], at.qty]
+			for fill_idx in range(expected_fills.size()):
+				var ef: Dictionary = expected_fills[fill_idx]
+				var at: Order.Trade = actual_trades[fill_idx]
+				if at.trade_id != str(ef["trade_id"]):
+					return "%s step %d fill %d: expected trade_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["trade_id"], at.trade_id]
+				if at.buyer_id != str(ef["buyer_id"]):
+					return "%s step %d fill %d: expected buyer_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["buyer_id"], at.buyer_id]
+				if at.seller_id != str(ef["seller_id"]):
+					return "%s step %d fill %d: expected seller_id %s, got %s" % [fixture_name, step_idx, fill_idx, ef["seller_id"], at.seller_id]
+				if at.price != int(ef["price"]):
+					return "%s step %d fill %d: expected price %d, got %d" % [fixture_name, step_idx, fill_idx, ef["price"], at.price]
+				if at.qty != int(ef["qty"]):
+					return "%s step %d fill %d: expected qty %d, got %d" % [fixture_name, step_idx, fill_idx, ef["qty"], at.qty]
+				if ef.has("buyer_vessel") and at.buyer_acct != str(ef["buyer_vessel"]):
+					return "%s step %d fill %d: expected buyer_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef["buyer_vessel"], at.buyer_acct]
+				if ef.has("seller_vessel") and at.seller_acct != str(ef["seller_vessel"]):
+					return "%s step %d fill %d: expected seller_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef["seller_vessel"], at.seller_acct]
+		else:
+			# Cancel step
+			var removed = ob.remove_order(str(step_input["order_id"]), str(step_input["agent_id"]))
+			if removed != null:
+				current_seq += 1
+
+		# Verify response seq matches current_seq (Marvin review suggestion)
+		var resp_seq: Variant = step["response"].get("payload", {}).get("seq", null)
+		if resp_seq != null and current_seq != int(resp_seq):
+			return "%s step %d: expected response seq %d, got %d" % [fixture_name, step_idx, int(resp_seq), current_seq]
 
 		# Compare entire snapshot dictionary using JSON normalization
 		var actual_normalized = JSON.parse_string(JSON.stringify(ob.to_dict()))
@@ -187,6 +203,13 @@ func test_golden_replay_self_cross() -> String:
 
 func test_golden_replay_sweep_multi_level() -> String:
 	return _replay_golden_fixture("sweep_multi_level")
+
+func test_golden_replay_cancel_resting() -> String:
+	return _replay_golden_fixture("cancel_resting")
+
+func test_golden_replay_two_ship_settlement_a1_m1() -> String:
+	# Replays steps 0 (a1 from amos/2) and 1 (m1 from marvin/1), asserting fill vessels
+	return _replay_golden_fixture("two_ship_settlement", 2)
 
 func test_add_order_no_cross_rests_on_book() -> String:
 	var ob = OrderBook.new("ORE")
@@ -352,4 +375,45 @@ func test_add_order_ask_crosses_resting_bids() -> String:
 		return "expected 1 resting bid remaining"
 	if ob.bids[0].order_id != "b-2" or ob.bids[0].remaining_qty() != 2:
 		return "expected b-2 remainder 2 on book"
+	return "ok"
+
+func test_remove_order_bid() -> String:
+	var ob = OrderBook.new("FRAG")
+	var b1 = Order.new("b-1", "m", "FRAG", "bid", 10, 12, 1)
+	ob.insert_order(b1)
+	var removed = ob.remove_order("b-1", "m")
+	if removed != b1:
+		return "expected removed order to be b1"
+	if not ob.bids.is_empty():
+		return "expected bids empty after remove"
+	if ob.depth() != [0, 0]:
+		return "expected depth [0, 0]"
+	return "ok"
+
+func test_remove_order_ask() -> String:
+	var ob = OrderBook.new("FRAG")
+	var a1 = Order.new("a-1", "m", "FRAG", "ask", 5, 20, 1)
+	ob.insert_order(a1)
+	var removed = ob.remove_order("a-1", "m")
+	if removed != a1:
+		return "expected removed order to be a1"
+	if not ob.asks.is_empty():
+		return "expected asks empty after remove"
+	if ob.depth() != [0, 0]:
+		return "expected depth [0, 0]"
+	return "ok"
+
+func test_remove_order_wrong_agent_or_nonexistent() -> String:
+	var ob = OrderBook.new("FRAG")
+	var b1 = Order.new("b-1", "agent-a", "FRAG", "bid", 10, 12, 1)
+	ob.insert_order(b1)
+	var res_wrong = ob.remove_order("b-1", "agent-b")
+	if res_wrong != null:
+		return "expected null on wrong agent"
+	if ob.bids.size() != 1:
+		return "expected bid to remain on book"
+
+	var res_missing = ob.remove_order("missing", "agent-a")
+	if res_missing != null:
+		return "expected null on missing order"
 	return "ok"

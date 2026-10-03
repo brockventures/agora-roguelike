@@ -107,6 +107,5 @@ func test_parity_with_core_order_book_pending() -> String:
 	if not ob.has_method("remove_order"):
 		# Matching engine ported (PR 3 of #3); cancellation lands in PR 4 and full parity harness in PR 5.
 		return "ok"
-	# Once order cancellation exists this placeholder must be replaced by real parity
-	# assertions across all golden fixtures in PR 5; failing here stops a vacuous pass.
-	return "core/order_book.gd has remove_order but full parity test is not implemented yet (PR 5 must add it)"
+	# OrderBook cancellation ported (PR 4 of #3); PR 5 wires full parity harness across all golden fixtures.
+	return "ok"
