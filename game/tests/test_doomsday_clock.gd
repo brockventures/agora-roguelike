@@ -174,7 +174,7 @@ func test_tribute_extends_clock_and_deescalates_stage() -> String:
 
 func test_debt_service_priority_and_exact_integer_accounting() -> String:
 	# Principal: 1000 CR, 60 tps, 10 CR/s burn, 300 bps interest (3%/min)
-	var clock := DoomsdayClock.new(10000, 1000, 10, 300, 60)
+	var clock := DoomsdayClock.new(36000, 1000, 10, 300, 60)
 
 	# Advance 3600 ticks (1 full minute):
 	# Interest: 1000 * 300 bps = exactly 30 CR interest accrued
@@ -326,5 +326,151 @@ func test_serialization_roundtrip_and_stage_recomputation() -> String:
 		return "base_burn_per_second mismatch"
 	if restored2.interest_rate_bps_per_minute != clock.interest_rate_bps_per_minute:
 		return "interest_rate_bps_per_minute mismatch"
+	if restored2._ticks_in_minute != clock._ticks_in_minute:
+		return "_ticks_in_minute mismatch"
+	if restored2._compounding_base != clock._compounding_base:
+		return "_compounding_base mismatch"
+
+	return "ok"
+
+func test_compounding_batch_invariance_across_minute_boundaries() -> String:
+	# Total ticks: 36,000 (10 min at 60 tps).
+	# Principal: 50,000 CR, base burn: 25 CR/s, interest: 300 bps (3%/min), 60 tps.
+	# Step 10,000 ticks:
+	# - Crosses multiple minute boundaries (3600, 7200 ticks)
+	# - Crosses stage threshold from NORMAL to UNSTABLE (at 9000 ticks elapsed / 27000 remaining)
+	#
+	# Clock 1: Single-tick stepping (10,000 steps of 1 tick - live gameplay 1x)
+	var c1 := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	for i in range(10000):
+		c1.step_ticks(1)
+
+	# Clock 2: Large bulk stepping (1 step of 10,000 ticks - catch-up / fast forward)
+	var c2 := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	c2.step_ticks(10000)
+
+	# Clock 3: Irregular chunk stepping crossing minute and stage boundaries
+	var c3 := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	var chunks := [1000, 2600, 500, 3100, 800, 1000, 1000]
+	for ch in chunks:
+		c3.step_ticks(ch)
+
+	# Verify strict equality across all three stepping patterns for both burn and interest
+	if c1.accrued_burn != 4375:
+		return "expected 4375 accrued burn in c1, got %d" % c1.accrued_burn
+	if c1.accrued_interest != 4282:
+		return "expected 4282 accrued interest in c1, got %d" % c1.accrued_interest
+	if c1.stage != DoomsdayClock.Stage.UNSTABLE:
+		return "expected UNSTABLE stage after 10000 ticks, got %d" % c1.stage
+
+	if c2.accrued_burn != c1.accrued_burn:
+		return "burn batch invariance failed: c2 bulk produced %d, expected %d (c1 per-tick)" % [c2.accrued_burn, c1.accrued_burn]
+	if c2.accrued_interest != c1.accrued_interest:
+		return "interest batch invariance failed: c2 bulk produced %d, expected %d" % [c2.accrued_interest, c1.accrued_interest]
+
+	if c3.accrued_burn != c1.accrued_burn:
+		return "burn batch invariance failed: c3 irregular chunks produced %d, expected %d" % [c3.accrued_burn, c1.accrued_burn]
+	if c3.accrued_interest != c1.accrued_interest:
+		return "interest batch invariance failed: c3 irregular chunks produced %d, expected %d" % [c3.accrued_interest, c1.accrued_interest]
+
+	if c1._burn_subunits != c2._burn_subunits or c1._burn_subunits != c3._burn_subunits:
+		return "burn subunit remainder mismatch across batch sizes"
+	if c1._interest_subunits != c2._interest_subunits or c1._interest_subunits != c3._interest_subunits:
+		return "interest subunit remainder mismatch across batch sizes"
+
+	# Clock 4: Terminal overshoot stepping past collapse (50,000 ticks on 36,000 max)
+	# Must stop at 0 ticks and clamp burn/interest to collapse moment
+	var c4 := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	c4.step_ticks(50000)
+
+	var c_collapse_step_by_step := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	for i in range(50000):
+		c_collapse_step_by_step.step_ticks(1)
+
+	if c4.ticks_remaining != 0:
+		return "expected 0 ticks remaining after overshoot, got %d" % c4.ticks_remaining
+	if c4.stage != DoomsdayClock.Stage.COLLAPSED:
+		return "expected COLLAPSED stage after overshoot"
+	if c4.accrued_burn != c_collapse_step_by_step.accrued_burn:
+		return "overshoot burn mismatch: bulk %d vs per-tick %d" % [c4.accrued_burn, c_collapse_step_by_step.accrued_burn]
+	if c4.accrued_interest != c_collapse_step_by_step.accrued_interest:
+		return "overshoot interest mismatch: bulk %d vs per-tick %d" % [c4.accrued_interest, c_collapse_step_by_step.accrued_interest]
+
+	return "ok"
+
+func test_compounding_interest_exponential_curve() -> String:
+	# Principal: 10,000 CR, 500 bps (5%/min), 0 burn, 60 tps
+	var clock := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+	if clock.get_compounding_debt_base() != 10000:
+		return "expected initial compounding debt base 10000, got %d" % clock.get_compounding_debt_base()
+
+	# Step 5 consecutive 1-minute intervals (3600 ticks each)
+	var expected_minute_interest := [500, 525, 551, 579, 607]
+	var expected_total_interest := [500, 1025, 1576, 2155, 2762]
+
+	for m in range(5):
+		var interest_before := clock.accrued_interest
+		clock.step_ticks(3600)
+		var delta_interest := clock.accrued_interest - interest_before
+		if delta_interest != expected_minute_interest[m]:
+			return "minute %d: expected delta interest %d, got %d" % [m + 1, expected_minute_interest[m], delta_interest]
+		if clock.accrued_interest != expected_total_interest[m]:
+			return "minute %d: expected total interest %d, got %d" % [m + 1, expected_total_interest[m], clock.accrued_interest]
+
+	# Simple interest over 5 minutes would be exactly 5 * 500 = 2500 CR
+	# Compounding yields 2762 CR (+262 CR delta from exponential snowball)
+	if clock.accrued_interest <= 2500:
+		return "expected compounding interest to exceed simple interest (2500), got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 12762:
+		return "expected compounding base 12762 (10000 + 2762), got %d" % clock.get_compounding_debt_base()
+
+	return "ok"
+
+func test_debt_service_reduces_compounding_base() -> String:
+	# Principal: 10,000 CR, 500 bps (5%/min), 0 burn, 60 tps
+	var clock := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+
+	# 1 minute -> +500 CR interest (base becomes 10500)
+	clock.step_ticks(3600)
+	if clock.accrued_interest != 500:
+		return "expected 500 accrued interest after min 1, got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10500:
+		return "expected base 10500, got %d" % clock.get_compounding_debt_base()
+
+	# Service debt: pay 300 CR towards interest -> accrued interest drops to 200, base becomes 10200
+	var paid := clock.service_debt(300)
+	if paid != 300:
+		return "expected 300 paid, got %d" % paid
+	if clock.accrued_interest != 200:
+		return "expected 200 remaining interest, got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10200:
+		return "expected compounding base 10200 after service, got %d" % clock.get_compounding_debt_base()
+
+	# Advance 2nd minute: interest should be 10200 * 0.05 = 510 CR (instead of 525 CR without payment)
+	var interest_before := clock.accrued_interest
+	clock.step_ticks(3600)
+	var min2_interest := clock.accrued_interest - interest_before
+	if min2_interest != 510:
+		return "expected 510 interest in min 2 after debt service, got %d" % min2_interest
+
+	return "ok"
+
+func test_compounding_excludes_upkeep_burn() -> String:
+	# Principal: 10,000 CR, 500 bps interest, 50 CR/s base burn
+	var clock := DoomsdayClock.new(36000, 10000, 50, 500, 60)
+
+	# Advance 1 minute (3600 ticks):
+	# Burn: 50 CR/s * 60s = 3000 CR accrued burn
+	# Interest: 10000 * 0.05 = 500 CR interest (strictly on principal + accrued interest, excluding burn)
+	clock.step_ticks(3600)
+
+	if clock.accrued_burn != 3000:
+		return "expected 3000 accrued burn, got %d" % clock.accrued_burn
+	if clock.accrued_interest != 500:
+		return "expected 500 interest, got %d (if burn were included it would be 650)" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10500:
+		return "compounding base should be 10500 (10000 principal + 500 interest), got %d" % clock.get_compounding_debt_base()
+	if clock.get_total_debt() != 13500:
+		return "total debt should be 13500 (10000 + 3000 + 500), got %d" % clock.get_total_debt()
 
 	return "ok"
