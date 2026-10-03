@@ -327,4 +327,52 @@ func test_to_dict_from_dict_roundtrip() -> String:
 	if not is_finite(inf_clock.accumulator) or inf_clock.accumulator != 0.0:
 		return "INF accumulator was not sanitized to 0.0"
 
+	# Test from_dict hardening against INF and tiny tick_delta (Marvin / Amos review findings)
+	var inf_td_clock := SimClock.from_dict({"tick_delta": INF})
+	if not is_equal_approx(inf_td_clock.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "from_dict with INF tick_delta was not sanitized to DEFAULT_TICK_DELTA, got %f" % inf_td_clock.tick_delta
+
+	var tiny_td_clock := SimClock.from_dict({"tick_delta": 1e-9})
+	if not is_equal_approx(tiny_td_clock.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "from_dict with 1e-9 tick_delta was not sanitized to DEFAULT_TICK_DELTA, got %f" % tiny_td_clock.tick_delta
+
 	return "ok"
+
+func test_tick_delta_bounds_and_sanitation() -> String:
+	# Bounded range [MIN_TICK_DELTA, MAX_TICK_DELTA] = [1/240, 1.0]
+	# Non-finite values and values outside bounds fall back to DEFAULT_TICK_DELTA (1/60).
+	var c_inf := SimClock.new(INF)
+	if not is_equal_approx(c_inf.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected INF tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_inf.tick_delta
+
+	var c_tiny := SimClock.new(1e-9)
+	if not is_equal_approx(c_tiny.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 1e-9 tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_tiny.tick_delta
+
+	var c_nan := SimClock.new(NAN)
+	if not is_equal_approx(c_nan.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected NAN tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_nan.tick_delta
+
+	var c_zero := SimClock.new(0.0)
+	if not is_equal_approx(c_zero.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 0.0 tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_zero.tick_delta
+
+	var c_neg := SimClock.new(-0.05)
+	if not is_equal_approx(c_neg.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected negative tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_neg.tick_delta
+
+	var c_huge := SimClock.new(5.0)
+	if not is_equal_approx(c_huge.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 5.0 tick_delta (> MAX_TICK_DELTA) to fall back to DEFAULT_TICK_DELTA, got %f" % c_huge.tick_delta
+
+	# Valid boundary values must be preserved
+	var c_min := SimClock.new(1.0 / 240.0)
+	if not is_equal_approx(c_min.tick_delta, 1.0 / 240.0):
+		return "expected 1/240 tick_delta to be accepted, got %f" % c_min.tick_delta
+
+	var c_max := SimClock.new(1.0)
+	if not is_equal_approx(c_max.tick_delta, 1.0):
+		return "expected 1.0 tick_delta to be accepted, got %f" % c_max.tick_delta
+
+	return "ok"
+
