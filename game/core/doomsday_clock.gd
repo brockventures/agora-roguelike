@@ -151,72 +151,110 @@ func should_auto_pause() -> bool:
 		return true
 	return false
 
+func _get_ticks_until_next_stage() -> int:
+	if ticks_remaining <= 0 or total_ticks <= 0:
+		return 0
+	match stage:
+		Stage.NORMAL:
+			var thresh := (total_ticks * UNSTABLE_RATIO_BPS) / 10000
+			return maxi(0, ticks_remaining - thresh)
+		Stage.UNSTABLE:
+			var thresh := (total_ticks * CRITICAL_RATIO_BPS) / 10000
+			return maxi(0, ticks_remaining - thresh)
+		Stage.CRITICAL:
+			var thresh := (total_ticks * IMMINENT_RATIO_BPS) / 10000
+			return maxi(0, ticks_remaining - thresh)
+		Stage.IMMINENT:
+			return ticks_remaining
+		_:
+			return 0
+
 ## Advance the doomsday clock by a discrete count of simulation ticks.
 ## Primary clock stepping method.
 func step_ticks(ticks: int = 1) -> void:
-	if ticks <= 0:
-		return
-	if stage == Stage.COLLAPSED:
+	if ticks <= 0 or stage == Stage.COLLAPSED or ticks_remaining <= 0:
 		return
 
-	# Advance countdown (exact integer subtraction)
-	ticks_remaining = maxi(0, ticks_remaining - ticks)
-
-	# Accrue operating burn (integer math with remainder accumulator)
-	# burn_divisor: ticks_per_second * 10
-	var multiplier_tenths := get_stage_multiplier_tenths(stage)
-	var burn_units := base_burn_per_second * multiplier_tenths * ticks
-	_burn_subunits += burn_units
-	var burn_divisor := ticks_per_second * 10
-	var burn_cr := _burn_subunits / burn_divisor
-	_burn_subunits %= burn_divisor
-
-	accrued_burn += burn_cr
-	total_burn_accrued += burn_cr
-
-	# Accrue interest compounded on minute boundaries (ticks_per_second * 60).
-	# Interest compounds strictly against principal plus accrued interest (upkeep burn is excluded).
-	# Snapping the compounding base at minute boundaries guarantees batch-invariance across
-	# 1x speed (1 tick/step), multi-speed (2x/5x), and bulk catch-up steps.
-	var interest_cr := 0
+	# Stop at 0: clamp total ticks stepped to ticks_remaining
+	var rem_ticks := mini(ticks, ticks_remaining)
 	var ticks_per_minute := ticks_per_second * 60
-	if interest_rate_bps_per_minute > 0 and ticks_per_minute > 0:
-		var rem_ticks := ticks
-		var interest_divisor := 10000 * ticks_per_minute
-		while rem_ticks > 0:
+	var burn_divisor := ticks_per_second * 10
+	var interest_divisor := 10000 * ticks_per_minute if ticks_per_minute > 0 else 1
+
+	var total_burn_cr_this_step := 0
+	var total_interest_cr_this_step := 0
+
+	while rem_ticks > 0 and ticks_remaining > 0 and stage != Stage.COLLAPSED:
+		# Calculate chunk size bounded by:
+		# 1. Remaining ticks in caller request
+		var chunk := rem_ticks
+
+		# 2. Clamped to remaining ticks before collapse
+		chunk = mini(chunk, ticks_remaining)
+
+		# 3. Minute boundary for interest compounding
+		if ticks_per_minute > 0:
 			var ticks_until_boundary := ticks_per_minute - _ticks_in_minute
-			var chunk := mini(rem_ticks, ticks_until_boundary)
+			chunk = mini(chunk, ticks_until_boundary)
 
-			if _compounding_base > 0:
-				var units := _compounding_base * interest_rate_bps_per_minute * chunk
-				_interest_subunits += units
-				var cr := _interest_subunits / interest_divisor
-				_interest_subunits %= interest_divisor
-				interest_cr += cr
-				accrued_interest += cr
-				total_interest_accrued += cr
+		# 4. Stage transition boundary for burn multiplier
+		var ticks_until_stage := _get_ticks_until_next_stage()
+		if ticks_until_stage > 0:
+			chunk = mini(chunk, ticks_until_stage)
 
+		if chunk <= 0:
+			break
+
+		# Advance countdown (exact integer subtraction)
+		ticks_remaining -= chunk
+
+		# Accrue operating burn for this chunk
+		var multiplier_tenths := get_stage_multiplier_tenths(stage)
+		var burn_units := base_burn_per_second * multiplier_tenths * chunk
+		_burn_subunits += burn_units
+		var burn_cr := _burn_subunits / burn_divisor
+		_burn_subunits %= burn_divisor
+
+		accrued_burn += burn_cr
+		total_burn_accrued += burn_cr
+		total_burn_cr_this_step += burn_cr
+
+		# Accrue interest for this chunk
+		var interest_cr := 0
+		if interest_rate_bps_per_minute > 0 and ticks_per_minute > 0 and _compounding_base > 0:
+			var units := _compounding_base * interest_rate_bps_per_minute * chunk
+			_interest_subunits += units
+			interest_cr = _interest_subunits / interest_divisor
+			_interest_subunits %= interest_divisor
+
+			accrued_interest += interest_cr
+			total_interest_accrued += interest_cr
+			total_interest_cr_this_step += interest_cr
+
+		# Advance minute counter and re-snapshot compounding base at boundary
+		if ticks_per_minute > 0:
 			_ticks_in_minute += chunk
-			rem_ticks -= chunk
-
 			if _ticks_in_minute >= ticks_per_minute:
 				_ticks_in_minute = 0
 				_compounding_base = principal_debt + accrued_interest
 
-		debt_burn_accrued.emit(burn_cr, interest_cr, get_total_debt())
+		rem_ticks -= chunk
+
+		# Check stage progression after this chunk
+		var new_stage := _compute_stage(ticks_remaining, total_ticks)
+		if new_stage != stage:
+			var old_stage := stage
+			stage = new_stage
+			stage_transition_pending_interrupt = true
+			stage_changed.emit(old_stage, new_stage)
+
+			if stage == Stage.COLLAPSED:
+				collapsed.emit()
+				break
 
 	ticks_updated.emit(ticks_remaining, total_ticks)
-
-	# Check stage progression with exact integer comparisons
-	var new_stage := _compute_stage(ticks_remaining, total_ticks)
-	if new_stage != stage:
-		var old_stage := stage
-		stage = new_stage
-		stage_transition_pending_interrupt = true
-		stage_changed.emit(old_stage, new_stage)
-
-		if stage == Stage.COLLAPSED:
-			collapsed.emit()
+	if total_burn_cr_this_step > 0 or total_interest_cr_this_step > 0:
+		debt_burn_accrued.emit(total_burn_cr_this_step, total_interest_cr_this_step, get_total_debt())
 
 ## Alias for step_ticks(ticks) for compatibility
 func step(ticks: int = 1) -> void:
@@ -303,6 +341,8 @@ func to_dict() -> Dictionary:
 		"interest_rate_bps_per_minute": interest_rate_bps_per_minute,
 		"_burn_subunits": _burn_subunits,
 		"_interest_subunits": _interest_subunits,
+		"_ticks_in_minute": _ticks_in_minute,
+		"_compounding_base": _compounding_base,
 		"stage_transition_pending_interrupt": stage_transition_pending_interrupt,
 	}
 
@@ -323,6 +363,8 @@ static func from_dict(d: Dictionary) -> DoomsdayClock:
 	clock.total_ticks_added_by_tributes = maxi(0, int(d.get("total_ticks_added_by_tributes", 0)))
 	clock._burn_subunits = maxi(0, int(d.get("_burn_subunits", 0)))
 	clock._interest_subunits = maxi(0, int(d.get("_interest_subunits", 0)))
+	clock._ticks_in_minute = maxi(0, int(d.get("_ticks_in_minute", 0)))
+	clock._compounding_base = maxi(0, int(d.get("_compounding_base", clock.principal_debt + clock.accrued_interest)))
 	# Recompute stage strictly from ticks_remaining and total_ticks to prevent save-state divergence
 	clock.stage = clock._compute_stage(clock.ticks_remaining, clock.total_ticks)
 	clock.stage_transition_pending_interrupt = bool(d.get("stage_transition_pending_interrupt", false))
