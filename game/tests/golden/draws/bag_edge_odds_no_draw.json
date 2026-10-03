@@ -1,0 +1,178 @@
+{
+  "case": "bag_edge_odds_no_draw",
+  "module": "bag",
+  "description": "p <= 0 never hits and p >= 1 always hits, for draw and for draw_varying, and none of them makes a draw or touches bag state. A real draw at the end proves the bag still starts fresh.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "ns": "golden",
+    "seed": 9
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "draw",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.0
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": -0.5
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 1.0
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 1.5
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.0
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": -0.25
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 1.0
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 2.0
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": []
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.5
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 9,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "golden",
+      "event": "raid",
+      "fleet": "amos/1",
+      "seed": 9,
+      "p": 0.5,
+      "marbles": "1",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    }
+  ]
+}

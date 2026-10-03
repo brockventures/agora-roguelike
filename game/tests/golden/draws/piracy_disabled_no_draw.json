@@ -1,0 +1,52 @@
+{
+  "case": "piracy_disabled_no_draw",
+  "module": "piracy",
+  "description": "A game with piracy off: roll_departure returns None at once and draws nothing, not even the hot station.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 1,
+    "warmup_rounds": 2,
+    "depots": true,
+    "piracy": null,
+    "agents": [
+      "amos"
+    ],
+    "prep": [
+      {
+        "op": "initiate_transit",
+        "agent": "amos",
+        "dest": "mars",
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false
+      }
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-1",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false,
+        "escort_fee": 0,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [],
+      "output": {
+        "result": null
+      },
+      "bag_after": []
+    }
+  ],
+  "bag_end": []
+}

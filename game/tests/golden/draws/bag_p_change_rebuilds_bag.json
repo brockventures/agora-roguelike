@@ -1,0 +1,267 @@
+{
+  "case": "bag_p_change_rebuilds_bag",
+  "module": "bag",
+  "description": "The same (event, fleet) is drawn at p = 0.25, then 0.5, then 0.25 again. A change of p drops the rest of the old bag and rebuilds for the new odds at once (a fresh refill number each time).",
+  "referee_commit": "587b07f",
+  "setup": {
+    "ns": "golden",
+    "seed": 11
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.25
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              4
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            4,
+            1
+          ],
+          "result": 2
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.25,
+          "marbles": "010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.25
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.25,
+          "marbles": "10",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.5
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.5
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.5
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 3,
+          "credit": 0.0,
+          "draws": 5,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "marvin/1",
+        "p": 0.25
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              4
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            4,
+            1
+          ],
+          "result": 2
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "marvin/1",
+          "seed": 11,
+          "p": 0.25,
+          "marbles": "010",
+          "refills": 4,
+          "credit": 0.0,
+          "draws": 6,
+          "hits": 2
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "golden",
+      "event": "loss",
+      "fleet": "marvin/1",
+      "seed": 11,
+      "p": 0.25,
+      "marbles": "010",
+      "refills": 4,
+      "credit": 0.0,
+      "draws": 6,
+      "hits": 2
+    }
+  ]
+}

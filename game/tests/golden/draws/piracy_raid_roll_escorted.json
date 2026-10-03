@@ -1,0 +1,514 @@
+{
+  "case": "piracy_raid_roll_escorted",
+  "module": "piracy",
+  "description": "An escorted trip cuts the odds by 75% and draws from its own bag (the raid_key ends in escort). Four rolls for the same ship: escorted, bare, escorted, bare. The two escorted rolls share a bag and the two bare rolls share another, so neither pair is moved by the other. (The ship departs once; the later rolls reuse its trip details under new transit ids, which a roll that does not hit never writes.)",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 21,
+    "warmup_rounds": 2,
+    "depots": true,
+    "piracy": [
+      0.5,
+      0.5
+    ],
+    "agents": [
+      "amos"
+    ],
+    "prep": [
+      {
+        "op": "initiate_transit",
+        "agent": "amos",
+        "dest": "mars",
+        "commodity": "FRAG",
+        "qty": 100,
+        "escort": true
+      }
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-1",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 100,
+        "escort": true,
+        "escort_fee": 60,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              6,
+              5,
+              5
+            ]
+          ],
+          "result": [
+            1,
+            2,
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            6,
+            1
+          ],
+          "result": 4
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 0.1875,
+          "hot_station": "luna",
+          "hot_route": false,
+          "cargo_value": 15000,
+          "escort": true,
+          "escort_fee": 60,
+          "raided": true
+        },
+        "demand": {
+          "transit_id": "tx-amos-1",
+          "agent_id": "amos",
+          "status": "pending",
+          "ransom": 2250,
+          "surrender_qty": 250,
+          "cargo_qty": 1000,
+          "cargo_value": 15000,
+          "odds": 0.1875,
+          "escorted": 1,
+          "contract_id": null,
+          "sponsor": null,
+          "traced": 0,
+          "fine": 0,
+          "choice": null,
+          "cr_taken": 0,
+          "qty_taken": 0,
+          "delay": 0,
+          "fenced_at": null
+        }
+      },
+      "bag_after": [
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|escort",
+          "seed": 21,
+          "p": 0.1875,
+          "marbles": "000010000000010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-extra-1",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 100,
+        "escort": false,
+        "escort_fee": 0,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2,
+              1,
+              1
+            ]
+          ],
+          "result": [
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            1,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            1,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 0.75,
+          "hot_station": "luna",
+          "hot_route": false,
+          "cargo_value": 15000,
+          "escort": false,
+          "escort_fee": 0,
+          "raided": true
+        },
+        "demand": {
+          "transit_id": "tx-amos-extra-1",
+          "agent_id": "amos",
+          "status": "pending",
+          "ransom": 2250,
+          "surrender_qty": 250,
+          "cargo_qty": 1000,
+          "cargo_value": 15000,
+          "odds": 0.75,
+          "escorted": 0,
+          "contract_id": null,
+          "sponsor": null,
+          "traced": 0,
+          "fine": 0,
+          "choice": null,
+          "cr_taken": 0,
+          "qty_taken": 0,
+          "delay": 0,
+          "fenced_at": null
+        }
+      },
+      "bag_after": [
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 21,
+          "p": 0.75,
+          "marbles": "101",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|escort",
+          "seed": 21,
+          "p": 0.1875,
+          "marbles": "000010000000010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-extra-2",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 100,
+        "escort": true,
+        "escort_fee": 60,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 0.1875,
+          "hot_station": "luna",
+          "hot_route": false,
+          "cargo_value": 15000,
+          "escort": true,
+          "escort_fee": 60,
+          "raided": false
+        },
+        "demand": null
+      },
+      "bag_after": [
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 21,
+          "p": 0.75,
+          "marbles": "101",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|escort",
+          "seed": 21,
+          "p": 0.1875,
+          "marbles": "00010000000010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-extra-3",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 100,
+        "escort": false,
+        "escort_fee": 0,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 0.75,
+          "hot_station": "luna",
+          "hot_route": false,
+          "cargo_value": 15000,
+          "escort": false,
+          "escort_fee": 0,
+          "raided": true
+        },
+        "demand": {
+          "transit_id": "tx-amos-extra-3",
+          "agent_id": "amos",
+          "status": "pending",
+          "ransom": 2250,
+          "surrender_qty": 250,
+          "cargo_qty": 1000,
+          "cargo_value": 15000,
+          "odds": 0.75,
+          "escorted": 0,
+          "contract_id": null,
+          "sponsor": null,
+          "traced": 0,
+          "fine": 0,
+          "choice": null,
+          "cr_taken": 0,
+          "qty_taken": 0,
+          "delay": 0,
+          "fenced_at": null
+        }
+      },
+      "bag_after": [
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 21,
+          "p": 0.75,
+          "marbles": "01",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 2
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|escort",
+          "seed": 21,
+          "p": 0.1875,
+          "marbles": "00010000000010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "piracy",
+      "event": "raid",
+      "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+      "seed": 21,
+      "p": 0.75,
+      "marbles": "01",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 2
+    },
+    {
+      "ns": "piracy",
+      "event": "raid",
+      "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|escort",
+      "seed": 21,
+      "p": 0.1875,
+      "marbles": "00010000000010",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 1
+    }
+  ]
+}

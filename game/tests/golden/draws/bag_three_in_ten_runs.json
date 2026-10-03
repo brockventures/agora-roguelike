@@ -1,0 +1,399 @@
+{
+  "case": "bag_three_in_ten_runs",
+  "module": "bag",
+  "description": "p = 0.3 is 3 hits in 10 marbles, laid out as 3 runs of sizes 4, 3, 3 (shuffled) with one hit per run. Eleven draws drain the first bag (3 hits in 10) and refill on the eleventh.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "ns": "golden",
+    "seed": 3
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              4,
+              3,
+              3
+            ]
+          ],
+          "result": [
+            1,
+            0,
+            2
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            4,
+            1
+          ],
+          "result": 3
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "100001010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "00001010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "0001010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "001010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "01010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 5,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "1010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 6,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "010",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 7,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "10",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 8,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "0",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 9,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 10,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.3
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              4,
+              3,
+              3
+            ]
+          ],
+          "result": [
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 2
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 2
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            4,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 3,
+          "p": 0.3,
+          "marbles": "010010100",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 11,
+          "hits": 3
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "golden",
+      "event": "delay",
+      "fleet": "zero/1",
+      "seed": 3,
+      "p": 0.3,
+      "marbles": "010010100",
+      "refills": 2,
+      "credit": 0.0,
+      "draws": 11,
+      "hits": 3
+    }
+  ]
+}

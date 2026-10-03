@@ -1,0 +1,157 @@
+{
+  "case": "piracy_raid_roll_miss",
+  "module": "piracy",
+  "description": "A bare belt trip (ceres to mars, 500 FRAG; the hold of 1000 sets the cargo value) at 0.5 / 0.5. roll_departure draws choice(STATIONS) for the hot station twice (once in chance(), once for the result), then one marble from the raid bag. Here the marble misses: no demand.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 19,
+    "warmup_rounds": 2,
+    "depots": true,
+    "piracy": [
+      0.5,
+      0.5
+    ],
+    "agents": [
+      "amos"
+    ],
+    "prep": [
+      {
+        "op": "initiate_transit",
+        "agent": "amos",
+        "dest": "mars",
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false
+      }
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-1",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false,
+        "escort_fee": 0,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 15000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "earth"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "earth"
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2,
+              1,
+              1
+            ]
+          ],
+          "result": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            1,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            1,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 0.75,
+          "hot_station": "earth",
+          "hot_route": false,
+          "cargo_value": 15000,
+          "escort": false,
+          "escort_fee": 0,
+          "raided": false
+        },
+        "demand": null
+      },
+      "bag_after": [
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 19,
+          "p": 0.75,
+          "marbles": "111",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "piracy",
+      "event": "raid",
+      "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+      "seed": 19,
+      "p": 0.75,
+      "marbles": "111",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    }
+  ]
+}
