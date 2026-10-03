@@ -91,6 +91,20 @@ func test_route_endpoints_and_alignment() -> String:
 	if not bad_data.is_empty():
 		return "invalid station should yield empty route dict"
 
+	# Live smoothed attachment test: route endpoints must attach to live station positions
+	var clock := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 42, clock, 60)
+	m.bind_controller(rc)
+	for i in 30:
+		rc.advance(1.0 / 60.0) # round_progress = 0.5
+	var live_route := m.get_route_screen_endpoints("earth:mars")
+	var live_earth := m.get_station_screen_pos("earth")
+	var live_mars := m.get_station_screen_pos("mars")
+	if live_route["start_pos"].distance_to(live_earth) > 0.01:
+		return "live route start_pos must attach to live earth pos"
+	if live_route["end_pos"].distance_to(live_mars) > 0.01:
+		return "live route end_pos must attach to live mars pos"
+
 	return "ok"
 
 func test_transit_vessel_interpolation() -> String:
@@ -108,6 +122,22 @@ func test_transit_vessel_interpolation() -> String:
 		return "progress 1.0 must match end position"
 	if p_mid.distance_to((start_pos + end_pos) * 0.5) > 0.01:
 		return "progress 0.5 must match midpoint"
+
+	# Live smoothed vessel interpolation test
+	var clock := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 42, clock, 60)
+	m.bind_controller(rc)
+	for i in 30:
+		rc.advance(1.0 / 60.0) # round_progress = 0.5
+	var live_start := m.get_station_screen_pos("earth")
+	var live_end := m.get_station_screen_pos("mars")
+	var live_mid := m.get_transit_vessel_screen_pos("earth", "mars", 0.5)
+	if live_mid.distance_to((live_start + live_end) * 0.5) > 0.01:
+		return "live vessel mid must match live station midpoint"
+	# Explicit round override snaps to round 0
+	var snapped_mid := m.get_transit_vessel_screen_pos("earth", "mars", 0.5, 0)
+	if snapped_mid.distance_to(p_mid) > 0.01:
+		return "explicit round 0 should snap vessel position"
 
 	return "ok"
 

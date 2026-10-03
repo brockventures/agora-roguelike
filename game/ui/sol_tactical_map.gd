@@ -119,8 +119,8 @@ func get_route_screen_endpoints(route_key: String, round_num: int = -1) -> Dicti
 	if not (origin in Transit.STATIONS) or not (destination in Transit.STATIONS):
 		return {}
 
-	var start_pos := get_station_screen_pos(origin, r)
-	var end_pos := get_station_screen_pos(destination, r)
+	var start_pos := get_station_screen_pos(origin, round_num)
+	var end_pos := get_station_screen_pos(destination, round_num)
 	var distance_px: float = start_pos.distance_to(end_pos)
 
 	var alignment_active: bool = is_route_aligned(origin, destination, r)
