@@ -14,6 +14,15 @@ extends RefCounted
 
 const REFEREE_COMMIT := "587b07f"
 const ORDERBOOK_DIR := "res://tests/golden/orderbook"
+const SETTLEMENT_DIR := "res://tests/golden/settlement"
+
+## Settlement fixtures (tools/golden/gen_settlement.py, #5 checklist 5c). Each
+## step carries the ledger_entries rows it wrote; each case carries the full
+## rng_bags rows at its start and end (agora/bag.py state).
+const REQUIRED_SETTLEMENT_KEYS := ["case", "referee_commit", "station_id", "setup", "prep_ledger", "initial_accounts", "initial_ship_accounts", "rng_bags_start", "steps", "rng_bags_end"]
+const REQUIRED_SETTLEMENT_STEP_KEYS := ["call", "input", "response", "round", "ledger", "fills", "balances", "ship_accounts"]
+const REQUIRED_LEDGER_KEYS := ["txn_id", "seq", "agent_id", "instrument", "delta"]
+const REQUIRED_BAG_KEYS := ["ns", "event", "fleet", "seed", "p", "marbles", "refills", "credit", "draws", "hits"]
 
 const REQUIRED_KEYS := ["case", "referee_commit", "station_id", "instrument", "initial_accounts", "initial_ship_accounts", "steps"]
 const REQUIRED_STEP_KEYS := ["call", "input", "response", "fills", "book", "balances", "ship_accounts"]
@@ -84,3 +93,66 @@ static func validate(data: Dictionary) -> String:
 					return "step %d fill missing '%s'" % [i, fk]
 		i += 1
 	return ""
+
+
+## Shape check for a settlement fixture. Returns "" when well formed, else a message.
+static func validate_settlement(data: Dictionary) -> String:
+	for k in REQUIRED_SETTLEMENT_KEYS:
+		if not data.has(k):
+			return "missing key '%s'" % k
+	if data["referee_commit"] != REFEREE_COMMIT:
+		return "referee_commit is '%s', expected '%s'" % [data["referee_commit"], REFEREE_COMMIT]
+	if not (data["initial_accounts"] is Array) or data["initial_accounts"].is_empty():
+		return "initial_accounts must be a non-empty array"
+	if not (data["steps"] is Array) or data["steps"].is_empty():
+		return "steps must be a non-empty array"
+	var err := _validate_ledger(data["prep_ledger"], "prep_ledger")
+	if err != "":
+		return err
+	for key in ["rng_bags_start", "rng_bags_end"]:
+		err = _validate_bags(data[key], key)
+		if err != "":
+			return err
+	var i := 0
+	for step in data["steps"]:
+		if not (step is Dictionary):
+			return "step %d is not an object" % i
+		for k in REQUIRED_SETTLEMENT_STEP_KEYS:
+			if not step.has(k):
+				return "step %d missing key '%s'" % [i, k]
+		err = _validate_ledger(step["ledger"], "step %d ledger" % i)
+		if err != "":
+			return err
+		if not (step["fills"] is Array):
+			return "step %d fills is not an array" % i
+		i += 1
+	return ""
+
+
+static func _validate_ledger(rows, label: String) -> String:
+	if not (rows is Array):
+		return "%s is not an array" % label
+	for r in rows:
+		for k in REQUIRED_LEDGER_KEYS:
+			if not (r is Dictionary) or not r.has(k):
+				return "%s row missing '%s'" % [label, k]
+	return ""
+
+
+static func _validate_bags(rows, label: String) -> String:
+	if not (rows is Array) or rows.is_empty():
+		return "%s must be a non-empty array" % label
+	for r in rows:
+		for k in REQUIRED_BAG_KEYS:
+			if not (r is Dictionary) or not r.has(k):
+				return "%s row missing '%s'" % [label, k]
+	return ""
+
+
+## Sum of ledger deltas per (txn_id, instrument). A balanced ledger has every sum 0.
+static func txn_sums(rows: Array) -> Dictionary:
+	var sums := {}
+	for r in rows:
+		var key := "%s|%s" % [r["txn_id"], r["instrument"]]
+		sums[key] = int(sums.get(key, 0)) + int(r["delta"])
+	return sums

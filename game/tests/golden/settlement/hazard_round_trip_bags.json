@@ -1,0 +1,1622 @@
+{
+  "case": "hazard_round_trip_bags",
+  "description": "Hazards at 0.5/0.5: a cargo departure draws a delay marble and a loss marble from the ship bags (rng_bags), loses cargo from the escrowed manifest and then the hold (hazard-hold txn), lands, and flies back: the second departure draws again, so the bag rows advance.",
+  "referee_commit": "587b07f",
+  "station_id": "mars",
+  "setup": {
+    "seed": 7,
+    "warmup_rounds": 0,
+    "asymmetric": true,
+    "agents": [
+      "amos",
+      "zero",
+      "marvin",
+      "aerial"
+    ],
+    "ships_docked_at": "mars",
+    "referee_kwargs": {
+      "hazards": "0.5,0.5"
+    },
+    "prep": []
+  },
+  "prep_ledger": [],
+  "initial_accounts": [
+    {
+      "agent_id": "aerial",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "EQ_AERL",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "EQ_AMOS",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "EQ_MARV",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "EQ_ZERO",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "FUEL",
+      "balance": 500
+    }
+  ],
+  "initial_ship_accounts": {
+    "aerial": {
+      "aerial/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "amos": {
+      "amos/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "marvin": {
+      "marvin/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    },
+    "zero": {
+      "zero/1": {
+        "FRAG": 1000,
+        "FUEL": 500
+      }
+    }
+  },
+  "rng_bags_start": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    }
+  ],
+  "steps": [
+    {
+      "call": "initiate_transit",
+      "input": {
+        "agent_id": "amos",
+        "destination": "earth",
+        "commodity": "FRAG",
+        "cargo_qty": 100,
+        "escort": false,
+        "vessel_id": null
+      },
+      "response": {
+        "v": 1,
+        "kind": "status",
+        "status": "in_transit",
+        "arrives_after_burst_end": false,
+        "may_arrive_after_burst_end": false,
+        "payload": {
+          "transit_id": "tx-amos-1000000001",
+          "agent_id": "amos",
+          "vessel_id": "amos/1",
+          "origin": "mars",
+          "destination": "earth",
+          "departure_round": 0,
+          "arrival_round": 4,
+          "rounds_duration": 4,
+          "base_rounds": 2,
+          "delay_rounds": 2,
+          "commodity": "FRAG",
+          "cargo_qty": 100,
+          "hold_cargo": {
+            "FRAG": 1000
+          },
+          "total_cargo_value": 15000,
+          "fuel_burned": 15,
+          "is_aligned": false,
+          "window_name": null,
+          "toll_paid": 0,
+          "perishable": false,
+          "decay_rate": 0.0,
+          "hazard": {
+            "delay": 2,
+            "lost_qty": 164,
+            "note": "storm on the route: arrival 2 rounds late; hull breach: 164 of 1000 units lost"
+          },
+          "piracy": null,
+          "arrives_after_burst_end": false,
+          "may_arrive_after_burst_end": false
+        }
+      },
+      "round": 0,
+      "ledger": [
+        {
+          "txn_id": "fuel-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "delta": -15
+        },
+        {
+          "txn_id": "fuel-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "delta": 15
+        },
+        {
+          "txn_id": "escrow-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": -100
+        },
+        {
+          "txn_id": "escrow-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": 100
+        },
+        {
+          "txn_id": "hazard-hold-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": -64
+        },
+        {
+          "txn_id": "hazard-hold-tx-amos-1000000001",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": 64
+        }
+      ],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "balance": -40000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AERL",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AMOS",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_MARV",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_ZERO",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "balance": -3836
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "balance": -1985
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 485
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 485
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 1,
+        "prices": {
+          "earth": {
+            "FRAG": 20.0,
+            "FUEL": 14.91,
+            "FOOD": 10.02,
+            "ORE": 27.25,
+            "MACHINERY": 17.76
+          },
+          "luna": {
+            "FRAG": 15.63,
+            "FUEL": 9.39,
+            "FOOD": 22.34,
+            "ORE": 22.33,
+            "MACHINERY": 23.2
+          },
+          "mars": {
+            "FRAG": 13.12,
+            "FUEL": 16.65,
+            "FOOD": 16.17,
+            "ORE": 17.18,
+            "MACHINERY": 14.21
+          },
+          "ceres": {
+            "FRAG": 11.6,
+            "FUEL": 23.15,
+            "FOOD": 26.1,
+            "ORE": 10.79,
+            "MACHINERY": 29.13
+          }
+        },
+        "arrived_transits": [],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": null
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "round": 1,
+      "ledger": [],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 485
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 485
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 2,
+        "prices": {
+          "earth": {
+            "FRAG": 20.27,
+            "FUEL": 14.81,
+            "FOOD": 10.46,
+            "ORE": 26.77,
+            "MACHINERY": 18.12
+          },
+          "luna": {
+            "FRAG": 15.97,
+            "FUEL": 8.73,
+            "FOOD": 23.66,
+            "ORE": 22.65,
+            "MACHINERY": 24.13
+          },
+          "mars": {
+            "FRAG": 12.58,
+            "FUEL": 16.04,
+            "FOOD": 16.09,
+            "ORE": 16.99,
+            "MACHINERY": 14.65
+          },
+          "ceres": {
+            "FRAG": 11.74,
+            "FUEL": 22.99,
+            "FOOD": 25.54,
+            "ORE": 10.48,
+            "MACHINERY": 30.16
+          }
+        },
+        "arrived_transits": [],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": null
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "round": 2,
+      "ledger": [],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 485
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 485
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 3,
+        "prices": {
+          "earth": {
+            "FRAG": 19.61,
+            "FUEL": 14.96,
+            "FOOD": 10.76,
+            "ORE": 25.69,
+            "MACHINERY": 18.22
+          },
+          "luna": {
+            "FRAG": 16.99,
+            "FUEL": 7.08,
+            "FOOD": 23.15,
+            "ORE": 22.39,
+            "MACHINERY": 23.31
+          },
+          "mars": {
+            "FRAG": 13.01,
+            "FUEL": 16.06,
+            "FOOD": 15.13,
+            "ORE": 17.58,
+            "MACHINERY": 15.06
+          },
+          "ceres": {
+            "FRAG": 12.42,
+            "FUEL": 24.37,
+            "FOOD": 26.12,
+            "ORE": 10.73,
+            "MACHINERY": 29.02
+          }
+        },
+        "arrived_transits": [],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": null
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "round": 3,
+      "ledger": [],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 485
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 485
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 4,
+        "prices": {
+          "earth": {
+            "FRAG": 20.19,
+            "FUEL": 14.4,
+            "FOOD": 10.31,
+            "ORE": 24.95,
+            "MACHINERY": 17.49
+          },
+          "luna": {
+            "FRAG": 16.39,
+            "FUEL": 8.32,
+            "FOOD": 21.35,
+            "ORE": 21.09,
+            "MACHINERY": 23.45
+          },
+          "mars": {
+            "FRAG": 14.13,
+            "FUEL": 16.59,
+            "FOOD": 13.97,
+            "ORE": 15.4,
+            "MACHINERY": 15.16
+          },
+          "ceres": {
+            "FRAG": 11.65,
+            "FUEL": 23.49,
+            "FOOD": 27.11,
+            "ORE": 11.73,
+            "MACHINERY": 29.22
+          }
+        },
+        "arrived_transits": [
+          {
+            "transit_id": "tx-amos-1000000001",
+            "agent_id": "amos",
+            "vessel_id": "amos/1",
+            "origin": "mars",
+            "destination": "earth",
+            "commodity": "FRAG",
+            "cargo_qty": 0,
+            "cargo_delivered": 0,
+            "cargo_decayed": 0,
+            "perishable": false,
+            "decay_rate": 0.0,
+            "arrival_round": 4
+          }
+        ],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": null
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "round": 4,
+      "ledger": [],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 485
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 485
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "initiate_transit",
+      "input": {
+        "agent_id": "amos",
+        "destination": "mars",
+        "commodity": "FRAG",
+        "cargo_qty": 50,
+        "escort": false,
+        "vessel_id": null
+      },
+      "response": {
+        "v": 1,
+        "kind": "status",
+        "status": "in_transit",
+        "arrives_after_burst_end": false,
+        "may_arrive_after_burst_end": false,
+        "payload": {
+          "transit_id": "tx-amos-1000000002",
+          "agent_id": "amos",
+          "vessel_id": "amos/1",
+          "origin": "earth",
+          "destination": "mars",
+          "departure_round": 4,
+          "arrival_round": 5,
+          "rounds_duration": 1,
+          "base_rounds": 1,
+          "delay_rounds": 0,
+          "commodity": "FRAG",
+          "cargo_qty": 50,
+          "hold_cargo": {
+            "FRAG": 836
+          },
+          "total_cargo_value": 12540,
+          "fuel_burned": 10,
+          "is_aligned": true,
+          "window_name": "Earth-Mars Perihelion Opposition",
+          "toll_paid": 0,
+          "perishable": false,
+          "decay_rate": 0.0,
+          "hazard": null,
+          "piracy": null,
+          "arrives_after_burst_end": false,
+          "may_arrive_after_burst_end": false
+        }
+      },
+      "round": 4,
+      "ledger": [
+        {
+          "txn_id": "fuel-tx-amos-1000000002",
+          "seq": 3,
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "delta": -10
+        },
+        {
+          "txn_id": "fuel-tx-amos-1000000002",
+          "seq": 3,
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "delta": 10
+        },
+        {
+          "txn_id": "escrow-tx-amos-1000000002",
+          "seq": 3,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": -50
+        },
+        {
+          "txn_id": "escrow-tx-amos-1000000002",
+          "seq": 3,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": 50
+        }
+      ],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "balance": -40000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AERL",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AMOS",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_MARV",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_ZERO",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "balance": -3786
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "balance": -1975
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 786
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 475
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 786,
+            "FUEL": 475
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 5,
+        "prices": {
+          "earth": {
+            "FRAG": 20.39,
+            "FUEL": 14.76,
+            "FOOD": 11.57,
+            "ORE": 25.83,
+            "MACHINERY": 18.06
+          },
+          "luna": {
+            "FRAG": 16.74,
+            "FUEL": 7.09,
+            "FOOD": 22.47,
+            "ORE": 21.92,
+            "MACHINERY": 23.81
+          },
+          "mars": {
+            "FRAG": 12.35,
+            "FUEL": 16.07,
+            "FOOD": 15.17,
+            "ORE": 14.12,
+            "MACHINERY": 14.81
+          },
+          "ceres": {
+            "FRAG": 12.4,
+            "FUEL": 22.59,
+            "FOOD": 28.46,
+            "ORE": 12.14,
+            "MACHINERY": 29.14
+          }
+        },
+        "arrived_transits": [
+          {
+            "transit_id": "tx-amos-1000000002",
+            "agent_id": "amos",
+            "vessel_id": "amos/1",
+            "origin": "earth",
+            "destination": "mars",
+            "commodity": "FRAG",
+            "cargo_qty": 50,
+            "cargo_delivered": 50,
+            "cargo_decayed": 0,
+            "perishable": false,
+            "decay_rate": 0.0,
+            "arrival_round": 5
+          }
+        ],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": null
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "round": 5,
+      "ledger": [
+        {
+          "txn_id": "release-tx-amos-1000000002",
+          "seq": 4,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": 50
+        },
+        {
+          "txn_id": "release-tx-amos-1000000002",
+          "seq": 4,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": -50
+        }
+      ],
+      "fills": [],
+      "balances": [
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "balance": -40000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AERL",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AMOS",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_MARV",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_ZERO",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "balance": -3836
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "balance": -1975
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 836
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FUEL",
+          "balance": 475
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "ship_accounts": {
+        "aerial": {
+          "aerial/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "amos": {
+          "amos/1": {
+            "FRAG": 836,
+            "FUEL": 475
+          }
+        },
+        "marvin": {
+          "marvin/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        },
+        "zero": {
+          "zero/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          }
+        }
+      }
+    }
+  ],
+  "rng_bags_end": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 7,
+      "p": 0.5,
+      "marbles": "",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 1
+    },
+    {
+      "ns": "hazards",
+      "event": "loss",
+      "fleet": "amos/1",
+      "seed": 7,
+      "p": 0.5,
+      "marbles": "",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 1
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 7,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    }
+  ]
+}
