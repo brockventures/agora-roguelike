@@ -1,0 +1,852 @@
+{
+  "case": "multi_party_sweep",
+  "description": "One bid sweeps asks from three different sellers. Four parties, three trades, three txns, each summing to 0; the buyer pays each seller at that seller resting price.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "asymmetric": true,
+    "seed": 1,
+    "warmup_rounds": 0,
+    "ships_docked_at": "mars",
+    "agents": [
+      "amos",
+      "zero",
+      "marvin",
+      "aerial"
+    ],
+    "station_id": "mars",
+    "instrument": "FRAG",
+    "prep": []
+  },
+  "initial_accounts": [
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "CR",
+      "balance": -40000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_AERL",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_AMOS",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_MARV",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_ZERO",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "FRAG",
+      "balance": -4000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "FUEL",
+      "balance": -2000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "EQ_AERL",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "EQ_AMOS",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "EQ_MARV",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "EQ_ZERO",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero/1",
+      "instrument": "FUEL",
+      "balance": 500
+    }
+  ],
+  "bag_start": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    }
+  ],
+  "steps": [
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "a1",
+          "agent_id": "amos",
+          "side": "ask",
+          "qty": 3,
+          "limit_price": 12,
+          "instrument": "FRAG",
+          "seq_seen": 0,
+          "station_id": "mars"
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 1,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 12,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "a1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 3
+        }
+      },
+      "ledger_entries": [],
+      "ledger_txns": [],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "z1",
+          "agent_id": "zero",
+          "side": "ask",
+          "qty": 4,
+          "limit_price": 13,
+          "instrument": "FRAG",
+          "seq_seen": 1,
+          "station_id": "mars"
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 2,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 12,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "z1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 4
+        }
+      },
+      "ledger_entries": [],
+      "ledger_txns": [],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "r1",
+          "agent_id": "aerial",
+          "side": "ask",
+          "qty": 5,
+          "limit_price": 14,
+          "instrument": "FRAG",
+          "seq_seen": 2,
+          "station_id": "mars"
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 3,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 12,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "r1",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 5
+        }
+      },
+      "ledger_entries": [],
+      "ledger_txns": [],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10000
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "m1",
+          "agent_id": "marvin",
+          "side": "bid",
+          "qty": 12,
+          "limit_price": 14,
+          "instrument": "FRAG",
+          "seq_seen": 3,
+          "station_id": "mars"
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 7,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": null,
+          "last_price": 14,
+          "last_qty": 5,
+          "status": "open",
+          "trades_count": 3,
+          "order_id": "m1",
+          "order_status": "filled",
+          "filled_qty": 12,
+          "remaining_qty": 0
+        }
+      },
+      "ledger_entries": [
+        {
+          "txn_id": "trade-trd-4-1",
+          "seq": 4,
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "delta": -36
+        },
+        {
+          "txn_id": "trade-trd-4-1",
+          "seq": 4,
+          "agent_id": "amos",
+          "instrument": "CR",
+          "delta": 36
+        },
+        {
+          "txn_id": "trade-trd-4-1",
+          "seq": 4,
+          "agent_id": "marvin/1",
+          "instrument": "FRAG",
+          "delta": 3
+        },
+        {
+          "txn_id": "trade-trd-4-1",
+          "seq": 4,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": -3
+        },
+        {
+          "txn_id": "trade-trd-4-2",
+          "seq": 4,
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "delta": -52
+        },
+        {
+          "txn_id": "trade-trd-4-2",
+          "seq": 4,
+          "agent_id": "zero",
+          "instrument": "CR",
+          "delta": 52
+        },
+        {
+          "txn_id": "trade-trd-4-2",
+          "seq": 4,
+          "agent_id": "marvin/1",
+          "instrument": "FRAG",
+          "delta": 4
+        },
+        {
+          "txn_id": "trade-trd-4-2",
+          "seq": 4,
+          "agent_id": "zero/1",
+          "instrument": "FRAG",
+          "delta": -4
+        },
+        {
+          "txn_id": "trade-trd-4-3",
+          "seq": 4,
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "delta": -70
+        },
+        {
+          "txn_id": "trade-trd-4-3",
+          "seq": 4,
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "delta": 70
+        },
+        {
+          "txn_id": "trade-trd-4-3",
+          "seq": 4,
+          "agent_id": "marvin/1",
+          "instrument": "FRAG",
+          "delta": 5
+        },
+        {
+          "txn_id": "trade-trd-4-3",
+          "seq": 4,
+          "agent_id": "aerial/1",
+          "instrument": "FRAG",
+          "delta": -5
+        }
+      ],
+      "ledger_txns": [
+        {
+          "txn_id": "trade-trd-4-1",
+          "sum": 0,
+          "by_instrument": {
+            "CR": 0,
+            "FRAG": 0
+          }
+        },
+        {
+          "txn_id": "trade-trd-4-2",
+          "sum": 0,
+          "by_instrument": {
+            "CR": 0,
+            "FRAG": 0
+          }
+        },
+        {
+          "txn_id": "trade-trd-4-3",
+          "sum": 0,
+          "by_instrument": {
+            "CR": 0,
+            "FRAG": 0
+          }
+        }
+      ],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "aerial",
+          "instrument": "CR",
+          "balance": 10070
+        },
+        {
+          "agent_id": "aerial",
+          "instrument": "EQ_AERL",
+          "balance": 1000
+        },
+        {
+          "agent_id": "aerial/1",
+          "instrument": "FRAG",
+          "balance": 995
+        },
+        {
+          "agent_id": "aerial/1",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 10036
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "balance": 997
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "CR",
+          "balance": 9842
+        },
+        {
+          "agent_id": "marvin",
+          "instrument": "EQ_MARV",
+          "balance": 1000
+        },
+        {
+          "agent_id": "marvin/1",
+          "instrument": "FRAG",
+          "balance": 1012
+        },
+        {
+          "agent_id": "marvin/1",
+          "instrument": "FUEL",
+          "balance": 500
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "CR",
+          "balance": 10052
+        },
+        {
+          "agent_id": "zero",
+          "instrument": "EQ_ZERO",
+          "balance": 1000
+        },
+        {
+          "agent_id": "zero/1",
+          "instrument": "FRAG",
+          "balance": 996
+        },
+        {
+          "agent_id": "zero/1",
+          "instrument": "FUEL",
+          "balance": 500
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 1,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 1,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    }
+  ],
+  "final_invariants_ok": true
+}

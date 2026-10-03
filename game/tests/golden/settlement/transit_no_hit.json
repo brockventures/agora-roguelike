@@ -1,0 +1,1209 @@
+{
+  "case": "transit_no_hit",
+  "description": "A trip where none of the delay, loss or raid marbles hits (piracy odds 0.1): departure writes fuel, toll and escrow txns, the bags advance one marble per roll, and arrival releases the whole cargo with no other ledger entry.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 2,
+    "warmup_rounds": 2,
+    "depots": true,
+    "hazards": [
+      0.5,
+      0.5
+    ],
+    "piracy": [
+      0.1,
+      0.1
+    ],
+    "agents": [
+      "amos"
+    ],
+    "prep": []
+  },
+  "initial_accounts": [
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "CR",
+      "balance": -4040000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_AERL",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_AMOS",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_MARV",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "EQ_ZERO",
+      "balance": -1000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "FOOD",
+      "balance": -400000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "FRAG",
+      "balance": -404000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "FUEL",
+      "balance": -402000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "MACHINERY",
+      "balance": -400000
+    },
+    {
+      "agent_id": "SYSTEM",
+      "instrument": "ORE",
+      "balance": -400000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "aerial",
+      "instrument": "EQ_AERL",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "aerial/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "amos",
+      "instrument": "EQ_AMOS",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "amos/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "CR",
+      "balance": 1000000
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "FOOD",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "FRAG",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "FUEL",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "MACHINERY",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_ceres",
+      "instrument": "ORE",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "CR",
+      "balance": 1000000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "FOOD",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "FRAG",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "FUEL",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "MACHINERY",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_earth",
+      "instrument": "ORE",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "CR",
+      "balance": 1000000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "FOOD",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "FRAG",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "FUEL",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "MACHINERY",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_luna",
+      "instrument": "ORE",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "CR",
+      "balance": 1000000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "FOOD",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "FRAG",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "FUEL",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "MACHINERY",
+      "balance": 100000
+    },
+    {
+      "agent_id": "depot_mars",
+      "instrument": "ORE",
+      "balance": 100000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "marvin",
+      "instrument": "EQ_MARV",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "marvin/1",
+      "instrument": "FUEL",
+      "balance": 500
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "CR",
+      "balance": 10000
+    },
+    {
+      "agent_id": "zero",
+      "instrument": "EQ_ZERO",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero/1",
+      "instrument": "FRAG",
+      "balance": 1000
+    },
+    {
+      "agent_id": "zero/1",
+      "instrument": "FUEL",
+      "balance": 500
+    }
+  ],
+  "bag_start": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    }
+  ],
+  "steps": [
+    {
+      "call": "initiate_transit",
+      "input": {
+        "agent_id": "amos",
+        "dest": "mars",
+        "commodity": "FRAG",
+        "cargo_qty": 500,
+        "escort": false
+      },
+      "response": {
+        "v": 1,
+        "kind": "status",
+        "status": "in_transit",
+        "arrives_after_burst_end": false,
+        "may_arrive_after_burst_end": false,
+        "payload": {
+          "transit_id": "tx-amos-1",
+          "agent_id": "amos",
+          "vessel_id": "amos/1",
+          "origin": "ceres",
+          "destination": "mars",
+          "departure_round": 0,
+          "arrival_round": 2,
+          "rounds_duration": 2,
+          "base_rounds": 2,
+          "delay_rounds": 0,
+          "commodity": "FRAG",
+          "cargo_qty": 500,
+          "hold_cargo": {
+            "FRAG": 1000
+          },
+          "total_cargo_value": 15000,
+          "fuel_burned": 20,
+          "is_aligned": false,
+          "window_name": null,
+          "toll_paid": 25,
+          "perishable": false,
+          "decay_rate": 0.0,
+          "hazard": null,
+          "piracy": {
+            "odds": 0.15,
+            "hot_station": "luna",
+            "hot_route": false,
+            "cargo_value": 15000,
+            "escort": false,
+            "escort_fee": 0,
+            "raided": false,
+            "demand": null
+          },
+          "arrives_after_burst_end": false,
+          "may_arrive_after_burst_end": false
+        }
+      },
+      "ledger_entries": [
+        {
+          "txn_id": "fuel-tx-amos-1",
+          "seq": 1,
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "delta": -20
+        },
+        {
+          "txn_id": "fuel-tx-amos-1",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "delta": 20
+        },
+        {
+          "txn_id": "toll-tx-amos-1",
+          "seq": 1,
+          "agent_id": "amos",
+          "instrument": "CR",
+          "delta": -25
+        },
+        {
+          "txn_id": "toll-tx-amos-1",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "delta": 25
+        },
+        {
+          "txn_id": "escrow-tx-amos-1",
+          "seq": 1,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": -500
+        },
+        {
+          "txn_id": "escrow-tx-amos-1",
+          "seq": 1,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": 500
+        }
+      ],
+      "ledger_txns": [
+        {
+          "txn_id": "fuel-tx-amos-1",
+          "sum": 0,
+          "by_instrument": {
+            "FUEL": 0
+          }
+        },
+        {
+          "txn_id": "toll-tx-amos-1",
+          "sum": 0,
+          "by_instrument": {
+            "CR": 0
+          }
+        },
+        {
+          "txn_id": "escrow-tx-amos-1",
+          "sum": 0,
+          "by_instrument": {
+            "FRAG": 0
+          }
+        }
+      ],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "balance": -4039975
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AERL",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AMOS",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_MARV",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_ZERO",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FOOD",
+          "balance": -400000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "balance": -403500
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "balance": -401980
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "MACHINERY",
+          "balance": -400000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "ORE",
+          "balance": -400000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 9975
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "balance": 500
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "balance": 480
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 2,
+          "p": 0.15,
+          "marbles": "0001000010000010000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ],
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.18017525098860954
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              7,
+              7,
+              6
+            ]
+          ],
+          "result": [
+            1,
+            2,
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            7,
+            1
+          ],
+          "result": 4
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            6,
+            1
+          ],
+          "result": 2
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            7,
+            1
+          ],
+          "result": 2
+        }
+      ],
+      "invariants_ok": true,
+      "invariant_errors": []
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 1,
+        "prices": {
+          "earth": {
+            "FRAG": 21.82,
+            "FUEL": 12.74,
+            "FOOD": 8.48,
+            "ORE": 29.51,
+            "MACHINERY": 18.4
+          },
+          "luna": {
+            "FRAG": 15.86,
+            "FUEL": 7.44,
+            "FOOD": 20.15,
+            "ORE": 19.93,
+            "MACHINERY": 22.9
+          },
+          "mars": {
+            "FRAG": 10.52,
+            "FUEL": 16.78,
+            "FOOD": 12.99,
+            "ORE": 16.58,
+            "MACHINERY": 12.27
+          },
+          "ceres": {
+            "FRAG": 10.28,
+            "FUEL": 26.86,
+            "FOOD": 26.0,
+            "ORE": 9.29,
+            "MACHINERY": 27.43
+          }
+        },
+        "arrived_transits": [],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": "luna"
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "ledger_entries": [],
+      "ledger_txns": [],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 9975
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 2,
+          "p": 0.15,
+          "marbles": "0001000010000010000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    },
+    {
+      "call": "step_round",
+      "input": {},
+      "response": {
+        "status": "ok",
+        "round": 2,
+        "prices": {
+          "earth": {
+            "FRAG": 21.43,
+            "FUEL": 12.09,
+            "FOOD": 8.86,
+            "ORE": 29.91,
+            "MACHINERY": 18.26
+          },
+          "luna": {
+            "FRAG": 15.39,
+            "FUEL": 8.13,
+            "FOOD": 20.08,
+            "ORE": 20.75,
+            "MACHINERY": 22.55
+          },
+          "mars": {
+            "FRAG": 12.07,
+            "FUEL": 16.41,
+            "FOOD": 12.7,
+            "ORE": 16.54,
+            "MACHINERY": 11.88
+          },
+          "ceres": {
+            "FRAG": 9.55,
+            "FUEL": 26.3,
+            "FOOD": 26.73,
+            "ORE": 7.76,
+            "MACHINERY": 27.6
+          }
+        },
+        "arrived_transits": [
+          {
+            "transit_id": "tx-amos-1",
+            "agent_id": "amos",
+            "vessel_id": "amos/1",
+            "origin": "ceres",
+            "destination": "mars",
+            "commodity": "FRAG",
+            "cargo_qty": 500,
+            "cargo_delivered": 500,
+            "cargo_decayed": 0,
+            "perishable": false,
+            "decay_rate": 0.0,
+            "arrival_round": 2
+          }
+        ],
+        "borrow_fee_reports": [],
+        "circuit_breaker_reopens": [],
+        "peer_escrow": null,
+        "contracts": null,
+        "corporate": null,
+        "piracy": {
+          "timed_out": [],
+          "void": [],
+          "hot_station": "luna"
+        },
+        "events": null,
+        "idle_fees": {},
+        "ship_upkeep": {},
+        "order_flow": null,
+        "standing": null
+      },
+      "ledger_entries": [
+        {
+          "txn_id": "release-tx-amos-1",
+          "seq": 3,
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "delta": 500
+        },
+        {
+          "txn_id": "release-tx-amos-1",
+          "seq": 3,
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "delta": -500
+        }
+      ],
+      "ledger_txns": [
+        {
+          "txn_id": "release-tx-amos-1",
+          "sum": 0,
+          "by_instrument": {
+            "FRAG": 0
+          }
+        }
+      ],
+      "ledger_sum": 0,
+      "balances": [
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "CR",
+          "balance": -4039975
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AERL",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_AMOS",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_MARV",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "EQ_ZERO",
+          "balance": -1000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FOOD",
+          "balance": -400000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FRAG",
+          "balance": -404000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "FUEL",
+          "balance": -401980
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "MACHINERY",
+          "balance": -400000
+        },
+        {
+          "agent_id": "SYSTEM",
+          "instrument": "ORE",
+          "balance": -400000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 9975
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "EQ_AMOS",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FRAG",
+          "balance": 1000
+        },
+        {
+          "agent_id": "amos/1",
+          "instrument": "FUEL",
+          "balance": 480
+        }
+      ],
+      "bag_after": [
+        {
+          "ns": "covert",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "events",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "__seed__",
+          "fleet": "",
+          "seed": 2,
+          "p": 0.0,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.0,
+          "draws": 0,
+          "hits": 0
+        },
+        {
+          "ns": "piracy",
+          "event": "raid",
+          "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+          "seed": 2,
+          "p": 0.15,
+          "marbles": "0001000010000010000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ],
+      "draws": [],
+      "invariants_ok": true,
+      "invariant_errors": []
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "covert",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "events",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 2,
+      "p": 0.5,
+      "marbles": "1",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    },
+    {
+      "ns": "hazards",
+      "event": "loss",
+      "fleet": "amos/1",
+      "seed": 2,
+      "p": 0.5,
+      "marbles": "1",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "__seed__",
+      "fleet": "",
+      "seed": 2,
+      "p": 0.0,
+      "marbles": "",
+      "refills": 0,
+      "credit": 0.0,
+      "draws": 0,
+      "hits": 0
+    },
+    {
+      "ns": "piracy",
+      "event": "raid",
+      "fleet": "amos/1|belt|cool|v1.5|free|a0|s0|bare",
+      "seed": 2,
+      "p": 0.15,
+      "marbles": "0001000010000010000",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    }
+  ],
+  "final_invariants_ok": true
+}
