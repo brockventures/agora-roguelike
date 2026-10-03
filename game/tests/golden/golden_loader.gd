@@ -15,6 +15,7 @@ extends RefCounted
 const REFEREE_COMMIT := "587b07f"
 const ORDERBOOK_DIR := "res://tests/golden/orderbook"
 const SETTLEMENT_DIR := "res://tests/golden/settlement"
+const DRAWS_DIR := "res://tests/golden/draws"
 
 const REQUIRED_KEYS := ["case", "referee_commit", "station_id", "instrument", "initial_accounts", "initial_ship_accounts", "steps"]
 const REQUIRED_STEP_KEYS := ["call", "input", "response", "fills", "book", "balances", "ship_accounts"]
@@ -28,6 +29,13 @@ const REQUIRED_SETTLEMENT_STEP_KEYS := ["call", "input", "response", "ledger_ent
 const REQUIRED_LEDGER_ENTRY_KEYS := ["txn_id", "seq", "agent_id", "instrument", "delta"]
 const REQUIRED_BAG_ROW_KEYS := ["ns", "event", "fleet", "seed", "p", "marbles", "refills", "credit", "draws", "hits"]
 const REQUIRED_DRAW_KEYS := ["call", "args", "result"]
+
+## Draw-level fixtures (tools/golden/gen_draws.py, 5d). draws/sample.json is the 5b recorder
+## sample (a bare array), not a draw case; list_fixtures(DRAWS_DIR) returns it too, so callers
+## skip it by name.
+const REQUIRED_DRAW_CASE_KEYS := ["case", "module", "description", "referee_commit", "setup", "bag_start", "steps", "bag_end"]
+const REQUIRED_DRAW_STEP_KEYS := ["call", "input", "draws", "output", "bag_after"]
+const DRAW_MODULES := ["bag", "hazards", "piracy", "spatial"]
 
 
 ## Fixture file paths in a directory, sorted. Empty when the directory is missing.
@@ -155,4 +163,43 @@ static func _check_keys(obj, keys: Array) -> String:
 	for k in keys:
 		if not obj.has(k):
 			return "missing '%s'" % k
+	return ""
+
+
+## Shape check for a draw-level fixture (5d). Returns "" when well formed, else a message.
+## Checks that each recorded draw is {call, args, result} and each bag row is complete; it knows
+## nothing about the GDScript engine.
+static func validate_draw_case(data: Dictionary) -> String:
+	for k in REQUIRED_DRAW_CASE_KEYS:
+		if not data.has(k):
+			return "missing key '%s'" % k
+	if data["referee_commit"] != REFEREE_COMMIT:
+		return "referee_commit is '%s', expected '%s'" % [data["referee_commit"], REFEREE_COMMIT]
+	if not DRAW_MODULES.has(data["module"]):
+		return "unknown module '%s'" % data["module"]
+	if not (data["steps"] is Array) or data["steps"].is_empty():
+		return "steps must be a non-empty array"
+	for bag_key in ["bag_start", "bag_end"]:
+		if not (data[bag_key] is Array):
+			return "%s must be an array" % bag_key
+		for row in data[bag_key]:
+			var err := _check_keys(row, REQUIRED_BAG_ROW_KEYS)
+			if err != "":
+				return "%s row: %s" % [bag_key, err]
+	var i := 0
+	for step in data["steps"]:
+		var step_err := _check_keys(step, REQUIRED_DRAW_STEP_KEYS)
+		if step_err != "":
+			return "step %d: %s" % [i, step_err]
+		if not (step["draws"] is Array):
+			return "step %d draws is not an array" % i
+		for d in step["draws"]:
+			var err := _check_keys(d, REQUIRED_DRAW_KEYS)
+			if err != "":
+				return "step %d draw: %s" % [i, err]
+		for row in step["bag_after"]:
+			var err := _check_keys(row, REQUIRED_BAG_ROW_KEYS)
+			if err != "":
+				return "step %d bag_after row: %s" % [i, err]
+		i += 1
 	return ""

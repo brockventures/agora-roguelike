@@ -1,0 +1,523 @@
+{
+  "case": "bag_fleets_are_isolated",
+  "module": "bag",
+  "description": "Two fleets and two events drawn in an interleaved order at p = 0.2 (1 in 5). Each (event, fleet) has its own bag and its own refill stream, so an interleaving never moves another key luck.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "ns": "golden",
+    "seed": 5
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              5
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.2
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              5
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 4
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              5
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 2
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "zero/1",
+        "p": 0.2
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "0100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "delay",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "00",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw",
+      "input": {
+        "event": "loss",
+        "fleet": "zero/1",
+        "p": 0.2
+      },
+      "draws": [
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              5
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            5,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "00",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        },
+        {
+          "ns": "golden",
+          "event": "delay",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "001",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "100",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        },
+        {
+          "ns": "golden",
+          "event": "loss",
+          "fleet": "zero/1",
+          "seed": 5,
+          "p": 0.2,
+          "marbles": "1000",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "golden",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 5,
+      "p": 0.2,
+      "marbles": "00",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 3,
+      "hits": 1
+    },
+    {
+      "ns": "golden",
+      "event": "delay",
+      "fleet": "zero/1",
+      "seed": 5,
+      "p": 0.2,
+      "marbles": "001",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 0
+    },
+    {
+      "ns": "golden",
+      "event": "loss",
+      "fleet": "amos/1",
+      "seed": 5,
+      "p": 0.2,
+      "marbles": "100",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 2,
+      "hits": 0
+    },
+    {
+      "ns": "golden",
+      "event": "loss",
+      "fleet": "zero/1",
+      "seed": 5,
+      "p": 0.2,
+      "marbles": "1000",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 0
+    }
+  ]
+}

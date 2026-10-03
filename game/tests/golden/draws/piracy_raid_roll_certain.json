@@ -1,0 +1,108 @@
+{
+  "case": "piracy_raid_roll_certain",
+  "module": "piracy",
+  "description": "Odds that cap at 1.0 (a hold value of 30000 is the maximum 2.0x multiplier): the raid is certain, so bag_odds returns p unchanged and draw(p >= 1) makes no draw. Only the two hot-station choices are drawn.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 1,
+    "warmup_rounds": 2,
+    "depots": true,
+    "piracy": [
+      1.0,
+      1.0
+    ],
+    "agents": [
+      "amos"
+    ],
+    "prep": [
+      {
+        "op": "initiate_transit",
+        "agent": "amos",
+        "dest": "mars",
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false
+      }
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll_departure",
+      "input": {
+        "transit_id": "tx-amos-1",
+        "agent": "amos",
+        "origin": "ceres",
+        "dest": "mars",
+        "tolled": true,
+        "commodity": "FRAG",
+        "qty": 500,
+        "escort": false,
+        "escort_fee": 0,
+        "round": 0,
+        "vessel_id": "amos/1",
+        "hold_value": 30000,
+        "total_qty": 1000
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        },
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        }
+      ],
+      "output": {
+        "result": {
+          "odds": 1.0,
+          "hot_station": "luna",
+          "hot_route": false,
+          "cargo_value": 30000,
+          "escort": false,
+          "escort_fee": 0,
+          "raided": true
+        },
+        "demand": {
+          "transit_id": "tx-amos-1",
+          "agent_id": "amos",
+          "status": "pending",
+          "ransom": 4500,
+          "surrender_qty": 250,
+          "cargo_qty": 1000,
+          "cargo_value": 30000,
+          "odds": 1.0,
+          "escorted": 0,
+          "contract_id": null,
+          "sponsor": null,
+          "traced": 0,
+          "fine": 0,
+          "choice": null,
+          "cr_taken": 0,
+          "qty_taken": 0,
+          "delay": 0,
+          "fenced_at": null
+        }
+      },
+      "bag_after": []
+    }
+  ],
+  "bag_end": []
+}

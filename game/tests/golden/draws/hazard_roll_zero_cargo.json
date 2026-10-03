@@ -1,0 +1,306 @@
+{
+  "case": "hazard_roll_zero_cargo",
+  "module": "hazards",
+  "description": "A trip with nothing to lose: cargo 0 and no total_qty. The loss marble is not drawn (nothing to lose) but the delay marble and both desk draws are. A trip with cargo then follows, to show the loss bag was left untouched.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 13,
+    "odds": [
+      0.5,
+      0.5
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 0,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.18056856346063263
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 2,
+        "lost": 0,
+        "note": "storm on the route: arrival 2 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 13,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 0,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.11594172264171179
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 13,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 0,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.19635518794536921
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 13,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 150,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.19569546672803956
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 1,
+        "lost": 29,
+        "note": "storm on the route: arrival 1 round late; hull breach: 29 of 150 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 13,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 2
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 13,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "hazards",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 13,
+      "p": 0.5,
+      "marbles": "",
+      "refills": 2,
+      "credit": 0.0,
+      "draws": 4,
+      "hits": 2
+    },
+    {
+      "ns": "hazards",
+      "event": "loss",
+      "fleet": "amos/1",
+      "seed": 13,
+      "p": 0.5,
+      "marbles": "0",
+      "refills": 1,
+      "credit": 0.0,
+      "draws": 1,
+      "hits": 1
+    }
+  ]
+}

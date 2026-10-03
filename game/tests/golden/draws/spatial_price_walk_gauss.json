@@ -1,0 +1,432 @@
+{
+  "case": "spatial_price_walk_gauss",
+  "module": "spatial",
+  "description": "StationPriceEngine.step_round is the only random-consuming function in agora/spatial.py (routes, windows, fuel, decay and price tables are deterministic): one rng.gauss(0, vol) per (station, commodity), in STATIONS x COMMODITIES order, 20 draws a round. Two rounds. Content generation, not a player-facing roll, so it does not use a bag.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 42,
+    "theta": 0.15,
+    "vol": 0.8,
+    "stations": [
+      "earth",
+      "luna",
+      "mars",
+      "ceres"
+    ],
+    "commodities": [
+      "FRAG",
+      "FUEL",
+      "FOOD",
+      "ORE",
+      "MACHINERY"
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "step_round",
+      "input": {
+        "round_num": 1
+      },
+      "draws": [
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.1152722636623427
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.13832288026521544
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.08905268925412997
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.5615869800790905
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.10207062702630967
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -1.197882731472766
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.2658546752541722
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.2138699827977346
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.17356694731615602
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.09270782936068406
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.1858381895253767
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.9308469492793144
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.5253092054389351
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.08840574195506556
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.5906572818758565
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.8117298939901737
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.19707375616896158
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 1.0488646617632387
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.033325491122707114
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.08505863501662742
+        }
+      ],
+      "output": {
+        "spots": {
+          "earth": {
+            "FRAG": 20.08,
+            "FUEL": 14.36,
+            "FOOD": 10.11,
+            "ORE": 28.06,
+            "MACHINERY": 18.4
+          },
+          "luna": {
+            "FRAG": 14.6,
+            "FUEL": 8.77,
+            "FOOD": 21.79,
+            "ORE": 21.33,
+            "MACHINERY": 23.09
+          },
+          "mars": {
+            "FRAG": 12.99,
+            "FUEL": 17.43,
+            "FOOD": 18.03,
+            "ORE": 16.59,
+            "MACHINERY": 13.21
+          },
+          "ceres": {
+            "FRAG": 10.39,
+            "FUEL": 24.7,
+            "FOOD": 28.55,
+            "ORE": 11.53,
+            "MACHINERY": 29.41
+          }
+        },
+        "entries": 20
+      },
+      "bag_after": []
+    },
+    {
+      "call": "step_round",
+      "input": {
+        "round_num": 2
+      },
+      "draws": [
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.4254209763206954
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -1.1628362384069424
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.24982185371564786
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.39229002607481983
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.6987235083035575
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.19250373812410834
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.30127988695032815
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.1985707594627316
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.6258614469629138
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.8905777713985382
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.45460055006830863
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -1.2116163133801119
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -2.0959563377750814
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.4855125825596021
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.7326480370767958
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.7008097944451251
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.531412719690316
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.9752597930365563
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": 0.6778891386784003
+        },
+        {
+          "call": "gauss",
+          "args": [
+            0,
+            0.8
+          ],
+          "result": -0.8017622593938798
+        }
+      ],
+      "output": {
+        "spots": {
+          "earth": {
+            "FRAG": 20.52,
+            "FUEL": 13.22,
+            "FOOD": 9.87,
+            "ORE": 28.37,
+            "MACHINERY": 19.11
+          },
+          "luna": {
+            "FRAG": 14.59,
+            "FUEL": 9.03,
+            "FOOD": 22.02,
+            "ORE": 21.98,
+            "MACHINERY": 22.19
+          },
+          "mars": {
+            "FRAG": 13.42,
+            "FUEL": 16.08,
+            "FOOD": 15.85,
+            "ORE": 16.09,
+            "MACHINERY": 12.57
+          },
+          "ceres": {
+            "FRAG": 11.21,
+            "FUEL": 25.2,
+            "FOOD": 27.42,
+            "ORE": 12.2,
+            "MACHINERY": 28.62
+          }
+        },
+        "entries": 20
+      },
+      "bag_after": []
+    }
+  ],
+  "bag_end": []
+}

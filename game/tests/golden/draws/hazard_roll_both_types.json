@@ -1,0 +1,842 @@
+{
+  "case": "hazard_roll_both_types",
+  "module": "hazards",
+  "description": "Delay and loss at 0.5 / 0.5 for one ship over ten trips. Every roll draws randint(1, 3) and uniform(0.10, 0.20) from the desk RNG first, then a delay marble, then (cargo > 0) a loss marble. The sequence contains hits and misses of both kinds; a loss is int(qty * fraction), a delay is the randint.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 1,
+    "odds": [
+      0.5,
+      0.5
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.12421760826752687
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 24,
+        "note": "hull breach: 24 of 200 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.17124189865447265
+        }
+      ],
+      "output": {
+        "delay": 1,
+        "lost": 0,
+        "note": "storm on the route: arrival 1 round late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.11176088779149179
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 22,
+        "note": "hull breach: 22 of 200 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.19006097202250033
+        }
+      ],
+      "output": {
+        "delay": 3,
+        "lost": 0,
+        "note": "storm on the route: arrival 3 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 2
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.15581419416741749
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 31,
+        "note": "hull breach: 31 of 200 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 3,
+          "credit": 0.0,
+          "draws": 5,
+          "hits": 2
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 3,
+          "credit": 0.0,
+          "draws": 5,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.1344896233008462
+        }
+      ],
+      "output": {
+        "delay": 2,
+        "lost": 0,
+        "note": "storm on the route: arrival 2 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 3,
+          "credit": 0.0,
+          "draws": 6,
+          "hits": 3
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 3,
+          "credit": 0.0,
+          "draws": 6,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.1518939098626495
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 30,
+        "note": "hull breach: 30 of 200 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 4,
+          "credit": 0.0,
+          "draws": 7,
+          "hits": 3
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 4,
+          "credit": 0.0,
+          "draws": 7,
+          "hits": 4
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.16676774580938752
+        }
+      ],
+      "output": {
+        "delay": 2,
+        "lost": 0,
+        "note": "storm on the route: arrival 2 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 4,
+          "credit": 0.0,
+          "draws": 8,
+          "hits": 4
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 4,
+          "credit": 0.0,
+          "draws": 8,
+          "hits": 4
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.18801320676363023
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 1
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              2
+            ]
+          ],
+          "result": [
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 37,
+        "note": "hull breach: 37 of 200 units lost"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "1",
+          "refills": 5,
+          "credit": 0.0,
+          "draws": 9,
+          "hits": 4
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "0",
+          "refills": 5,
+          "credit": 0.0,
+          "draws": 9,
+          "hits": 5
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.14791117012334218
+        }
+      ],
+      "output": {
+        "delay": 2,
+        "lost": 0,
+        "note": "storm on the route: arrival 2 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 5,
+          "credit": 0.0,
+          "draws": 10,
+          "hits": 5
+        },
+        {
+          "ns": "hazards",
+          "event": "loss",
+          "fleet": "amos/1",
+          "seed": 1,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 5,
+          "credit": 0.0,
+          "draws": 10,
+          "hits": 5
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "hazards",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 1,
+      "p": 0.5,
+      "marbles": "",
+      "refills": 5,
+      "credit": 0.0,
+      "draws": 10,
+      "hits": 5
+    },
+    {
+      "ns": "hazards",
+      "event": "loss",
+      "fleet": "amos/1",
+      "seed": 1,
+      "p": 0.5,
+      "marbles": "",
+      "refills": 5,
+      "credit": 0.0,
+      "draws": 10,
+      "hits": 5
+    }
+  ]
+}

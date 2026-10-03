@@ -1,0 +1,411 @@
+{
+  "case": "bag_varying_credit",
+  "module": "bag",
+  "description": "draw_varying with a p that changes every call. Each call draws one random() for the threshold t = 1 - random(); the credit grows by p and a hit takes 1 off. The threshold stream only advances (new cycle) on a hit, so misses repeat the same draw.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "ns": "golden",
+    "seed": 2
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.1
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.4479193292222414
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.1,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.1,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.3
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.4479193292222414
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.3,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.4,
+          "draws": 2,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.05
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.4479193292222414
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.05,
+          "marbles": "",
+          "refills": 0,
+          "credit": 0.45,
+          "draws": 3,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.4
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.4479193292222414
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.4,
+          "marbles": "",
+          "refills": 1,
+          "credit": -0.1499999999999999,
+          "draws": 4,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.25
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.7357571780306201
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.25,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.10000000000000009,
+          "draws": 5,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.5
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.7357571780306201
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.5,
+          "marbles": "",
+          "refills": 2,
+          "credit": -0.3999999999999999,
+          "draws": 6,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.2
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.7134826297844395
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.2,
+          "marbles": "",
+          "refills": 2,
+          "credit": -0.1999999999999999,
+          "draws": 7,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.35
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.7134826297844395
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.35,
+          "marbles": "",
+          "refills": 2,
+          "credit": 0.15000000000000008,
+          "draws": 8,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.15
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.7134826297844395
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.15,
+          "marbles": "",
+          "refills": 3,
+          "credit": -0.7,
+          "draws": 9,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.45
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.9547209958991606
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.45,
+          "marbles": "",
+          "refills": 3,
+          "credit": -0.24999999999999994,
+          "draws": 10,
+          "hits": 3
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.3
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.9547209958991606
+        }
+      ],
+      "output": {
+        "result": true
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.3,
+          "marbles": "",
+          "refills": 4,
+          "credit": -0.95,
+          "draws": 11,
+          "hits": 4
+        }
+      ]
+    },
+    {
+      "call": "draw_varying",
+      "input": {
+        "event": "raid",
+        "fleet": "amos/1",
+        "p": 0.1
+      },
+      "draws": [
+        {
+          "call": "random",
+          "args": [],
+          "result": 0.10055626666224615
+        }
+      ],
+      "output": {
+        "result": false
+      },
+      "bag_after": [
+        {
+          "ns": "golden",
+          "event": "raid",
+          "fleet": "amos/1",
+          "seed": 2,
+          "p": 0.1,
+          "marbles": "",
+          "refills": 4,
+          "credit": -0.85,
+          "draws": 12,
+          "hits": 4
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "golden",
+      "event": "raid",
+      "fleet": "amos/1",
+      "seed": 2,
+      "p": 0.1,
+      "marbles": "",
+      "refills": 4,
+      "credit": -0.85,
+      "draws": 12,
+      "hits": 4
+    }
+  ]
+}

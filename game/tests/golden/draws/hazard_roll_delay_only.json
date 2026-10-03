@@ -1,0 +1,380 @@
+{
+  "case": "hazard_roll_delay_only",
+  "module": "hazards",
+  "description": "p_loss = 0: the delay roll is a real marble (0.4 = 2 in 5) but the loss roll never touches a bag. The two desk draws are still made every trip.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 6,
+    "odds": [
+      0.4,
+      0.0
+    ]
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.13524783584582953
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              3,
+              2
+            ]
+          ],
+          "result": [
+            0,
+            1
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 2
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "0110",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 1,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.1857493599135979
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "110",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 2,
+          "hits": 0
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.1319230346527503
+        }
+      ],
+      "output": {
+        "delay": 3,
+        "lost": 0,
+        "note": "storm on the route: arrival 3 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "10",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 3,
+          "hits": 1
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 2
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.10823032463487557
+        }
+      ],
+      "output": {
+        "delay": 2,
+        "lost": 0,
+        "note": "storm on the route: arrival 2 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "0",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 4,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 1
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.11697017644400526
+        }
+      ],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "",
+          "refills": 1,
+          "credit": 0.0,
+          "draws": 5,
+          "hits": 2
+        }
+      ]
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 120,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [
+        {
+          "call": "randint",
+          "args": [
+            1,
+            3
+          ],
+          "result": 3
+        },
+        {
+          "call": "uniform",
+          "args": [
+            0.1,
+            0.2
+          ],
+          "result": 0.15907130533309602
+        },
+        {
+          "call": "shuffle",
+          "args": [
+            [
+              3,
+              2
+            ]
+          ],
+          "result": [
+            1,
+            0
+          ]
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            2,
+            1
+          ],
+          "result": 0
+        },
+        {
+          "call": "randrange",
+          "args": [
+            0,
+            3,
+            1
+          ],
+          "result": 1
+        }
+      ],
+      "output": {
+        "delay": 3,
+        "lost": 0,
+        "note": "storm on the route: arrival 3 rounds late"
+      },
+      "bag_after": [
+        {
+          "ns": "hazards",
+          "event": "delay",
+          "fleet": "amos/1",
+          "seed": 6,
+          "p": 0.4,
+          "marbles": "0010",
+          "refills": 2,
+          "credit": 0.0,
+          "draws": 6,
+          "hits": 3
+        }
+      ]
+    }
+  ],
+  "bag_end": [
+    {
+      "ns": "hazards",
+      "event": "delay",
+      "fleet": "amos/1",
+      "seed": 6,
+      "p": 0.4,
+      "marbles": "0010",
+      "refills": 2,
+      "credit": 0.0,
+      "draws": 6,
+      "hits": 3
+    }
+  ]
+}

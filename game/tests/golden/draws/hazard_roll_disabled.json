@@ -1,0 +1,68 @@
+{
+  "case": "hazard_roll_disabled",
+  "module": "hazards",
+  "description": "A game without hazards (odds None): roll returns (0, 0, \"\") and draws nothing, not even the two desk values.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 16,
+    "odds": null
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": []
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": []
+    },
+    {
+      "call": "roll",
+      "input": {
+        "cargo_qty": 200,
+        "delay_factor": 1.0,
+        "loss_factor": 1.0,
+        "loss_size_factor": 1.0,
+        "agent_id": "amos/1",
+        "total_qty": null
+      },
+      "draws": [],
+      "output": {
+        "delay": 0,
+        "lost": 0,
+        "note": ""
+      },
+      "bag_after": []
+    }
+  ],
+  "bag_end": []
+}

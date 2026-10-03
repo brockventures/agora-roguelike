@@ -1,0 +1,191 @@
+{
+  "case": "piracy_hot_station_windows",
+  "module": "piracy",
+  "description": "hot_station(round) draws choice(STATIONS) from a Random seeded by (game seed, round // 20). Rounds in the same 20-round window ask the same question and get the same answer; each call makes its own choice draw.",
+  "referee_commit": "587b07f",
+  "setup": {
+    "seed": 1,
+    "warmup_rounds": 2,
+    "depots": true,
+    "piracy": [
+      0.5,
+      0.5
+    ],
+    "agents": [
+      "amos"
+    ],
+    "prep": []
+  },
+  "bag_start": [],
+  "steps": [
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 0
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        }
+      ],
+      "output": {
+        "station": "luna"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 19
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "luna"
+        }
+      ],
+      "output": {
+        "station": "luna"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 20
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "ceres"
+        }
+      ],
+      "output": {
+        "station": "ceres"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 39
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "ceres"
+        }
+      ],
+      "output": {
+        "station": "ceres"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 40
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "mars"
+        }
+      ],
+      "output": {
+        "station": "mars"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 41
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "mars"
+        }
+      ],
+      "output": {
+        "station": "mars"
+      },
+      "bag_after": []
+    },
+    {
+      "call": "hot_station",
+      "input": {
+        "round": 100
+      },
+      "draws": [
+        {
+          "call": "choice",
+          "args": [
+            [
+              "earth",
+              "luna",
+              "mars",
+              "ceres"
+            ]
+          ],
+          "result": "earth"
+        }
+      ],
+      "output": {
+        "station": "earth"
+      },
+      "bag_after": []
+    }
+  ],
+  "bag_end": []
+}
