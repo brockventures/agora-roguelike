@@ -48,23 +48,17 @@ var _hook: Callable
 
 ## p_modifiers: Parachutes.modifiers(profile) at run start. NOTE: it mutates the
 ## passed doomsday clock's interest and burn.
-func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null, p_arg4: Variant = {}, p_ticks_per_round: int = DEFAULT_TICKS_PER_ROUND) -> void:
+func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null, p_modifiers: Dictionary = {}, p_ticks_per_round: int = DEFAULT_TICKS_PER_ROUND) -> void:
 	profile = p_profile if p_profile != null else MetaProfile.new()
 	run_seed = p_seed
 	doomsday = p_doomsday if p_doomsday != null else DoomsdayClock.new()
-	var mods: Dictionary = {}
-	if p_arg4 is int:
-		ticks_per_round = maxi(1, int(p_arg4))
-	else:
-		if p_arg4 is Dictionary:
-			mods = p_arg4
-		ticks_per_round = maxi(1, p_ticks_per_round)
+	ticks_per_round = maxi(1, p_ticks_per_round)
 	sim_clock = SimClock.new()
 	cr = Chapter11.FRESH_START_CR
 	ships = [Chapter11.STARTER_SHIP.duplicate(true)]
 	_wire()
-	if not mods.is_empty():
-		apply_modifiers(mods)
+	if not p_modifiers.is_empty():
+		apply_modifiers(p_modifiers)
 		cr = Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR)
 
 ## Set the active modifiers and apply the live doomsday knobs (interest_bps,

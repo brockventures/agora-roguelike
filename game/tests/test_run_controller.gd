@@ -199,7 +199,7 @@ func test_roundtrip_is_wired_to_hooks_once() -> String:
 func test_round_calculation_and_pacing() -> String:
 	# 60 ticks per round with zero debt so it does not trip bankruptcy interrupt
 	var clock := DoomsdayClock.new(36000, 0, 0, 0)
-	var rc := RunController.new(null, 42, clock, 60)
+	var rc := RunController.new(null, 42, clock, {}, 60)
 	var rounds: Array = []
 	rc.round_advanced.connect(func(r): rounds.append(r))
 

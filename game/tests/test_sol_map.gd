@@ -93,7 +93,7 @@ func test_route_endpoints_and_alignment() -> String:
 
 	# Live smoothed attachment test: route endpoints must attach to live station positions
 	var clock := DoomsdayClock.new(36000, 0, 0, 0)
-	var rc := RunController.new(null, 42, clock, 60)
+	var rc := RunController.new(null, 42, clock, {}, 60)
 	m.bind_controller(rc)
 	for i in 30:
 		rc.advance(1.0 / 60.0)
@@ -127,7 +127,7 @@ func test_transit_vessel_interpolation() -> String:
 
 	# Live smoothed vessel interpolation test
 	var clock := DoomsdayClock.new(36000, 0, 0, 0)
-	var rc := RunController.new(null, 42, clock, 60)
+	var rc := RunController.new(null, 42, clock, {}, 60)
 	m.bind_controller(rc)
 	for i in 30:
 		rc.advance(1.0 / 60.0)
@@ -183,7 +183,7 @@ func test_station_selection_and_hit_test() -> String:
 func test_run_controller_binding() -> String:
 	var d := DoomsdayClock.new(36000, 0, 0, 0)
 	# 60 ticks per round -> 60 ticks at 1/60s step is 1 round
-	var rc := RunController.new(null, 1, d, 60)
+	var rc := RunController.new(null, 1, d, {}, 60)
 	var m := SolTacticalMap.new(rc)
 
 	if m.current_round != 0:
