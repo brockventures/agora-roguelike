@@ -28,6 +28,8 @@ signal auto_paused(reason: String)
 signal speed_changed(new_speed: int)
 
 const DEFAULT_TICK_DELTA: float = 1.0 / 60.0
+const MIN_TICK_DELTA: float = 1.0 / 240.0
+const MAX_TICK_DELTA: float = 1.0
 const MAX_DELTA_CLAMP: float = 0.25
 const SUSPEND_THRESHOLD: float = 1.0
 const VALID_SPEEDS: Array[int] = [1, 2, 5]
@@ -41,7 +43,10 @@ var auto_paused_reason: String = ""
 var interrupt_hooks: Array[Callable] = []
 
 func _init(p_tick_delta: float = DEFAULT_TICK_DELTA, p_speed: int = 1) -> void:
-	tick_delta = p_tick_delta if p_tick_delta > 0.0 else DEFAULT_TICK_DELTA
+	if not is_finite(p_tick_delta) or p_tick_delta < MIN_TICK_DELTA or p_tick_delta > MAX_TICK_DELTA:
+		tick_delta = DEFAULT_TICK_DELTA
+	else:
+		tick_delta = p_tick_delta
 	set_speed(p_speed)
 
 func set_speed(p_speed: int) -> bool:
@@ -93,8 +98,8 @@ func step(delta: float) -> int:
 	if paused:
 		return 0
 
-	# 2. NaN and non-positive delta guard
-	if is_nan(delta) or delta <= 0.0:
+	# 2. Non-finite or non-positive delta guard (NaN, inf, <= 0.0)
+	if not is_finite(delta) or delta <= 0.0:
 		return 0
 
 	# 3. Suspend/Wake Detection (Evaluated BEFORE lag clamp)
@@ -107,15 +112,11 @@ func step(delta: float) -> int:
 		paused_changed.emit(true)
 		return 0
 
-	# 4. Discard non-finite deltas (e.g. inf) that were not caught
-	if not is_finite(delta):
-		return 0
-
-	# 5. Spiral-of-Death Clamp: Bound delta to 0.25s max to prevent lag cascades
+	# 4. Spiral-of-Death Clamp: Bound delta to 0.25s max to prevent lag cascades
 	var effective_delta: float = minf(delta, MAX_DELTA_CLAMP)
 	accumulator += effective_delta
 
-	# 6. Fixed-step accumulator loop
+	# 5. Fixed-step accumulator loop
 	var ticks_executed: int = 0
 	while accumulator >= tick_delta:
 		accumulator -= tick_delta
@@ -162,7 +163,12 @@ static func from_dict(d: Dictionary) -> SimClock:
 		s
 	)
 	clock.paused = bool(d.get("paused", false))
-	clock.accumulator = clampf(float(d.get("accumulator", 0.0)), 0.0, MAX_DELTA_CLAMP)
+	var raw_acc: float = float(d.get("accumulator", 0.0))
+	if not is_finite(raw_acc) or raw_acc < 0.0:
+		clock.accumulator = 0.0
+	else:
+		# Clamp to [0.0, tick_delta) to guarantee no post-restore tick burst
+		clock.accumulator = minf(raw_acc, maxf(0.0, clock.tick_delta - 0.000001))
 	clock.total_ticks = maxi(0, int(d.get("total_ticks", 0)))
 	clock.auto_paused_reason = str(d.get("auto_paused_reason", ""))
 	return clock

@@ -222,14 +222,27 @@ func test_nan_inf_delta_guards() -> String:
 	if is_nan(clock.accumulator):
 		return "accumulator was poisoned with NaN"
 
+	# Inf delta must be rejected and NOT trigger system_suspend auto-pause
+	var inf_res := clock.step(INF)
+	if inf_res != 0:
+		return "expected 0 ticks on INF delta, got %d" % inf_res
+	if clock.paused:
+		return "INF delta should be discarded as non-finite, not trigger auto-pause"
+	if clock.auto_paused_reason != "":
+		return "INF delta should not set auto_paused_reason, got '%s'" % clock.auto_paused_reason
+
+	var neg_inf_res := clock.step(-INF)
+	if neg_inf_res != 0:
+		return "expected 0 ticks on -INF delta, got %d" % neg_inf_res
+
 	# Negative or zero delta
 	if clock.step(0.0) != 0 or clock.step(-0.5) != 0:
 		return "expected 0 ticks on non-positive delta"
 
-	# Normal delta still works after NaN
+	# Normal delta still works after non-finite inputs
 	var ok_res := clock.step(1.0 / 60.0)
 	if ok_res != 1:
-		return "expected clock to advance normally after rejected NaN"
+		return "expected clock to advance normally after rejected non-finite inputs"
 
 	return "ok"
 
@@ -288,7 +301,7 @@ func test_to_dict_from_dict_roundtrip() -> String:
 	if restored.auto_paused_reason != clock.auto_paused_reason:
 		return "auto_paused_reason mismatch in roundtrip"
 
-	# Test from_dict hardening against corrupted values
+	# Test from_dict hardening against corrupted values (NaN, Inf, oversized accumulator)
 	var corrupt := {
 		"speed": 99,
 		"accumulator": 500.0,
@@ -297,9 +310,69 @@ func test_to_dict_from_dict_roundtrip() -> String:
 	var hardened := SimClock.from_dict(corrupt)
 	if hardened.speed != 1:
 		return "corrupted speed was not sanitized to 1"
-	if hardened.accumulator > 0.25:
-		return "corrupted accumulator was not clamped to 0.25"
+	# Post-restore accumulator must be strictly below tick_delta to prevent resume burst
+	if hardened.accumulator >= hardened.tick_delta:
+		return "corrupted accumulator was not clamped strictly below tick_delta (got %f >= %f)" % [hardened.accumulator, hardened.tick_delta]
 	if hardened.total_ticks < 0:
 		return "corrupted total_ticks was not clamped to >= 0"
 
+	# Test NaN and Inf accumulator in dictionary
+	var nan_dict := {"accumulator": NAN}
+	var nan_clock := SimClock.from_dict(nan_dict)
+	if is_nan(nan_clock.accumulator) or nan_clock.accumulator != 0.0:
+		return "NaN accumulator was not sanitized to 0.0"
+
+	var inf_dict := {"accumulator": INF}
+	var inf_clock := SimClock.from_dict(inf_dict)
+	if not is_finite(inf_clock.accumulator) or inf_clock.accumulator != 0.0:
+		return "INF accumulator was not sanitized to 0.0"
+
+	# Test from_dict hardening against INF and tiny tick_delta (Marvin / Amos review findings)
+	var inf_td_clock := SimClock.from_dict({"tick_delta": INF})
+	if not is_equal_approx(inf_td_clock.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "from_dict with INF tick_delta was not sanitized to DEFAULT_TICK_DELTA, got %f" % inf_td_clock.tick_delta
+
+	var tiny_td_clock := SimClock.from_dict({"tick_delta": 1e-9})
+	if not is_equal_approx(tiny_td_clock.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "from_dict with 1e-9 tick_delta was not sanitized to DEFAULT_TICK_DELTA, got %f" % tiny_td_clock.tick_delta
+
 	return "ok"
+
+func test_tick_delta_bounds_and_sanitation() -> String:
+	# Bounded range [MIN_TICK_DELTA, MAX_TICK_DELTA] = [1/240, 1.0]
+	# Non-finite values and values outside bounds fall back to DEFAULT_TICK_DELTA (1/60).
+	var c_inf := SimClock.new(INF)
+	if not is_equal_approx(c_inf.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected INF tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_inf.tick_delta
+
+	var c_tiny := SimClock.new(1e-9)
+	if not is_equal_approx(c_tiny.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 1e-9 tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_tiny.tick_delta
+
+	var c_nan := SimClock.new(NAN)
+	if not is_equal_approx(c_nan.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected NAN tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_nan.tick_delta
+
+	var c_zero := SimClock.new(0.0)
+	if not is_equal_approx(c_zero.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 0.0 tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_zero.tick_delta
+
+	var c_neg := SimClock.new(-0.05)
+	if not is_equal_approx(c_neg.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected negative tick_delta to fall back to DEFAULT_TICK_DELTA, got %f" % c_neg.tick_delta
+
+	var c_huge := SimClock.new(5.0)
+	if not is_equal_approx(c_huge.tick_delta, SimClock.DEFAULT_TICK_DELTA):
+		return "expected 5.0 tick_delta (> MAX_TICK_DELTA) to fall back to DEFAULT_TICK_DELTA, got %f" % c_huge.tick_delta
+
+	# Valid boundary values must be preserved
+	var c_min := SimClock.new(1.0 / 240.0)
+	if not is_equal_approx(c_min.tick_delta, 1.0 / 240.0):
+		return "expected 1/240 tick_delta to be accepted, got %f" % c_min.tick_delta
+
+	var c_max := SimClock.new(1.0)
+	if not is_equal_approx(c_max.tick_delta, 1.0):
+		return "expected 1.0 tick_delta to be accepted, got %f" % c_max.tick_delta
+
+	return "ok"
+
