@@ -194,6 +194,9 @@ func step_ticks(ticks: int = 1) -> void:
 
 		# 3. Minute boundary for interest compounding
 		if ticks_per_minute > 0:
+			if _ticks_in_minute >= ticks_per_minute:
+				_ticks_in_minute = 0
+				_compounding_base = principal_debt + accrued_interest
 			var ticks_until_boundary := ticks_per_minute - _ticks_in_minute
 			chunk = mini(chunk, ticks_until_boundary)
 
@@ -203,6 +206,7 @@ func step_ticks(ticks: int = 1) -> void:
 			chunk = mini(chunk, ticks_until_stage)
 
 		if chunk <= 0:
+			push_warning("DoomsdayClock.step_ticks: computed non-positive chunk %d, aborting step" % chunk)
 			break
 
 		# Advance countdown (exact integer subtraction)
@@ -363,8 +367,13 @@ static func from_dict(d: Dictionary) -> DoomsdayClock:
 	clock.total_ticks_added_by_tributes = maxi(0, int(d.get("total_ticks_added_by_tributes", 0)))
 	clock._burn_subunits = maxi(0, int(d.get("_burn_subunits", 0)))
 	clock._interest_subunits = maxi(0, int(d.get("_interest_subunits", 0)))
-	clock._ticks_in_minute = maxi(0, int(d.get("_ticks_in_minute", 0)))
-	clock._compounding_base = maxi(0, int(d.get("_compounding_base", clock.principal_debt + clock.accrued_interest)))
+	var ticks_per_min := clock.ticks_per_second * 60
+	if ticks_per_min > 0:
+		clock._ticks_in_minute = posmod(int(d.get("_ticks_in_minute", 0)), ticks_per_min)
+	else:
+		clock._ticks_in_minute = 0
+	var max_base := clock.principal_debt + clock.accrued_interest
+	clock._compounding_base = clampi(int(d.get("_compounding_base", max_base)), 0, max_base)
 	# Recompute stage strictly from ticks_remaining and total_ticks to prevent save-state divergence
 	clock.stage = clock._compute_stage(clock.ticks_remaining, clock.total_ticks)
 	clock.stage_transition_pending_interrupt = bool(d.get("stage_transition_pending_interrupt", false))
