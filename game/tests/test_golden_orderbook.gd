@@ -144,7 +144,9 @@ func test_golden_fixture_coverage() -> String:
 	# _replay_referee_fixture("<name>", ...) for every REFEREE_LEVEL fixture. A later PR
 	# satisfies this branch by adding the calls; it never needs to edit it.
 	if ResourceLoader.exists(REFEREE_SCRIPT):
-		return _require_calls(REFEREE_TEST, "_replay_referee_fixture", REFEREE_LEVEL)
+		var ref_err := _require_calls(REFEREE_TEST, "_replay_referee_fixture", REFEREE_LEVEL)
+		if ref_err != "":
+			return ref_err
 	return "ok"
 
 
