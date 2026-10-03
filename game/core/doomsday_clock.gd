@@ -215,6 +215,6 @@ static func from_dict(d: Dictionary) -> DoomsdayClock:
 	clock.total_burn_accrued = maxf(0.0, float(d.get("total_burn_accrued", 0.0)))
 	clock.total_debt_serviced = maxf(0.0, float(d.get("total_debt_serviced", 0.0)))
 	clock.total_time_added_by_tributes = maxf(0.0, float(d.get("total_time_added_by_tributes", 0.0)))
-	clock.stage = Stage(int(d.get("stage", Stage.NORMAL)))
+	clock.stage = int(d.get("stage", Stage.NORMAL)) as Stage
 	clock.stage_transition_pending_interrupt = bool(d.get("stage_transition_pending_interrupt", false))
 	return clock
