@@ -291,7 +291,8 @@ func chance(
 	stealth_factor: float = 1.0,
 	stealth_tier: int = 0,
 	salvage_surge: bool = false,
-	hot_override: String = ""
+	hot_override: String = "",
+	odds_bps: int = 10000
 ) -> Dictionary:
 	var value: int = int(hold_value) if hold_value != null else cargo_value(commodity, qty)
 	if odds == null or value <= 0:
@@ -335,6 +336,10 @@ func chance(
 
 	p *= armor_factor
 	p *= stealth_factor
+	# Golden Parachutes piracy odds factor (#11): integer bps, 10000 = x1.0,
+	# RunController.piracy_odds_bps(). Skipped at the default so odds are unchanged.
+	if odds_bps != 10000:
+		p *= float(maxi(0, odds_bps)) / 10000.0
 
 	# Belt Salvage Surge: doubles raid odds along Ceres / belt corridors
 	if salvage_surge:
@@ -388,14 +393,15 @@ func roll_departure(
 	salvage_surge: bool = false,
 	sponsor_cr: Variant = null,
 	trace_factor: float = 1.0,
-	hot_override: String = ""
+	hot_override: String = "",
+	odds_bps: int = 10000
 ) -> Variant:
 	if odds == null:
 		return null
 
 	var c := chance(
 		agent, origin, dest, tolled, commodity, qty, escort, round_num,
-		hold_value, false, armor_factor, armor_tier, stealth_factor, stealth_tier, salvage_surge, hot_override
+		hold_value, false, armor_factor, armor_tier, stealth_factor, stealth_tier, salvage_surge, hot_override, odds_bps
 	)
 	var fee: int = escort_fee(commodity, qty) if escort else 0
 	var out: Dictionary = {

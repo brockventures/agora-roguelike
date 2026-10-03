@@ -37,14 +37,14 @@ func test_init_defaults() -> String:
 		return "expected 60 ticks per second, got %d" % clock.ticks_per_second
 	if clock.stage != DoomsdayClock.Stage.NORMAL:
 		return "expected Stage.NORMAL initially, got %d" % clock.stage
-	if clock.principal_debt != 50000:
-		return "expected 50000 principal debt, got %d" % clock.principal_debt
+	if clock.principal_debt != 0 or DoomsdayClock.DEFAULT_DEBT != 0:
+		return "expected no opening debt, got %d" % clock.principal_debt
 	if clock.accrued_burn != 0:
 		return "expected 0 accrued burn, got %d" % clock.accrued_burn
 	if clock.accrued_interest != 0:
 		return "expected 0 accrued interest, got %d" % clock.accrued_interest
-	if clock.get_total_debt() != 50000:
-		return "expected 50000 total debt, got %d" % clock.get_total_debt()
+	if clock.get_total_debt() != 0:
+		return "expected 0 total debt, got %d" % clock.get_total_debt()
 	if clock.base_burn_per_second != 25:
 		return "expected 25 base burn rate, got %d" % clock.base_burn_per_second
 	if clock.interest_rate_bps_per_minute != 300:
@@ -543,4 +543,15 @@ func test_from_dict_corrupted_minute_ticks_does_not_stall_clock() -> String:
 	if uncorrupted.ticks_remaining != 35999:
 		return "expected in-memory corrupted clock to self-heal and step, got %d" % uncorrupted.ticks_remaining
 
+	return "ok"
+
+func test_default_clock_debt_accrues_only_from_burn() -> String:
+	var clock := DoomsdayClock.new()
+	clock.step_ticks(clock.ticks_per_second * 10)
+	if clock.principal_debt != 0:
+		return "principal must stay 0, got %d" % clock.principal_debt
+	if clock.accrued_burn != 10 * clock.base_burn_per_second:
+		return "burn should accrue, got %d" % clock.accrued_burn
+	if clock.get_total_debt() != clock.accrued_burn + clock.accrued_interest:
+		return "total debt must be burn plus interest"
 	return "ok"

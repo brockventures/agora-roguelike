@@ -35,7 +35,7 @@ func test_insolvency_trips_interrupt_and_pauses_on_that_subtick() -> String:
 		return "advance must run zero ticks while pending"
 	return "ok"
 
-func test_file_bankruptcy_resets_run_and_preserves_clock() -> String:
+func test_file_bankruptcy_ends_run_and_carries_over() -> String:
 	var rc := _rc()
 	rc.cr = 123
 	rc.cargo = {"FRAG": 3}
@@ -50,6 +50,11 @@ func test_file_bankruptcy_resets_run_and_preserves_clock() -> String:
 	var report := rc.file_bankruptcy()
 	if report.is_empty() or filed.size() != 1:
 		return "report/signal missing"
+	if rc.is_run_over() or rc.end_reason != "bankruptcy" or rc.corp_number != 2:
+		return "filing must found a new corp, not end the run"
+	var lost: Dictionary = rc.carry_over["lost"]
+	if int(lost["cr"]) != 123 or lost["cargo"] != {"FRAG": 3} or int(lost["debt"]) <= 0:
+		return "lost summary wrong: %s" % str(lost)
 	if rc.cr != Chapter11.FRESH_START_CR or not rc.cargo.is_empty():
 		return "cr/cargo not reset"
 	if rc.ships.size() != 1 or rc.ships[0]["id"] != Chapter11.STARTER_SHIP["id"]:
@@ -62,10 +67,13 @@ func test_file_bankruptcy_resets_run_and_preserves_clock() -> String:
 		return "debt not cleared"
 	if rc.pending_bankruptcy or not rc.sim_clock.paused:
 		return "pending cleared and clock left paused"
-	if rc.run_seed == old_seed or rc.run_seed != int(report["next_seed"]):
-		return "seed not swapped to report next_seed"
+	if rc.run_seed != old_seed or int(report["next_seed"]) != rc.corp_seed():
+		return "world seed must stay; report carries the new corp seed"
 	if int(report["forfeited"]["cr"]) != 123:
 		return "report should record forfeited cr"
+	rc.sim_clock.resume()
+	if rc.advance(0.05) == 0:
+		return "corp must keep running once unpaused"
 	return "ok"
 
 func test_file_when_solvent_and_not_pending_rejected() -> String:
@@ -178,11 +186,12 @@ func test_roundtrip_including_pending() -> String:
 		return "restored fields wrong"
 	if not rc2.sim_clock.paused:
 		return "paused state should restore"
-	# Restored controller is wired: it can file, and a fresh run is live-wired.
+	# Restored controller is wired: it can file, which ends the run; the next
+	# corp is live-wired.
 	if rc2.file_bankruptcy().is_empty():
 		return "restored pending run should file"
-	var rem := rc2.doomsday.ticks_remaining
 	rc2.sim_clock.resume()
+	var rem := rc2.doomsday.ticks_remaining
 	if rc2.advance(0.05) == 0 or rc2.doomsday.ticks_remaining >= rem:
 		return "restored controller must be wired to doomsday stepping"
 	return "ok"

@@ -45,7 +45,7 @@ enum Stage {
 # Baseline defaults (SimClock runs at 60 ticks/second)
 const DEFAULT_TICKS_PER_SECOND: int = 60
 const DEFAULT_TOTAL_TICKS: int = 36000          # 600s (10 min) at 60 tps
-const DEFAULT_DEBT: int = 50000                 # 50,000 CR opening debt obligation
+const DEFAULT_DEBT: int = 0                     # no opening debt: debt accrues only from burn and interest
 const DEFAULT_BASE_BURN_PER_SECOND: int = 25    # 25 CR/sec baseline upkeep burn
 const DEFAULT_INTEREST_RATE_BPS_PER_MINUTE: int = 300 # 300 bps (3.0%/min) compounding interest
 

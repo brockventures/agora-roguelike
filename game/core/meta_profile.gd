@@ -14,6 +14,8 @@ var contracts: Array[String] = []
 var bankruptcies_filed: int = 0
 ## Golden Parachutes currency (#11), banked when a run ends, spent on perks.
 var severance_points: int = 0
+## Runs (corps) finished under this profile, bumped when a corp ends.
+var runs_completed: int = 0
 
 func add_patent(id: String) -> bool:
 	return _add(patents, id)
@@ -47,6 +49,7 @@ func to_dict() -> Dictionary:
 		"contracts": contracts.duplicate(),
 		"bankruptcies_filed": bankruptcies_filed,
 		"severance_points": severance_points,
+		"runs_completed": runs_completed,
 	}
 
 static func from_dict(d: Dictionary) -> MetaProfile:
@@ -58,6 +61,8 @@ static func from_dict(d: Dictionary) -> MetaProfile:
 	p.bankruptcies_filed = maxi(0, int(raw)) if (raw is int or raw is float) else 0
 	var sp = d.get("severance_points", 0)
 	p.severance_points = maxi(0, int(sp)) if (sp is int or sp is float) else 0
+	var rc = d.get("runs_completed", 0)
+	p.runs_completed = maxi(0, int(rc)) if (rc is int or rc is float) else 0
 	return p
 
 static func _sanitise_ids(raw) -> Array[String]:

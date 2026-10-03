@@ -21,20 +21,21 @@ func _shipped() -> Parachutes:
 
 # --- shipped data ---
 
-func test_shipped_tree_is_valid_placeholder_content() -> String:
+func test_shipped_tree_is_valid_agreed_content() -> String:
 	var t := _shipped()
 	var errs := t.validate()
 	if not errs.is_empty():
 		return "shipped tree invalid: %s" % str(errs)
-	if t.perks.size() != 6:
-		return "expected 6 perks, got %d" % t.perks.size()
+	if t.perks.size() != 8:
+		return "expected 8 perks, got %d" % t.perks.size()
 	var has_edge := false
 	for id in t.perks:
 		var p: Dictionary = t.perks[id]
-		if not bool(p["placeholder"]):
-			return "%s not marked placeholder" % id
-		if int(p["tier"]) < 1 or int(p["tier"]) > 2:
-			return "%s tier out of 1-2" % id
+		if bool(p["placeholder"]):
+			return "%s still marked placeholder" % id
+		var tier := int(p["tier"])
+		if tier < 1 or tier > 3 or int(p["cost"]) != [0, 100, 250, 500][tier]:
+			return "%s tier/cost off the 100/250/500 ladder" % id
 		if not (p["requires"] as Array).is_empty():
 			has_edge = true
 	if not has_edge:
@@ -110,24 +111,24 @@ func test_buy_deducts_points_and_unlocks() -> String:
 	var r := t.buy(p, "seed_capital")
 	if not bool(r["ok"]):
 		return "buy failed: %s" % str(r)
-	if p.severance_points != 300 or not p.has_unlock("seed_capital"):
+	if p.severance_points != 400 or not p.has_unlock("seed_capital"):
 		return "bad state after buy: %d points" % p.severance_points
 	return "ok"
 
 func test_buy_enforces_cost() -> String:
 	var t := _shipped()
-	var p := _profile(199)
+	var p := _profile(99)
 	var r := t.buy(p, "seed_capital")
 	if bool(r["ok"]) or not (r["reasons"] as Array).has("insufficient_points"):
 		return "should reject for points: %s" % str(r)
-	if p.severance_points != 199 or p.has_unlock("seed_capital"):
+	if p.severance_points != 99 or p.has_unlock("seed_capital"):
 		return "rejected buy must not change profile"
 	return "ok"
 
 func test_buy_enforces_requires() -> String:
 	var t := _shipped()
 	var p := _profile(10000)
-	var r := t.buy(p, "golden_handshake")
+	var r := t.buy(p, "asset_protection")
 	if bool(r["ok"]):
 		return "should require seed_capital"
 	if not str((r["reasons"] as Array)[0]).begins_with("missing_requires:seed_capital"):
@@ -135,7 +136,7 @@ func test_buy_enforces_requires() -> String:
 	if p.severance_points != 10000:
 		return "rejected buy must not deduct"
 	t.buy(p, "seed_capital")
-	if not bool(t.buy(p, "golden_handshake")["ok"]):
+	if not bool(t.buy(p, "asset_protection")["ok"]):
 		return "should succeed once requirement owned"
 	return "ok"
 
@@ -258,9 +259,9 @@ func test_seed_capital_changes_starting_cr() -> String:
 		return "no-perk run must be unchanged"
 	return "ok"
 
-func test_regulator_contact_lowers_doomsday_interest() -> String:
+func test_corrupt_regulator_lowers_doomsday_interest() -> String:
 	var t := _shipped()
-	var p := _owned(["regulator_contact"])
+	var p := _owned(["corrupt_regulator"])
 	var rc := RunController.new(p, 1, null, t.modifiers(p))
 	if rc.doomsday.interest_rate_bps_per_minute != DoomsdayClock.DEFAULT_INTEREST_RATE_BPS_PER_MINUTE - 50:
 		return "interest bps %d" % rc.doomsday.interest_rate_bps_per_minute
@@ -277,10 +278,10 @@ func test_burn_rate_modifier_applies() -> String:
 		return "burn %d" % rc.doomsday.base_burn_per_second
 	return "ok"
 
-func test_golden_handshake_sets_fresh_start_cr() -> String:
-	var t := _shipped()
-	var p := _owned(["seed_capital", "golden_handshake"])
-	var rc := RunController.new(p, 1, DoomsdayClock.new(36000, 1000000, 0, 0), t.modifiers(p))
+func test_fresh_start_cr_stat_applies_on_filing() -> String:
+	# No shipped perk uses fresh_start_cr any more; the stat stays supported.
+	var mods := {"fresh_start_cr": {"add": 2000, "mul_bps": 10000}}
+	var rc := RunController.new(null, 1, DoomsdayClock.new(36000, 1000000, 0, 0), mods)
 	rc.cr = 0
 	var report := rc.file_bankruptcy()
 	if report.is_empty():
@@ -305,7 +306,7 @@ func test_asset_protection_raises_haircut() -> String:
 
 func test_pending_modifiers_are_exposed_not_applied() -> String:
 	var t := _shipped()
-	var p := _owned(["fuel_hedge", "regulator_contact", "black_market_lanes"])
+	var p := _owned(["fuel_hedge", "corrupt_regulator", "black_market_corridors"])
 	var rc := RunController.new(p, 1, null, t.modifiers(p))
 	if rc.modifiers["fuel_discount_bps"]["add"] != 1000 or rc.modifiers["piracy_odds_bps"]["mul_bps"] != 8000:
 		return "pending modifiers should be exposed on the controller"
@@ -313,7 +314,7 @@ func test_pending_modifiers_are_exposed_not_applied() -> String:
 
 func test_controller_roundtrip_keeps_modifiers() -> String:
 	var t := _shipped()
-	var p := _owned(["regulator_contact", "seed_capital", "golden_handshake"])
+	var p := _owned(["corrupt_regulator", "seed_capital", "asset_protection"])
 	var rc := RunController.new(p, 1, null, t.modifiers(p))
 	var rc2 := RunController.from_dict(rc.to_dict())
 	if rc2.modifiers != rc.modifiers:
@@ -325,4 +326,62 @@ func test_controller_roundtrip_keeps_modifiers() -> String:
 		return "re-apply after load stacked"
 	if RunController._sanitise_modifiers({"bogus": {"add": 1}, "starting_cr": "x"}) != {}:
 		return "bad modifiers not dropped"
+	return "ok"
+
+# --- agreed tree: requires_any, enabled, grace stat ---
+
+func test_disabled_perk_cannot_be_bought_and_adds_nothing() -> String:
+	var t := _tree([
+		_perk("a", 10, [], []),
+		{"id": "off", "name": "off", "tier": 3, "cost": 10, "requires": [], "enabled": false,
+			"effects": [_fx("burn_rate", "add", -5)]},
+	])
+	if not t.validate().is_empty():
+		return "disabled perk must validate: %s" % str(t.validate())
+	var p := _profile(1000)
+	var r := t.buy(p, "off")
+	if bool(r["ok"]) or not (r["reasons"] as Array).has("disabled"):
+		return "disabled perk bought: %s" % str(r)
+	if p.severance_points != 1000 or p.has_unlock("off"):
+		return "rejected buy changed profile"
+	p.add_unlock("off")  # even a forced unlock contributes nothing
+	if not t.modifiers(p).is_empty():
+		return "disabled perk leaked a modifier"
+	var shipped := _shipped()
+	if bool(shipped.can_buy(_profile(10000), "hostile_buyout_line")["ok"]):
+		return "hostile_buyout_line must be disabled"
+	return "ok"
+
+func test_requires_any_is_or_and_validated() -> String:
+	var t := _tree([_perk("x"), _perk("y"), {"id": "z", "name": "z", "tier": 3, "cost": 1, "requires": [], "requires_any": ["x", "y"], "effects": []}])
+	var p := _profile(100)
+	var r := t.can_buy(p, "z")
+	if bool(r["ok"]) or not str((r["reasons"] as Array)[0]).begins_with("missing_requires_any:x,y"):
+		return "should need one of x,y: %s" % str(r)
+	p.add_unlock("y")
+	if not bool(t.can_buy(p, "z")["ok"]):
+		return "one of the any-list should suffice"
+	var bad := _tree([{"id": "q", "name": "q", "tier": 1, "cost": 1, "requires": [], "requires_any": ["ghost"], "effects": []}])
+	if not _has_error(bad.validate(), "unknown requires_any id ghost"):
+		return "unknown requires_any not caught"
+	var cyc := _tree([
+		{"id": "a", "name": "a", "tier": 1, "cost": 1, "requires": [], "requires_any": ["b"], "effects": []},
+		{"id": "b", "name": "b", "tier": 1, "cost": 1, "requires": ["a"], "effects": []}])
+	if not _has_error(cyc.validate(), "requires cycle"):
+		return "requires_any cycle not caught"
+	var sh := _shipped()
+	var p2 := _profile(10000)
+	if bool(sh.can_buy(p2, "corporate_shielding")["ok"]):
+		return "tier 3 needs a tier 2"
+	p2.add_unlock("seed_capital")
+	p2.add_unlock("asset_protection")
+	if not bool(sh.can_buy(p2, "corporate_shielding")["ok"]):
+		return "any tier 2 should unlock corporate_shielding"
+	return "ok"
+
+func test_agreed_perks_fold_expected_modifiers() -> String:
+	var t := _shipped()
+	var m := t.modifiers(_owned(["deferred_audit", "corporate_shielding", "fuel_hedge"]))
+	if m["bankruptcy_grace_ticks"]["add"] != 1800 or m["burn_rate"]["mul_bps"] != 8500 or m["fuel_discount_bps"]["add"] != 1000:
+		return "unexpected modifiers %s" % str(m)
 	return "ok"
