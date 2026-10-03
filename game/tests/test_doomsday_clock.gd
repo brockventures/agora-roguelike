@@ -474,3 +474,47 @@ func test_compounding_excludes_upkeep_burn() -> String:
 		return "total debt should be 13500 (10000 + 3000 + 500), got %d" % clock.get_total_debt()
 
 	return "ok"
+
+func test_from_dict_corrupted_minute_ticks_does_not_stall_clock() -> String:
+	# Hardening against corrupted save files (Marvin review finding)
+	var clock := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	var d := clock.to_dict()
+
+	# 1. Corrupt _ticks_in_minute to equal or exceed ticks_per_minute (3600 at 60 tps)
+	d["_ticks_in_minute"] = 3600
+	d["_compounding_base"] = 999999999 # Inflated compounding base
+
+	var restored := DoomsdayClock.from_dict(d)
+	if restored._ticks_in_minute != 0:
+		return "expected _ticks_in_minute=3600 to wrap to 0, got %d" % restored._ticks_in_minute
+	if restored._compounding_base != 50000:
+		return "expected inflated _compounding_base to clamp to 50000, got %d" % restored._compounding_base
+
+	# Assert step_ticks(1) decrements ticks_remaining and does not stall
+	restored.step_ticks(1)
+	if restored.ticks_remaining != 35999:
+		return "expected ticks_remaining=35999 after step_ticks(1), got %d (clock stalled!)" % restored.ticks_remaining
+
+	# 2. Corrupt _ticks_in_minute to 7205 (2 minutes + 5 ticks)
+	d["_ticks_in_minute"] = 7205
+	d["_compounding_base"] = -500 # Negative compounding base
+	var restored2 := DoomsdayClock.from_dict(d)
+	if restored2._ticks_in_minute != 5:
+		return "expected _ticks_in_minute=7205 to wrap to 5, got %d" % restored2._ticks_in_minute
+	if restored2._compounding_base != 0:
+		return "expected negative _compounding_base to clamp to 0, got %d" % restored2._compounding_base
+
+	restored2.step_ticks(1)
+	if restored2.ticks_remaining != 35999:
+		return "expected ticks_remaining=35999 after step_ticks(1), got %d" % restored2.ticks_remaining
+	if restored2._ticks_in_minute != 6:
+		return "expected _ticks_in_minute=6 after 1 tick, got %d" % restored2._ticks_in_minute
+
+	# 3. Direct in-memory corruption of _ticks_in_minute >= ticks_per_minute
+	var uncorrupted := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	uncorrupted._ticks_in_minute = 3600
+	uncorrupted.step_ticks(1)
+	if uncorrupted.ticks_remaining != 35999:
+		return "expected in-memory corrupted clock to self-heal and step, got %d" % uncorrupted.ticks_remaining
+
+	return "ok"
