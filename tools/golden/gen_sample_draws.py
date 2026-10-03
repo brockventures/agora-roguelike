@@ -1,4 +1,8 @@
-"""Generate game/tests/golden/draws/sample.json (shared Python/GDScript fixture)."""
+"""Generate game/tests/golden/draws/sample.json (shared Python/GDScript fixture).
+
+Usage: python3 tools/golden/gen_sample_draws.py [out_dir]
+Default out_dir: game/tests/golden/draws
+"""
 import pathlib
 import sys
 
@@ -8,7 +12,9 @@ from record_draws import RecordingRandom  # noqa: E402
 OUT = pathlib.Path(__file__).resolve().parents[2] / "game/tests/golden/draws/sample.json"
 
 
-def main():
+def main(out_dir=None):
+    out = pathlib.Path(out_dir) / "sample.json" if out_dir else OUT
+    out.parent.mkdir(parents=True, exist_ok=True)
     r = RecordingRandom("bag-test-1")
     r.randint(1, 6)
     r.random()
@@ -18,9 +24,9 @@ def main():
     r.gauss(0.0, 1.0)
     r.shuffle([10, 20, 30, 40, 50])
     r.randint(1, 100)
-    r.dump(OUT)
-    print(f"wrote {len(r.draws)} draws to {OUT}")
+    r.dump(out)
+    print(f"wrote {len(r.draws)} draws to {out}")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else None)
