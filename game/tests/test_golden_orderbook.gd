@@ -1,11 +1,8 @@
 extends RefCounted
 ## Order-book golden fixtures (#5, checklist 5a): shape checks.
 ##
-## PENDING (parity half): once res://core/order_book.gd exists (#3), add a test
-## that replays each fixture's step inputs through the GDScript OrderBook and
-## asserts the fills, book snapshot and balances match the recorded referee
-## output. That test must skip, not fail, while the engine file is absent so CI
-## stays green until #3 lands.
+## Parity coverage (#3): test_golden_fixture_coverage fails when a fixture is
+## unclassified or a BOOK_LEVEL fixture is not replayed in test_order_book.gd.
 
 const Loader = preload("res://tests/golden/golden_loader.gd")
 
@@ -21,6 +18,29 @@ const EXPECTED_CASES := [
 	"reject_unfunded_ask",
 	"reject_insufficient_cr_bid",
 ]
+
+## Fixtures replayed at the order-book level by test_order_book.gd.
+const BOOK_LEVEL := [
+	"cancel_resting",
+	"partial_fill_remainder",
+	"price_time_priority",
+	"rest_no_cross",
+	"self_cross",
+	"sweep_multi_level",
+	"two_ship_settlement",  # only the steps that need no funding check (steps 0-1)
+]
+
+## Fixtures with steps that need referee funding checks (reject_unfunded_ask,
+## reject_insufficient_cr_bid). two_ship_settlement is listed here too: its
+## funding-reject step needs the referee, so the order book alone cannot replay it.
+const REFEREE_LEVEL := [
+	"reject_unfunded_ask",
+	"reject_insufficient_cr_bid",
+	"two_ship_settlement",
+]
+
+const BOOK_TEST := "res://tests/test_order_book.gd"
+const REFEREE_SCRIPT := "res://core/referee.gd"
 
 
 func test_fixtures_present() -> String:
@@ -99,13 +119,35 @@ func test_validator_rejects_malformed() -> String:
 	return "ok"
 
 
-func test_parity_with_core_order_book_pending() -> String:
-	if not ResourceLoader.exists("res://core/order_book.gd"):
-		return "ok"  # PENDING until #3 adds core/order_book.gd; not a failure.
-	var script = load("res://core/order_book.gd")
-	var ob = script.new()
-	if not ob.has_method("remove_order"):
-		# Matching engine ported (PR 3 of #3); cancellation lands in PR 4 and full parity harness in PR 5.
-		return "ok"
-	# OrderBook cancellation ported (PR 4 of #3); PR 5 wires full parity harness across all golden fixtures.
+func test_golden_fixture_coverage() -> String:
+	# Every fixture file must be classified, every listed name must exist on disk.
+	var on_disk: Array = []
+	for p in Loader.list_fixtures():
+		on_disk.append(p.get_file().get_basename())
+	var listed: Array = BOOK_LEVEL + REFEREE_LEVEL
+	for f in on_disk:
+		if not listed.has(f):
+			return "fixture '%s' is in neither BOOK_LEVEL nor REFEREE_LEVEL; classify it and add a replay" % f
+	for n in listed:
+		if not on_disk.has(n):
+			return "listed fixture '%s' has no .json under %s" % [n, Loader.ORDERBOOK_DIR]
+	# Book-level: test_order_book.gd must actually replay each fixture. Match the call
+	# form _replay_golden_fixture("<name>" followed by "," or ")", so a bare string
+	# mention (comment, fixture path, unrelated array) does not count. Leading
+	# whitespace is allowed inside the parens; commented-out calls are rejected below.
+	var f := FileAccess.open(BOOK_TEST, FileAccess.READ)
+	if f == null:
+		return "cannot read %s" % BOOK_TEST
+	var code_lines: Array = []
+	for line in f.get_as_text().split("\n"):
+		if not line.strip_edges().begins_with("#"):
+			code_lines.append(line)
+	var code := "\n".join(code_lines)
+	for n in BOOK_LEVEL:
+		var re := RegEx.create_from_string('_replay_golden_fixture\\(\\s*"%s"\\s*[,)]' % n)
+		if re.search(code) == null:
+			return "BOOK_LEVEL fixture '%s' has no _replay_golden_fixture(\"%s\"...) call in %s" % [n, n, BOOK_TEST]
+	# Referee-level: nothing to replay against until the referee port exists.
+	if ResourceLoader.exists(REFEREE_SCRIPT):
+		return "%s now exists: add the referee-level replay for %s in that PR, then drop this guard branch" % [REFEREE_SCRIPT, REFEREE_LEVEL]
 	return "ok"
