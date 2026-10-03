@@ -1,6 +1,32 @@
 extends RefCounted
 ## Tests for Sol System Doomsday Clock & Debt Burn Engine (PR 1 of #9).
 
+func test_clear_debt_wipes_buckets_but_not_countdown() -> String:
+	var clock := DoomsdayClock.new(36000, 50000, 25, 300, 60)
+	clock.step_ticks(7000)
+	if clock.get_total_debt() <= 50000:
+		return "precondition: debt should have accrued"
+	var ticks := clock.ticks_remaining
+	var stage := clock.stage
+	var burned := clock.total_burn_accrued
+	clock.clear_debt()
+	if clock.principal_debt != 0 or clock.accrued_interest != 0 or clock.accrued_burn != 0:
+		return "debt buckets not zeroed"
+	if clock.get_total_debt() != 0 or clock.get_compounding_debt_base() != 0:
+		return "total debt / compounding base not zeroed"
+	if clock.ticks_remaining != ticks or clock.stage != stage:
+		return "clear_debt must not touch ticks_remaining or stage"
+	if clock.total_burn_accrued != burned:
+		return "lifetime totals must be preserved"
+	var d := clock.to_dict()
+	if d["_burn_subunits"] != 0 or d["_interest_subunits"] != 0:
+		return "remainders not zeroed"
+	# Interest must not resurrect debt from a zero base.
+	clock.step_ticks(600)
+	if clock.accrued_interest != 0 or clock.principal_debt != 0:
+		return "interest accrued on cleared base"
+	return "ok"
+
 func test_init_defaults() -> String:
 	var clock := DoomsdayClock.new()
 	if clock.total_ticks != 36000:

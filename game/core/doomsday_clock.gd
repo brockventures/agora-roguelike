@@ -305,6 +305,18 @@ func service_debt(amount: int) -> int:
 	debt_serviced.emit(paid, get_total_debt())
 	return paid
 
+## Wipe every debt bucket (Chapter 11 filing, #10). Zeroes principal, accrued
+## interest, accrued burn, the sub-credit remainders and the compounding base.
+## Deliberately leaves ticks_remaining, stage and the lifetime totals untouched:
+## bankruptcy cleans the balance sheet, it does not buy time.
+func clear_debt() -> void:
+	principal_debt = 0
+	accrued_interest = 0
+	accrued_burn = 0
+	_burn_subunits = 0
+	_interest_subunits = 0
+	_compounding_base = 0
+
 ## Pay stabilization tribute in credits, extending countdown by discrete ticks.
 ## Default conversion: 3 ticks per credit (at 60 tps, 3 ticks = 0.05 seconds/CR).
 ## Returns the exact count of ticks added.
