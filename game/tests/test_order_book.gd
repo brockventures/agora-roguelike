@@ -166,10 +166,10 @@ func _replay_golden_fixture(fixture_name: String, max_steps: int = -1) -> String
 					return "%s step %d fill %d: expected price %d, got %d" % [fixture_name, step_idx, fill_idx, ef["price"], at.price]
 				if at.qty != int(ef["qty"]):
 					return "%s step %d fill %d: expected qty %d, got %d" % [fixture_name, step_idx, fill_idx, ef["qty"], at.qty]
-				if ef.has("buyer_vessel") and at.buyer_acct != str(ef["buyer_vessel"]):
-					return "%s step %d fill %d: expected buyer_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef["buyer_vessel"], at.buyer_acct]
-				if ef.has("seller_vessel") and at.seller_acct != str(ef["seller_vessel"]):
-					return "%s step %d fill %d: expected seller_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef["seller_vessel"], at.seller_acct]
+				if not ef.has("buyer_vessel") or at.buyer_acct != str(ef["buyer_vessel"]):
+					return "%s step %d fill %d: expected buyer_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef.get("buyer_vessel", "<missing>"), at.buyer_acct]
+				if not ef.has("seller_vessel") or at.seller_acct != str(ef["seller_vessel"]):
+					return "%s step %d fill %d: expected seller_acct %s, got %s" % [fixture_name, step_idx, fill_idx, ef.get("seller_vessel", "<missing>"), at.seller_acct]
 		else:
 			# Cancel step
 			var removed = ob.remove_order(str(step_input["order_id"]), str(step_input["agent_id"]))
@@ -208,8 +208,8 @@ func test_golden_replay_cancel_resting() -> String:
 	return _replay_golden_fixture("cancel_resting")
 
 func test_golden_replay_two_ship_settlement_a1_m1() -> String:
-	# Replays steps 0 (a1 from amos/2) and 1 (m1 from marvin/1), asserting fill vessels
-	return _replay_golden_fixture("two_ship_settlement", 2)
+	# Replays all book-level steps 0-3 (a1, m1, z1, a2), asserting fill vessels, response seq, and price-time priority
+	return _replay_golden_fixture("two_ship_settlement", 4)
 
 func test_add_order_no_cross_rests_on_book() -> String:
 	var ob = OrderBook.new("ORE")
@@ -416,4 +416,41 @@ func test_remove_order_wrong_agent_or_nonexistent() -> String:
 	var res_missing = ob.remove_order("missing", "agent-a")
 	if res_missing != null:
 		return "expected null on missing order"
+	return "ok"
+
+func test_order_book_empty_state_and_depth() -> String:
+	var ob = OrderBook.new("FUEL")
+	if ob.best_bid() != null:
+		return "expected null best_bid on empty book"
+	if ob.best_ask() != null:
+		return "expected null best_ask on empty book"
+	if ob.depth() != [0, 0]:
+		return "expected [0, 0] depth on empty book"
+	var d = ob.to_dict()
+	if d["instrument"] != "FUEL" or not d["bids"].is_empty() or not d["asks"].is_empty():
+		return "expected empty bids and asks in to_dict on empty book"
+	return "ok"
+
+func test_remove_order_preserves_depth_and_sort_order() -> String:
+	var ob = OrderBook.new("FRAG")
+	var b1 = Order.new("b-1", "m", "FRAG", "bid", 10, 20, 1)
+	var b2 = Order.new("b-2", "m", "FRAG", "bid", 15, 18, 2)
+	var b3 = Order.new("b-3", "m", "FRAG", "bid", 5, 16, 3)
+	ob.insert_order(b1)
+	ob.insert_order(b2)
+	ob.insert_order(b3)
+
+	if ob.depth()[0] != 30:
+		return "expected initial bid depth 30 (10+15+5), got %d" % ob.depth()[0]
+
+	# Remove middle order b-2 (qty 15 @ 18)
+	var removed = ob.remove_order("b-2", "m")
+	if removed != b2:
+		return "expected removed order to be b-2"
+	if ob.bids.size() != 2:
+		return "expected 2 resting bids after middle removal"
+	if ob.bids[0].order_id != "b-1" or ob.bids[1].order_id != "b-3":
+		return "expected bids [b-1, b-3] in descending order"
+	if ob.depth()[0] != 15:
+		return "expected remaining bid depth 15 (10+5), got %d" % ob.depth()[0]
 	return "ok"
