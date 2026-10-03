@@ -37,6 +37,7 @@ var tactical_map: SolTacticalMap = null
 var trading_overlay: TradingOverlay = null
 var gamepad_focus: GamepadFocus = null
 var vector_orrery: VectorOrrery = null
+var tactile_audio: TactileAudio = null
 
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
@@ -65,6 +66,7 @@ func _init(p_controller: RunController = null, p_station: String = "earth", p_co
 	trading_overlay.set_commodity(active_commodity)
 	gamepad_focus = GamepadFocus.new(self)
 	vector_orrery = VectorOrrery.new(tactical_map, p_controller)
+	tactile_audio = TactileAudio.new()
 
 	# Seed baseline GalNet headlines
 	_seed_default_headlines()
@@ -251,6 +253,8 @@ func set_station(p_station: String) -> bool:
 		tactical_map.select_station(s)
 	if trading_overlay != null:
 		trading_overlay.set_station(s)
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.TAB_SWOOSH)
 	station_changed.emit(active_station)
 	return true
 
@@ -274,6 +278,8 @@ func set_commodity(p_commodity: String) -> bool:
 	active_commodity = norm
 	if trading_overlay != null:
 		trading_overlay.set_commodity(norm)
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.NAV_TICK)
 	commodity_changed.emit(active_commodity)
 	return true
 
@@ -294,6 +300,8 @@ func toggle_trading_overlay() -> bool:
 	if trading_overlay == null:
 		return false
 	var res: bool = trading_overlay.toggle_overlay(active_station)
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.MODAL_OPEN if res else TactileAudio.MODAL_CLOSE)
 	trading_overlay_toggled.emit(res)
 	return res
 
@@ -302,12 +310,16 @@ func open_trading_overlay() -> bool:
 		return false
 	var ok: bool = trading_overlay.open_overlay(active_station)
 	if ok:
+		if tactile_audio != null:
+			tactile_audio.play_sfx(TactileAudio.MODAL_OPEN)
 		trading_overlay_toggled.emit(true)
 	return ok
 
 func close_trading_overlay() -> void:
 	if trading_overlay != null:
 		trading_overlay.close_overlay()
+		if tactile_audio != null:
+			tactile_audio.play_sfx(TactileAudio.MODAL_CLOSE)
 		trading_overlay_toggled.emit(false)
 
 func is_trading_overlay_open() -> bool:
@@ -349,6 +361,14 @@ func post_headline(text: String, category: String = "MARKET", severity: String =
 	galnet_headlines.push_front(item)
 	if galnet_headlines.size() > 20:
 		galnet_headlines.pop_back()
+	if tactile_audio != null:
+		var sev_up: String = severity.to_upper()
+		if sev_up == "CRITICAL":
+			tactile_audio.play_sfx(TactileAudio.ALARM_CRITICAL)
+		elif sev_up == "WARNING":
+			tactile_audio.play_sfx(TactileAudio.ALARM_WARNING)
+		else:
+			tactile_audio.play_sfx(TactileAudio.TICKER_BLIP)
 	headline_emitted.emit(item)
 	return item
 
@@ -382,6 +402,8 @@ func _seed_default_headlines() -> void:
 func _on_controller_round_advanced(r: int) -> void:
 	if r % 4 == 0:
 		post_headline("QUARTERLY REFINANCING: Central bank debt tranche rolled at current interest rate.", "DEBT", "INFO")
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
 
 func _on_controller_bankruptcy_pending(assessment: Dictionary) -> void:
 	var shortfall: int = int(assessment.get("shortfall", 0))
@@ -393,9 +415,13 @@ func _on_controller_bankruptcy_pending(assessment: Dictionary) -> void:
 func _on_controller_stage_changed(_old_stage: int, new_stage: int) -> void:
 	var st_name: String = _stage_to_name(new_stage)
 	post_headline("SOL EMERGENCY LEVEL ESCALATION: Run stage advanced to %s" % st_name, "SECURITY", "WARNING")
+	if tactile_audio != null:
+		tactile_audio.update_doomsday_stage(new_stage)
 
 func _on_controller_collapsed() -> void:
 	post_headline("SOVEREIGN DEFAULT: Sol System asset seizure initiated. Run collapsed.", "COLLAPSE", "CRITICAL")
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.ALARM_CRITICAL, 0.7)
 	emergency_alert.emit("COLLAPSE")
 
 func _on_sim_clock_paused(_paused: bool) -> void:
@@ -463,5 +489,6 @@ func to_dict() -> Dictionary:
 		"trading_overlay": trading_overlay.to_dict() if trading_overlay != null else {},
 		"gamepad_focus": gamepad_focus.to_dict() if gamepad_focus != null else {},
 		"vector_orrery": vector_orrery.to_dict() if vector_orrery != null else {},
-		"crt_preset": vector_orrery.current_preset if vector_orrery != null else ""
+		"crt_preset": vector_orrery.current_preset if vector_orrery != null else "",
+		"tactile_audio": tactile_audio.to_dict() if tactile_audio != null else {}
 	}
