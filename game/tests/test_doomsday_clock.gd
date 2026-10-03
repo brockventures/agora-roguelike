@@ -328,3 +328,80 @@ func test_serialization_roundtrip_and_stage_recomputation() -> String:
 		return "interest_rate_bps_per_minute mismatch"
 
 	return "ok"
+
+func test_compounding_interest_exponential_curve() -> String:
+	# Principal: 10,000 CR, 500 bps (5%/min), 0 burn, 60 tps
+	var clock := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+	if clock.get_compounding_debt_base() != 10000:
+		return "expected initial compounding debt base 10000, got %d" % clock.get_compounding_debt_base()
+
+	# Step 5 consecutive 1-minute intervals (3600 ticks each)
+	var expected_minute_interest := [500, 525, 551, 579, 607]
+	var expected_total_interest := [500, 1025, 1576, 2155, 2762]
+
+	for m in range(5):
+		var interest_before := clock.accrued_interest
+		clock.step_ticks(3600)
+		var delta_interest := clock.accrued_interest - interest_before
+		if delta_interest != expected_minute_interest[m]:
+			return "minute %d: expected delta interest %d, got %d" % [m + 1, expected_minute_interest[m], delta_interest]
+		if clock.accrued_interest != expected_total_interest[m]:
+			return "minute %d: expected total interest %d, got %d" % [m + 1, expected_total_interest[m], clock.accrued_interest]
+
+	# Simple interest over 5 minutes would be exactly 5 * 500 = 2500 CR
+	# Compounding yields 2762 CR (+262 CR delta from exponential snowball)
+	if clock.accrued_interest <= 2500:
+		return "expected compounding interest to exceed simple interest (2500), got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 12762:
+		return "expected compounding base 12762 (10000 + 2762), got %d" % clock.get_compounding_debt_base()
+
+	return "ok"
+
+func test_debt_service_reduces_compounding_base() -> String:
+	# Principal: 10,000 CR, 500 bps (5%/min), 0 burn, 60 tps
+	var clock := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+
+	# 1 minute -> +500 CR interest (base becomes 10500)
+	clock.step_ticks(3600)
+	if clock.accrued_interest != 500:
+		return "expected 500 accrued interest after min 1, got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10500:
+		return "expected base 10500, got %d" % clock.get_compounding_debt_base()
+
+	# Service debt: pay 300 CR towards interest -> accrued interest drops to 200, base becomes 10200
+	var paid := clock.service_debt(300)
+	if paid != 300:
+		return "expected 300 paid, got %d" % paid
+	if clock.accrued_interest != 200:
+		return "expected 200 remaining interest, got %d" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10200:
+		return "expected compounding base 10200 after service, got %d" % clock.get_compounding_debt_base()
+
+	# Advance 2nd minute: interest should be 10200 * 0.05 = 510 CR (instead of 525 CR without payment)
+	var interest_before := clock.accrued_interest
+	clock.step_ticks(3600)
+	var min2_interest := clock.accrued_interest - interest_before
+	if min2_interest != 510:
+		return "expected 510 interest in min 2 after debt service, got %d" % min2_interest
+
+	return "ok"
+
+func test_compounding_excludes_upkeep_burn() -> String:
+	# Principal: 10,000 CR, 500 bps interest, 50 CR/s base burn
+	var clock := DoomsdayClock.new(36000, 10000, 50, 500, 60)
+
+	# Advance 1 minute (3600 ticks):
+	# Burn: 50 CR/s * 60s = 3000 CR accrued burn
+	# Interest: 10000 * 0.05 = 500 CR interest (strictly on principal + accrued interest, excluding burn)
+	clock.step_ticks(3600)
+
+	if clock.accrued_burn != 3000:
+		return "expected 3000 accrued burn, got %d" % clock.accrued_burn
+	if clock.accrued_interest != 500:
+		return "expected 500 interest, got %d (if burn were included it would be 650)" % clock.accrued_interest
+	if clock.get_compounding_debt_base() != 10500:
+		return "compounding base should be 10500 (10000 principal + 500 interest), got %d" % clock.get_compounding_debt_base()
+	if clock.get_total_debt() != 13500:
+		return "total debt should be 13500 (10000 + 3000 + 500), got %d" % clock.get_total_debt()
+
+	return "ok"

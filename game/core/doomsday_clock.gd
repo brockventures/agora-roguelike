@@ -14,7 +14,9 @@ extends RefCounted
 ##    explicit integer remainder accumulators to ensure zero ledger drift over millions of ticks.
 ## 3. Disjoint Debt & Burn Buckets:
 ##    Accrued operational burn and compounding loan interest are held in separate buckets.
-##    Interest compounds strictly against principal debt (not on burn).
+##    Interest compounds strictly against the compounding debt base: (principal_debt + accrued_interest).
+##    Operational upkeep burn is strictly excluded from interest calculation (the syndicate cannot
+##    charge interest on station upkeep it never lent).
 ##    Debt service applies payments in priority order: accrued interest first, accrued burn second,
 ##    principal debt third.
 ## 4. Discrete Sim Tick Stepping (SimClock #60 Integration):
@@ -114,6 +116,9 @@ func get_current_burn_rate_cr_per_sec() -> float:
 func get_total_debt() -> int:
 	return principal_debt + accrued_burn + accrued_interest
 
+func get_compounding_debt_base() -> int:
+	return principal_debt + accrued_interest
+
 func get_time_remaining_seconds() -> float:
 	return float(ticks_remaining) / float(ticks_per_second)
 
@@ -167,11 +172,14 @@ func step_ticks(ticks: int = 1) -> void:
 	accrued_burn += burn_cr
 	total_burn_accrued += burn_cr
 
-	# Accrue interest on principal debt (integer math in basis points per minute)
-	# divisor: 10,000 bps * ticks_per_second * 60 seconds
+	# Accrue interest on compounding debt base: (principal_debt + accrued_interest)
+	# Interest compounds strictly against principal plus accrued interest (upkeep burn is excluded).
+	# Integer math in basis points per minute.
+	# Divisor: 10,000 bps * ticks_per_second * 60 seconds
 	var interest_cr := 0
-	if principal_debt > 0 and interest_rate_bps_per_minute > 0:
-		var interest_units := principal_debt * interest_rate_bps_per_minute * ticks
+	var debt_base := principal_debt + accrued_interest
+	if debt_base > 0 and interest_rate_bps_per_minute > 0:
+		var interest_units := debt_base * interest_rate_bps_per_minute * ticks
 		_interest_subunits += interest_units
 		var interest_divisor := 10000 * ticks_per_second * 60
 		interest_cr = _interest_subunits / interest_divisor
