@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "note": "Placeholder perk content from the #11 spec. Names, costs and effects are Ryan's to rename or replace; the framework in core/parachutes.gd is content-agnostic.",
+  "perks": [
+    {
+      "id": "regulator_contact",
+      "name": "Corrupt Regulator Contact",
+      "tier": 1,
+      "cost": 300,
+      "requires": [],
+      "effects": [{"stat": "interest_bps", "op": "add", "value": -50}],
+      "placeholder": true
+    },
+    {
+      "id": "seed_capital",
+      "name": "Seed Capital",
+      "tier": 1,
+      "cost": 200,
+      "requires": [],
+      "effects": [{"stat": "starting_cr", "op": "add", "value": 2000}],
+      "placeholder": true
+    },
+    {
+      "id": "fuel_hedge",
+      "name": "Fuel Hedge",
+      "tier": 1,
+      "cost": 250,
+      "requires": [],
+      "effects": [{"stat": "fuel_discount_bps", "op": "add", "value": 1000}],
+      "placeholder": true
+    },
+    {
+      "id": "golden_handshake",
+      "name": "Golden Handshake",
+      "tier": 2,
+      "cost": 400,
+      "requires": ["seed_capital"],
+      "effects": [{"stat": "fresh_start_cr", "op": "add", "value": 2000}],
+      "placeholder": true
+    },
+    {
+      "id": "black_market_lanes",
+      "name": "Black-Market Warp Lanes",
+      "tier": 2,
+      "cost": 500,
+      "requires": ["regulator_contact"],
+      "effects": [{"stat": "piracy_odds_bps", "op": "mul_bps", "value": 8000}],
+      "placeholder": true
+    },
+    {
+      "id": "asset_protection",
+      "name": "Asset Protection",
+      "tier": 2,
+      "cost": 450,
+      "requires": ["seed_capital"],
+      "effects": [{"stat": "liquidation_haircut_bps", "op": "add", "value": 1000}],
+      "placeholder": true
+    }
+  ]
+}

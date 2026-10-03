@@ -12,6 +12,8 @@ var patents: Array[String] = []
 var unlocks: Array[String] = []
 var contracts: Array[String] = []
 var bankruptcies_filed: int = 0
+## Golden Parachutes currency (#11), banked when a run ends, spent on perks.
+var severance_points: int = 0
 
 func add_patent(id: String) -> bool:
 	return _add(patents, id)
@@ -44,6 +46,7 @@ func to_dict() -> Dictionary:
 		"unlocks": unlocks.duplicate(),
 		"contracts": contracts.duplicate(),
 		"bankruptcies_filed": bankruptcies_filed,
+		"severance_points": severance_points,
 	}
 
 static func from_dict(d: Dictionary) -> MetaProfile:
@@ -53,6 +56,8 @@ static func from_dict(d: Dictionary) -> MetaProfile:
 	p.contracts = _sanitise_ids(d.get("contracts", []))
 	var raw = d.get("bankruptcies_filed", 0)
 	p.bankruptcies_filed = maxi(0, int(raw)) if (raw is int or raw is float) else 0
+	var sp = d.get("severance_points", 0)
+	p.severance_points = maxi(0, int(sp)) if (sp is int or sp is float) else 0
 	return p
 
 static func _sanitise_ids(raw) -> Array[String]:
