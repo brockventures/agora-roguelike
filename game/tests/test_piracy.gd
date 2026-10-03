@@ -218,3 +218,103 @@ func test_privateers_hire_and_records_intact_across_reset() -> String:
 		return "reset() must leave active contracts intact"
 
 	return "ok"
+
+func test_fight_escape_draws_from_raided_vessel_id() -> String:
+	var desk := Piracy.new([1.0, 1.0], null, null, 77)
+	# Raiding amos/2
+	var r = desk.roll_departure("tx-ship2", "amos", "ceres", "mars", true, "FRAG", 1000, false, 1, "amos/2")
+	if r == null or not r["raided"]:
+		return "expected raid on 100% odds"
+	if r["demand"]["vessel_id"] != "amos/2":
+		return "expected demand vessel_id 'amos/2', got '%s'" % str(r["demand"]["vessel_id"])
+
+	# Fight choice: should draw from amos/2's bag (not forced, so stats are tracked)
+	var resp := desk.respond("amos", "tx-ship2", "fight")
+	if resp["kind"] != "piracy_respond_ok":
+		return "expected piracy_respond_ok"
+
+	var stats_ship2 = desk.bags.stats("escape", "amos/2")
+	if stats_ship2["draws"] != 1:
+		return "expected 1 draw from amos/2 escape bag, got %d" % stats_ship2["draws"]
+
+	var stats_ship1 = desk.bags.stats("escape", "amos/1")
+	if stats_ship1["draws"] != 0:
+		return "expected 0 draws from amos/1 escape bag (cross-ship bleed!), got %d" % stats_ship1["draws"]
+
+	return "ok"
+
+func test_fight_loss_base_uses_manifest_qty_not_hold_qty() -> String:
+	var desk := Piracy.new([1.0, 1.0], null, null, 88)
+	# Manifest is 40 units, hold has 100 units
+	desk.roll_departure("tx-loss-base", "amos", "ceres", "mars", true, "FRAG", 40, false, 1, "amos/1", null, 100)
+	desk.bags.force("escape", false)
+
+	var resp := desk.respond("amos", "tx-loss-base", "fight")
+	if resp["kind"] != "piracy_respond_ok":
+		return "expected piracy_respond_ok"
+	var p: Dictionary = resp["payload"]
+	if p["status"] != "lost":
+		return "expected lost fight status"
+	# 50% of 40 manifest units = 20 units (not 50% of 100 hold units = 50)
+	if p["qty_taken"] != 20:
+		return "expected 20 units lost from manifest qty, got %d" % p["qty_taken"]
+
+	return "ok"
+
+func test_privateer_trace_fine_capped_at_sponsor_cr() -> String:
+	var desk := Piracy.new([1.0, 1.0], null, null, 99)
+	desk.hire("amos", "marvin", 1, 1000)
+
+	# Case 1: Sponsor has 500 CR, fine capped at 500 CR (base is 1500)
+	desk.bags.force("trace", true)
+	var r_cap = desk.roll_departure("tx-trace-500", "marvin", "ceres", "mars", true, "FRAG", 1000, false, 1, "marvin/1", null, null, 1.0, 0, 1.0, 0, false, 500)
+	if r_cap["demand"]["traced"] != 1:
+		return "expected traced == 1"
+	if r_cap["demand"]["fine"] != 500:
+		return "expected trace fine capped at 500 CR, got %d" % r_cap["demand"]["fine"]
+
+	# Case 2: Broke sponsor (0 CR), fine capped at 0 CR
+	desk.bags.force("trace", true)
+	var r_zero = desk.roll_departure("tx-trace-0", "marvin", "ceres", "mars", true, "FRAG", 1000, false, 1, "marvin/1", null, null, 1.0, 0, 1.0, 0, false, 0)
+	if r_zero["demand"]["fine"] != 0:
+		return "expected trace fine capped at 0 CR, got %d" % r_zero["demand"]["fine"]
+
+	# Case 3: Rich sponsor (5000 CR), full 1500 fine charged
+	desk.bags.force("trace", true)
+	var r_full = desk.roll_departure("tx-trace-rich", "marvin", "ceres", "mars", true, "FRAG", 1000, false, 1, "marvin/1", null, null, 1.0, 0, 1.0, 0, false, 5000)
+	if r_full["demand"]["fine"] != 1500:
+		return "expected full 1500 fine, got %d" % r_full["demand"]["fine"]
+
+	return "ok"
+
+func test_hot_station_replay_and_override() -> String:
+	var desk := Piracy.new([0.15, 0.04], null, null, 123)
+
+	# hot_override in chance
+	var c_hot := desk.chance("amos", "earth", "mars", false, "FRAG", 1000, false, 1, null, false, 1.0, 0, 1.0, 0, false, "earth")
+	if not c_hot["hot"]:
+		return "expected route to be hot when hot_override is 'earth'"
+
+	var c_cool := desk.chance("amos", "earth", "mars", false, "FRAG", 1000, false, 1, null, false, 1.0, 0, 1.0, 0, false, "luna")
+	if c_cool["hot"]:
+		return "expected route to be cool when hot_override is 'luna'"
+
+	# hot_override in roll_departure
+	var r = desk.roll_departure("tx-hot", "amos", "earth", "mars", false, "FRAG", 1000, false, 1, "amos/1", null, null, 1.0, 0, 1.0, 0, false, null, 1.0, "earth")
+	if r["hot_station"] != "earth":
+		return "expected hot_station 'earth', got '%s'" % r["hot_station"]
+	if not r["hot_route"]:
+		return "expected hot_route true"
+
+	return "ok"
+
+func test_hire_sponsor_casing_preserved() -> String:
+	var desk := Piracy.new([0.15, 0.04], null, null, 145)
+	var r := desk.hire("AmosCorp", "target_corp", 1, 1000)
+	if r["kind"] != "privateer_hire_ok":
+		return "expected privateer_hire_ok"
+	var c = desk.active_contract("target_corp", 5)
+	if c == null or c["sponsor"] != "AmosCorp":
+		return "expected sponsor casing 'AmosCorp' preserved, got '%s'" % str(c["sponsor"] if c else null)
+
+	return "ok"

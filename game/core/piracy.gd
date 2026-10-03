@@ -11,6 +11,12 @@ extends RefCounted
 ## 5. Extortion Demands: A raid hit generates a pending demand with ransom (RANSOM_PCT = 15%) or surrender (SURRENDER_PCT = 25%).
 ## 6. Response Choices: pay, surrender (fenced at Ceres depot), or fight (FIGHT_ESCAPE = 50% escape, else FIGHT_LOSS = 50% lost + delay).
 ## 7. Privateers: Sponsoring raids against targets for PRIV_ROUNDS (20) adds PRIV_ADD (+0.15) to victim's raid odds.
+##
+## Unported / deferred to subsequent PRs:
+## - boarding_pods upgrade (surrender 40%, fight loss 80% loss ratio)
+## - ecm_jammers factor scaling trace odds on privateers
+## - target_protected_by_tribute reject check in hire()
+## - fleet_out, not_in_transit, and unknown-fleet validation in hire() and respond()
 
 const DEFAULT_P_BELT: float = 0.15
 const DEFAULT_P_INNER: float = 0.04
@@ -234,6 +240,9 @@ func reset(new_seed: int) -> void:
 func hot_station(round_num: int, override_station: String = "") -> String:
 	if not override_station.is_empty():
 		return override_station
+	if draw_source != null and not (draw_source is NativeDrawSource):
+		var st = draw_source.choice(Transit.STATIONS)
+		return str(st) if st != null else "earth"
 	var key := "piracy-hot-%d-%d" % [seed_val, round_num / HOT_EVERY]
 	var rng := NativeDrawSource.new(hash(key))
 	var st = rng.choice(Transit.STATIONS)
@@ -272,7 +281,8 @@ func chance(
 	armor_tier: int = 0,
 	stealth_factor: float = 1.0,
 	stealth_tier: int = 0,
-	salvage_surge: bool = false
+	salvage_surge: bool = false,
+	hot_override: String = ""
 ) -> Dictionary:
 	var value: int = int(hold_value) if hold_value != null else cargo_value(commodity, qty)
 	if odds == null or value <= 0:
@@ -300,7 +310,7 @@ func chance(
 	var p_belt: float = float(odds[0])
 	var p_inner: float = float(odds[1])
 	var base: float = p_belt if tolled else p_inner
-	var current_hot: String = hot_station(round_num)
+	var current_hot: String = hot_station(round_num, hot_override)
 	var hot: bool = (current_hot == origin or current_hot == dest)
 
 	var vm: float = clampf(float(value) / float(VALUE_REF), VALUE_MULT[0], VALUE_MULT[1])
@@ -366,19 +376,22 @@ func roll_departure(
 	armor_tier: int = 0,
 	stealth_factor: float = 1.0,
 	stealth_tier: int = 0,
-	salvage_surge: bool = false
+	salvage_surge: bool = false,
+	sponsor_cr: Variant = null,
+	trace_factor: float = 1.0,
+	hot_override: String = ""
 ) -> Variant:
 	if odds == null:
 		return null
 
 	var c := chance(
 		agent, origin, dest, tolled, commodity, qty, escort, round_num,
-		hold_value, false, armor_factor, armor_tier, stealth_factor, stealth_tier, salvage_surge
+		hold_value, false, armor_factor, armor_tier, stealth_factor, stealth_tier, salvage_surge, hot_override
 	)
 	var fee: int = escort_fee(commodity, qty) if escort else 0
 	var out: Dictionary = {
 		"odds": c["odds"],
-		"hot_station": hot_station(round_num),
+		"hot_station": hot_station(round_num, hot_override),
 		"hot_route": c["hot"],
 		"cargo_value": c["value"],
 		"escort": bool(escort),
@@ -408,20 +421,29 @@ func roll_departure(
 
 	if contract != null:
 		contract["raids"] = int(contract.get("raids", 0)) + 1
-		if bags.draw("trace", str(sponsor), PRIV_TRACE):
+		var trace_odds: float = PRIV_TRACE * trace_factor
+		if bags.draw("trace", str(sponsor), trace_odds):
 			traced = 1
-			fine = int(contract.get("fee", PRIV_COST)) * PRIV_FINE
+			var base_fine: int = int(contract.get("fee", PRIV_COST)) * PRIV_FINE
+			if sponsor_cr != null:
+				fine = mini(base_fine, maxi(0, int(sponsor_cr)))
+			elif contract.has("sponsor_cr"):
+				fine = mini(base_fine, maxi(0, int(contract["sponsor_cr"])))
+			else:
+				fine = base_fine
 			contract["traced"] = 1
 			contract["fines"] = int(contract.get("fines", 0)) + fine
 
 	var demand: Dictionary = {
 		"transit_id": transit_id,
 		"agent_id": agent,
+		"vessel_id": ship_id,
 		"round": round_num,
 		"origin": origin,
 		"destination": dest,
 		"commodity": commodity,
 		"cargo_qty": effective_qty,
+		"manifest_qty": qty,
 		"cargo_value": c["value"],
 		"odds": c["odds"],
 		"escorted": int(escort),
@@ -482,12 +504,13 @@ func respond(agent_id: String, transit_id: String, choice_str: String, available
 			_privateers[row["contract_id"]]["loot_qty"] = int(_privateers[row["contract_id"]].get("loot_qty", 0)) + qty_taken
 	elif choice == "fight":
 		var d: int = draw_source.randint(FIGHT_DELAY[0], FIGHT_DELAY[1])
-		var ship: String = "%s/1" % agent_id
+		var ship: String = str(row.get("vessel_id", "")) if not str(row.get("vessel_id", "")).is_empty() else ("%s/1" % agent_id)
 		if bags.draw("escape", ship, FIGHT_ESCAPE):
 			status = "escaped"
 		else:
 			status = "lost"
-			qty_taken = int(float(row["cargo_qty"]) * FIGHT_LOSS)
+			var loss_base: int = int(row.get("manifest_qty", row["cargo_qty"]))
+			qty_taken = int(float(loss_base) * FIGHT_LOSS)
 			delay = d
 			fenced = FENCE_STATION
 			if row.get("contract_id") != null and _privateers.has(row["contract_id"]):
@@ -505,9 +528,9 @@ func respond(agent_id: String, transit_id: String, choice_str: String, available
 ## Hires privateers against a target fleet for PRIV_ROUNDS rounds.
 ## Matches agora/piracy.py:PiracyDesk.hire.
 func hire(sponsor: String, target: String, round_num: int, available_cr: int = 1000000) -> Dictionary:
-	var s := sponsor.strip_edges().to_lower()
+	var s := sponsor.strip_edges()
 	var t := target.strip_edges().to_lower()
-	if s == t:
+	if s.to_lower() == t:
 		return {"v": 1, "kind": "reject", "payload": {"reason": "invalid_target", "detail": "You cannot send privateers after yourself"}}
 
 	if available_cr < PRIV_COST:
