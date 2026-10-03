@@ -116,33 +116,81 @@ func test_asteroid_belt_tolls() -> String:
 
 func test_perishable_cargo_decay_and_cap() -> String:
 	# Durable cargo has 0 decay
-	var decay_frag = Transit.calculate_decay("FRAG", 100, 3, "earth", "ceres")
+	var decay_frag = Transit.calculate_arrival_decay("FRAG", 100, 3, "earth", "ceres")
 	if decay_frag != 0:
 		return "expected 0 decay for durable scrap, got %d" % decay_frag
 
 	# Perishable cargo on belt route (5% * 3 rounds = 15% decay)
-	var decay_food_full = Transit.calculate_decay("FOOD", 100, 3, "earth", "ceres")
+	var decay_food_full = Transit.calculate_arrival_decay("FOOD", 100, 3, "earth", "ceres")
 	if decay_food_full != 15:
 		return "expected 15 decayed for 100 FOOD over 3 belt rounds, got %d" % decay_food_full
 
-	# Mid-transit projected decay
-	var decay_proj_1 = Transit.calculate_decay("FOOD", 100, 1, "earth", "ceres")
-	if decay_proj_1 != 5:
-		return "expected 5 projected decay after 1 round, got %d" % decay_proj_1
-
-	var decay_proj_2 = Transit.calculate_decay("FOOD", 100, 2, "earth", "ceres")
-	if decay_proj_2 != 10:
-		return "expected 10 projected decay after 2 rounds, got %d" % decay_proj_2
-
 	# Decay cap: decay cannot exceed cargo_qty (e.g. 30 rounds * 5% = 150%)
-	var decay_capped = Transit.calculate_decay("FOOD", 100, 30, "earth", "ceres")
+	var decay_capped = Transit.calculate_arrival_decay("FOOD", 100, 30, "earth", "ceres")
 	if decay_capped != 100:
 		return "expected decay capped at 100, got %d" % decay_capped
 
 	# Non-belt route has 0 decay even for perishable cargo
-	var decay_em = Transit.calculate_decay("FOOD", 100, 2, "earth", "mars")
+	var decay_em = Transit.calculate_arrival_decay("FOOD", 100, 2, "earth", "mars")
 	if decay_em != 0:
 		return "expected 0 decay on non-belt route, got %d" % decay_em
+
+	# Split formulas verification:
+	# - Arrival settlement (referee.py:2115): math.floor
+	# - Live projection (referee.py:1432): int(round()), round-half-to-even
+
+	# Case 1: 30 FOOD, 1 belt round -> 30 * 0.05 * 1 = 1.5
+	# Arrival floor: 1. Live projection round(1.5) -> 2.
+	var arr_30 = Transit.calculate_arrival_decay("FOOD", 30, 1, "earth", "ceres")
+	if arr_30 != 1:
+		return "expected arrival decay 1 for 30 FOOD, got %d" % arr_30
+	var proj_30 = Transit.calculate_projected_decay("FOOD", 30, 1, "earth", "ceres")
+	if proj_30 != 2:
+		return "expected projected decay 2 for 30 FOOD (round(1.5)=2), got %d" % proj_30
+
+	# Case 2: 50 FOOD, 1 belt round -> 50 * 0.05 * 1 = 2.5
+	# Arrival floor: 2. Live projection round(2.5) -> 2 (half-to-even: 2.5 rounds to nearest even integer 2).
+	var arr_50 = Transit.calculate_arrival_decay("FOOD", 50, 1, "earth", "ceres")
+	if arr_50 != 2:
+		return "expected arrival decay 2 for 50 FOOD, got %d" % arr_50
+	var proj_50 = Transit.calculate_projected_decay("FOOD", 50, 1, "earth", "ceres")
+	if proj_50 != 2:
+		return "expected projected decay 2 for 50 FOOD (half-to-even round(2.5)=2), got %d" % proj_50
+
+	# Case 3: 70 FOOD, 1 belt round -> 70 * 0.05 * 1 = 3.5
+	# Arrival floor: 3. Live projection round(3.5) -> 4 (half-to-even: 3.5 rounds to nearest even integer 4).
+	var arr_70 = Transit.calculate_arrival_decay("FOOD", 70, 1, "earth", "ceres")
+	if arr_70 != 3:
+		return "expected arrival decay 3 for 70 FOOD, got %d" % arr_70
+	var proj_70 = Transit.calculate_projected_decay("FOOD", 70, 1, "earth", "ceres")
+	if proj_70 != 4:
+		return "expected projected decay 4 for 70 FOOD (half-to-even round(3.5)=4), got %d" % proj_70
+
+	# Backward-compatible alias check
+	if Transit.calculate_decay("FOOD", 30, 1, "earth", "ceres") != 1:
+		return "expected calculate_decay alias to match arrival floor 1 for 30 FOOD"
+
+	return "ok"
+
+func test_py_round_half_to_even() -> String:
+	var cases: Array = [
+		[0.5, 0],
+		[1.5, 2],
+		[2.5, 2],
+		[3.5, 4],
+		[4.5, 4],
+		[5.5, 6],
+		[1.2, 1],
+		[1.8, 2],
+		[2.1, 2],
+		[2.9, 3]
+	]
+	for c in cases:
+		var input: float = float(c[0])
+		var expected: int = int(c[1])
+		var actual: int = Transit.py_round(input)
+		if actual != expected:
+			return "py_round(%.1f) expected %d, got %d" % [input, expected, actual]
 	return "ok"
 
 func test_fuel_burn_rounding_and_refinery_loop() -> String:

@@ -277,6 +277,16 @@ static func calculate_trip_rounds(origin: String, destination: String, round_num
 ##   if has_refinery_loop: burn *= 0.80
 ##   required = max(1, roundi(burn))
 ##   if corp_fuel_discount: required = max(1, int(required * (1.0 - corp_fuel_discount)))
+## Python 3 round-half-to-even (banker's rounding) parity helper.
+## Matches Python's native round() exactly across half-integers (e.g. 1.5 -> 2, 2.5 -> 2).
+static func py_round(val: float) -> int:
+	var rounded := roundi(val)
+	var fl: int = int(floor(val))
+	var diff: float = val - float(fl)
+	if absf(diff - 0.5) < 0.0001:
+		return fl if (fl % 2 == 0) else (fl + 1)
+	return rounded
+
 static func calculate_fuel_burn(
 	origin: String,
 	destination: String,
@@ -301,7 +311,7 @@ static func calculate_fuel_burn(
 		burn *= 0.80
 
 	# 3. Round to int, minimum 1 (agora/upgrades.py:202: max(1, int(round(burn))))
-	var required_fuel := maxi(1, roundi(burn))
+	var required_fuel := maxi(1, py_round(burn))
 
 	# 4. Corporate discount truncated with int() (agora/referee.py:2024)
 	if corp_fuel_discount > 0.0:
@@ -319,9 +329,32 @@ static func calculate_toll(origin: String, destination: String, corp_opex_discou
 		toll = int(float(toll) * (1.0 - corp_opex_discount))
 	return toll
 
-## Calculates projected cargo decay mid-transit or on arrival.
-## Matching agora/referee.py: min(c_qty, math.floor(c_qty * decay_rate * transit_rounds)).
-static func calculate_decay(
+## Calculates settled cargo decay upon arrival at destination.
+## Matches agora/referee.py:2115: min(c_qty, math.floor(c_qty * decay_rate * transit_rounds)).
+static func calculate_arrival_decay(
+	commodity: String,
+	cargo_qty: int,
+	transit_rounds: int,
+	origin: String,
+	destination: String,
+	perishable_override: Variant = null
+) -> int:
+	if cargo_qty <= 0 or transit_rounds <= 0:
+		return 0
+	var k := route_key(origin, destination)
+	if not (k in BELT_ROUTES):
+		return 0
+	var is_perish: bool = bool(perishable_override) if perishable_override != null else is_perishable(commodity)
+	if not is_perish:
+		return 0
+	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(transit_rounds)
+	var raw_decay: int = int(floor(float(cargo_qty) * total_decay_pct))
+	return mini(cargo_qty, raw_decay)
+
+## Calculates live projected cargo decay mid-transit for fleet status queries.
+## Matches agora/referee.py:1432: min(cargo_qty, int(round(cargo_qty * decay_rate * elapsed_rounds)))
+## using Python round-half-to-even semantics via py_round().
+static func calculate_projected_decay(
 	commodity: String,
 	cargo_qty: int,
 	elapsed_rounds: int,
@@ -338,8 +371,21 @@ static func calculate_decay(
 	if not is_perish:
 		return 0
 	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(elapsed_rounds)
-	var raw_decay: int = int(floor(float(cargo_qty) * total_decay_pct))
+	var raw_decay: int = py_round(float(cargo_qty) * total_decay_pct)
 	return mini(cargo_qty, raw_decay)
+
+## Calculates cargo decay. Defaults to arrival settlement math (math.floor)
+## matching agora/referee.py:2115. For mid-transit live status projections,
+## use calculate_projected_decay() which uses round-half-to-even.
+static func calculate_decay(
+	commodity: String,
+	cargo_qty: int,
+	elapsed_rounds: int,
+	origin: String,
+	destination: String,
+	perishable_override: Variant = null
+) -> int:
+	return calculate_arrival_decay(commodity, cargo_qty, elapsed_rounds, origin, destination, perishable_override)
 
 ## Converts discrete transit rounds into game simulation ticks.
 static func calculate_transit_ticks(rounds: int, ticks_per_round: int = 1) -> int:
