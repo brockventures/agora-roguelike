@@ -35,6 +35,7 @@ const COMMODITIES: Array[String] = Transit.COMMODITIES
 var controller: RunController = null
 var tactical_map: SolTacticalMap = null
 var trading_overlay: TradingOverlay = null
+var gamepad_focus: GamepadFocus = null
 
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
@@ -61,6 +62,7 @@ func _init(p_controller: RunController = null, p_station: String = "earth", p_co
 	tactical_map.select_station(active_station)
 	trading_overlay = TradingOverlay.new(p_controller, active_station)
 	trading_overlay.set_commodity(active_commodity)
+	gamepad_focus = GamepadFocus.new(self)
 
 	# Seed baseline GalNet headlines
 	_seed_default_headlines()
@@ -421,6 +423,18 @@ func _normalize_commodity(c: String) -> String:
 		return norm
 	return ""
 
+# --- Gamepad Controller Action Delegation ---
+
+func handle_gamepad_input(event: InputEvent) -> bool:
+	if gamepad_focus != null:
+		return gamepad_focus.handle_input(event)
+	return false
+
+func handle_gamepad_action(action: String) -> bool:
+	if gamepad_focus != null:
+		return gamepad_focus.handle_action(action)
+	return false
+
 # --- JSON Snapshot Serialization ---
 
 func to_dict() -> Dictionary:
@@ -440,5 +454,6 @@ func to_dict() -> Dictionary:
 		"is_trading_overlay_open": is_trading_overlay_open(),
 		"headlines_count": galnet_headlines.size(),
 		"tactical_map": tactical_map.to_dict() if tactical_map != null else {},
-		"trading_overlay": trading_overlay.to_dict() if trading_overlay != null else {}
+		"trading_overlay": trading_overlay.to_dict() if trading_overlay != null else {},
+		"gamepad_focus": gamepad_focus.to_dict() if gamepad_focus != null else {}
 	}

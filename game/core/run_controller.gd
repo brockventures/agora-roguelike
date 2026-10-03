@@ -32,6 +32,7 @@ signal round_advanced(round_num: int)
 
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = 900
+const DEFAULT_CARGO_CAPACITY: int = 100
 
 var sim_clock: SimClock
 var doomsday: DoomsdayClock
@@ -42,6 +43,17 @@ var cargo: Dictionary = {}
 var ships: Array = []
 var pending_bankruptcy: bool = false
 var ticks_per_round: int = DEFAULT_TICKS_PER_ROUND
+var docked_at: String = "earth"
+var cargo_capacity: int = DEFAULT_CARGO_CAPACITY
+
+func get_total_cargo() -> int:
+	var total: int = 0
+	for q in cargo.values():
+		total += maxi(0, int(q))
+	return total
+
+func get_remaining_cargo_capacity() -> int:
+	return maxi(0, cargo_capacity - get_total_cargo())
 
 ## Golden Parachutes modifiers (see Parachutes). Empty = no perks.
 var modifiers: Dictionary = {}
@@ -355,6 +367,8 @@ func to_dict() -> Dictionary:
 		"severance_award": severance_award,
 		"insolvent_ticks": insolvent_ticks,
 		"modifiers_explicit": _modifiers_explicit,
+		"docked_at": docked_at,
+		"cargo_capacity": cargo_capacity,
 	}
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -388,6 +402,10 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.next_seed = int(d.get("next_seed", 0))
 	rc.insolvent_ticks = maxi(0, int(d.get("insolvent_ticks", 0)))
 	rc._modifiers_explicit = bool(d.get("modifiers_explicit", false))
+	rc.docked_at = str(d.get("docked_at", "earth")).to_lower()
+	if not (rc.docked_at in Transit.STATIONS):
+		rc.docked_at = "earth"
+	rc.cargo_capacity = maxi(1, int(d.get("cargo_capacity", DEFAULT_CARGO_CAPACITY)))
 	rc._wire()
 	return rc
 
