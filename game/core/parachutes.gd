@@ -7,7 +7,10 @@ extends RefCounted
 ## loads and validates the tree, checks purchase eligibility, buys perks into
 ## MetaProfile.unlocks, and folds owned perks into one modifiers dictionary.
 ##
-## Perk shape: {id, name, tier, cost, requires: [ids], effects: [{stat, op, value}]}
+## Perk shape: {id, name, tier, cost, requires: [ids], requires_any: [ids],
+## enabled, effects: [{stat, op, value}]}. requires is AND (all owned);
+## requires_any is OR (at least one owned, when non-empty). enabled:false perks
+## (default true) validate but cannot be bought and add no modifiers.
 ## Ops (integer math only):
 ##   add      value is added to the stat's base
 ##   mul_bps  value is a basis-point multiplier, 10000 = x1.0
@@ -25,6 +28,8 @@ extends RefCounted
 ##     via RunController.fuel_discount_bps() (0..10000).
 ##   hazard_odds_bps: Hazards.quote/roll(..., odds_bps), via
 ##     RunController.hazard_odds_bps() (base 10000 = x1.0).
+##   bankruptcy_grace_ticks: RunController waits this many sim ticks of continued
+##     insolvency before automatic Chapter 11 filing (base 0).
 ##   piracy_odds_bps: Piracy.chance/roll_departure(..., odds_bps), via
 ##     RunController.piracy_odds_bps() (base 10000 = x1.0).
 ## RunController derives modifiers from the profile's owned perks when none are
@@ -40,10 +45,11 @@ const STATS: Dictionary = {
 	"fresh_start_cr": "live",
 	"interest_bps": "live",
 	"burn_rate": "live",
-	"liquidation_haircut_bps": "live",
+	"liquidation_haircut_bps": "live",   # the share of asset value KEPT in liquidation (50% base)
 	"fuel_discount_bps": "live",
 	"hazard_odds_bps": "live",
 	"piracy_odds_bps": "live",
+	"bankruptcy_grace_ticks": "live",
 }
 
 ## Severance formula, placeholder constants (Ryan may overrule).
@@ -109,6 +115,10 @@ static func _normalise(src: Dictionary) -> Dictionary:
 	var raw_req = src.get("requires", [])
 	if raw_req is Array:
 		req = raw_req.duplicate()
+	var req_any: Array = []
+	var raw_any = src.get("requires_any", [])
+	if raw_any is Array:
+		req_any = raw_any.duplicate()
 	var id = src.get("id", "")
 	return {
 		"id": id if id is String else "",
@@ -116,6 +126,8 @@ static func _normalise(src: Dictionary) -> Dictionary:
 		"tier": _int_or_self(src.get("tier", 1)),
 		"cost": _int_or_self(src.get("cost", 0)),
 		"requires": req,
+		"requires_any": req_any,
+		"enabled": bool(src.get("enabled", true)),
 		"effects": effects,
 		"placeholder": bool(src.get("placeholder", false)),
 	}
@@ -140,6 +152,9 @@ func validate() -> Array[String]:
 		for r in perk["requires"]:
 			if not (r is String) or not perks.has(r):
 				errors.append("%s: unknown requires id %s" % [id, str(r)])
+		for r in perk["requires_any"]:
+			if not (r is String) or not perks.has(r):
+				errors.append("%s: unknown requires_any id %s" % [id, str(r)])
 		for e in perk["effects"]:
 			var stat = e["stat"]
 			var op = e["op"]
@@ -177,7 +192,7 @@ func _dfs(id: String, state: Dictionary, path: Array) -> Array:
 	state[id] = 1
 	path.append(id)
 	var reqs: Array = []
-	for r in perks[id]["requires"]:
+	for r in perks[id]["requires"] + perks[id]["requires_any"]:
 		if r is String and perks.has(r):
 			reqs.append(r)
 	reqs.sort()
@@ -200,6 +215,8 @@ func can_buy(profile: MetaProfile, id: String) -> Dictionary:
 		reasons.append("unknown_perk")
 		return {"ok": false, "reasons": reasons}
 	var perk: Dictionary = perks[id]
+	if not bool(perk["enabled"]):
+		reasons.append("disabled")
 	if profile.has_unlock(id):
 		reasons.append("already_owned")
 	var missing: Array[String] = []
@@ -209,6 +226,18 @@ func can_buy(profile: MetaProfile, id: String) -> Dictionary:
 	if not missing.is_empty():
 		missing.sort()
 		reasons.append("missing_requires:%s" % ",".join(missing))
+	var any: Array = perk["requires_any"]
+	if not any.is_empty():
+		var has_any := false
+		for r in any:
+			if profile.has_unlock(str(r)):
+				has_any = true
+		if not has_any:
+			var names: Array[String] = []
+			for r in any:
+				names.append(str(r))
+			names.sort()
+			reasons.append("missing_requires_any:%s" % ",".join(names))
 	if profile.severance_points < int(perk["cost"]):
 		reasons.append("insufficient_points")
 	return {"ok": reasons.is_empty(), "reasons": reasons}
@@ -230,7 +259,7 @@ func modifiers(profile: MetaProfile) -> Dictionary:
 	var out := {}
 	var owned: Array = []
 	for id in profile.unlocks:
-		if perks.has(id):
+		if perks.has(id) and bool(perks[id]["enabled"]):
 			owned.append(id)
 	owned.sort()
 	for id in owned:

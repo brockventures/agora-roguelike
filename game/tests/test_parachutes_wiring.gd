@@ -11,7 +11,7 @@ func _clock(debt: int = 0) -> DoomsdayClock:
 	return DoomsdayClock.new(36000, debt, 0, 0)
 
 func test_perks_change_fresh_run_start() -> String:
-	var p := _owned(["seed_capital", "regulator_contact", "asset_protection"])
+	var p := _owned(["seed_capital", "corrupt_regulator", "asset_protection"])
 	var base := DoomsdayClock.new(36000, 0, 0, 100)
 	var rc := RunController.new(p, 1, base)
 	if rc.cr != Chapter11.FRESH_START_CR + 2000:
@@ -23,7 +23,7 @@ func test_perks_change_fresh_run_start() -> String:
 	return "ok"
 
 func test_fresh_start_cr_perk_applies_on_filing() -> String:
-	var p := _owned(["seed_capital", "golden_handshake"])
+	var p := _owned(["seed_capital", "asset_protection"])
 	var rc := RunController.new(p, 1, _clock(1000000))
 	rc.cr = 0
 	if rc.file_bankruptcy().is_empty():
@@ -31,7 +31,7 @@ func test_fresh_start_cr_perk_applies_on_filing() -> String:
 	var nxt := rc.next_run()
 	if nxt.cr != Chapter11.FRESH_START_CR + 2000 or int(rc.carry_over["persists"]["fresh_start_cr"]) != nxt.cr:
 		return "fresh start cr %d" % nxt.cr
-	if not nxt.profile.has_unlock("golden_handshake") or nxt.modifiers.is_empty():
+	if not nxt.profile.has_unlock("asset_protection") or nxt.modifiers.is_empty():
 		return "perks must carry into the next corp"
 	return "ok"
 
@@ -75,7 +75,7 @@ func test_fuel_discount_consumed_by_transit() -> String:
 	return "ok"
 
 func test_piracy_odds_consumed() -> String:
-	var rc := RunController.new(_owned(["regulator_contact", "black_market_lanes"]), 1, _clock())
+	var rc := RunController.new(_owned(["corrupt_regulator", "black_market_corridors"]), 1, _clock())
 	if rc.piracy_odds_bps() != 8000:
 		return "bps %d" % rc.piracy_odds_bps()
 	var desk := Piracy.new([0.2, 0.2], null, null, 5)
@@ -159,7 +159,7 @@ func test_filing_awards_once_for_failed_corp_with_pre_filing_peak() -> String:
 	return "ok"
 
 func test_filing_keeps_clock_and_rederives_perks() -> String:
-	var rc := RunController.new(_owned(["seed_capital", "golden_handshake"]), 1, _clock())
+	var rc := RunController.new(_owned(["seed_capital", "asset_protection"]), 1, _clock())
 	rc.advance(0.05)
 	var ticks := rc.doomsday.ticks_remaining
 	rc.doomsday.principal_debt = 1000000
@@ -169,7 +169,7 @@ func test_filing_keeps_clock_and_rederives_perks() -> String:
 	if rc.is_run_over() or rc.doomsday.ticks_remaining != ticks:
 		return "clock must keep running, not reset"
 	if rc.cr != Chapter11.FRESH_START_CR + 2000 or rc.modifiers.is_empty():
-		return "fresh stake or perks wrong: cr %d" % rc.cr
+		return "fresh stake (Seed Capital funds every corp) or perks wrong: cr %d" % rc.cr
 	var seen: Array = []
 	rc.corp_ended.connect(func(sm): seen.append(sm))
 	rc.doomsday.principal_debt = 1000000
@@ -238,6 +238,80 @@ func test_next_run_after_collapse_keeps_perks_and_points() -> String:
 	var nxt := rc.next_run()
 	if nxt.profile.severance_points != rc.profile.severance_points or nxt.run_seed != rc.next_seed:
 		return "next run state"
-	if nxt.is_run_over() or nxt.cr != Chapter11.FRESH_START_CR:
+	if nxt.is_run_over() or nxt.cr != Chapter11.FRESH_START_CR + 2000:
 		return "next run should be live with fresh-start stake"
+	return "ok"
+
+func test_same_sol_across_filing() -> String:
+	var clock := DoomsdayClock.new(36000, 0, 25, 300)
+	var rc := RunController.new(_owned(["seed_capital"]), 77, clock)
+	rc.advance(0.05)
+	var cs1 := rc.corp_seed()
+	rc.doomsday.principal_debt = 1000000
+	var before := rc.doomsday.to_dict()
+	rc.cr = 0
+	if rc.file_bankruptcy().is_empty():
+		return "filing rejected"
+	if rc.run_seed != 77:
+		return "world seed changed on filing"
+	var after := rc.doomsday.to_dict()
+	if rc.doomsday != clock or after["ticks_remaining"] != before["ticks_remaining"] or after["stage"] != before["stage"]:
+		return "clock state changed"
+	if rc.corp_seed() == cs1 or rc.corp_seed() != rc.corp_seed(2) or rc.carry_over["persists"]["next_seed"] != rc.corp_seed():
+		return "corp_seed should be per corp and derived"
+	if rc.corp_seed() != RunController.new(null, 77).corp_seed(2):
+		return "corp_seed must depend only on run_seed and corp_number"
+	return "ok"
+
+func test_seed_capital_funds_new_corp_stake() -> String:
+	var rc := RunController.new(_owned(["seed_capital"]), 1, _clock(1000000))
+	rc.cr = 0
+	rc.file_bankruptcy()
+	if rc.fresh_start_cr() != Chapter11.FRESH_START_CR + 2000 or rc.cr != rc.fresh_start_cr():
+		return "stake %d" % rc.cr
+	return "ok"
+
+func _grace_rc(grace: int) -> RunController:
+	var mods := {}
+	if grace > 0:
+		mods = {"bankruptcy_grace_ticks": {"add": grace, "mul_bps": 10000}}
+	return RunController.new(null, 1, _clock(1000000), mods)
+
+func test_deferred_audit_grace_delays_then_auto_files() -> String:
+	var rc := _grace_rc(30)
+	rc.cr = 0
+	# 60 ticks per second: 0.2 s = 12 ticks, still inside the 30-tick grace.
+	rc.advance(0.2)
+	if rc.pending_bankruptcy or rc.insolvent_ticks != 12:
+		return "should still be waiting, insolvent_ticks %d" % rc.insolvent_ticks
+	rc.advance(0.25)
+	rc.advance(0.25)
+	if not rc.pending_bankruptcy:
+		return "should have auto-filed after the grace"
+	if rc.sim_clock.total_ticks != 31:
+		return "should trip after exactly 30 ticks of grace, tripped at tick %d" % rc.sim_clock.total_ticks
+	var plain := _grace_rc(0)
+	plain.cr = 0
+	plain.advance(0.05)
+	if not plain.pending_bankruptcy or plain.sim_clock.total_ticks != 1:
+		return "zero grace must file on the first tick"
+	return "ok"
+
+func test_deferred_audit_cancels_when_solvent_again() -> String:
+	var rc := _grace_rc(30)
+	rc.cr = 0
+	rc.advance(0.2)
+	if rc.insolvent_ticks != 12:
+		return "setup: insolvent_ticks %d" % rc.insolvent_ticks
+	var saved := RunController.from_dict(rc.to_dict())
+	if saved.insolvent_ticks != 12:
+		return "grace counter not saved"
+	rc.doomsday.clear_debt()
+	rc.advance(0.05)
+	if rc.insolvent_ticks != 0 or rc.pending_bankruptcy:
+		return "solvency must cancel the wait"
+	rc.doomsday.principal_debt = 1000000
+	rc.advance(0.2)
+	if rc.pending_bankruptcy or rc.insolvent_ticks != 12:
+		return "grace must restart from zero"
 	return "ok"

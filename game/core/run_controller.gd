@@ -65,6 +65,12 @@ var end_reason: String = ""
 var carry_over: Dictionary = {}
 ## Seed for the next corp, set when the run ends.
 var next_seed: int = 0
+## Consecutive sim ticks the corp has stayed insolvent while auto-filing waits
+## out bankruptcy_grace_ticks(). Reset when solvent again and on filing. Saved.
+var insolvent_ticks: int = 0
+## True when the caller passed explicit modifiers; filing then keeps them instead
+## of re-deriving from the profile. Saved.
+var _modifiers_explicit: bool = false
 
 var _hook: Callable
 
@@ -83,6 +89,7 @@ func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayC
 	ships = [Chapter11.STARTER_SHIP.duplicate(true)]
 	_wire()
 	var mods: Dictionary = p_modifiers
+	_modifiers_explicit = not p_modifiers.is_empty()
 	if mods.is_empty():
 		mods = _derive_modifiers(profile)
 	if not mods.is_empty():
@@ -137,8 +144,24 @@ func is_run_over() -> bool:
 	return is_collapsed()
 
 ## Fresh-start CR for the next corp: the Chapter 11 stake through fresh_start_cr perks.
+## New corp stake = the fresh_start_cr stat applied to FRESH_START_CR, plus the
+## starting_cr bonus (so Seed Capital funds every new corp, not just the first).
 func fresh_start_cr() -> int:
-	return maxi(0, Parachutes.apply_stat(modifiers, "fresh_start_cr", Chapter11.FRESH_START_CR))
+	var stake := Parachutes.apply_stat(modifiers, "fresh_start_cr", Chapter11.FRESH_START_CR)
+	var start_bonus := Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR) - Chapter11.FRESH_START_CR
+	return maxi(0, stake + start_bonus)
+
+## Per-corp seed, derived from (run_seed, corp_number) only. Filing never touches
+## run_seed or any world RNG: every corp lives in the same Sol (same doomsday
+## clock, rivals, markets). Anything per-corp that needs randomness uses this.
+func corp_seed(p_corp_number: int = -1) -> int:
+	var n := corp_number if p_corp_number < 0 else p_corp_number
+	return hash("corp-%d-%d" % [run_seed, n]) & 0x7FFFFFFF
+
+## Sim ticks of continued insolvency tolerated before automatic filing
+## (Deferred Audit). Base 0 = file on the first insolvent tick.
+func bankruptcy_grace_ticks() -> int:
+	return maxi(0, Parachutes.apply_stat(modifiers, "bankruptcy_grace_ticks", 0))
 
 ## End the current corp from outside the normal paths (e.g. quit-to-menu): bank
 ## Severance for it exactly once (guarded per corp) and build the summary. Idempotent
@@ -255,8 +278,9 @@ func reassess() -> bool:
 ## run has not collapsed); otherwise returns {} and changes nothing. Filing is
 ## NOT a game over: the corp fails and a new one is founded in place on this
 ## controller. Debt is wiped and liquid assets forfeited (Chapter11.file), the
-## fresh-start stake (with fresh_start_cr perks) and a new corp seed apply, perks
-## are re-derived from the profile, Severance is banked once for the failed corp,
+## fresh-start stake (with fresh_start_cr perks) and a new corp_seed() apply, perks
+## are re-derived from the profile unless the caller passed explicit modifiers (the
+## world seed run_seed never changes), Severance is banked once for the failed corp,
 ## and corp_ended(summary) fires. The Sol world and its doomsday clock keep running
 ## (never reset); the sim clock is left paused for the caller to resume.
 func file_bankruptcy() -> Dictionary:
@@ -273,11 +297,12 @@ func file_bankruptcy() -> Dictionary:
 	profile = result["profile"]
 	var report: Dictionary = result["report"]
 	# Bank for the failed corp (peak already measured), using the new profile.
-	_bank_corp("bankruptcy", lost, 1, int(new_run["seed"]))
+	_bank_corp("bankruptcy", lost, 1, corp_seed(corp_number + 1))
 	# Found the new corp in place.
 	corp_number += 1
-	run_seed = int(new_run["seed"])
-	apply_modifiers(_derive_modifiers(profile))
+	insolvent_ticks = 0
+	if not _modifiers_explicit:
+		apply_modifiers(_derive_modifiers(profile))
 	cr = fresh_start_cr()
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
@@ -286,6 +311,7 @@ func file_bankruptcy() -> Dictionary:
 	sim_clock.pause()
 	peak_net_worth = 0
 	_track_peak(assess())
+	report["next_seed"] = corp_seed()
 	bankruptcy_filed.emit(report)
 	return report
 
@@ -327,6 +353,8 @@ func to_dict() -> Dictionary:
 		"next_seed": next_seed,
 		"banked_corp": _banked_corp,
 		"severance_award": severance_award,
+		"insolvent_ticks": insolvent_ticks,
+		"modifiers_explicit": _modifiers_explicit,
 	}
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -358,6 +386,8 @@ static func from_dict(d: Dictionary) -> RunController:
 	var co = d.get("carry_over", {})
 	rc.carry_over = co.duplicate(true) if co is Dictionary else {}
 	rc.next_seed = int(d.get("next_seed", 0))
+	rc.insolvent_ticks = maxi(0, int(d.get("insolvent_ticks", 0)))
+	rc._modifiers_explicit = bool(d.get("modifiers_explicit", false))
 	rc._wire()
 	return rc
 
@@ -387,9 +417,16 @@ func _interrupt_check() -> bool:
 		var a := assess()
 		_track_peak(a)
 		if Chapter11.AUTO_FILE and bool(a["insolvent"]):
-			pending_bankruptcy = true
-			bankruptcy_pending.emit(a)
-			trip = true
+			# Deferred Audit: tolerate bankruptcy_grace_ticks() ticks of continued
+			# insolvency before filing. Zero grace files on the first insolvent tick.
+			if insolvent_ticks >= bankruptcy_grace_ticks():
+				pending_bankruptcy = true
+				bankruptcy_pending.emit(a)
+				trip = true
+			else:
+				insolvent_ticks += 1
+		else:
+			insolvent_ticks = 0
 	return trip
 
 func _on_stage_changed(old_stage: int, new_stage: int) -> void:

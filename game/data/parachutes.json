@@ -1,60 +1,137 @@
 {
-  "version": 1,
-  "note": "Placeholder perk content from the #11 spec. Names, costs and effects are Ryan's to rename or replace; the framework in core/parachutes.gd is content-agnostic.",
+  "version": 2,
+  "note": "Agreed tree (Zero + Amos, #lounge), pending Ryan sign-off. Costs are placeholder: tier 1 = 100, tier 2 = 250, tier 3 = 500 Severance. requires = all of; requires_any = at least one of. enabled:false perks cannot be bought and add no modifiers.",
   "perks": [
     {
-      "id": "regulator_contact",
-      "name": "Corrupt Regulator Contact",
+      "id": "corrupt_regulator",
+      "name": "Corrupt Regulator",
+      "branch": "Regulatory Capture",
       "tier": 1,
-      "cost": 300,
+      "cost": 100,
       "requires": [],
-      "effects": [{"stat": "interest_bps", "op": "add", "value": -50}],
-      "placeholder": true
+      "effects": [
+        {
+          "stat": "interest_bps",
+          "op": "add",
+          "value": -50
+        }
+      ]
+    },
+    {
+      "id": "deferred_audit",
+      "name": "Deferred Audit",
+      "branch": "Regulatory Capture",
+      "tier": 2,
+      "cost": 250,
+      "requires": [
+        "corrupt_regulator"
+      ],
+      "effects": [
+        {
+          "stat": "bankruptcy_grace_ticks",
+          "op": "add",
+          "value": 1800
+        }
+      ]
     },
     {
       "id": "seed_capital",
       "name": "Seed Capital",
+      "branch": "Asset Laundering",
       "tier": 1,
-      "cost": 200,
+      "cost": 100,
       "requires": [],
-      "effects": [{"stat": "starting_cr", "op": "add", "value": 2000}],
-      "placeholder": true
+      "effects": [
+        {
+          "stat": "starting_cr",
+          "op": "add",
+          "value": 2000
+        }
+      ]
+    },
+    {
+      "id": "asset_protection",
+      "name": "Asset Liquidation Recovery",
+      "branch": "Asset Laundering",
+      "tier": 2,
+      "cost": 250,
+      "requires": [
+        "seed_capital"
+      ],
+      "effects": [
+        {
+          "stat": "liquidation_haircut_bps",
+          "op": "add",
+          "value": 1000
+        }
+      ]
     },
     {
       "id": "fuel_hedge",
       "name": "Fuel Hedge",
+      "branch": "Logistics & Smuggling",
       "tier": 1,
-      "cost": 250,
+      "cost": 100,
       "requires": [],
-      "effects": [{"stat": "fuel_discount_bps", "op": "add", "value": 1000}],
-      "placeholder": true
+      "effects": [
+        {
+          "stat": "fuel_discount_bps",
+          "op": "add",
+          "value": 1000
+        }
+      ]
     },
     {
-      "id": "golden_handshake",
-      "name": "Golden Handshake",
+      "id": "black_market_corridors",
+      "name": "Black-Market Corridors",
+      "branch": "Logistics & Smuggling",
       "tier": 2,
-      "cost": 400,
-      "requires": ["seed_capital"],
-      "effects": [{"stat": "fresh_start_cr", "op": "add", "value": 2000}],
-      "placeholder": true
+      "cost": 250,
+      "requires": [
+        "fuel_hedge"
+      ],
+      "effects": [
+        {
+          "stat": "piracy_odds_bps",
+          "op": "mul_bps",
+          "value": 8000
+        }
+      ]
     },
     {
-      "id": "black_market_lanes",
-      "name": "Black-Market Warp Lanes",
-      "tier": 2,
+      "id": "corporate_shielding",
+      "name": "Corporate Shielding",
+      "branch": "Monopoly Drive",
+      "tier": 3,
       "cost": 500,
-      "requires": ["regulator_contact"],
-      "effects": [{"stat": "piracy_odds_bps", "op": "mul_bps", "value": 8000}],
-      "placeholder": true
+      "requires": [],
+      "requires_any": [
+        "deferred_audit",
+        "asset_protection",
+        "black_market_corridors"
+      ],
+      "effects": [
+        {
+          "stat": "burn_rate",
+          "op": "mul_bps",
+          "value": 8500
+        }
+      ]
     },
     {
-      "id": "asset_protection",
-      "name": "Asset Protection",
-      "tier": 2,
-      "cost": 450,
-      "requires": ["seed_capital"],
-      "effects": [{"stat": "liquidation_haircut_bps", "op": "add", "value": 1000}],
-      "placeholder": true
+      "id": "hostile_buyout_line",
+      "name": "Hostile Buyout Line",
+      "branch": "Monopoly Drive",
+      "tier": 3,
+      "cost": 500,
+      "requires": [],
+      "requires_any": [
+        "deferred_audit",
+        "asset_protection",
+        "black_market_corridors"
+      ],
+      "effects": [],
+      "enabled": false
     }
   ]
 }

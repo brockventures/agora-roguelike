@@ -67,8 +67,8 @@ func test_file_bankruptcy_ends_run_and_carries_over() -> String:
 		return "debt not cleared"
 	if rc.pending_bankruptcy or not rc.sim_clock.paused:
 		return "pending cleared and clock left paused"
-	if rc.run_seed == old_seed or rc.run_seed != int(report["next_seed"]):
-		return "seed not swapped to report next_seed"
+	if rc.run_seed != old_seed or int(report["next_seed"]) != rc.corp_seed():
+		return "world seed must stay; report carries the new corp seed"
 	if int(report["forfeited"]["cr"]) != 123:
 		return "report should record forfeited cr"
 	rc.sim_clock.resume()
