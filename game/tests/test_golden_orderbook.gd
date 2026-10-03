@@ -41,6 +41,7 @@ const REFEREE_LEVEL := [
 
 const BOOK_TEST := "res://tests/test_order_book.gd"
 const REFEREE_SCRIPT := "res://core/referee.gd"
+const REFEREE_TEST := "res://tests/test_referee.gd"
 
 
 func test_fixtures_present() -> String:
@@ -135,19 +136,33 @@ func test_golden_fixture_coverage() -> String:
 	# form _replay_golden_fixture("<name>" followed by "," or ")", so a bare string
 	# mention (comment, fixture path, unrelated array) does not count. Leading
 	# whitespace is allowed inside the parens; commented-out calls are rejected below.
-	var f := FileAccess.open(BOOK_TEST, FileAccess.READ)
+	var book_err := _require_calls(BOOK_TEST, "_replay_golden_fixture", BOOK_LEVEL)
+	if book_err != "":
+		return book_err
+	# Referee-level: pending until the referee port exists at REFEREE_SCRIPT (path fixed
+	# in #3's checklist). Once it does, REFEREE_TEST must call
+	# _replay_referee_fixture("<name>", ...) for every REFEREE_LEVEL fixture. A later PR
+	# satisfies this branch by adding the calls; it never needs to edit it.
+	if ResourceLoader.exists(REFEREE_SCRIPT):
+		return _require_calls(REFEREE_TEST, "_replay_referee_fixture", REFEREE_LEVEL)
+	return "ok"
+
+
+## Returns "" when every name in `names` appears as a real `fn_name("<name>"` call
+## (followed by "," or ")") in a non-comment line of `path`, else a failure message.
+func _require_calls(path: String, fn_name: String, names: Array) -> String:
+	if not FileAccess.file_exists(path):
+		return "%s does not exist; it must call %s(...) for %s" % [path, fn_name, names]
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
-		return "cannot read %s" % BOOK_TEST
+		return "cannot read %s" % path
 	var code_lines: Array = []
 	for line in f.get_as_text().split("\n"):
 		if not line.strip_edges().begins_with("#"):
 			code_lines.append(line)
 	var code := "\n".join(code_lines)
-	for n in BOOK_LEVEL:
-		var re := RegEx.create_from_string('_replay_golden_fixture\\(\\s*"%s"\\s*[,)]' % n)
+	for n in names:
+		var re := RegEx.create_from_string('%s\\(\\s*"%s"\\s*[,)]' % [fn_name, n])
 		if re.search(code) == null:
-			return "BOOK_LEVEL fixture '%s' has no _replay_golden_fixture(\"%s\"...) call in %s" % [n, n, BOOK_TEST]
-	# Referee-level: nothing to replay against until the referee port exists.
-	if ResourceLoader.exists(REFEREE_SCRIPT):
-		return "%s now exists: add the referee-level replay for %s in that PR, then drop this guard branch" % [REFEREE_SCRIPT, REFEREE_LEVEL]
-	return "ok"
+			return "fixture '%s' has no %s(\"%s\"...) call in %s" % [n, fn_name, n, path]
+	return ""
