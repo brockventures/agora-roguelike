@@ -174,13 +174,13 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 	_records = []
 
 ## Resets RNG and marble bags to new seed value.
+## Matches agora/hazards.py:HazardEngine.reset (resets RNG and bags, leaving records intact).
 func reset(new_seed: int) -> void:
 	seed_val = new_seed
 	if draw_source is NativeDrawSource:
 		draw_source = NativeDrawSource.new(hash("hazards-%d" % new_seed))
 	if bags != null:
 		bags.reset(new_seed)
-	_records.clear()
 
 ## Quotes hazard odds and loss ranges without drawing any marbles.
 ## Matches agora/hazards.py:HazardEngine.quote.

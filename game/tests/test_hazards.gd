@@ -135,6 +135,12 @@ func test_hazard_records_and_recent() -> String:
 	if recent_round_8.size() != 2:
 		return "expected 2 records since round 8, got %d" % recent_round_8.size()
 
+	# Reset leaves records intact matching Python referee hazards.py:reset
+	engine.reset(999)
+	var records_after_reset := engine.recent(0)
+	if records_after_reset.size() != 3:
+		return "reset() must leave records intact, expected 3, got %d" % records_after_reset.size()
+
 	return "ok"
 
 func test_cme_corridor_helper() -> String:
