@@ -28,6 +28,13 @@ func test_station_screen_projection_bounds() -> String:
 	if absf(earth_r - 130.0) > 0.01:
 		return "earth orbit radius incorrect: %f" % earth_r
 
+	# Luna must have visual screen separation from Earth (32px) to prevent 14px node overlap
+	var earth_pos := m.get_station_screen_pos("earth", 0)
+	var luna_pos := m.get_station_screen_pos("luna", 0)
+	var luna_sep := earth_pos.distance_to(luna_pos)
+	if absf(luna_sep - SolTacticalMap.LUNA_SCREEN_SEPARATION_PX) > 0.01:
+		return "luna screen separation wrong: %f vs %f" % [luna_sep, SolTacticalMap.LUNA_SCREEN_SEPARATION_PX]
+
 	return "ok"
 
 func test_orbital_motion_across_rounds() -> String:
@@ -114,11 +121,19 @@ func test_station_selection_and_hit_test() -> String:
 	if m.selected_station != "ceres" or selected != ["ceres"]:
 		return "selected_station or signal mismatch"
 
-	# Hit test exactly on ceres screen pos
+	# Hit test on ceres screen pos
 	var ceres_pos := m.get_station_screen_pos("ceres")
 	var hit := m.hit_test_station(ceres_pos)
 	if hit != "ceres":
 		return "hit_test failed at ceres pos, got: %s" % hit
+
+	# Hit test on Earth and Luna independently (32px separation guarantees distinct hits)
+	var earth_pos := m.get_station_screen_pos("earth")
+	var luna_pos := m.get_station_screen_pos("luna")
+	if m.hit_test_station(earth_pos) != "earth":
+		return "hit_test on earth pos did not return earth"
+	if m.hit_test_station(luna_pos) != "luna":
+		return "hit_test on luna pos did not return luna"
 
 	# Hit test far away in empty space
 	var empty_hit := m.hit_test_station(Vector2(50.0, 50.0), 10.0)
@@ -133,20 +148,32 @@ func test_station_selection_and_hit_test() -> String:
 
 func test_run_controller_binding() -> String:
 	var d := DoomsdayClock.new(36000, 0, 0, 0)
-	var rc := RunController.new(null, 1, d)
+	# 60 ticks per round -> 60 ticks at 1/60s step is 1 round
+	var rc := RunController.new(null, 1, d, 60)
 	var m := SolTacticalMap.new(rc)
 
 	if m.current_round != 0:
 		return "initial round should be 0"
 
-	# Advance controller clock
-	rc.advance(1.0)
-	if m.current_round != rc.sim_clock.total_ticks or m.current_round == 0:
-		return "map round failed to track sim_clock ticked"
+	# Advance 60 sub-ticks at 1/60 delta -> exactly 1 round
+	for i in 60:
+		rc.advance(1.0 / 60.0)
+
+	if rc.get_current_round() != 1 or m.current_round != 1:
+		return "map round failed to track controller round: %d vs %d" % [m.current_round, rc.get_current_round()]
+
+	# Advance 30 sub-ticks -> round 1 with 0.5 progress
+	for i in 30:
+		rc.advance(1.0 / 60.0)
+
+	if m.current_round != 1 or absf(m.round_progress - 0.5) > 0.05:
+		return "map round_progress mismatch: %f" % m.round_progress
 
 	m.unbind_controller()
 	var saved_round := m.current_round
-	rc.advance(1.0)
+	for i in 60:
+		rc.advance(1.0 / 60.0)
+
 	if m.current_round != saved_round:
 		return "unbound map should not advance with controller"
 

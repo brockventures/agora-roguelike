@@ -6,7 +6,7 @@ extends RefCounted
 ## alignment corridors, and fleet transit positions) into a 1280x800 native
 ## Steam Deck screen space.
 ##
-## Binds to RunController (#10, PR 2) to observe simulation ticks and station states.
+## Binds to RunController (#10, PR 2) to observe simulation rounds and progress.
 
 signal station_selected(station_id: String)
 signal station_hovered(station_id: String)
@@ -24,11 +24,17 @@ const AU_SCALE_PX: float = 130.0
 const STATION_NODE_RADIUS_PX: float = 14.0
 const SOL_NODE_RADIUS_PX: float = 24.0
 
+## Minimum screen separation for Luna to prevent visual overlap and hit-test ambiguity with Earth.
+const LUNA_SCREEN_SEPARATION_PX: float = 32.0
+
 var controller: RunController = null
 var current_round: int = 0
+var round_progress: float = 0.0
 var selected_station: String = ""
+var smooth_orbit: bool = true
 
-var _tick_callable: Callable
+var _sub_tick_callable: Callable
+var _round_callable: Callable
 
 func _init(p_controller: RunController = null, p_initial_round: int = 0) -> void:
 	current_round = maxi(0, p_initial_round)
@@ -38,19 +44,29 @@ func _init(p_controller: RunController = null, p_initial_round: int = 0) -> void
 func bind_controller(rc: RunController) -> void:
 	unbind_controller()
 	controller = rc
-	if controller != null and controller.sim_clock != null:
-		_tick_callable = Callable(self, "_on_clock_ticked")
-		controller.sim_clock.sub_ticked.connect(_tick_callable)
-		current_round = controller.sim_clock.total_ticks
+	if controller != null:
+		_sub_tick_callable = Callable(self, "_on_controller_sub_ticked")
+		_round_callable = Callable(self, "_on_controller_round_advanced")
+		if controller.sim_clock != null:
+			controller.sim_clock.sub_ticked.connect(_sub_tick_callable)
+		controller.round_advanced.connect(_round_callable)
+		current_round = controller.get_current_round()
+		round_progress = controller.get_round_progress()
 
 func unbind_controller() -> void:
-	if controller != null and controller.sim_clock != null:
-		if _tick_callable.is_valid() and controller.sim_clock.sub_ticked.is_connected(_tick_callable):
-			controller.sim_clock.sub_ticked.disconnect(_tick_callable)
+	if controller != null:
+		if controller.sim_clock != null and _sub_tick_callable.is_valid() and controller.sim_clock.sub_ticked.is_connected(_sub_tick_callable):
+			controller.sim_clock.sub_ticked.disconnect(_sub_tick_callable)
+		if _round_callable.is_valid() and controller.round_advanced.is_connected(_round_callable):
+			controller.round_advanced.disconnect(_round_callable)
 	controller = null
 
-func _on_clock_ticked(total_ticks: int) -> void:
-	set_round(total_ticks)
+func _on_controller_sub_ticked(_total_ticks: int) -> void:
+	if controller != null:
+		round_progress = controller.get_round_progress()
+
+func _on_controller_round_advanced(r: int) -> void:
+	set_round(r)
 
 func set_round(round_num: int) -> void:
 	var old_round := current_round
@@ -58,14 +74,32 @@ func set_round(round_num: int) -> void:
 	if current_round != old_round:
 		round_advanced.emit(current_round)
 
-## Returns screen pixel position for a given station at the current (or specified) round.
+## Returns screen pixel position for a given station.
+## If round_num is negative, uses current simulation state (with smooth interpolation if enabled).
 func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
-	var r := current_round if round_num < 0 else maxi(0, round_num)
-	var au_pos := Transit.get_station_position(station_id, r)
-	# Screen Y is inverted from Cartesian space
-	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
+	var st := station_id.to_lower().strip_edges()
+	var effective_r: float
+	if round_num >= 0:
+		effective_r = float(round_num)
+	elif smooth_orbit and controller != null:
+		effective_r = float(current_round) + round_progress
+	else:
+		effective_r = float(current_round)
 
-## Returns the orbital radius in screen pixels for drawing concentric orbital track rings.
+	if st == "luna":
+		var earth_screen := _compute_orbit_screen_pos("earth", effective_r)
+		var lunar_angle: float = (fposmod(effective_r, 4.0) / 4.0) * TAU
+		return earth_screen + Vector2(cos(lunar_angle), -sin(lunar_angle)) * LUNA_SCREEN_SEPARATION_PX
+
+	return _compute_orbit_screen_pos(st, effective_r)
+
+func _compute_orbit_screen_pos(st: String, r: float) -> Vector2:
+	var radius: float = float(Transit.ORBITAL_RADII.get(st, 1.0))
+	var period: float = float(Transit.ORBITAL_PERIODS.get(st, 12))
+	var angle: float = (fposmod(r, period) / period) * TAU
+	return MAP_CENTER + Vector2(cos(angle) * radius * AU_SCALE_PX, -sin(angle) * radius * AU_SCALE_PX)
+
+## Returns orbital radius in screen pixels for drawing concentric orbital track rings.
 func get_orbit_radius_px(station_id: String) -> float:
 	var au_radius := Transit.get_station_orbital_radius(station_id)
 	return au_radius * AU_SCALE_PX
@@ -89,7 +123,6 @@ func get_route_screen_endpoints(route_key: String, round_num: int = -1) -> Dicti
 	var end_pos := get_station_screen_pos(destination, r)
 	var distance_px: float = start_pos.distance_to(end_pos)
 
-	# Check active alignment corridors
 	var alignment_active: bool = is_route_aligned(origin, destination, r)
 	var is_belt: bool = (route_key in Transit.BELT_ROUTES)
 
@@ -117,7 +150,6 @@ func is_route_aligned(origin: String, destination: String, round_num: int = -1) 
 	return false
 
 ## Computes the screen position of a transit vessel along a shipping lane.
-## progress_ratio is clamped [0.0, 1.0].
 func get_transit_vessel_screen_pos(origin: String, destination: String, progress_ratio: float, round_num: int = -1) -> Vector2:
 	var start_pos := get_station_screen_pos(origin, round_num)
 	var end_pos := get_station_screen_pos(destination, round_num)
@@ -137,8 +169,16 @@ func clear_selection() -> void:
 	selected_station = ""
 
 ## Returns true if a screen-space coordinate intersects a station's clickable node radius.
-func hit_test_station(screen_pos: Vector2, tolerance_px: float = 20.0) -> String:
+## Luna is tested first to prevent Earth's hitbox from absorbing Luna clicks.
+func hit_test_station(screen_pos: Vector2, tolerance_px: float = 16.0) -> String:
+	# Prioritize Luna since it orbits close to Earth
+	var luna_pos := get_station_screen_pos("luna")
+	if luna_pos.distance_to(screen_pos) <= tolerance_px:
+		return "luna"
+
 	for st in Transit.STATIONS:
+		if st == "luna":
+			continue
 		var pos := get_station_screen_pos(st)
 		if pos.distance_to(screen_pos) <= tolerance_px:
 			return st
@@ -155,6 +195,7 @@ func to_dict() -> Dictionary:
 		}
 	return {
 		"current_round": current_round,
+		"round_progress": round_progress,
 		"selected_station": selected_station,
 		"viewport": [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
 		"map_center": [MAP_CENTER.x, MAP_CENTER.y],

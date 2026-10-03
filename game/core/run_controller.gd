@@ -23,6 +23,9 @@ signal bankruptcy_pending(assessment: Dictionary)
 signal bankruptcy_filed(report: Dictionary)
 signal run_collapsed()
 signal stage_changed(old_stage: int, new_stage: int)
+signal round_advanced(round_num: int)
+
+const DEFAULT_TICKS_PER_ROUND: int = 600
 
 var sim_clock: SimClock
 var doomsday: DoomsdayClock
@@ -32,6 +35,8 @@ var cr: int = Chapter11.FRESH_START_CR
 var cargo: Dictionary = {}
 var ships: Array = []
 var pending_bankruptcy: bool = false
+var ticks_per_round: int = DEFAULT_TICKS_PER_ROUND
+
 ## Golden Parachutes modifiers (see Parachutes). Empty = no perks.
 var modifiers: Dictionary = {}
 
@@ -43,16 +48,23 @@ var _hook: Callable
 
 ## p_modifiers: Parachutes.modifiers(profile) at run start. NOTE: it mutates the
 ## passed doomsday clock's interest and burn.
-func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null, p_modifiers: Dictionary = {}) -> void:
+func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null, p_arg4: Variant = {}, p_ticks_per_round: int = DEFAULT_TICKS_PER_ROUND) -> void:
 	profile = p_profile if p_profile != null else MetaProfile.new()
 	run_seed = p_seed
 	doomsday = p_doomsday if p_doomsday != null else DoomsdayClock.new()
+	var mods: Dictionary = {}
+	if p_arg4 is int:
+		ticks_per_round = maxi(1, int(p_arg4))
+	else:
+		if p_arg4 is Dictionary:
+			mods = p_arg4
+		ticks_per_round = maxi(1, p_ticks_per_round)
 	sim_clock = SimClock.new()
 	cr = Chapter11.FRESH_START_CR
 	ships = [Chapter11.STARTER_SHIP.duplicate(true)]
 	_wire()
-	if not p_modifiers.is_empty():
-		apply_modifiers(p_modifiers)
+	if not mods.is_empty():
+		apply_modifiers(mods)
 		cr = Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR)
 
 ## Set the active modifiers and apply the live doomsday knobs (interest_bps,
@@ -138,6 +150,18 @@ func file_bankruptcy() -> Dictionary:
 	bankruptcy_filed.emit(report)
 	return report
 
+## Returns current simulation round derived from total_ticks and ticks_per_round.
+func get_current_round() -> int:
+	if ticks_per_round <= 0:
+		return 0
+	return int(sim_clock.total_ticks / ticks_per_round)
+
+## Returns fractional progress [0.0, 1.0) through the current simulation round.
+func get_round_progress() -> float:
+	if ticks_per_round <= 0:
+		return 0.0
+	return float(sim_clock.total_ticks % ticks_per_round) / float(ticks_per_round)
+
 func to_dict() -> Dictionary:
 	return {
 		"sim_clock": sim_clock.to_dict(),
@@ -150,6 +174,7 @@ func to_dict() -> Dictionary:
 		"pending_bankruptcy": pending_bankruptcy,
 		"modifiers": modifiers.duplicate(true),
 		"doomsday_base": _doomsday_base.duplicate(),
+		"ticks_per_round": ticks_per_round,
 	}
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -172,6 +197,7 @@ static func from_dict(d: Dictionary) -> RunController:
 	var db = d.get("doomsday_base", {})
 	if db is Dictionary and db.has("interest") and db.has("burn"):
 		rc._doomsday_base = {"interest": maxi(0, int(db["interest"])), "burn": maxi(0, int(db["burn"]))}
+	rc.ticks_per_round = maxi(1, int(d.get("ticks_per_round", DEFAULT_TICKS_PER_ROUND)))
 	rc._wire()
 	return rc
 
@@ -190,8 +216,10 @@ static func _sanitise_modifiers(raw) -> Dictionary:
 			out[stat] = {"add": int(a), "mul_bps": maxi(0, int(b))}
 	return out
 
-func _on_sub_ticked(_total: int) -> void:
+func _on_sub_ticked(total: int) -> void:
 	doomsday.step_ticks(1)
+	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
+		round_advanced.emit(int(total / ticks_per_round))
 
 func _interrupt_check() -> bool:
 	var trip := doomsday.should_auto_pause()
