@@ -1,7 +1,7 @@
 class_name Bags
 extends RefCounted
 ## Marble-bag RNG engine for bounded bad-luck streak protection and varying-p rolls.
-## Ported from market-sandbox Python referee (agora/bag.py at commit e7fb174).
+## Ported from market-sandbox Python referee (agora/bag.py at commit 587b07f).
 ##
 ## Fixed-p rolls (draw):
 ##   Draws without replacement from a finite bag of k hits and n-k misses (n <= 200).
@@ -11,9 +11,11 @@ extends RefCounted
 ## Varying-p rolls (draw_varying):
 ##   Deficit accumulator for odds that vary per roll or have no denominator <= 200.
 ##   Maintains a credit buffer: credit += p; if credit >= threshold, hits and credit -= 1.0.
+##   Threshold is held until a hit, since the cycle/seed only advances on a hit.
 ##
 ## Random draws are routed through DrawSource (NativeDrawSource at runtime,
-## ReplayDrawSource for golden tests).
+## ReplayDrawSource for golden tests), keyed per (ns, seed, event, fleet, refill)
+## so one fleet's draws never bleed into another's.
 
 const MAX_N: int = 200
 const EPS: float = 1e-9
@@ -22,6 +24,7 @@ const SEED_EVENT: String = "__seed__"
 var ns: String = ""
 var seed: int = 0
 var draw_source: DrawSource = null
+var draw_sources: Dictionary = {}
 
 ## Internal state per (event, fleet). Key: "event:fleet".
 ## Value: { "seed": int, "p": float, "marbles": String, "refills": int, "credit": float, "draws": int, "hits": int }
@@ -33,10 +36,8 @@ var _forced: Dictionary = {}
 func _init(p_ns: String = "default", p_draw_source: DrawSource = null, p_seed: int = 0) -> void:
 	ns = p_ns
 	seed = p_seed
-	if p_draw_source != null:
-		draw_source = p_draw_source
-	else:
-		draw_source = NativeDrawSource.new(seed)
+	draw_source = p_draw_source
+	draw_sources = {}
 	_bags = {}
 	_forced = {}
 
@@ -67,8 +68,6 @@ func reset(p_seed: int = 0, p_draw_source: DrawSource = null) -> void:
 	_bags.clear()
 	if p_draw_source != null:
 		draw_source = p_draw_source
-	elif draw_source is NativeDrawSource:
-		draw_source = NativeDrawSource.new(seed)
 
 ## Force the next draw(s) of event (any fleet) to return these outcomes.
 func force(event: String, outcome: Variant) -> void:
@@ -79,6 +78,20 @@ func force(event: String, outcome: Variant) -> void:
 			_forced[event].append(bool(o))
 	else:
 		_forced[event].append(bool(outcome))
+
+## Returns an RNG stream for (event, fleet, refills) to preserve isolation.
+func _rng(event: String, fleet: String, refills: int, override_source: DrawSource = null) -> DrawSource:
+	if override_source != null:
+		return override_source
+	var stream_key := "bag-%s-%d-%s-%s-%d" % [ns, seed, event, fleet, refills]
+	if draw_sources.has(stream_key):
+		return draw_sources[stream_key]
+	var fleet_key := "%s:%s" % [event, fleet]
+	if draw_sources.has(fleet_key):
+		return draw_sources[fleet_key]
+	if draw_source != null and not (draw_source is NativeDrawSource):
+		return draw_source
+	return NativeDrawSource.new(hash(stream_key))
 
 ## Fixed-p roll: draws a marble from the fleet's bag for this event.
 func draw(event: String, fleet: String, p: float, source: DrawSource = null) -> bool:
@@ -103,14 +116,14 @@ func draw(event: String, fleet: String, p: float, source: DrawSource = null) -> 
 	if abs(float(row["p"]) - p) > EPS:
 		marbles = ""  # p changed: rebuild the bag for the new odds
 
-	var src: DrawSource = source if source != null else draw_source
 	if marbles.is_empty():
+		var rng: DrawSource = _rng(event, fleet, refills, source)
 		var sizes: Array = []
 		var base_size: int = n / k
 		var rem: int = n % k
 		for i in range(k):
 			sizes.append(base_size + (1 if i < rem else 0))
-		src.shuffle(sizes)
+		rng.shuffle(sizes)
 
 		var bag_chars: Array = []
 		for sz in sizes:
@@ -118,7 +131,7 @@ func draw(event: String, fleet: String, p: float, source: DrawSource = null) -> 
 			var run_chars: Array = []
 			run_chars.resize(size)
 			run_chars.fill("0")
-			var hit_idx: int = src.randrange(0, size, 1)
+			var hit_idx: int = rng.randrange(0, size, 1)
 			run_chars[hit_idx] = "1"
 			bag_chars.append_array(run_chars)
 		marbles = "".join(bag_chars)
@@ -144,8 +157,8 @@ func draw_varying(event: String, fleet: String, p: float, source: DrawSource = n
 	var prev_marbles: String = row["marbles"]
 	var credit: float = (float(row["credit"]) if prev_marbles.is_empty() else 0.0) + p
 
-	var src: DrawSource = source if source != null else draw_source
-	var t: float = 1.0 - src.random()  # in (0, 1]
+	var rng: DrawSource = _rng(event, fleet, cycle, source)
+	var t: float = 1.0 - rng.random()  # in (0, 1] - held until hit advances cycle
 	var hit: bool = credit >= t
 	if hit:
 		credit -= 1.0

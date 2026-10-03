@@ -173,8 +173,8 @@ func test_per_fleet_isolation() -> String:
 	if stats_zero["draws"] != 80:
 		return "expected 80 zero draws, got %d" % stats_zero["draws"]
 	var stats_amos = b2.stats("e", "amos")
-	if stats_amos["draws"] != 40:
-		return "expected 40 amos draws, got %d" % stats_amos["draws"]
+	if alone != mixed:
+		return "per-fleet isolation failed: alone and mixed diverged"
 	return "ok"
 
 func test_replay_draw_source_integration() -> String:
