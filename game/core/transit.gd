@@ -130,23 +130,23 @@ static func get_station_orbital_radius(station_id: String) -> float:
 	var st := station_id.to_lower().strip_edges()
 	return float(ORBITAL_RADII.get(st, 1.0))
 
-## Computes 2D position in AU coordinates at a given round number.
-static func get_station_position(station_id: String, round_num: int = 0) -> Vector2:
+## Computes 2D position in AU coordinates at a given round number (or fractional round).
+static func get_station_position(station_id: String, round_num: float = 0.0) -> Vector2:
 	var st := station_id.to_lower().strip_edges()
 	var radius: float = float(ORBITAL_RADII.get(st, 1.0))
-	var period: int = int(ORBITAL_PERIODS.get(st, 12))
-	var angle: float = (float(round_num % period) / float(period)) * TAU
+	var period: float = float(ORBITAL_PERIODS.get(st, 12))
+	var angle: float = (fposmod(round_num, period) / period) * TAU
 
 	if st == "luna":
 		# Luna orbits Earth at a slight offset
 		var earth_pos := get_station_position("earth", round_num)
-		var lunar_angle: float = (float(round_num % 4) / 4.0) * TAU
+		var lunar_angle: float = (fposmod(round_num, 4.0) / 4.0) * TAU
 		return earth_pos + Vector2(cos(lunar_angle), sin(lunar_angle)) * 0.05
 
 	return Vector2(cos(angle), sin(angle)) * radius
 
 ## Returns Euclidean distance in AU between two stations at round_num.
-static func get_orbital_distance(origin: String, destination: String, round_num: int = 0) -> float:
+static func get_orbital_distance(origin: String, destination: String, round_num: float = 0.0) -> float:
 	var pos1 := get_station_position(origin, round_num)
 	var pos2 := get_station_position(destination, round_num)
 	return pos1.distance_to(pos2)

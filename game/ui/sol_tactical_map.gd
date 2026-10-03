@@ -87,17 +87,12 @@ func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
 		effective_r = float(current_round)
 
 	if st == "luna":
-		var earth_screen := _compute_orbit_screen_pos("earth", effective_r)
+		var earth_screen := get_station_screen_pos("earth", round_num)
 		var lunar_angle: float = (fposmod(effective_r, 4.0) / 4.0) * TAU
 		return earth_screen + Vector2(cos(lunar_angle), -sin(lunar_angle)) * LUNA_SCREEN_SEPARATION_PX
 
-	return _compute_orbit_screen_pos(st, effective_r)
-
-func _compute_orbit_screen_pos(st: String, r: float) -> Vector2:
-	var radius: float = float(Transit.ORBITAL_RADII.get(st, 1.0))
-	var period: float = float(Transit.ORBITAL_PERIODS.get(st, 12))
-	var angle: float = (fposmod(r, period) / period) * TAU
-	return MAP_CENTER + Vector2(cos(angle) * radius * AU_SCALE_PX, -sin(angle) * radius * AU_SCALE_PX)
+	var au_pos := Transit.get_station_position(st, effective_r)
+	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
 
 ## Returns orbital radius in screen pixels for drawing concentric orbital track rings.
 func get_orbit_radius_px(station_id: String) -> float:
