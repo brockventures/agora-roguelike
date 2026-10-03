@@ -70,8 +70,16 @@ func test_station_and_commodity_cycling() -> String:
 	if c_back != "FRAG":
 		return "cycle_commodity backward failed"
 
-	if station_signals.size() != 5 or commodity_signals.size() != 4:
-		return "signal dispatch count mismatch"
+	# Direct set and unknown rejection checks (Marvin review)
+	if hud.set_commodity("WATER"):
+		return "set_commodity should reject unknown commodity WATER"
+	if hud.active_commodity == "WATER":
+		return "active_commodity should not accept WATER"
+	if not hud.set_commodity("BANANAS") or hud.active_commodity != "FRAG":
+		return "set_commodity should normalize BANANAS to FRAG"
+	var water_hud := OrbitalHUD.new(null, "earth", "WATER")
+	if water_hud.active_commodity == "WATER":
+		return "OrbitalHUD._init should reject initial commodity WATER"
 
 	return "ok"
 

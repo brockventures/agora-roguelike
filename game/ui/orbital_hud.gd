@@ -413,7 +413,13 @@ func _stage_to_name(st: int) -> String:
 	return "NORMAL"
 
 func _normalize_commodity(c: String) -> String:
-	return Transit.normalize_commodity(c)
+	var up: String = c.to_upper().strip_edges()
+	if up == "BANANAS":
+		return "FRAG"
+	var norm: String = Transit.normalize_commodity(up)
+	if Transit.COMMODITIES.has(norm):
+		return norm
+	return ""
 
 # --- JSON Snapshot Serialization ---
 
