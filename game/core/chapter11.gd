@@ -29,14 +29,17 @@ const STARTER_SHIP: Dictionary = {"id": "starter_hull", "hull_value_cr": 0}
 
 ## Decide whether the run is insolvent. Debt equal to liquidation value is
 ## solvent; insolvent only when total_debt > liquidation_value.
-static func assess(snapshot: Dictionary) -> Dictionary:
+## haircut_bps defaults to LIQUIDATION_HAIRCUT_BPS; Golden Parachutes (#11) may
+## raise it. Clamped to 0..10000.
+static func assess(snapshot: Dictionary, haircut_bps: int = LIQUIDATION_HAIRCUT_BPS) -> Dictionary:
+	haircut_bps = clampi(haircut_bps, 0, 10000)
 	var cr: int = maxi(0, int(snapshot.get("cr", 0)))
 	var cargo_value := 0
 	var cargo_lines := {}
 	var cargo = snapshot.get("cargo", {})
 	if cargo is Dictionary:
 		for commodity in cargo:
-			var line: int = Piracy.cargo_value(str(commodity), int(cargo[commodity])) * LIQUIDATION_HAIRCUT_BPS / 10000
+			var line: int = Piracy.cargo_value(str(commodity), int(cargo[commodity])) * haircut_bps / 10000
 			cargo_lines[str(commodity)] = line
 			cargo_value += line
 	var ship_value := 0
@@ -44,7 +47,7 @@ static func assess(snapshot: Dictionary) -> Dictionary:
 	if ships is Array:
 		for ship in ships:
 			if ship is Dictionary:
-				ship_value += maxi(0, int(ship.get("hull_value_cr", 0))) * LIQUIDATION_HAIRCUT_BPS / 10000
+				ship_value += maxi(0, int(ship.get("hull_value_cr", 0))) * haircut_bps / 10000
 	var debt := _debt_fields(snapshot.get("doomsday"))
 	var total_debt: int = debt["principal"] + debt["accrued_interest"] + debt["accrued_burn"]
 	var liquidation_value: int = cr + cargo_value + ship_value
@@ -72,8 +75,8 @@ static func should_auto_file(snapshot: Dictionary) -> bool:
 ## File for Chapter 11. Does not mutate the snapshot dictionary or the passed
 ## profile (a new profile is returned). A DoomsdayClock in the snapshot IS
 ## mutated: its debt buckets are cleared in place, its countdown is untouched.
-static func file(snapshot: Dictionary, profile: MetaProfile, run_seed: int) -> Dictionary:
-	var assessment := assess(snapshot)
+static func file(snapshot: Dictionary, profile: MetaProfile, run_seed: int, haircut_bps: int = LIQUIDATION_HAIRCUT_BPS) -> Dictionary:
+	var assessment := assess(snapshot, haircut_bps)
 	var forfeited_cargo := {}
 	var cargo = snapshot.get("cargo", {})
 	if cargo is Dictionary:

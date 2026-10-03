@@ -32,10 +32,18 @@ var cr: int = Chapter11.FRESH_START_CR
 var cargo: Dictionary = {}
 var ships: Array = []
 var pending_bankruptcy: bool = false
+## Golden Parachutes modifiers (see Parachutes). Empty = no perks.
+var modifiers: Dictionary = {}
+
+## Doomsday values before modifiers, captured at first apply so re-applying is
+## idempotent instead of stacking.
+var _doomsday_base: Dictionary = {}
 
 var _hook: Callable
 
-func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null) -> void:
+## p_modifiers: Parachutes.modifiers(profile) at run start. NOTE: it mutates the
+## passed doomsday clock's interest and burn.
+func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayClock = null, p_modifiers: Dictionary = {}) -> void:
 	profile = p_profile if p_profile != null else MetaProfile.new()
 	run_seed = p_seed
 	doomsday = p_doomsday if p_doomsday != null else DoomsdayClock.new()
@@ -43,6 +51,28 @@ func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayC
 	cr = Chapter11.FRESH_START_CR
 	ships = [Chapter11.STARTER_SHIP.duplicate(true)]
 	_wire()
+	if not p_modifiers.is_empty():
+		apply_modifiers(p_modifiers)
+		cr = Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR)
+
+## Set the active modifiers and apply the live doomsday knobs (interest_bps,
+## burn_rate) from their pre-modifier base. Idempotent. Does not touch cr:
+## starting_cr is applied once by _init, fresh_start_cr by file_bankruptcy().
+## fuel_discount_bps, hazard_odds_bps and piracy_odds_bps stay in `modifiers`
+## for the future transit and encounter wiring; nothing here consumes them.
+func apply_modifiers(mods: Dictionary) -> void:
+	modifiers = mods.duplicate(true)
+	if _doomsday_base.is_empty():
+		_doomsday_base = {
+			"interest": doomsday.interest_rate_bps_per_minute,
+			"burn": doomsday.base_burn_per_second,
+		}
+	doomsday.interest_rate_bps_per_minute = maxi(0, Parachutes.apply_stat(modifiers, "interest_bps", int(_doomsday_base["interest"])))
+	doomsday.base_burn_per_second = maxi(0, Parachutes.apply_stat(modifiers, "burn_rate", int(_doomsday_base["burn"])))
+
+## Liquidation haircut in bps after modifiers.
+func haircut_bps() -> int:
+	return clampi(Parachutes.apply_stat(modifiers, "liquidation_haircut_bps", Chapter11.LIQUIDATION_HAIRCUT_BPS), 0, 10000)
 
 func _wire() -> void:
 	_hook = Callable(self, "_interrupt_check")
@@ -80,7 +110,7 @@ func snapshot() -> Dictionary:
 	}
 
 func assess() -> Dictionary:
-	return Chapter11.assess(snapshot())
+	return Chapter11.assess(snapshot(), haircut_bps())
 
 ## Re-evaluate a pending filing, e.g. after the player sold cargo. Clears
 ## pending if the run is solvent again. Returns the resulting pending state.
@@ -94,9 +124,9 @@ func reassess() -> bool:
 func file_bankruptcy() -> Dictionary:
 	if not pending_bankruptcy and not bool(assess()["insolvent"]):
 		return {}
-	var result := Chapter11.file(snapshot(), profile, run_seed)
+	var result := Chapter11.file(snapshot(), profile, run_seed, haircut_bps())
 	var new_run: Dictionary = result["new_run"]
-	cr = int(new_run["cr"])
+	cr = maxi(0, Parachutes.apply_stat(modifiers, "fresh_start_cr", int(new_run["cr"])))
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
 	run_seed = int(new_run["seed"])
@@ -118,6 +148,8 @@ func to_dict() -> Dictionary:
 		"cargo": cargo.duplicate(true),
 		"ships": ships.duplicate(true),
 		"pending_bankruptcy": pending_bankruptcy,
+		"modifiers": modifiers.duplicate(true),
+		"doomsday_base": _doomsday_base.duplicate(),
 	}
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -136,8 +168,27 @@ static func from_dict(d: Dictionary) -> RunController:
 	var sh = d.get("ships", [])
 	rc.ships = sh.duplicate(true) if sh is Array else []
 	rc.pending_bankruptcy = bool(d.get("pending_bankruptcy", false))
+	rc.modifiers = _sanitise_modifiers(d.get("modifiers", {}))
+	var db = d.get("doomsday_base", {})
+	if db is Dictionary and db.has("interest") and db.has("burn"):
+		rc._doomsday_base = {"interest": maxi(0, int(db["interest"])), "burn": maxi(0, int(db["burn"]))}
 	rc._wire()
 	return rc
+
+## Keeps only known stats with integer add / mul_bps; anything else is dropped.
+static func _sanitise_modifiers(raw) -> Dictionary:
+	var out := {}
+	if not (raw is Dictionary):
+		return out
+	for stat in raw:
+		var m = raw[stat]
+		if not (stat is String) or not Parachutes.STATS.has(stat) or not (m is Dictionary):
+			continue
+		var a = m.get("add", 0)
+		var b = m.get("mul_bps", Parachutes.BPS)
+		if (a is int or a is float) and (b is int or b is float):
+			out[stat] = {"add": int(a), "mul_bps": maxi(0, int(b))}
+	return out
 
 func _on_sub_ticked(_total: int) -> void:
 	doomsday.step_ticks(1)
