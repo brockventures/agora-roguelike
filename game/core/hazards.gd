@@ -21,6 +21,17 @@ const CME_RELAY_CORRIDORS: Array = [
 ]
 const CME_STATIONS: Array[String] = ["earth", "luna", "mars"]
 
+## Helper to safely validate and parse numeric float values, returning null on invalid input.
+## Mirrors Python's try: float(x) except (TypeError, ValueError).
+static func _to_valid_float(v: Variant) -> Variant:
+	if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+		return float(v)
+	if typeof(v) == TYPE_STRING:
+		var s := str(v).strip_edges()
+		if s.is_valid_float():
+			return float(s)
+	return null
+
 ## Parses hazard configuration from various input representations.
 ## Matches agora/hazards.py:parse_hazards.
 ## Supported inputs:
@@ -39,8 +50,8 @@ static func parse_hazards(v: Variant) -> Variant:
 
 	if typeof(v) == TYPE_DICTIONARY:
 		var d_dict: Dictionary = v
-		d_val = d_dict.get("delay", 0.0)
-		l_val = d_dict.get("loss", 0.0)
+		d_val = d_dict.get("delay", 0)
+		l_val = d_dict.get("loss", 0)
 	elif typeof(v) == TYPE_STRING:
 		var s: String = str(v).strip_edges().to_lower()
 		if s in ["", "0", "off", "false", "no"]:
@@ -67,16 +78,20 @@ static func parse_hazards(v: Variant) -> Variant:
 	else:
 		return null
 
-	if d_val == null or l_val == null:
+	var d_num = _to_valid_float(d_val)
+	var l_num = _to_valid_float(l_val)
+	if d_num == null or l_num == null:
 		return null
 
-	var d: float = clampf(float(d_val), 0.0, 1.0)
-	var l: float = clampf(float(l_val), 0.0, 1.0)
+	var d: float = clampf(float(d_num), 0.0, 1.0)
+	var l: float = clampf(float(l_num), 0.0, 1.0)
 	if d > 0.0 or l > 0.0:
 		return [d, l]
 	return null
 
-## Checks if an origin-destination corridor is subject to CME relay blackout.
+## Engine helper: checks if an origin-destination corridor is subject to CME relay blackout.
+## Note: agora/hazards.py defines CME_RELAY_CORRIDORS as reference constants without a direct caller;
+## this helper exposes corridor membership checks for game clients and UI route indicators.
 static func is_cme_corridor(origin: String, destination: String) -> bool:
 	var o := origin.to_lower().strip_edges()
 	var d := destination.to_lower().strip_edges()
@@ -95,19 +110,13 @@ static func check_cme_relay_interference(
 	if not cme_active:
 		return {"active": false, "interfered": false, "reason": "no_cme"}
 
-	# Admin or system bypasses
-	var a_str: String = str(agent_id).to_lower().strip_edges() if agent_id != null else ""
-	if a_str == "admin" or agent_id == null or a_str.is_empty():
+	# Admin bypasses (exact comparison matching Python hazards.py:177: agent_id in ("admin", None))
+	if agent_id == null or str(agent_id) == "admin":
 		return {"active": true, "interfered": false, "reason": "admin_or_system"}
 
-	var target := target_station.to_lower().strip_edges()
-	var origin := str(origin_station).to_lower().strip_edges() if origin_station != null else ""
-
-	# Docked locally at target_station -> direct station LAN / hardwire bypasses relay blackout
-	var lower_docked: Array[String] = []
-	for st in docked_stations:
-		lower_docked.append(str(st).to_lower().strip_edges())
-	if target in lower_docked:
+	# Docked locally at target_station -> direct station LAN / hardwire bypasses relay blackout.
+	# Note: Station IDs in Agora are canonical lowercase strings. Exact match mirrors Python referee.
+	if target_station in docked_stations:
 		return {"active": true, "interfered": false, "reason": "local_docked"}
 
 	# Hardened communication suite upgrade bypasses CME interference
@@ -115,18 +124,30 @@ static func check_cme_relay_interference(
 		return {"active": true, "interfered": false, "reason": "hardened_comm"}
 
 	# CME impacts Earth-Mars corridor stations
-	if target in CME_STATIONS or (not origin.is_empty() and origin in CME_STATIONS):
+	var origin_s: String = str(origin_station) if origin_station != null else ""
+	if target_station in CME_STATIONS or (not origin_s.is_empty() and origin_s in CME_STATIONS):
 		return {
 			"active": true,
 			"interfered": true,
 			"corridor": "earth_mars",
 			"reason": "cme_relay_blackout",
-			"detail": "Coronal Mass Ejection has disrupted comms relay to '%s'. Depth/quotes blinded by fog." % target,
+			"detail": "Coronal Mass Ejection has disrupted comms relay to '%s'. Depth/quotes blinded by fog." % target_station,
 			"latency_rounds": 1,
 			"mitigation": "Install hardened_comm upgrade or dock at local station",
 		}
 
 	return {"active": true, "interfered": false, "reason": "outside_corridor"}
+
+## Python round-half-to-even (banker's rounding) to 4 decimal places matching Python round(x, 4).
+static func py_round4(val: float) -> float:
+	var scaled: float = val * 10000.0
+	var rounded := roundi(scaled)
+	var fl: int = int(floor(scaled))
+	var diff: float = scaled - float(fl)
+	if absf(diff - 0.5) < 1e-9:
+		var tie_int: int = fl if (fl % 2 == 0) else (fl + 1)
+		return float(tie_int) / 10000.0
+	return float(rounded) / 10000.0
 
 # ==============================================================================
 # HazardEngine Instance Implementation
@@ -144,7 +165,7 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 	if p_draw_source != null:
 		draw_source = p_draw_source
 	else:
-		draw_source = NativeDrawSource.new(p_seed)
+		draw_source = NativeDrawSource.new(hash("hazards-%d" % p_seed))
 
 	if p_bags != null:
 		bags = p_bags
@@ -156,7 +177,7 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 func reset(new_seed: int) -> void:
 	seed_val = new_seed
 	if draw_source is NativeDrawSource:
-		draw_source = NativeDrawSource.new(new_seed)
+		draw_source = NativeDrawSource.new(hash("hazards-%d" % new_seed))
 	if bags != null:
 		bags.reset(new_seed)
 	_records.clear()
@@ -183,8 +204,8 @@ func quote(
 		}
 	var p_delay: float = float(odds[0])
 	var p_loss: float = float(odds[1])
-	var p_delay_adj: float = roundf(clampf(p_delay * delay_factor, 0.0, 1.0) * 10000.0) / 10000.0
-	var p_loss_adj: float = roundf(clampf(p_loss * loss_factor, 0.0, 1.0) * 10000.0) / 10000.0
+	var p_delay_adj: float = py_round4(clampf(p_delay * delay_factor, 0.0, 1.0))
+	var p_loss_adj: float = py_round4(clampf(p_loss * loss_factor, 0.0, 1.0))
 	var effective_qty: int = maxi(0, int(total_qty)) if total_qty != null else 0
 	var min_loss: int = int(float(effective_qty) * LOSS_FRACTION[0] * loss_size_factor) if effective_qty > 0 else 0
 	var max_loss: int = int(float(effective_qty) * LOSS_FRACTION[1] * loss_size_factor) if effective_qty > 0 else 0

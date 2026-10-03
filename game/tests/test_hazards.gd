@@ -34,6 +34,22 @@ func test_parse_hazards() -> String:
 	if p_dict == null or absf(p_dict[0] - 0.15) > 1e-6 or absf(p_dict[1] - 0.05) > 1e-6:
 		return "expected [0.15, 0.05] for dict input, got %s" % [var_to_str(p_dict)]
 
+	# Zero odds should return null matching Python: (d, l) if (d or l) else None
+	if Hazards.parse_hazards([0, 0]) != null:
+		return "expected null for [0, 0]"
+	if Hazards.parse_hazards("0.0, 0.0") != null:
+		return "expected null for '0.0, 0.0'"
+
+	# Partly bad input must return null matching Python ValueError handling
+	if Hazards.parse_hazards("0.2,abc") != null:
+		return "expected null for '0.2,abc' invalid float part"
+	if Hazards.parse_hazards({"delay": "x", "loss": 0.1}) != null:
+		return "expected null for invalid delay string in dict"
+	if Hazards.parse_hazards({"delay": 0.2, "loss": "y"}) != null:
+		return "expected null for invalid loss string in dict"
+	if Hazards.parse_hazards([0.2, "bad"]) != null:
+		return "expected null for invalid element in array"
+
 	return "ok"
 
 func test_off_by_default() -> String:
@@ -121,35 +137,67 @@ func test_hazard_records_and_recent() -> String:
 
 	return "ok"
 
+func test_cme_corridor_helper() -> String:
+	if not Hazards.is_cme_corridor("earth", "mars"):
+		return "expected earth-mars to be CME corridor"
+	if not Hazards.is_cme_corridor("mars", "earth"):
+		return "expected mars-earth to be CME corridor"
+	if not Hazards.is_cme_corridor("luna", "mars"):
+		return "expected luna-mars to be CME corridor"
+	if not Hazards.is_cme_corridor("mars", "luna"):
+		return "expected mars-luna to be CME corridor"
+	if Hazards.is_cme_corridor("ceres", "mars"):
+		return "expected ceres-mars not to be CME corridor"
+	if Hazards.is_cme_corridor("earth", "luna"):
+		return "expected earth-luna not to be CME corridor"
+	return "ok"
+
 func test_cme_relay_interference() -> String:
 	# 1. Inactive CME
 	var r_off := Hazards.check_cme_relay_interference(false, "amos", "mars")
 	if r_off["active"] != false or r_off["interfered"] != false or r_off["reason"] != "no_cme":
 		return "expected no_cme when CME inactive"
 
-	# 2. Admin bypass
+	# 2. Admin bypass (exact matching Python: agent_id in ("admin", None))
 	var r_admin := Hazards.check_cme_relay_interference(true, "admin", "mars")
 	if r_admin["interfered"] != false or r_admin["reason"] != "admin_or_system":
 		return "admin should bypass CME interference"
 
-	# 3. Local docked bypass
+	var r_admin_none := Hazards.check_cme_relay_interference(true, null, "mars")
+	if r_admin_none["interfered"] != false or r_admin_none["reason"] != "admin_or_system":
+		return "null agent_id should bypass CME interference"
+
+	# 3. Exact matching: empty string or non-admin casing must NOT bypass
+	var r_empty := Hazards.check_cme_relay_interference(true, "", "mars", "earth", [], false)
+	if r_empty["interfered"] != true:
+		return "empty agent_id should not bypass CME interference"
+
+	var r_caps := Hazards.check_cme_relay_interference(true, "Admin", "mars", "earth", [], false)
+	if r_caps["interfered"] != true:
+		return "'Admin' should not bypass CME interference (exact casing required)"
+
+	var r_spaces := Hazards.check_cme_relay_interference(true, " admin ", "mars", "earth", [], false)
+	if r_spaces["interfered"] != true:
+		return "' admin ' should not bypass CME interference (unstripped string)"
+
+	# 4. Local docked bypass
 	var r_docked := Hazards.check_cme_relay_interference(true, "amos", "mars", "earth", ["mars"])
 	if r_docked["interfered"] != false or r_docked["reason"] != "local_docked":
 		return "docked vessel should bypass CME interference"
 
-	# 4. Hardened comm upgrade bypass
+	# 5. Hardened comm upgrade bypass
 	var r_hard := Hazards.check_cme_relay_interference(true, "amos", "mars", "earth", [], true)
 	if r_hard["interfered"] != false or r_hard["reason"] != "hardened_comm":
 		return "hardened_comm should bypass CME interference"
 
-	# 5. Inner corridor interference (Earth-Mars)
+	# 6. Inner corridor interference (Earth-Mars)
 	var r_interf := Hazards.check_cme_relay_interference(true, "amos", "mars", "earth", [], false)
 	if r_interf["interfered"] != true or r_interf["reason"] != "cme_relay_blackout":
 		return "expected cme_relay_blackout for Earth-Mars corridor"
 	if r_interf["corridor"] != "earth_mars":
 		return "expected corridor 'earth_mars', got '%s'" % r_interf["corridor"]
 
-	# 6. Outside corridor (e.g. Ceres to Ceres with no inner station involved)
+	# 7. Outside corridor (e.g. Ceres to Ceres with no inner station involved)
 	var r_out := Hazards.check_cme_relay_interference(true, "amos", "ceres", "ceres", [], false)
 	if r_out["interfered"] != false or r_out["reason"] != "outside_corridor":
 		return "expected outside_corridor for Ceres-Ceres, got %s" % [var_to_str(r_out)]
