@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Generate golden parity fixtures for Transit, Hazards, and Piracy (Issue #4, PR 5).
 
-Drives Python referee modules (agora.spatial, agora.hazards, agora.piracy) to extract
-ground-truth physics, odds tables, route windows, and reference prices.
-Output is strictly deterministic.
+Drives Python referee modules (agora.spatial, agora.hazards, agora.piracy, agora.upgrades)
+to extract ground-truth physics, odds tables, route windows, fuel burn, food decay,
+and reference prices. Output is strictly deterministic.
 
 Usage: python3 tools/golden/gen_transit_hazards.py [out_dir]
 """
 import json
+import math
 import os
-import sys
 import sqlite3
+import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if ROOT not in sys.path:
@@ -19,12 +20,26 @@ if ROOT not in sys.path:
 import agora.spatial as S
 import agora.hazards as H
 import agora.piracy as P
+import agora.upgrades as U
 from agora.referee import AgoraReferee
 
 REFEREE_COMMIT = '587b07f'
 DEFAULT_OUT_DIR = os.path.join(ROOT, 'game', 'tests', 'golden', 'transit_hazards')
-os.makedirs(DEFAULT_OUT_DIR, exist_ok=True)
 OUT_FILE = os.path.join(DEFAULT_OUT_DIR, 'transit_hazards_golden.json')
+
+ENGINE_FUEL_CUT = (0.0, 0.0, 0.40)
+
+
+def calc_fuel_py(fuel: int, engine_tier: int, has_refinery_loop: bool, corp_discount: float = 0.0) -> int:
+    """Computes fuel burn according to agora/upgrades.py:191-202 and agora/referee.py:2024."""
+    cut = ENGINE_FUEL_CUT[min(engine_tier, len(ENGINE_FUEL_CUT) - 1)] if engine_tier > 0 else 0.0
+    burn = fuel * (1.0 - cut) if cut else float(fuel)
+    if has_refinery_loop:
+        burn *= 0.80
+    required = max(1, int(round(burn)))
+    if corp_discount > 0.0:
+        required = max(1, int(float(required) * (1.0 - corp_discount)))
+    return required
 
 
 def generate(out_dir=None):
@@ -38,7 +53,7 @@ def generate(out_dir=None):
         "piracy": {}
     }
 
-    # 1. Spatial
+    # 1. Spatial Constants & Base Structures
     data["spatial"]["stations"] = list(S.STATIONS)
     data["spatial"]["commodities"] = list(S.COMMODITIES)
     data["spatial"]["commodity_aliases"] = dict(S.COMMODITY_ALIASES)
@@ -72,6 +87,55 @@ def generate(out_dir=None):
                     "active_window": win
                 })
     data["spatial"]["route_cases"] = route_cases
+
+    # Fuel burn cases: engine tiers 0..2 x refinery loop x corp discount x base & aligned fuels
+    fuel_cases = []
+    routes_to_test = [
+        ("earth", "luna", 0),  # base 5
+        ("earth", "mars", 0),  # base 15
+        ("earth", "mars", 4),  # aligned 10
+        ("mars", "ceres", 0),  # base 20
+        ("mars", "ceres", 5),  # aligned 12
+        ("earth", "ceres", 0), # base 30
+        ("earth", "ceres", 6), # aligned 18
+    ]
+    for orig, dest, r in routes_to_test:
+        rt = S.get_route(orig, dest, r)
+        base_fuel = rt["fuel"]
+        for t in [0, 1, 2]:
+            for r_loop in [False, True]:
+                for corp in [0.0, 0.35, 0.40]:
+                    exp_fuel = calc_fuel_py(base_fuel, t, r_loop, corp)
+                    fuel_cases.append({
+                        "origin": orig,
+                        "dest": dest,
+                        "round": r,
+                        "route_fuel": base_fuel,
+                        "engine_tier": t,
+                        "has_refinery_loop": r_loop,
+                        "corp_fuel_discount": corp,
+                        "expected_fuel": exp_fuel
+                    })
+    data["spatial"]["fuel_cases"] = fuel_cases
+
+    # Food decay cases: arrival (floor) vs projected (half-even rounding) across 30, 50, 58, 70 FOOD
+    decay_cases = []
+    for orig, dest in [("earth", "ceres"), ("earth", "mars")]:
+        is_belt = (f"{orig}:{dest}" in S.BELT_ROUTES) or ((orig, dest) in S.BELT_ROUTES)
+        rate = S.BELT_CARGO_DECAY_RATE if is_belt else 0.0
+        for q in [30, 50, 58, 70]:
+            for el in [1, 2, 3]:
+                decay_cases.append({
+                    "commodity": "FOOD",
+                    "origin": orig,
+                    "dest": dest,
+                    "qty": q,
+                    "elapsed_rounds": el,
+                    "is_belt": is_belt,
+                    "arrival_decay": min(q, math.floor(q * rate * el)) if is_belt else 0,
+                    "projected_decay": min(q, int(round(q * rate * el))) if is_belt else 0
+                })
+    data["spatial"]["decay_cases"] = decay_cases
 
     # 2. Hazards
     conn = sqlite3.connect(':memory:')
@@ -115,24 +179,31 @@ def generate(out_dir=None):
         })
     data["piracy"]["bag_odds_samples"] = bag_odds_samples
 
-    # Chance samples
+    # Chance samples sweeping rounds 0, 1, 20, 60 to verify both hot:true and hot:false,
+    # and quantities hitting all value steps (0.5, 0.75, 1.0, 1.25, 1.5, 2.0).
     chance_samples = []
-    for tolled in [True, False]:
-        for comm in ["FRAG", "FOOD", "ORE"]:
-            for qty in [100, 1000, 2000]:
-                for escort in [False, True]:
-                    c = desk.chance('amos', 'ceres' if tolled else 'earth', 'mars', tolled, comm, qty, escort, 1)
-                    chance_samples.append({
-                        "agent": "amos",
-                        "origin": "ceres" if tolled else "earth",
-                        "dest": "mars",
-                        "tolled": tolled,
-                        "comm": comm,
-                        "qty": qty,
-                        "escort": escort,
-                        "hot_station": desk.hot_station(1),
-                        "chance": c
-                    })
+    for r in [0, 1, 20, 60]:
+        for orig, dest, tolled in [("ceres", "mars", True), ("earth", "mars", False), ("luna", "mars", False)]:
+            for comm, q_list in [
+                ("FRAG", [100, 500, 750, 850, 1000, 2000]),
+                ("FOOD", [100, 400, 500, 750, 1000, 2000]),
+                ("ORE",  [100, 400, 500, 750, 1000, 2000])
+            ]:
+                for qty in q_list:
+                    for escort in [False, True]:
+                        c = desk.chance("amos", orig, dest, tolled, comm, qty, escort, r)
+                        chance_samples.append({
+                            "agent": "amos",
+                            "origin": orig,
+                            "dest": dest,
+                            "tolled": tolled,
+                            "comm": comm,
+                            "qty": qty,
+                            "escort": escort,
+                            "round": r,
+                            "hot_station": desk.hot_station(r),
+                            "chance": c
+                        })
     data["piracy"]["chance_samples"] = chance_samples
 
     with open(target_file, 'w', encoding='utf-8') as f:

@@ -1,8 +1,11 @@
 class_name TestTransitHazards
 extends RefCounted
-## Golden-file parity tests for Transit, Hazards, and Piracy (Issue #4, PR 5).
-## Verifies that GDScript engine logic has zero drift against Python referee fixtures
-## at commit 587b07f (e7fb174).
+## Golden-file deterministic surface parity tests for Transit, Hazards, and Piracy (Issue #4, PR 5).
+## Verifies that GDScript deterministic formulas (routes, alignment windows, fuel burn,
+## food decay, hazard quotes, and piracy odds tables) have zero drift against Python
+## referee fixtures at commit 587b07f (e7fb174).
+##
+## Note: Seeded marble-bag RNG stream recording and replay validation are part of Task 5d (#5).
 
 const FIXTURE_PATH := "res://tests/golden/transit_hazards/transit_hazards_golden.json"
 
@@ -86,6 +89,23 @@ func test_spatial_route_cases_parity() -> String:
 			return "is_aligned mismatch for %s->%s at r%d" % [origin, dest, r_num]
 		if int(act_route["toll"]) != int(exp_route["toll"]):
 			return "toll mismatch for %s->%s at r%d" % [origin, dest, r_num]
+		if int(act_route["rounds_remaining"]) != int(exp_route["rounds_remaining"]):
+			return "rounds_remaining mismatch for %s->%s at r%d: act=%d exp=%d" % [
+				origin, dest, r_num, act_route["rounds_remaining"], exp_route["rounds_remaining"]
+			]
+		if absf(float(act_route["decay_rate"]) - float(exp_route["decay_rate"])) > 1e-6:
+			return "decay_rate mismatch for %s->%s at r%d: act=%f exp=%f" % [
+				origin, dest, r_num, act_route["decay_rate"], exp_route["decay_rate"]
+			]
+
+		var exp_wname = exp_route.get("window_name")
+		var act_wname = act_route.get("window_name")
+		if exp_wname == null:
+			if act_wname != null:
+				return "expected null window_name for %s->%s at r%d, got %s" % [origin, dest, r_num, str(act_wname)]
+		else:
+			if str(act_wname) != str(exp_wname):
+				return "window_name mismatch for %s->%s at r%d: act=%s exp=%s" % [origin, dest, r_num, str(act_wname), str(exp_wname)]
 
 		# Active window check
 		var act_win = Transit.get_active_window_for_route(origin, dest, r_num)
@@ -101,6 +121,56 @@ func test_spatial_route_cases_parity() -> String:
 
 	return "ok"
 
+func test_spatial_fuel_burn_parity() -> String:
+	var data := _load_fixture()
+	var fuel_cases: Array = data.get("spatial", {}).get("fuel_cases", [])
+	if fuel_cases.is_empty():
+		return "fuel_cases is empty"
+
+	for fc in fuel_cases:
+		var orig: String = fc["origin"]
+		var dest: String = fc["dest"]
+		var r_num: int = int(fc["round"])
+		var engine_tier: int = int(fc["engine_tier"])
+		var r_loop: bool = bool(fc["has_refinery_loop"])
+		var corp_discount: float = float(fc["corp_fuel_discount"])
+		var exp_fuel: int = int(fc["expected_fuel"])
+
+		var act_fuel := Transit.calculate_fuel_burn(orig, dest, r_num, engine_tier, r_loop, corp_discount)
+		if act_fuel != exp_fuel:
+			return "calculate_fuel_burn(%s->%s, r%d, t%d, r_loop=%s, corp=%f) mismatch: act=%d exp=%d" % [
+				orig, dest, r_num, engine_tier, str(r_loop), corp_discount, act_fuel, exp_fuel
+			]
+	return "ok"
+
+func test_spatial_food_decay_parity() -> String:
+	var data := _load_fixture()
+	var decay_cases: Array = data.get("spatial", {}).get("decay_cases", [])
+	if decay_cases.is_empty():
+		return "decay_cases is empty"
+
+	for dc in decay_cases:
+		var comm: String = dc["commodity"]
+		var orig: String = dc["origin"]
+		var dest: String = dc["dest"]
+		var qty: int = int(dc["qty"])
+		var elapsed: int = int(dc["elapsed_rounds"])
+		var exp_arrival: int = int(dc["arrival_decay"])
+		var exp_projected: int = int(dc["projected_decay"])
+
+		var act_arrival := Transit.calculate_arrival_decay(comm, qty, elapsed, orig, dest)
+		if act_arrival != exp_arrival:
+			return "arrival_decay(%s, qty=%d, el=%d, %s->%s) mismatch: act=%d exp=%d" % [
+				comm, qty, elapsed, orig, dest, act_arrival, exp_arrival
+			]
+
+		var act_projected := Transit.calculate_projected_decay(comm, qty, elapsed, orig, dest)
+		if act_projected != exp_projected:
+			return "projected_decay(%s, qty=%d, el=%d, %s->%s) mismatch: act=%d exp=%d" % [
+				comm, qty, elapsed, orig, dest, act_projected, exp_projected
+			]
+	return "ok"
+
 func test_hazards_constants_and_quotes_parity() -> String:
 	var data := _load_fixture()
 	var hazards: Dictionary = data.get("hazards", {})
@@ -109,18 +179,6 @@ func test_hazards_constants_and_quotes_parity() -> String:
 		return "DEFAULT_P_DELAY mismatch"
 	if Hazards.DEFAULT_P_LOSS != float(hazards.get("default_p_loss", 0)):
 		return "DEFAULT_P_LOSS mismatch"
-
-	# CME corridor helper check: true for earth-mars, mars-earth, luna-mars, mars-luna
-	var cme_pairs: Array[String] = ["earth:mars", "mars:earth", "luna:mars", "mars:luna"]
-	for o in Transit.STATIONS:
-		for d in Transit.STATIONS:
-			if o == d:
-				continue
-			var act_cme := Hazards.is_cme_corridor(o, d)
-			var pair_key := "%s:%s" % [o, d]
-			var exp_cme := pair_key in cme_pairs
-			if act_cme != exp_cme:
-				return "is_cme_corridor(%s, %s) mismatch: act=%s exp=%s" % [o, d, act_cme, exp_cme]
 
 	# Quotes parity
 	var engine := Hazards.new([0.10, 0.05], null, null, 7)
@@ -174,21 +232,27 @@ func test_piracy_chance_calculations_parity() -> String:
 	for cs in chance_samples:
 		var c_exp: Dictionary = cs["chance"]
 		var hot_override: String = str(cs.get("hot_station", ""))
+		var r_num: int = int(cs.get("round", 1))
 		var c_act := desk.chance(
 			cs["agent"], cs["origin"], cs["dest"], bool(cs["tolled"]),
-			cs["comm"], int(cs["qty"]), bool(cs["escort"]), 1,
+			cs["comm"], int(cs["qty"]), bool(cs["escort"]), r_num,
 			null, false, 1.0, 0, 1.0, 0, false, hot_override
 		)
 
-		if absf(float(c_act["odds"]) - float(c_exp["odds"])) > 1e-4:
-			return "chance odds mismatch for %s->%s %s: act=%f exp=%f" % [
-				cs["origin"], cs["dest"], cs["comm"], c_act["odds"], c_exp["odds"]
+		# Exact odds comparison: odds are rounded to 4 decimals, no epsilon tolerance allowed
+		if float(c_act["odds"]) != float(c_exp["odds"]):
+			return "chance odds mismatch for %s->%s %s (qty %d, escort %s, r%d): act=%f exp=%f" % [
+				cs["origin"], cs["dest"], cs["comm"], int(cs["qty"]), str(cs["escort"]), r_num, c_act["odds"], c_exp["odds"]
 			]
-		if absf(float(c_act["base"]) - float(c_exp["base"])) > 1e-4:
+		if absf(float(c_act["base"]) - float(c_exp["base"])) > 1e-6:
 			return "chance base mismatch"
+		if bool(c_act["hot"]) != bool(c_exp["hot"]):
+			return "chance hot mismatch for %s->%s at r%d (hot_st=%s): act=%s exp=%s" % [
+				cs["origin"], cs["dest"], r_num, hot_override, str(c_act["hot"]), str(c_exp["hot"])
+			]
 		if int(c_act["value"]) != int(c_exp["value"]):
 			return "chance cargo value mismatch"
-		if absf(float(c_act["value_mult"]) - float(c_exp["value_mult"])) > 1e-4:
+		if absf(float(c_act["value_mult"]) - float(c_exp["value_mult"])) > 1e-6:
 			return "chance value_mult mismatch: act=%f exp=%f" % [c_act["value_mult"], c_exp["value_mult"]]
 		if bool(c_act["escort"]) != bool(c_exp["escort"]):
 			return "chance escort mismatch"

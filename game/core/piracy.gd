@@ -63,15 +63,24 @@ static func _to_valid_float(v: Variant) -> Variant:
 	return null
 
 ## Python round-half-to-even (banker's rounding) to 4 decimal places matching Python round(x, 4).
-static func py_round4(val: float) -> float:
-	var scaled: float = val * 10000.0
-	var rounded := roundi(scaled)
-	var fl: int = int(floor(scaled))
-	var diff: float = scaled - float(fl)
-	if absf(diff - 0.5) < 1e-9:
-		var tie_int: int = fl if (fl % 2 == 0) else (fl + 1)
-		return float(tie_int) / 10000.0
-	return float(rounded) / 10000.0
+## Uses Dekker's TwoProduct to decide half-integer ties on the exact product x * 10000.0 without floating-point error.
+static func py_round4(x: float) -> float:
+	var s := x * 10000.0
+	var c := 134217729.0 * x
+	var xh := c - (c - x)
+	var xl := x - xh
+	var c2 := 134217729.0 * 10000.0
+	var yh := c2 - (c2 - 10000.0)
+	var yl := 10000.0 - yh
+	var e := ((xh * yh - s) + xh * yl + xl * yh) + xl * yl
+	var fl := floorf(s)
+	var k: float
+	if s - fl == 0.5:
+		k = fl + 1.0 if e > 0.0 else (fl if e < 0.0 else (fl if fmod(fl, 2.0) == 0.0 else fl + 1.0))
+	else:
+		k = floorf(s + 0.5)
+	return k / 10000.0
+
 
 ## Parses piracy odds configuration from various representations.
 ## Matches agora/piracy.py:parse_piracy.
