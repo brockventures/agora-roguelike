@@ -195,3 +195,37 @@ func test_roundtrip_is_wired_to_hooks_once() -> String:
 	if rc.doomsday.ticks_remaining != rc.doomsday.total_ticks - rc.sim_clock.total_ticks:
 		return "doomsday must step once per sub-tick"
 	return "ok"
+
+func test_round_calculation_and_pacing() -> String:
+	# 60 ticks per round with zero debt so it does not trip bankruptcy interrupt
+	var clock := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 42, clock, {}, 60)
+	var rounds: Array = []
+	rc.round_advanced.connect(func(r): rounds.append(r))
+
+	if rc.get_current_round() != 0 or rc.get_round_progress() != 0.0:
+		return "initial round or progress not zero"
+
+	# Advance 30 ticks -> round 0, progress 0.5
+	for i in 30:
+		rc.advance(1.0 / 60.0)
+
+	if rc.get_current_round() != 0:
+		return "should still be round 0"
+	if absf(rc.get_round_progress() - 0.5) > 0.01:
+		return "round progress mismatch: %f" % rc.get_round_progress()
+
+	# Advance another 30 ticks -> round 1
+	for i in 30:
+		rc.advance(1.0 / 60.0)
+
+	if rc.get_current_round() != 1 or rounds != [1]:
+		return "round should be 1 and signal emitted: %s" % str(rounds)
+
+	# Serialization preserves ticks_per_round
+	var dict_data := rc.to_dict()
+	var rc2 := RunController.from_dict(dict_data)
+	if rc2.ticks_per_round != 60 or rc2.get_current_round() != 1:
+		return "ticks_per_round not restored in from_dict"
+
+	return "ok"
