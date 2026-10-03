@@ -182,6 +182,8 @@ func test_face_buttons_navigation() -> String:
 func test_face_button_a_order_execution_buy() -> String:
 	var d := DoomsdayClock.new(36000, 0, 0, 0)
 	var rc := RunController.new(null, 1, d)
+	rc.docked_at = "ceres"
+	rc.cargo_capacity = 100
 	rc.cr = 50000
 	rc.cargo = {"ORE": 0}
 	var hud := OrbitalHUD.new(rc, "ceres", "ORE")
@@ -213,6 +215,7 @@ func test_face_button_a_order_execution_buy() -> String:
 func test_face_button_a_order_execution_sell() -> String:
 	var d := DoomsdayClock.new(36000, 0, 0, 0)
 	var rc := RunController.new(null, 1, d)
+	rc.docked_at = "ceres"
 	rc.cr = 1000
 	rc.cargo = {"ORE": 10}
 	var hud := OrbitalHUD.new(rc, "ceres", "ORE")
@@ -318,5 +321,90 @@ func test_to_dict_roundtrip() -> String:
 	var gf: Dictionary = snap["gamepad_focus"]
 	if gf["active_side"] != "SELL" or gf["ladder_index"] != 2 or gf["order_qty"] != 4:
 		return "gamepad_focus snapshot field mismatch: %s" % str(gf)
+
+	return "ok"
+
+func test_station_docking_and_arbitrage_gate() -> String:
+	var d := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 1, d)
+	rc.docked_at = "earth"
+	rc.cr = 50000
+	rc.cargo = {"ORE": 10}
+	var hud := OrbitalHUD.new(rc, "earth", "ORE")
+	var focus := hud.gamepad_focus
+
+	var rejections: Array = []
+	focus.order_rejected.connect(func(reason, p): rejections.append(reason))
+
+	# Player is docked at earth. Switching HUD active station to ceres (e.g. via bumper RB)
+	focus.handle_action("rb") # earth -> luna
+	focus.handle_action("rb") # luna -> mars
+	focus.handle_action("rb") # mars -> ceres
+	if hud.active_station != "ceres":
+		return "expected hud active station ceres"
+
+	# Attempt buy order while viewing remote station
+	focus.set_order_side(GamepadFocus.OrderSide.BUY)
+	focus.set_quantity(1)
+	var buy_ok := focus.handle_action("button_a")
+	if buy_ok:
+		return "arbitrage exploit: buy order at ceres while docked at earth should fail"
+	if rejections.is_empty() or rejections[-1] != "NOT_DOCKED_AT_STATION":
+		return "expected NOT_DOCKED_AT_STATION rejection, got: %s" % str(rejections)
+
+	# Cycle back to docked station (earth)
+	focus.handle_action("rb") # ceres -> earth
+	if hud.active_station != "earth":
+		return "expected hud active station earth"
+
+	# Buy order at docked station should now succeed
+	var docked_buy_ok := focus.handle_action("button_a")
+	if not docked_buy_ok:
+		return "buy order at docked station earth failed"
+
+	return "ok"
+
+func test_depth_available_quantity_and_cargo_capacity_gates() -> String:
+	var d := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 1, d)
+	rc.docked_at = "ceres"
+	rc.cargo_capacity = 20
+	rc.cr = 50000
+	rc.cargo = {"ORE": 15} # 5 units remaining capacity
+	var hud := OrbitalHUD.new(rc, "ceres", "ORE")
+	var focus := hud.gamepad_focus
+
+	var rejections: Array = []
+	focus.order_rejected.connect(func(reason, p): rejections.append(reason))
+
+	focus.set_order_side(GamepadFocus.OrderSide.BUY)
+	focus.snap_depth_level(0) # Level 0 typically has ~5 units in default ladder
+
+	# 1. Test cargo capacity gate: attempt to buy 10 units when remaining capacity is 5
+	focus.set_quantity(10)
+	# Even if ladder had 10, capacity is 5. But let's verify if available_qty or capacity trips first
+	# If ladder available_qty is 5, EXCEEDS_AVAILABLE_QTY trips first.
+	# Let's inspect ladder level 0 available qty
+	var quote: Dictionary = focus.get_focused_quote()
+	var avail: int = int(quote.get("available_qty", 0))
+
+	# Test available quantity gate: request avail + 10 units
+	focus.set_quantity(avail + 10)
+	var qty_ok := focus.handle_action("button_a")
+	if qty_ok:
+		return "order exceeding available liquidity should fail"
+	if rejections[-1] != "EXCEEDS_AVAILABLE_QTY":
+		return "expected EXCEEDS_AVAILABLE_QTY, got %s" % str(rejections[-1])
+
+	# Test cargo capacity gate:
+	# Set capacity to 2, remaining capacity to 2 (total cargo 0), but request 4 units where ladder has 5
+	rc.cargo["ORE"] = 0
+	rc.cargo_capacity = 2 # only 2 slots
+	focus.set_quantity(3) # ladder has 5 units available, but ship only holds 2
+	var cap_ok := focus.handle_action("button_a")
+	if cap_ok:
+		return "order exceeding cargo capacity should fail"
+	if rejections[-1] != "INSUFFICIENT_CARGO_CAPACITY":
+		return "expected INSUFFICIENT_CARGO_CAPACITY, got %s" % str(rejections[-1])
 
 	return "ok"

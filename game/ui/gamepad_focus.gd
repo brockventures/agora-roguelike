@@ -125,7 +125,7 @@ func get_focused_quote() -> Dictionary:
 	if ladder_index >= 0 and ladder_index < levels.size():
 		var lvl: Dictionary = levels[ladder_index]
 		px = float(lvl.get("price", 0.0))
-		available_qty = int(lvl.get("qty", 0))
+		available_qty = int(lvl.get("quantity", lvl.get("qty", 0)))
 	return {
 		"station": hud.active_station,
 		"commodity": hud.active_commodity,
@@ -145,6 +145,27 @@ func execute_focused_order() -> Dictionary:
 		order_rejected.emit(last_rejection_reason, rej)
 		return rej
 
+	var is_buy: bool = (active_side == OrderSide.BUY)
+	var station: String = hud.active_station
+	var commodity: String = hud.active_commodity
+	var rc: RunController = hud.controller
+
+	# 1. Docked Station Gate (Marvin Review Catch):
+	# The player ship can only execute market trades at the station where it is currently docked.
+	# Cycling HUD station tabs allows browsing other stations' order books read-only, but prevents
+	# free cross-station arbitrage without physical transit.
+	if rc != null and rc.docked_at != station:
+		last_rejection_reason = "NOT_DOCKED_AT_STATION"
+		var rej_dock: Dictionary = {
+			"ok": false,
+			"reason": last_rejection_reason,
+			"docked_at": rc.docked_at,
+			"active_station": station,
+			"commodity": commodity
+		}
+		order_rejected.emit(last_rejection_reason, rej_dock)
+		return rej_dock
+
 	var quote: Dictionary = get_focused_quote()
 	var px: float = float(quote.get("price", 0.0))
 	if px <= 0.0:
@@ -153,14 +174,26 @@ func execute_focused_order() -> Dictionary:
 		order_rejected.emit(last_rejection_reason, rej_px)
 		return rej_px
 
-	var is_buy: bool = (active_side == OrderSide.BUY)
-	var station: String = hud.active_station
-	var commodity: String = hud.active_commodity
+	# 2. Level Available Quantity Gate (Marvin Review Catch):
+	# A single book depth level cannot fill more units than its resting liquidity.
+	var avail_qty: int = int(quote.get("available_qty", 0))
+	if avail_qty > 0 and order_qty > avail_qty:
+		last_rejection_reason = "EXCEEDS_AVAILABLE_QTY"
+		var rej_qty: Dictionary = {
+			"ok": false,
+			"reason": last_rejection_reason,
+			"order_qty": order_qty,
+			"available_qty": avail_qty,
+			"quote": quote
+		}
+		order_rejected.emit(last_rejection_reason, rej_qty)
+		return rej_qty
+
 	var total_cost: int = int(round(px * float(order_qty)))
 
-	var rc: RunController = hud.controller
 	if rc != null:
 		if is_buy:
+			# 3. Solvency Gate: Player must have sufficient liquid CR
 			if rc.cr < total_cost:
 				last_rejection_reason = "INSUFFICIENT_CR"
 				var rej_cr: Dictionary = {
@@ -172,12 +205,29 @@ func execute_focused_order() -> Dictionary:
 				}
 				order_rejected.emit(last_rejection_reason, rej_cr)
 				return rej_cr
+
+			# 4. Cargo Capacity Gate (Marvin Review Catch):
+			# Purchasing cargo cannot exceed the vessel's physical hold capacity.
+			var remaining_capacity: int = rc.get_remaining_cargo_capacity()
+			if order_qty > remaining_capacity:
+				last_rejection_reason = "INSUFFICIENT_CARGO_CAPACITY"
+				var rej_cap: Dictionary = {
+					"ok": false,
+					"reason": last_rejection_reason,
+					"remaining_capacity": remaining_capacity,
+					"order_qty": order_qty,
+					"cargo_capacity": rc.cargo_capacity,
+					"total_cargo": rc.get_total_cargo()
+				}
+				order_rejected.emit(last_rejection_reason, rej_cap)
+				return rej_cap
+
 			## Deduct CR and credit cargo
 			rc.cr -= total_cost
 			var current_cargo: int = int(rc.cargo.get(commodity, 0))
 			rc.cargo[commodity] = current_cargo + order_qty
 		else:
-			## SELL
+			## SELL: Player must hold sufficient units of the commodity
 			var current_cargo: int = int(rc.cargo.get(commodity, 0))
 			if current_cargo < order_qty:
 				last_rejection_reason = "INSUFFICIENT_CARGO"
