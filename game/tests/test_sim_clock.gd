@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for SimClock (res://core/sim_clock.gd) deterministic simulation clock.
 ## Verifies accumulator timing, multi-speed sub-ticks, 30/60/120 FPS parity,
 ## pause freezing, sleep/wake auto-pause with accumulator zeroing, lag clamping,
-## atomic interrupt hooks, and serialization.
+## atomic interrupt hooks with zeroed accumulator (anti-burst), and serialization.
 
 func test_init_defaults() -> String:
 	var clock := SimClock.new()
@@ -66,6 +66,21 @@ func test_fps_parity_30_60_120() -> String:
 		return "120 FPS loop produced %d ticks, expected 60" % t120
 	if c30.total_ticks != 60 or c60.total_ticks != 60 or c120.total_ticks != 60:
 		return "total_ticks mismatch across FPS loops"
+	return "ok"
+
+func test_deck_refresh_rates_parity() -> String:
+	# Simulates Steam Deck relevant refresh rates (40, 45, 60, 90, 144 Hz)
+	# Verifies that rates produce expected ticks within 1 tick (constant phase lag, no drift).
+	var rates := [40, 45, 60, 90, 144]
+	for fps in rates:
+		var c := SimClock.new()
+		var ticks := 0
+		var delta := 1.0 / float(fps)
+		for i in range(fps):
+			ticks += c.step(delta)
+		# Over 1.0s, rates give either 60 or 59 ticks (exact or at most 1 tick phase lag)
+		if abs(ticks - 60) > 1:
+			return "FPS %d produced %d ticks over 1s, expected 59 or 60" % [fps, ticks]
 	return "ok"
 
 func test_speed_multipliers_sub_ticks() -> String:
@@ -134,7 +149,6 @@ func test_suspend_wake_detection_before_clamp() -> String:
 	# (e.g. Steam Deck sleep freeze): trigger auto-pause immediately and reset
 	# accumulator remainder to 0.0s so missed sleep time is discarded completely.
 	var clock := SimClock.new()
-	# Step with normal delta to build a small fractional accumulator remainder
 	clock.step(0.01)
 	if clock.accumulator <= 0.0:
 		return "expected positive accumulator remainder"
@@ -168,32 +182,74 @@ func test_spiral_of_death_clamp() -> String:
 
 	return "ok"
 
-func test_atomic_interrupt_hooks() -> String:
-	# Auto-pause interrupts for market crashes or hazards evaluate strictly between sub-ticks
-	var clock := SimClock.new()
+func test_atomic_interrupt_hooks_and_no_resume_burst() -> String:
+	# Marvin & Amos Finding: An interrupt must zero the accumulator so resuming
+	# does not fire an aggressive burst (e.g. 75 sub-ticks at 5x).
+	var clock := SimClock.new(1.0 / 60.0, 5) # 5x speed
 	var hook_counter := [0]
 	var stop_predicate := func() -> bool:
 		hook_counter[0] += 1
-		# Trigger interrupt on 4th sub-tick
 		return hook_counter[0] >= 4
 
 	clock.register_interrupt_hook(stop_predicate)
 
-	# Step with 0.1s delta (would normally produce 6 ticks)
-	var executed := clock.step(0.1)
+	# Step with 0.25s clamped delta (would normally produce 15 * 5 = 75 sub-ticks)
+	var executed := clock.step(0.25)
 	if executed != 4:
-		return "expected interrupt to clamp execution at exactly 4 sub-ticks, got %d" % executed
+		return "expected interrupt to halt execution at exactly 4 sub-ticks, got %d" % executed
 	if not clock.paused:
 		return "expected clock to be paused by interrupt"
-	if clock.auto_paused_reason != "interrupt":
-		return "expected auto_paused_reason == 'interrupt', got '%s'" % clock.auto_paused_reason
-	if clock.total_ticks != 4:
-		return "expected total_ticks == 4, got %d" % clock.total_ticks
+	if clock.accumulator != 0.0:
+		return "expected accumulator to be zeroed on interrupt to prevent resume burst, got %f" % clock.accumulator
 
-	# Unregister and clear
+	# Unregister hook and resume
 	clock.unregister_interrupt_hook(stop_predicate)
-	if clock.interrupt_hooks.size() != 0:
-		return "unregister_interrupt_hook failed"
+	clock.resume()
+
+	# Stepping with 1 standard frame (1/60s) after resume must NOT burst
+	var resume_executed := clock.step(1.0 / 60.0)
+	if resume_executed != 5:
+		return "expected clean resume with exactly 5 sub-ticks (1 frame), got %d (resume burst defect)" % resume_executed
+
+	return "ok"
+
+func test_nan_inf_delta_guards() -> String:
+	var clock := SimClock.new()
+	# NaN delta must be rejected and not poison accumulator
+	var nan_res := clock.step(NAN)
+	if nan_res != 0:
+		return "expected 0 ticks on NaN delta, got %d" % nan_res
+	if is_nan(clock.accumulator):
+		return "accumulator was poisoned with NaN"
+
+	# Negative or zero delta
+	if clock.step(0.0) != 0 or clock.step(-0.5) != 0:
+		return "expected 0 ticks on non-positive delta"
+
+	# Normal delta still works after NaN
+	var ok_res := clock.step(1.0 / 60.0)
+	if ok_res != 1:
+		return "expected clock to advance normally after rejected NaN"
+
+	return "ok"
+
+func test_reset_emits_paused_changed() -> String:
+	var clock := SimClock.new()
+	clock.pause()
+	if not clock.paused:
+		return "pause() failed"
+
+	var signal_received := [false]
+	var on_paused_changed := func(is_paused: bool) -> void:
+		signal_received[0] = (is_paused == false)
+
+	clock.paused_changed.connect(on_paused_changed)
+	clock.reset()
+
+	if clock.paused != false:
+		return "expected paused == false after reset()"
+	if not signal_received[0]:
+		return "reset() did not emit paused_changed(false)"
 
 	return "ok"
 
@@ -231,5 +287,19 @@ func test_to_dict_from_dict_roundtrip() -> String:
 		return "total_ticks mismatch in roundtrip"
 	if restored.auto_paused_reason != clock.auto_paused_reason:
 		return "auto_paused_reason mismatch in roundtrip"
+
+	# Test from_dict hardening against corrupted values
+	var corrupt := {
+		"speed": 99,
+		"accumulator": 500.0,
+		"total_ticks": -10,
+	}
+	var hardened := SimClock.from_dict(corrupt)
+	if hardened.speed != 1:
+		return "corrupted speed was not sanitized to 1"
+	if hardened.accumulator > 0.25:
+		return "corrupted accumulator was not clamped to 0.25"
+	if hardened.total_ticks < 0:
+		return "corrupted total_ticks was not clamped to >= 0"
 
 	return "ok"

@@ -18,7 +18,8 @@ extends RefCounted
 ##    cascades on standard frame drops.
 ## 6. Deterministic Step Signature: step(delta: float) -> int returns the exact count of sub-ticks executed.
 ## 7. Atomic Interrupt Hooks: Registered callables evaluate strictly between sub-ticks. If any hook
-##    returns true, the clock auto-pauses and aborts the sub-tick loop immediately.
+##    returns true, the clock auto-pauses, resets the accumulator to 0.0s to prevent post-resume bursts,
+##    and aborts the sub-tick loop immediately.
 ## 8. Interpolation Decoupling: get_interpolation_alpha() returns normalized sub-frame progress [0.0, 1.0].
 
 signal sub_ticked(total_ticks: int)
@@ -67,8 +68,10 @@ func set_paused(p_paused: bool) -> void:
 func reset() -> void:
 	accumulator = 0.0
 	total_ticks = 0
-	paused = false
 	auto_paused_reason = ""
+	if paused:
+		paused = false
+		paused_changed.emit(false)
 
 func register_interrupt_hook(hook: Callable) -> void:
 	if hook not in interrupt_hooks:
@@ -90,7 +93,11 @@ func step(delta: float) -> int:
 	if paused:
 		return 0
 
-	# 2. Suspend/Wake Detection (Evaluated BEFORE lag clamp)
+	# 2. NaN and non-positive delta guard
+	if is_nan(delta) or delta <= 0.0:
+		return 0
+
+	# 3. Suspend/Wake Detection (Evaluated BEFORE lag clamp)
 	# Raw frame delta > 1.0s indicates host/device suspend (e.g. Steam Deck sleep)
 	if delta > SUSPEND_THRESHOLD:
 		paused = true
@@ -100,15 +107,15 @@ func step(delta: float) -> int:
 		paused_changed.emit(true)
 		return 0
 
-	# 3. Discard non-positive delta
-	if delta <= 0.0:
+	# 4. Discard non-finite deltas (e.g. inf) that were not caught
+	if not is_finite(delta):
 		return 0
 
-	# 4. Spiral-of-Death Clamp: Bound delta to 0.25s max to prevent lag cascades
+	# 5. Spiral-of-Death Clamp: Bound delta to 0.25s max to prevent lag cascades
 	var effective_delta: float = minf(delta, MAX_DELTA_CLAMP)
 	accumulator += effective_delta
 
-	# 5. Fixed-step accumulator loop
+	# 6. Fixed-step accumulator loop
 	var ticks_executed: int = 0
 	while accumulator >= tick_delta:
 		accumulator -= tick_delta
@@ -125,6 +132,8 @@ func step(delta: float) -> int:
 				if hook.call():
 					paused = true
 					auto_paused_reason = "interrupt"
+					# Zero accumulator on interrupt to prevent post-resume bursts
+					accumulator = 0.0
 					auto_paused.emit("interrupt")
 					paused_changed.emit(true)
 					interrupted = true
@@ -146,12 +155,14 @@ func to_dict() -> Dictionary:
 	}
 
 static func from_dict(d: Dictionary) -> SimClock:
+	var raw_speed: int = int(d.get("speed", 1))
+	var s: int = raw_speed if raw_speed in VALID_SPEEDS else 1
 	var clock := SimClock.new(
 		float(d.get("tick_delta", DEFAULT_TICK_DELTA)),
-		int(d.get("speed", 1))
+		s
 	)
 	clock.paused = bool(d.get("paused", false))
-	clock.accumulator = float(d.get("accumulator", 0.0))
-	clock.total_ticks = int(d.get("total_ticks", 0))
+	clock.accumulator = clampf(float(d.get("accumulator", 0.0)), 0.0, MAX_DELTA_CLAMP)
+	clock.total_ticks = maxi(0, int(d.get("total_ticks", 0)))
 	clock.auto_paused_reason = str(d.get("auto_paused_reason", ""))
 	return clock
