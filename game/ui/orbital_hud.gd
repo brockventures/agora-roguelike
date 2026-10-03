@@ -420,8 +420,6 @@ func _on_controller_stage_changed(_old_stage: int, new_stage: int) -> void:
 
 func _on_controller_collapsed() -> void:
 	post_headline("SOVEREIGN DEFAULT: Sol System asset seizure initiated. Run collapsed.", "COLLAPSE", "CRITICAL")
-	if tactile_audio != null:
-		tactile_audio.play_sfx(TactileAudio.ALARM_CRITICAL, 0.7)
 	emergency_alert.emit("COLLAPSE")
 
 func _on_sim_clock_paused(_paused: bool) -> void:

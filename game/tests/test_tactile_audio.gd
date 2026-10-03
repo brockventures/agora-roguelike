@@ -65,10 +65,10 @@ func test_mechanical_click_and_pitch_jitter() -> String:
 	if throttled:
 		return "Rapid sound repeat should be throttled by cooldown"
 
-	# Advance time past cooldown
-	audio.advance_time(0.05)
+	# Wait past cooldown in real time (30ms)
+	OS.delay_msec(30)
 	if not audio.play_sfx(TactileAudio.KEY_CLICK_DOWN):
-		return "Play after cooldown should succeed"
+		return "Play after 30ms wall-clock cooldown should succeed"
 
 	# Assert pitch variation was applied
 	if played_events.size() != 2:
@@ -85,7 +85,7 @@ func test_market_bell_and_chimes() -> String:
 	if played_buses.is_empty() or played_buses[-1] != TactileAudio.BUS_MARKET:
 		return "MARKET_BELL should route to Market_Chimes bus, got %s" % str(played_buses)
 
-	audio.advance_time(0.05)
+	OS.delay_msec(30)
 	audio.play_sfx(TactileAudio.ORDER_FILL)
 	if played_buses.size() < 2 or played_buses[-1] != TactileAudio.BUS_MARKET:
 		return "ORDER_FILL should route to Market_Chimes bus, got %s" % str(played_buses)
@@ -129,6 +129,17 @@ func test_procedural_waveform_generation() -> String:
 	if bell_wav.get_length() <= 0.0:
 		return "MARKET_BELL length should be positive"
 
+	# Test drone tension waveform (looped, 4410 samples = exact 55Hz & 110Hz cycles)
+	var drone_wav := audio.get_or_generate_waveform(TactileAudio.DRONE_TENSION)
+	if drone_wav == null:
+		return "Failed to generate DRONE_TENSION waveform"
+	if drone_wav.loop_mode != AudioStreamWAV.LOOP_FORWARD:
+		return "DRONE_TENSION waveform should have LOOP_FORWARD mode"
+	if drone_wav.loop_end != 4410:
+		return "DRONE_TENSION loop_end should be 4410 samples, got %d" % drone_wav.loop_end
+	if drone_wav.data.size() != 8820:
+		return "DRONE_TENSION 16-bit PCM byte size should be 8820, got %d" % drone_wav.data.size()
+
 	# Test caching returns same instance
 	var cached_bell := audio.get_or_generate_waveform(TactileAudio.MARKET_BELL)
 	if cached_bell != bell_wav:
@@ -149,20 +160,20 @@ func test_orbital_hud_signal_bindings() -> String:
 	if not played_sounds.has(TactileAudio.TAB_SWOOSH):
 		return "cycle_station did not trigger TAB_SWOOSH"
 
-	# 2. Commodity cycle triggers NAV_TICK
-	hud.tactile_audio.advance_time(0.05)
+	# 2. Commodity cycle triggers NAV_TICK (using real wall-clock delay, no manual advance_time)
+	OS.delay_msec(30)
 	hud.cycle_commodity(1)
 	if not played_sounds.has(TactileAudio.NAV_TICK):
 		return "cycle_commodity did not trigger NAV_TICK"
 
 	# 3. Trading overlay toggle triggers MODAL_OPEN
-	hud.tactile_audio.advance_time(0.05)
+	OS.delay_msec(30)
 	hud.open_trading_overlay()
 	if not played_sounds.has(TactileAudio.MODAL_OPEN):
 		return "open_trading_overlay did not trigger MODAL_OPEN"
 
 	# 4. Emergency alert triggers ALARM_CRITICAL
-	hud.tactile_audio.advance_time(0.05)
+	OS.delay_msec(30)
 	hud.post_headline("MAJOR CME DISRUPTION DETECTED", "HAZARDS", "CRITICAL")
 	if not played_sounds.has(TactileAudio.ALARM_CRITICAL):
 		return "Critical headline did not trigger ALARM_CRITICAL"
@@ -171,5 +182,33 @@ func test_orbital_hud_signal_bindings() -> String:
 	var snap: Dictionary = hud.to_dict()
 	if not snap.has("tactile_audio"):
 		return "OrbitalHUD to_dict missing tactile_audio snapshot"
+
+	return "ok"
+
+func test_hud_unstepped_realtime_cooldown() -> String:
+	var hud := OrbitalHUD.new()
+	var played_nav_ticks: Array = []
+	hud.tactile_audio.sound_played.connect(func(id, bus, db, p):
+		if id == TactileAudio.NAV_TICK:
+			played_nav_ticks.append(id)
+	)
+
+	# 1. First trigger plays immediately
+	hud.set_commodity("FOOD")
+	if played_nav_ticks.size() != 1:
+		return "First set_commodity did not trigger NAV_TICK (count=%d)" % played_nav_ticks.size()
+
+	# 2. Immediate second trigger in the same tick is throttled by real-time cooldown (<25ms)
+	hud.set_commodity("FUEL")
+	if played_nav_ticks.size() != 1:
+		return "Immediate second set_commodity was not throttled by cooldown (count=%d)" % played_nav_ticks.size()
+
+	# 3. Wait 30ms in wall-clock real time without calling advance_time()
+	OS.delay_msec(30)
+
+	# 4. Third trigger plays because 30ms real time has elapsed
+	hud.set_commodity("ORE")
+	if played_nav_ticks.size() != 2:
+		return "Third set_commodity after 30ms real delay did not play NAV_TICK (count=%d)" % played_nav_ticks.size()
 
 	return "ok"

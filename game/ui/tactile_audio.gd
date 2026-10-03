@@ -65,10 +65,10 @@ var bus_mutes: Dictionary = {
 	BUS_AMBIENT: false
 }
 
-## Sound Cooldowns to prevent acoustic stacking / clipping (in seconds)
-const MIN_COOLDOWN_SEC: float = 0.025
-var sound_last_played_sec: Dictionary = {}
-var current_sim_time_sec: float = 0.0
+## Wall-clock cooldown to prevent acoustic stacking / clipping (in milliseconds)
+const MIN_COOLDOWN_MSEC: int = 25
+var sound_last_played_msec: Dictionary = {}
+var _time_offset_msec: int = 0
 
 ## Drone tension state
 var current_doomsday_stage: int = 0
@@ -86,17 +86,26 @@ var cached_streams: Dictionary = {}
 func _init() -> void:
 	pass
 
+## Current audio clock in milliseconds (tracks real wall-clock by default)
+func get_current_time_msec() -> int:
+	return Time.get_ticks_msec() + _time_offset_msec
+
+## Advance internal audio clock offset (useful for simulation or test stepping)
+func advance_time(delta_sec: float) -> void:
+	_time_offset_msec += int(delta_sec * 1000.0)
+
 ## Core playback method
 func play_sfx(sound_id: String, pitch_scale: float = 1.0, volume_offset_db: float = 0.0) -> bool:
 	var bus_name := get_sound_bus(sound_id)
 	if is_bus_muted(bus_name) or is_bus_muted(BUS_MASTER):
 		return false
 
-	# Enforce rate-limiting cooldown per sound_id
-	var last_t: float = float(sound_last_played_sec.get(sound_id, -100.0))
-	if (current_sim_time_sec - last_t) < MIN_COOLDOWN_SEC:
+	# Enforce rate-limiting cooldown per sound_id against wall-clock time
+	var now_ms: int = get_current_time_msec()
+	var last_ms: int = int(sound_last_played_msec.get(sound_id, -100000))
+	if (now_ms - last_ms) < MIN_COOLDOWN_MSEC:
 		return false
-	sound_last_played_sec[sound_id] = current_sim_time_sec
+	sound_last_played_msec[sound_id] = now_ms
 
 	# Calculate volume in dB from bus linear volume + offset
 	var bus_vol_lin: float = float(bus_volumes.get(bus_name, 1.0)) * float(bus_volumes.get(BUS_MASTER, 1.0))
@@ -106,13 +115,14 @@ func play_sfx(sound_id: String, pitch_scale: float = 1.0, volume_offset_db: floa
 	# Apply slight pitch jitter for mechanical keyboard feel
 	var final_pitch: float = pitch_scale
 	if sound_id in [KEY_CLICK_DOWN, KEY_CLICK_UP, NAV_TICK]:
-		# Deterministic pseudo-jitter from sim time
-		var jitter_factor: float = (sin(current_sim_time_sec * 37.0 + float(sound_id.length())) * PITCH_JITTER_RANGE)
+		# Deterministic pseudo-jitter from millisecond timestamp
+		var jitter_factor: float = (sin(float(now_ms) * 0.037 + float(sound_id.length())) * PITCH_JITTER_RANGE)
 		final_pitch = clampf(pitch_scale + jitter_factor, 0.7, 1.4)
 
 	# Record event in telemetry log
 	var event := {
-		"time": current_sim_time_sec,
+		"time_ms": now_ms,
+		"time": float(now_ms) / 1000.0,
 		"sound_id": sound_id,
 		"bus": bus_name,
 		"volume_db": snappedf(final_db, 0.1),
@@ -124,10 +134,6 @@ func play_sfx(sound_id: String, pitch_scale: float = 1.0, volume_offset_db: floa
 
 	sound_played.emit(sound_id, bus_name, final_db, final_pitch)
 	return true
-
-## Advance internal audio clock
-func advance_time(delta_sec: float) -> void:
-	current_sim_time_sec += maxf(0.0, delta_sec)
 
 ## Maps sound ID to logical audio mixing bus
 func get_sound_bus(sound_id: String) -> String:
@@ -224,6 +230,18 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				var val := int(sin(t * TAU * freq) * 22000.0)
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
+		DRONE_TENSION:
+			# Low-frequency ambient tension drone (55Hz base fundamental + 110Hz warmth, looped)
+			# 4410 samples at 22050Hz = exactly 11 cycles of 55Hz and 22 cycles of 110Hz (seamless loop)
+			sample_count = 4410
+			stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			stream.loop_begin = 0
+			stream.loop_end = sample_count
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var val := int((sin(t * TAU * 55.0) * 0.75 + sin(t * TAU * 110.0) * 0.25) * 22000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
 		_:
 			# Default navigation blip (1000Hz, 20ms)
 			sample_count = 441
@@ -246,7 +264,7 @@ func to_dict() -> Dictionary:
 	return {
 		"bus_volumes": bus_volumes.duplicate(),
 		"bus_mutes": bus_mutes.duplicate(),
-		"current_sim_time_sec": snappedf(current_sim_time_sec, 0.001),
+		"current_sim_time_sec": snappedf(float(get_current_time_msec()) / 1000.0, 0.001),
 		"doomsday_stage": current_doomsday_stage,
 		"drone_freq_hz": current_drone_freq,
 		"recent_events_count": recent_sound_events.size(),
