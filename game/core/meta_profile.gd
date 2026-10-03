@@ -14,7 +14,7 @@ var contracts: Array[String] = []
 var bankruptcies_filed: int = 0
 ## Golden Parachutes currency (#11), banked when a run ends, spent on perks.
 var severance_points: int = 0
-## Runs (corps) finished under this profile, bumped by RunController.end_run().
+## Runs (corps) finished under this profile, bumped when a corp ends.
 var runs_completed: int = 0
 
 func add_patent(id: String) -> bool:

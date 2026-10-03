@@ -22,8 +22,9 @@ extends RefCounted
 signal bankruptcy_pending(assessment: Dictionary)
 signal bankruptcy_filed(report: Dictionary)
 signal run_collapsed()
-## Emitted once per run with the carry-over summary (collapse or bankruptcy).
-signal run_ended(summary: Dictionary)
+## Emitted once per corp with the carry-over summary (Chapter 11 filing, or the
+## final corp on collapse).
+signal corp_ended(summary: Dictionary)
 ## Emitted once per run when Severance is banked into the profile (#11).
 signal severance_awarded(points: int)
 signal stage_changed(old_stage: int, new_stage: int)
@@ -51,14 +52,15 @@ var _doomsday_base: Dictionary = {}
 
 ## Run-end bookkeeping for Severance (#11). All integers, all saved.
 ## peak_net_worth: highest (liquidation value - total debt) seen, in CR.
-## filings_this_run: Chapter 11 filings since this run began (the profile's
-## bankruptcies_filed is lifetime). severance_banked is the once-only guard.
+## Reset for each new corp.
 var peak_net_worth: int = 0
-var filings_this_run: int = 0
-var severance_banked: bool = false
+## corp_number: 1-based index of the current corp. _banked_corp is the corp whose
+## Severance is already banked (once-only guard, per corp).
+var corp_number: int = 1
+var _banked_corp: int = 0
 var severance_award: int = 0
 ## Why the run ended ("collapse", "bankruptcy", "manual") and what carries over;
-## both empty until end_run(). See carry_over_summary().
+## both empty until a corp ends. See _build_carry_over().
 var end_reason: String = ""
 var carry_over: Dictionary = {}
 ## Seed for the next corp, set when the run ends.
@@ -81,8 +83,8 @@ func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayC
 	ships = [Chapter11.STARTER_SHIP.duplicate(true)]
 	_wire()
 	var mods: Dictionary = p_modifiers
-	if mods.is_empty() and not profile.unlocks.is_empty():
-		mods = Parachutes.load().modifiers(profile)
+	if mods.is_empty():
+		mods = _derive_modifiers(profile)
 	if not mods.is_empty():
 		apply_modifiers(mods)
 		cr = Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR)
@@ -129,36 +131,37 @@ func _track_peak(a: Dictionary) -> void:
 	if nw > peak_net_worth:
 		peak_net_worth = nw
 
+## True once the doomsday clock has collapsed: the only true end of the run.
+## Chapter 11 filing is NOT a game over; it founds a new corp in place.
 func is_run_over() -> bool:
-	return severance_banked
+	return is_collapsed()
 
 ## Fresh-start CR for the next corp: the Chapter 11 stake through fresh_start_cr perks.
 func fresh_start_cr() -> int:
 	return maxi(0, Parachutes.apply_stat(modifiers, "fresh_start_cr", Chapter11.FRESH_START_CR))
 
-## End the run: bank Severance into the profile exactly once and build the
-## carry-over summary. Idempotent; later calls return 0 and change nothing.
-## Terminal paths: doomsday collapse and Chapter 11 filing (both call this);
-## callers with another (e.g. quit-to-menu) may call it directly. Read the
-## result from rc.profile, which file_bankruptcy() replaces with a fresh copy.
-## `lost` overrides the forfeited-assets snapshot (file_bankruptcy captures it
-## before the debt is wiped).
-func end_run(reason: String = "manual", lost: Dictionary = {}) -> int:
-	if severance_banked:
+## End the current corp from outside the normal paths (e.g. quit-to-menu): bank
+## Severance for it exactly once (guarded per corp) and build the summary. Idempotent
+## per corp; returns the award, 0 if already banked. Collapse calls this with
+## reason "collapse"; filing goes through file_bankruptcy(), not here.
+func end_run(reason: String = "manual") -> int:
+	if _banked_corp == corp_number:
 		return 0
 	_track_peak(assess())
-	if lost.is_empty():
-		lost = _lost_snapshot()
-	severance_banked = true
+	return _bank_corp(reason, _lost_snapshot(), 0, Chapter11.next_seed_for(run_seed, profile.bankruptcies_filed))
+
+## Banks Severance for the corp that is ending and builds carry_over. Peak must
+## already be measured (never re-measure after a debt wipe). `filings` is 1 when
+## the corp ended by Chapter 11 filing.
+func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int) -> int:
+	_banked_corp = corp_number
 	end_reason = reason
 	profile.runs_completed += 1
-	severance_award = Parachutes.award_severance(profile, filings_this_run, peak_net_worth)
-	# Matches Chapter11.file's basis: bankruptcies before this filing.
-	next_seed = Chapter11.next_seed_for(run_seed, profile.bankruptcies_filed - (1 if reason == "bankruptcy" else 0))
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth)
+	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
-	sim_clock.pause()
 	severance_awarded.emit(severance_award)
-	run_ended.emit(carry_over)
+	corp_ended.emit(carry_over)
 	return severance_award
 
 func _lost_snapshot() -> Dictionary:
@@ -174,6 +177,7 @@ func _lost_snapshot() -> Dictionary:
 func _build_carry_over(lost: Dictionary) -> Dictionary:
 	return {
 		"reason": end_reason,
+		"corp_number": corp_number,
 		"persists": {
 			"unlocks": profile.unlocks.duplicate(),
 			"patents": profile.patents.duplicate(),
@@ -188,11 +192,12 @@ func _build_carry_over(lost: Dictionary) -> Dictionary:
 		"lost": lost.duplicate(true),
 	}
 
-## Start the next corp's run from this (ended) run's profile: fresh seed, a
-## default doomsday clock, perks derived from the profile, and the fresh-start
-## CR stake in place of starting_cr.
+## Start a brand-new run (after doomsday collapse) from this run's profile:
+## fresh seed, default doomsday clock, perks derived from the profile, and the
+## fresh-start CR stake in place of starting_cr.
 func next_run() -> RunController:
-	return RunController.next_run_for(profile, next_seed if severance_banked else Chapter11.next_seed_for(run_seed, profile.bankruptcies_filed), ticks_per_round)
+	var sd := next_seed if _banked_corp == corp_number else Chapter11.next_seed_for(run_seed, profile.bankruptcies_filed)
+	return RunController.next_run_for(profile, sd, ticks_per_round)
 
 static func next_run_for(p_profile: MetaProfile, p_seed: int, p_ticks_per_round: int = DEFAULT_TICKS_PER_ROUND) -> RunController:
 	var rc := RunController.new(p_profile, p_seed, null, {}, p_ticks_per_round)
@@ -219,7 +224,7 @@ func _unwire() -> void:
 
 ## Advance by a real-time frame delta. Returns sub-ticks executed.
 func advance(delta: float) -> int:
-	if pending_bankruptcy or is_collapsed() or severance_banked:
+	if pending_bankruptcy or is_collapsed():
 		return 0
 	return sim_clock.step(delta)
 
@@ -246,25 +251,49 @@ func reassess() -> bool:
 		pending_bankruptcy = false
 	return pending_bankruptcy
 
-## File for Chapter 11. Valid only when pending or currently insolvent;
-## otherwise returns {} and changes nothing. Filing is terminal: it ENDS the run
-## (Severance banked, carry_over built, clock paused, advance() runs zero ticks).
-## Start the next corp with next_run(). The report carries the same data the
-## carry_over summary does, plus the Chapter11 forfeit lists.
+## File for Chapter 11. Valid only when pending or currently insolvent (and the
+## run has not collapsed); otherwise returns {} and changes nothing. Filing is
+## NOT a game over: the corp fails and a new one is founded in place on this
+## controller. Debt is wiped and liquid assets forfeited (Chapter11.file), the
+## fresh-start stake (with fresh_start_cr perks) and a new corp seed apply, perks
+## are re-derived from the profile, Severance is banked once for the failed corp,
+## and corp_ended(summary) fires. The Sol world and its doomsday clock keep running
+## (never reset); the sim clock is left paused for the caller to resume.
 func file_bankruptcy() -> Dictionary:
+	if is_collapsed():
+		return {}
 	if not pending_bankruptcy and not bool(assess()["insolvent"]):
 		return {}
+	# Measure peak and loss BEFORE filing: Chapter11.file wipes the live clock's
+	# debt in place, which would make the failed corp look solvent.
 	_track_peak(assess())
-	filings_this_run += 1
 	var lost := _lost_snapshot()
 	var result := Chapter11.file(snapshot(), profile, run_seed, haircut_bps())
+	var new_run: Dictionary = result["new_run"]
 	profile = result["profile"]
+	var report: Dictionary = result["report"]
+	# Bank for the failed corp (peak already measured), using the new profile.
+	_bank_corp("bankruptcy", lost, 1, int(new_run["seed"]))
+	# Found the new corp in place.
+	corp_number += 1
+	run_seed = int(new_run["seed"])
+	apply_modifiers(_derive_modifiers(profile))
+	cr = fresh_start_cr()
+	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
+	ships = (new_run["ships"] as Array).duplicate(true)
 	pending_bankruptcy = false
 	sim_clock.accumulator = 0.0
-	var report: Dictionary = result["report"]
-	end_run("bankruptcy", lost)
+	sim_clock.pause()
+	peak_net_worth = 0
+	_track_peak(assess())
 	bankruptcy_filed.emit(report)
 	return report
+
+## Modifiers for a profile's owned perks; {} when it owns none.
+static func _derive_modifiers(p: MetaProfile) -> Dictionary:
+	if p.unlocks.is_empty():
+		return {}
+	return Parachutes.load().modifiers(p)
 
 ## Returns current simulation round derived from total_ticks and ticks_per_round.
 func get_current_round() -> int:
@@ -292,11 +321,11 @@ func to_dict() -> Dictionary:
 		"doomsday_base": _doomsday_base.duplicate(),
 		"ticks_per_round": ticks_per_round,
 		"peak_net_worth": peak_net_worth,
-		"filings_this_run": filings_this_run,
+		"corp_number": corp_number,
 		"end_reason": end_reason,
 		"carry_over": carry_over.duplicate(true),
 		"next_seed": next_seed,
-		"severance_banked": severance_banked,
+		"banked_corp": _banked_corp,
 		"severance_award": severance_award,
 	}
 
@@ -322,8 +351,8 @@ static func from_dict(d: Dictionary) -> RunController:
 		rc._doomsday_base = {"interest": maxi(0, int(db["interest"])), "burn": maxi(0, int(db["burn"]))}
 	rc.ticks_per_round = maxi(1, int(d.get("ticks_per_round", DEFAULT_TICKS_PER_ROUND)))
 	rc.peak_net_worth = maxi(0, int(d.get("peak_net_worth", 0)))
-	rc.filings_this_run = maxi(0, int(d.get("filings_this_run", 0)))
-	rc.severance_banked = bool(d.get("severance_banked", false))
+	rc.corp_number = maxi(1, int(d.get("corp_number", 1)))
+	rc._banked_corp = maxi(0, int(d.get("banked_corp", 0)))
 	rc.severance_award = maxi(0, int(d.get("severance_award", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))
 	var co = d.get("carry_over", {})
@@ -367,5 +396,7 @@ func _on_stage_changed(old_stage: int, new_stage: int) -> void:
 	stage_changed.emit(old_stage, new_stage)
 
 func _on_collapsed() -> void:
-	end_run("collapse")
+	if _banked_corp != corp_number:
+		_track_peak(assess())
+		_bank_corp("collapse", _lost_snapshot(), 0, Chapter11.next_seed_for(run_seed, profile.bankruptcies_filed))
 	run_collapsed.emit()

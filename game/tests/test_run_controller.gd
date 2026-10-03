@@ -50,18 +50,15 @@ func test_file_bankruptcy_ends_run_and_carries_over() -> String:
 	var report := rc.file_bankruptcy()
 	if report.is_empty() or filed.size() != 1:
 		return "report/signal missing"
-	if not rc.is_run_over() or rc.end_reason != "bankruptcy":
-		return "filing must end the run"
-	if rc.advance(1.0) != 0:
-		return "ended run must not advance"
+	if rc.is_run_over() or rc.end_reason != "bankruptcy" or rc.corp_number != 2:
+		return "filing must found a new corp, not end the run"
 	var lost: Dictionary = rc.carry_over["lost"]
 	if int(lost["cr"]) != 123 or lost["cargo"] != {"FRAG": 3} or int(lost["debt"]) <= 0:
 		return "lost summary wrong: %s" % str(lost)
-	var nxt := rc.next_run()
-	if nxt.cr != Chapter11.FRESH_START_CR or not nxt.cargo.is_empty() or nxt.run_seed != int(report["next_seed"]):
-		return "next run not a fresh corp"
-	if nxt.ships.size() != 1 or nxt.ships[0]["id"] != Chapter11.STARTER_SHIP["id"] or nxt.profile != rc.profile:
-		return "next run ships/profile wrong"
+	if rc.cr != Chapter11.FRESH_START_CR or not rc.cargo.is_empty():
+		return "cr/cargo not reset"
+	if rc.ships.size() != 1 or rc.ships[0]["id"] != Chapter11.STARTER_SHIP["id"]:
+		return "ships not reset"
 	if rc.profile.bankruptcies_filed != 1:
 		return "bankruptcies_filed not incremented"
 	if rc.doomsday.ticks_remaining != remaining or rc.sim_clock.total_ticks != ticks:
@@ -70,10 +67,13 @@ func test_file_bankruptcy_ends_run_and_carries_over() -> String:
 		return "debt not cleared"
 	if rc.pending_bankruptcy or not rc.sim_clock.paused:
 		return "pending cleared and clock left paused"
-	if rc.next_seed == old_seed or rc.next_seed != int(report["next_seed"]):
-		return "next_seed must match report"
+	if rc.run_seed == old_seed or rc.run_seed != int(report["next_seed"]):
+		return "seed not swapped to report next_seed"
 	if int(report["forfeited"]["cr"]) != 123:
 		return "report should record forfeited cr"
+	rc.sim_clock.resume()
+	if rc.advance(0.05) == 0:
+		return "corp must keep running once unpaused"
 	return "ok"
 
 func test_file_when_solvent_and_not_pending_rejected() -> String:
@@ -190,11 +190,10 @@ func test_roundtrip_including_pending() -> String:
 	# corp is live-wired.
 	if rc2.file_bankruptcy().is_empty():
 		return "restored pending run should file"
-	if not rc2.is_run_over() or rc2.advance(0.05) != 0:
-		return "filed run must be over"
-	var nxt := rc2.next_run()
-	if nxt.advance(0.05) == 0 or nxt.doomsday.ticks_remaining >= nxt.doomsday.total_ticks:
-		return "next run must be wired to doomsday stepping"
+	rc2.sim_clock.resume()
+	var rem := rc2.doomsday.ticks_remaining
+	if rc2.advance(0.05) == 0 or rc2.doomsday.ticks_remaining >= rem:
+		return "restored controller must be wired to doomsday stepping"
 	return "ok"
 
 func test_roundtrip_is_wired_to_hooks_once() -> String:
