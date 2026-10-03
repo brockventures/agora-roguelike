@@ -150,7 +150,7 @@ def generate(out_dir=None):
         (0.5, 1.0, 500),
         (1.0, 0.5, 2000),
         (2.0, 1.5, 100),
-        (0.1875, 1.0, 100),  # tie case: 0.10 * 0.1875 == 0.01875 -> tests hazards.gd py_round4 tie-breaker
+        (0.1035, 0.109, 100),  # true tie case: p_delay=0.01035->0.0103, p_loss=0.00545->0.0054
         (15.0, 1.0, 100),    # clamp case: 0.10 * 15.0 == 1.5 -> clamp at 1.0
     ]:
         quote = h_engine.quote(delay_factor=df, loss_factor=lf, total_qty=q)
