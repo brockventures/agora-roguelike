@@ -128,7 +128,7 @@ def generate(out_dir=None):
         is_belt = (f"{orig}:{dest}" in S.BELT_ROUTES) or ((orig, dest) in S.BELT_ROUTES)
         rate = S.BELT_CARGO_DECAY_RATE if is_belt else 0.0
         for q in [30, 50, 58, 70]:
-            for el in [1, 2, 3, 5]:
+            for el in range(1, 8):
                 decay_cases.append({
                     "commodity": "FOOD",
                     "origin": orig,
