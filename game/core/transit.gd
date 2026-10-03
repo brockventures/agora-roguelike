@@ -360,6 +360,7 @@ static func calculate_projected_decay(
 	elapsed_rounds: int,
 	origin: String,
 	destination: String,
+	total_rounds: int = -1,
 	perishable_override: Variant = null
 ) -> int:
 	if cargo_qty <= 0 or elapsed_rounds <= 0:
@@ -370,9 +371,35 @@ static func calculate_projected_decay(
 	var is_perish: bool = bool(perishable_override) if perishable_override != null else is_perishable(commodity)
 	if not is_perish:
 		return 0
-	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(elapsed_rounds)
+	var effective_elapsed: int = elapsed_rounds
+	if total_rounds > 0:
+		effective_elapsed = mini(elapsed_rounds, total_rounds)
+	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(effective_elapsed)
 	var raw_decay: int = py_round(float(cargo_qty) * total_decay_pct)
 	return mini(cargo_qty, raw_decay)
+
+## Direct alias for calculate_arrival_decay matching Marvin's specification.
+static func decay_on_arrival(
+	commodity: String,
+	cargo_qty: int,
+	transit_rounds: int,
+	origin: String,
+	destination: String,
+	perishable_override: Variant = null
+) -> int:
+	return calculate_arrival_decay(commodity, cargo_qty, transit_rounds, origin, destination, perishable_override)
+
+## Direct alias for calculate_projected_decay matching Marvin's specification.
+static func decay_projected(
+	commodity: String,
+	cargo_qty: int,
+	elapsed_rounds: int,
+	origin: String,
+	destination: String,
+	total_rounds: int = -1,
+	perishable_override: Variant = null
+) -> int:
+	return calculate_projected_decay(commodity, cargo_qty, elapsed_rounds, origin, destination, total_rounds, perishable_override)
 
 ## Calculates cargo decay. Defaults to arrival settlement math (math.floor)
 ## matching agora/referee.py:2115. For mid-transit live status projections,

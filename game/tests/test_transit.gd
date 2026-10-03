@@ -166,6 +166,19 @@ func test_perishable_cargo_decay_and_cap() -> String:
 	if proj_70 != 4:
 		return "expected projected decay 4 for 70 FOOD (half-to-even round(3.5)=4), got %d" % proj_70
 
+	# Marvin alias checks (decay_on_arrival and decay_projected)
+	var d_arr = Transit.decay_on_arrival("FOOD", 30, 1, "earth", "ceres")
+	if d_arr != 1:
+		return "decay_on_arrival expected 1, got %d" % d_arr
+	var d_proj = Transit.decay_projected("FOOD", 30, 1, "earth", "ceres")
+	if d_proj != 2:
+		return "decay_projected expected 2, got %d" % d_proj
+
+	# Clamping elapsed_rounds to total_rounds (referee.py:1429)
+	var d_clamped = Transit.decay_projected("FOOD", 100, 5, "earth", "ceres", 2)
+	if d_clamped != 10:
+		return "decay_projected clamped to 2 rounds expected 10, got %d" % d_clamped
+
 	# Backward-compatible alias check
 	if Transit.calculate_decay("FOOD", 30, 1, "earth", "ceres") != 1:
 		return "expected calculate_decay alias to match arrival floor 1 for 30 FOOD"
