@@ -329,6 +329,35 @@ func test_serialization_roundtrip_and_stage_recomputation() -> String:
 
 	return "ok"
 
+func test_compounding_batch_invariance_across_minute_boundaries() -> String:
+	# Principal: 10,000 CR, 500 bps (5%/min), 60 tps. 2 full minutes = 7200 ticks.
+	# Clock 1: Single-tick stepping (7200 steps of 1 tick - live gameplay 1x)
+	var c1 := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+	for i in range(7200):
+		c1.step_ticks(1)
+
+	# Clock 2: Large batch stepping (1 step of 7200 ticks - catch-up / fast forward)
+	var c2 := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+	c2.step_ticks(7200)
+
+	# Clock 3: Irregular chunk stepping crossing boundaries (e.g. 1000, 2600, 500, 3100)
+	var c3 := DoomsdayClock.new(36000, 10000, 0, 500, 60)
+	var chunks := [1000, 2600, 500, 3100]
+	for ch in chunks:
+		c3.step_ticks(ch)
+
+	# Verify strict equality across all three stepping patterns
+	if c1.accrued_interest != 1025:
+		return "expected 1025 accrued interest in c1, got %d" % c1.accrued_interest
+	if c2.accrued_interest != c1.accrued_interest:
+		return "batch invariance failed: c2 batch (7200) produced %d, expected %d (c1 per-tick)" % [c2.accrued_interest, c1.accrued_interest]
+	if c3.accrued_interest != c1.accrued_interest:
+		return "batch invariance failed: c3 irregular chunks produced %d, expected %d" % [c3.accrued_interest, c1.accrued_interest]
+	if c1._interest_subunits != c2._interest_subunits or c1._interest_subunits != c3._interest_subunits:
+		return "interest subunit remainder mismatch across batch sizes"
+
+	return "ok"
+
 func test_compounding_interest_exponential_curve() -> String:
 	# Principal: 10,000 CR, 500 bps (5%/min), 0 burn, 60 tps
 	var clock := DoomsdayClock.new(36000, 10000, 0, 500, 60)

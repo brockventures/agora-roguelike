@@ -14,9 +14,7 @@ extends RefCounted
 ##    explicit integer remainder accumulators to ensure zero ledger drift over millions of ticks.
 ## 3. Disjoint Debt & Burn Buckets:
 ##    Accrued operational burn and compounding loan interest are held in separate buckets.
-##    Interest compounds strictly against the compounding debt base: (principal_debt + accrued_interest).
-##    Operational upkeep burn is strictly excluded from interest calculation (the syndicate cannot
-##    charge interest on station upkeep it never lent).
+##    Interest compounds strictly against principal debt (not on burn).
 ##    Debt service applies payments in priority order: accrued interest first, accrued burn second,
 ##    principal debt third.
 ## 4. Discrete Sim Tick Stepping (SimClock #60 Integration):
@@ -88,6 +86,8 @@ var interest_rate_bps_per_minute: int = DEFAULT_INTEREST_RATE_BPS_PER_MINUTE
 # Remainder accumulators for fractional CR accrual across discrete ticks
 var _burn_subunits: int = 0
 var _interest_subunits: int = 0
+var _ticks_in_minute: int = 0
+var _compounding_base: int = DEFAULT_DEBT
 
 # Interrupt hook flag for SimClock integration
 var stage_transition_pending_interrupt: bool = false
@@ -106,6 +106,8 @@ func _init(
 	base_burn_per_second = maxi(0, p_base_burn)
 	interest_rate_bps_per_minute = maxi(0, p_interest_bps)
 	stage = _compute_stage(ticks_remaining, total_ticks)
+	_ticks_in_minute = 0
+	_compounding_base = principal_debt + accrued_interest
 
 func get_stage_multiplier_tenths(p_stage: Stage) -> int:
 	return STAGE_BURN_MULTIPLIER_TENTHS.get(p_stage, 10)
@@ -117,7 +119,7 @@ func get_total_debt() -> int:
 	return principal_debt + accrued_burn + accrued_interest
 
 func get_compounding_debt_base() -> int:
-	return principal_debt + accrued_interest
+	return _compounding_base
 
 func get_time_remaining_seconds() -> float:
 	return float(ticks_remaining) / float(ticks_per_second)
@@ -172,23 +174,35 @@ func step_ticks(ticks: int = 1) -> void:
 	accrued_burn += burn_cr
 	total_burn_accrued += burn_cr
 
-	# Accrue interest on compounding debt base: (principal_debt + accrued_interest)
+	# Accrue interest compounded on minute boundaries (ticks_per_second * 60).
 	# Interest compounds strictly against principal plus accrued interest (upkeep burn is excluded).
-	# Integer math in basis points per minute.
-	# Divisor: 10,000 bps * ticks_per_second * 60 seconds
+	# Snapping the compounding base at minute boundaries guarantees batch-invariance across
+	# 1x speed (1 tick/step), multi-speed (2x/5x), and bulk catch-up steps.
 	var interest_cr := 0
-	var debt_base := principal_debt + accrued_interest
-	if debt_base > 0 and interest_rate_bps_per_minute > 0:
-		var interest_units := debt_base * interest_rate_bps_per_minute * ticks
-		_interest_subunits += interest_units
-		var interest_divisor := 10000 * ticks_per_second * 60
-		interest_cr = _interest_subunits / interest_divisor
-		_interest_subunits %= interest_divisor
+	var ticks_per_minute := ticks_per_second * 60
+	if interest_rate_bps_per_minute > 0 and ticks_per_minute > 0:
+		var rem_ticks := ticks
+		var interest_divisor := 10000 * ticks_per_minute
+		while rem_ticks > 0:
+			var ticks_until_boundary := ticks_per_minute - _ticks_in_minute
+			var chunk := mini(rem_ticks, ticks_until_boundary)
 
-		accrued_interest += interest_cr
-		total_interest_accrued += interest_cr
+			if _compounding_base > 0:
+				var units := _compounding_base * interest_rate_bps_per_minute * chunk
+				_interest_subunits += units
+				var cr := _interest_subunits / interest_divisor
+				_interest_subunits %= interest_divisor
+				interest_cr += cr
+				accrued_interest += cr
+				total_interest_accrued += cr
 
-	if burn_cr > 0 or interest_cr > 0:
+			_ticks_in_minute += chunk
+			rem_ticks -= chunk
+
+			if _ticks_in_minute >= ticks_per_minute:
+				_ticks_in_minute = 0
+				_compounding_base = principal_debt + accrued_interest
+
 		debt_burn_accrued.emit(burn_cr, interest_cr, get_total_debt())
 
 	ticks_updated.emit(ticks_remaining, total_ticks)
@@ -241,6 +255,9 @@ func service_debt(amount: int) -> int:
 		principal_debt -= pay_principal
 		remaining_payment -= pay_principal
 		paid += pay_principal
+
+	# Immediately reduce compounding base if debt is paid down mid-minute
+	_compounding_base = mini(_compounding_base, principal_debt + accrued_interest)
 
 	total_debt_serviced += paid
 	debt_serviced.emit(paid, get_total_debt())
