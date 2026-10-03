@@ -152,11 +152,12 @@ func advance_sweep(delta_sec: float) -> float:
 		return sweep_angle_rad
 
 	var old_angle: float = sweep_angle_rad
-	var next_angle: float = old_angle + (sweep_speed_rad_per_sec * delta_sec)
-	if next_angle >= TAU:
-		sweep_cycle_count += 1
+	var swept: float = sweep_speed_rad_per_sec * delta_sec
+	var laps: int = floori((old_angle + swept) / TAU)
+	if laps > 0:
+		sweep_cycle_count += laps
 		sweep_completed.emit(sweep_cycle_count)
-	sweep_angle_rad = fposmod(next_angle, TAU)
+	sweep_angle_rad = fposmod(old_angle + swept, TAU)
 
 	# Phosphor illumination decay
 	var decay_factor: float = clampf(delta_sec / PHOSPHOR_DECAY_TIME_SEC, 0.0, 1.0)
@@ -164,11 +165,12 @@ func advance_sweep(delta_sec: float) -> float:
 		var min_level: float = 0.3 if key == "sol" else 0.15
 		blip_illuminations[key] = maxf(min_level, blip_illuminations[key] - (decay_factor * 0.85))
 
-	# Check intersections with celestial blips
+	# Check intersections with celestial blips (full sweep covers all blips)
+	var full_sweep: bool = (swept >= TAU)
 	var blips := get_celestial_blips()
 	for b in blips:
 		var b_angle: float = fposmod(float(b["angle_rad"]), TAU)
-		if _is_angle_between(b_angle, old_angle, sweep_angle_rad):
+		if full_sweep or _is_angle_between(b_angle, old_angle, sweep_angle_rad):
 			var b_id: String = b["id"]
 			blip_illuminations[b_id] = 1.0
 			blip_detected.emit(b_id, b["screen_pos"])

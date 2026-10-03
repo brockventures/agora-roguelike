@@ -120,29 +120,47 @@ func test_radar_sweep_advancement_and_cycles() -> String:
 	return "ok"
 
 func test_blip_detection_and_illumination() -> String:
-	var orrery := VectorOrrery.new()
+	# Use round 3 where stations are orbitally dispersed across quadrants
+	var tm := SolTacticalMap.new(null, 3)
+	var orrery := VectorOrrery.new(tm)
 	var detected: Array = []
 	orrery.blip_detected.connect(func(id, pos): detected.append(id))
 
-	# Full 360-degree sweep over 6.5 seconds should sweep and detect all stations
-	orrery.advance_sweep(6.5)
+	# 1. Multi-lap suspend/resume delta (18.0s = 3 full revolutions at TAU / 6.0 rad/s)
+	# Marvin catch: verify all stations illuminate even when delta spans multiple TAU
+	orrery.advance_sweep(18.0)
+	if orrery.sweep_cycle_count != 3:
+		return "Multi-lap suspend delta should advance sweep_cycle_count to 3, got %d" % orrery.sweep_cycle_count
 
-	# Verify all stations were swept and illuminated
 	for st in Transit.STATIONS:
 		if not detected.has(st):
-			return "Station %s was not detected during full sweep" % st
+			return "Station %s was not detected during multi-lap sweep" % st
 		var illum: float = orrery.blip_illuminations.get(st, 0.0)
-		if illum <= 0.2:
-			return "Station %s illumination should be elevated after sweep, got %f" % [st, illum]
+		if illum < 0.95:
+			return "Station %s illumination should be at peak (1.0), got %f" % [st, illum]
 
-	# Test phosphor decay
-	var mars_illum_before: float = orrery.blip_illuminations["mars"]
-	# Advance tiny step to decay without re-sweeping everything
-	orrery.advance_sweep(1.0)
-	var mars_illum_after: float = orrery.blip_illuminations["mars"]
-	# Either swept again or decayed
-	if mars_illum_after < 0.15:
-		return "Illumination decayed below minimum floor"
+	# 2. Targeted arc test at round 3: verify selective detection
+	# Reset orrery to angle 0.0 and clear detections
+	orrery.set_sweep_angle(0.0)
+	detected.clear()
+
+	# Find a blip with angle > 1.5 rad at round 3
+	var blips := orrery.get_celestial_blips()
+	var outside_blip_id := ""
+	for b in blips:
+		if b["id"] != "sol" and float(b["angle_rad"]) > 1.5:
+			outside_blip_id = b["id"]
+			break
+
+	# Advance small arc [0.0, 0.5] rad (~0.477s)
+	orrery.advance_sweep(0.477)
+	if not outside_blip_id.is_empty() and detected.has(outside_blip_id):
+		return "Blip %s at angle > 1.5 should NOT be detected in [0.0, 0.5] rad arc" % outside_blip_id
+
+	# 3. Phosphor decay test
+	var sol_illum: float = float(orrery.blip_illuminations.get("sol", 0.0))
+	if sol_illum < 0.3:
+		return "Sol beacon illumination decayed below floor"
 
 	return "ok"
 
@@ -222,6 +240,11 @@ func test_shader_file_integrity() -> String:
 		return "ResourceLoader.load failed to compile %s" % shader_path
 	if not (res is Shader):
 		return "Loaded resource is not a Godot Shader"
+
+	var mat := ShaderMaterial.new()
+	mat.shader = res
+	if mat.shader != res:
+		return "Failed to bind Shader to ShaderMaterial"
 
 	return "ok"
 

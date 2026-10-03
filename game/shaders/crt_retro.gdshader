@@ -24,44 +24,42 @@ vec2 curve(vec2 uv) {
 void fragment() {
 	if (!enabled) {
 		COLOR = texture(TEXTURE, UV);
-		return;
+	} else {
+		vec2 curved_uv = curve(UV);
+
+		// Screen edge clipping for tube curvature
+		if (curved_uv.x < 0.0 || curved_uv.x > 1.0 || curved_uv.y < 0.0 || curved_uv.y > 1.0) {
+			COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+		} else {
+			// Chromatic aberration (RGB split)
+			float r = texture(TEXTURE, curved_uv + vec2(aberration_amount, 0.0)).r;
+			float g = texture(TEXTURE, curved_uv).g;
+			float b = texture(TEXTURE, curved_uv - vec2(aberration_amount, 0.0)).b;
+			float a = texture(TEXTURE, curved_uv).a;
+			vec4 col = vec4(r, g, b, a);
+
+			// Phosphor boost
+			col.rgb += col.rgb * phosphor_glow;
+
+			// Scanlines
+			float scanline = sin(curved_uv.y * scanline_count * 3.14159265);
+			scanline = (scanline + 1.0) * 0.5;
+			col.rgb -= col.rgb * scanline * scanline_intensity;
+
+			// Subtle high-frequency flicker
+			float flicker = sin(TIME * flicker_speed) * flicker_intensity;
+			col.rgb += col.rgb * flicker;
+
+			// Edge vignette
+			vec2 vig_uv = curved_uv * (1.0 - curved_uv.yx);
+			float vig = vig_uv.x * vig_uv.y * 15.0;
+			vig = clamp(pow(vig, vignette_intensity), 0.0, 1.0);
+			col.rgb = mix(col.rgb * vig, col.rgb, 1.0 - vignette_opacity);
+
+			// Phosphor monitor tint
+			col.rgb *= phosphor_tint.rgb;
+
+			COLOR = col;
+		}
 	}
-
-	vec2 curved_uv = curve(UV);
-
-	// Screen edge clipping for tube curvature
-	if (curved_uv.x < 0.0 || curved_uv.x > 1.0 || curved_uv.y < 0.0 || curved_uv.y > 1.0) {
-		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
-		return;
-	}
-
-	// Chromatic aberration (RGB split)
-	float r = texture(TEXTURE, curved_uv + vec2(aberration_amount, 0.0)).r;
-	float g = texture(TEXTURE, curved_uv).g;
-	float b = texture(TEXTURE, curved_uv - vec2(aberration_amount, 0.0)).b;
-	float a = texture(TEXTURE, curved_uv).a;
-	vec4 col = vec4(r, g, b, a);
-
-	// Phosphor boost
-	col.rgb += col.rgb * phosphor_glow;
-
-	// Scanlines
-	float scanline = sin(curved_uv.y * scanline_count * 3.14159265);
-	scanline = (scanline + 1.0) * 0.5;
-	col.rgb -= col.rgb * scanline * scanline_intensity;
-
-	// Subtle high-frequency flicker
-	float flicker = sin(TIME * flicker_speed) * flicker_intensity;
-	col.rgb += col.rgb * flicker;
-
-	// Edge vignette
-	vec2 vig_uv = curved_uv * (1.0 - curved_uv.yx);
-	float vig = vig_uv.x * vig_uv.y * 15.0;
-	vig = clamp(pow(vig, vignette_intensity), 0.0, 1.0);
-	col.rgb = mix(col.rgb * vig, col.rgb, 1.0 - vignette_opacity);
-
-	// Phosphor monitor tint
-	col.rgb *= phosphor_tint.rgb;
-
-	COLOR = col;
 }
