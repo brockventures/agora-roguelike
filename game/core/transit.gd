@@ -1,16 +1,11 @@
 class_name Transit
 extends RefCounted
 ## Orbital coordinates, route physics, transit time ticks, and alignment corridor math.
-## Ported from market-sandbox Python referee (agora/spatial.py at commit 587b07f).
+## Ported from market-sandbox Python referee (agora/spatial.py, agora/upgrades.py, agora/referee.py at commit 587b07f).
 ##
-## Features:
-##   - Canonical Sol system stations: earth, luna, mars, ceres.
-##   - Orbital radii, 2D coordinates, and Euclidean spatial distance.
-##   - Discrete transit rounds, fuel burns, and route specifications.
-##   - Orbital alignment corridors (synodic windows cutting transit rounds and fuel).
-##   - Asteroid belt route toll booths (25 CR) and perishable cargo decay (5%/round).
-##   - Engine tier speed cuts (tier 1: 3+ rounds -1) and fuel cuts (tier 2: 40%).
-##   - Discrete simulation tick conversions.
+## Note: Station routes, alignment corridors, belt tolls, perishable decay, and engine fuel
+## calculations match the Python referee. 2D coordinates, AU radii, and tick conversions are
+## engine extensions for spatial HUD rendering and discrete simulation timing.
 
 const STATIONS: Array[String] = ["earth", "luna", "mars", "ceres"]
 const COMMODITIES: Array[String] = ["FRAG", "FUEL", "FOOD", "ORE", "MACHINERY"]
@@ -58,7 +53,7 @@ const BELT_ROUTES: Array[String] = [
 const BELT_TOLL_CR: int = 25
 const BELT_CARGO_DECAY_RATE: float = 0.05
 
-## Semi-major orbital radii from the Sun in Astronomical Units (AU).
+## Semi-major orbital radii from the Sun in Astronomical Units (AU) for UI map rendering.
 const ORBITAL_RADII: Dictionary = {
 	"earth": 1.0,
 	"luna": 1.0,
@@ -225,7 +220,7 @@ static func get_route(origin: String, destination: String, round_num: int = 0) -
 	var rounds_remaining: int = 0
 
 	if window != null and window.get("is_active", false):
-		rounds = maxi(1, int(round(float(base["rounds"]) * (1.0 - float(window["transit_reduction_pct"])))))
+		rounds = maxi(1, roundi(float(base["rounds"]) * (1.0 - float(window["transit_reduction_pct"]))))
 		fuel = maxi(1, int(float(base["fuel"]) * (1.0 - float(window["fuel_reduction_pct"]))))
 		is_aligned = true
 		window_name = window["name"]
@@ -276,12 +271,18 @@ static func calculate_trip_rounds(origin: String, destination: String, round_num
 	var cut := engine_cut(engine_tier, route_rounds)
 	return maxi(1, route_rounds - cut)
 
-## Calculates required fuel accounting for alignment corridors, engine tier, and corporate discount.
+## Calculates required fuel accounting for alignment corridors, engine tier, refinery_loop, and corporate discount.
+## Matching agora/upgrades.py:191-202 and agora/referee.py:2020-2024:
+##   burn = base_fuel * (1.0 - cut)
+##   if has_refinery_loop: burn *= 0.80
+##   required = max(1, roundi(burn))
+##   if corp_fuel_discount: required = max(1, int(required * (1.0 - corp_fuel_discount)))
 static func calculate_fuel_burn(
 	origin: String,
 	destination: String,
 	round_num: int = 0,
 	engine_tier: int = 0,
+	has_refinery_loop: bool = false,
 	corp_fuel_discount: float = 0.0
 ) -> int:
 	var r = get_route(origin, destination, round_num)
@@ -291,11 +292,18 @@ static func calculate_fuel_burn(
 	if base_fuel <= 0:
 		return 0
 
-	# Apply engine fuel cut (e.g. 40% at tier 2)
+	# 1. Apply engine tier cut (agora/upgrades.py:198)
 	var fuel_discount := engine_fuel_discount(engine_tier)
-	var required_fuel := maxi(1, int(float(base_fuel) * (1.0 - fuel_discount)))
+	var burn: float = float(base_fuel) * (1.0 - fuel_discount) if fuel_discount > 0.0 else float(base_fuel)
 
-	# Apply corporate fuel discount
+	# 2. Apply refinery_loop (agora/upgrades.py:200-201: additional 20% cut)
+	if has_refinery_loop:
+		burn *= 0.80
+
+	# 3. Round to int, minimum 1 (agora/upgrades.py:202: max(1, int(round(burn))))
+	var required_fuel := maxi(1, roundi(burn))
+
+	# 4. Corporate discount truncated with int() (agora/referee.py:2024)
 	if corp_fuel_discount > 0.0:
 		required_fuel = maxi(1, int(float(required_fuel) * (1.0 - corp_fuel_discount)))
 
@@ -312,6 +320,7 @@ static func calculate_toll(origin: String, destination: String, corp_opex_discou
 	return toll
 
 ## Calculates projected cargo decay mid-transit or on arrival.
+## Matching agora/referee.py: min(c_qty, math.floor(c_qty * decay_rate * transit_rounds)).
 static func calculate_decay(
 	commodity: String,
 	cargo_qty: int,
@@ -329,7 +338,8 @@ static func calculate_decay(
 	if not is_perish:
 		return 0
 	var total_decay_pct: float = BELT_CARGO_DECAY_RATE * float(elapsed_rounds)
-	return int(floor(float(cargo_qty) * total_decay_pct))
+	var raw_decay: int = int(floor(float(cargo_qty) * total_decay_pct))
+	return mini(cargo_qty, raw_decay)
 
 ## Converts discrete transit rounds into game simulation ticks.
 static func calculate_transit_ticks(rounds: int, ticks_per_round: int = 1) -> int:

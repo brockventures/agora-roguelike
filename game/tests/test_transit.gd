@@ -1,7 +1,7 @@
 extends RefCounted
 ## Tests for Transit (res://core/transit.gd) orbital coordinates and route physics.
 ## Verifies route specifications, alignment corridors, asteroid belt tolls,
-## perishable cargo decay, speed multipliers, and orbital coordinates.
+## perishable cargo decay with cap, speed multipliers, fuel rounding, and refinery_loop.
 
 func test_stations_and_commodity_normalization() -> String:
 	if Transit.STATIONS.size() != 4:
@@ -114,7 +114,7 @@ func test_asteroid_belt_tolls() -> String:
 		return "expected 20 toll with 20%% discount, got %d" % toll_disc
 	return "ok"
 
-func test_perishable_cargo_decay() -> String:
+func test_perishable_cargo_decay_and_cap() -> String:
 	# Durable cargo has 0 decay
 	var decay_frag = Transit.calculate_decay("FRAG", 100, 3, "earth", "ceres")
 	if decay_frag != 0:
@@ -134,10 +134,36 @@ func test_perishable_cargo_decay() -> String:
 	if decay_proj_2 != 10:
 		return "expected 10 projected decay after 2 rounds, got %d" % decay_proj_2
 
+	# Decay cap: decay cannot exceed cargo_qty (e.g. 30 rounds * 5% = 150%)
+	var decay_capped = Transit.calculate_decay("FOOD", 100, 30, "earth", "ceres")
+	if decay_capped != 100:
+		return "expected decay capped at 100, got %d" % decay_capped
+
 	# Non-belt route has 0 decay even for perishable cargo
 	var decay_em = Transit.calculate_decay("FOOD", 100, 2, "earth", "mars")
 	if decay_em != 0:
 		return "expected 0 decay on non-belt route, got %d" % decay_em
+	return "ok"
+
+func test_fuel_burn_rounding_and_refinery_loop() -> String:
+	# Amos review catch: Sol Direct corridor (Earth-Ceres, round 6) with engines tier 2
+	# Route base fuel = 18. Engines tier 2 cut = 40%.
+	# 18 * 0.6 = 10.8 -> roundi(10.8) must be 11 FUEL (not truncated 10)
+	var fuel_sol_direct = Transit.calculate_fuel_burn("earth", "ceres", 6, 2, false, 0.0)
+	if fuel_sol_direct != 11:
+		return "Sol Direct corridor with engines tier 2 expected 11 fuel (18*0.6=10.8 -> 11), got %d" % fuel_sol_direct
+
+	# With refinery_loop: extra 20% cut before rounding
+	# 18 * 0.6 * 0.8 = 8.64 -> roundi(8.64) = 9 FUEL
+	var fuel_refinery = Transit.calculate_fuel_burn("earth", "ceres", 6, 2, true, 0.0)
+	if fuel_refinery != 9:
+		return "Sol Direct corridor with refinery_loop expected 9 fuel (8.64 -> 9), got %d" % fuel_refinery
+
+	# With 10% corporate discount on top of refinery:
+	# int(9 * 0.90) = 8 FUEL
+	var fuel_corp = Transit.calculate_fuel_burn("earth", "ceres", 6, 2, true, 0.10)
+	if fuel_corp != 8:
+		return "Sol Direct corridor with corp discount expected 8 fuel, got %d" % fuel_corp
 	return "ok"
 
 func test_speed_multipliers_and_engine_upgrades() -> String:
@@ -163,9 +189,9 @@ func test_speed_multipliers_and_engine_upgrades() -> String:
 	if t2_fuel != 18:
 		return "tier 2 should cut 30 fuel to 18, got %d" % t2_fuel
 
-	# Corporate fuel discount on top of engine tier
-	var corp_fuel = Transit.calculate_fuel_burn("earth", "ceres", 0, 2, 0.10)
-	if corp_fuel != 16:  # int(18 * 0.90) = 16
+	# Corporate fuel discount on top of engine tier (18 * 0.90 = 16.2 -> int is 16)
+	var corp_fuel = Transit.calculate_fuel_burn("earth", "ceres", 0, 2, false, 0.10)
+	if corp_fuel != 16:
 		return "corp fuel discount should be 16, got %d" % corp_fuel
 
 	# Trip rounds clamped at 1
