@@ -143,6 +143,28 @@ class TestGoldenOrderbookFixtures(unittest.TestCase):
             self.assertEqual(total, sum(v.get('FRAG', 0) for v in ships.values()))
         # The final ask fits the corp total but not amos/2: rejected per ship.
         self.assertIn("Account 'amos/2'", s[4]['response']['payload']['detail'])
+        rejected = s[4]['input']['payload']['qty']
+        corp_total = next(r['balance'] for r in s[3]['balances']
+                          if r['agent_id'] == 'amos' and r['instrument'] == 'FRAG')
+        self.assertGreater(rejected, s[3]['ship_accounts']['amos']['amos/2']['FRAG'])
+        self.assertLessEqual(rejected, corp_total)
+
+    def test_funding_boundary_ask_for_exactly_available_rests(self):
+        # amos/1 holds 1000 FRAG with 5 committed to a resting ask: 995 available.
+        # 996 is rejected; exactly 995 is accepted, so the check is '>' not '>='.
+        steps = _load_fixture('reject_unfunded_ask')['steps']
+        over, exact = steps[2], steps[3]
+        self.assertEqual(over['input']['payload']['order_id'], 'u3')
+        self.assertEqual(over['input']['payload']['qty'], 996)
+        self.assertEqual(over['response']['kind'], 'reject')
+        self.assertEqual(over['response']['payload']['reason'], 'insufficient_balance')
+        self.assertIn('balance 1000 - committed 5', over['response']['payload']['detail'])
+        self.assertEqual(exact['input']['payload']['order_id'], 'u4')
+        self.assertEqual(exact['input']['payload']['qty'], 995)
+        self.assertEqual(exact['response']['kind'], 'market_tick')
+        self.assertEqual(_seq_of(exact), _seq_of(steps[1]) + 1)
+        self.assertEqual([o['order_id'] for o in exact['book']['asks']], ['u2', 'u4'])
+        self.assertEqual(exact['book']['asks'][1]['qty'], 995)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 {
   "case": "reject_unfunded_ask",
-  "description": "Asks with no goods behind them are rejected insufficient_balance: an empty second ship, then an ask beyond ship 1 balance less what its resting ask already commits.",
+  "description": "Asks with no goods behind them are rejected insufficient_balance: an empty second ship, then an ask beyond ship 1 balance less what its resting ask already commits, then an ask for exactly that available quantity, which rests.",
   "referee_commit": "587b07f",
   "station_id": "mars",
   "instrument": "FRAG",
@@ -277,6 +277,92 @@
             "qty": 5,
             "limit_price": 13,
             "seq_seen": 0,
+            "vessel_id": "amos/1"
+          }
+        ]
+      },
+      "balances": [
+        {
+          "agent_id": "amos",
+          "instrument": "CR",
+          "balance": 15000
+        },
+        {
+          "agent_id": "amos",
+          "instrument": "FRAG",
+          "balance": 1000
+        }
+      ],
+      "ship_accounts": {
+        "amos": {
+          "amos/1": {
+            "FRAG": 1000,
+            "FUEL": 500
+          },
+          "amos/2": {}
+        }
+      }
+    },
+    {
+      "call": "submit_envelope",
+      "input": {
+        "v": 1,
+        "kind": "order",
+        "payload": {
+          "order_id": "u4",
+          "agent_id": "amos",
+          "side": "ask",
+          "qty": 995,
+          "limit_price": 13,
+          "instrument": "FRAG",
+          "station_id": "mars",
+          "seq_seen": 1
+        }
+      },
+      "response": {
+        "v": 1,
+        "kind": "market_tick",
+        "reply": "optional",
+        "floor": "open",
+        "scope": "channel",
+        "subject": "agent-collaborative-project",
+        "payload": {
+          "seq": 2,
+          "station_id": "mars",
+          "instrument": "FRAG",
+          "best_bid": null,
+          "best_ask": 13,
+          "last_price": null,
+          "last_qty": null,
+          "status": "open",
+          "trades_count": 0,
+          "order_id": "u4",
+          "order_status": "resting",
+          "filled_qty": 0,
+          "remaining_qty": 995
+        }
+      },
+      "fills": [],
+      "book": {
+        "instrument": "FRAG",
+        "bids": [],
+        "asks": [
+          {
+            "order_id": "u2",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 5,
+            "limit_price": 13,
+            "seq_seen": 0,
+            "vessel_id": "amos/1"
+          },
+          {
+            "order_id": "u4",
+            "agent_id": "amos",
+            "side": "ask",
+            "qty": 995,
+            "limit_price": 13,
+            "seq_seen": 1,
             "vessel_id": "amos/1"
           }
         ]

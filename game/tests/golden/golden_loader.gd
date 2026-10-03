@@ -7,6 +7,11 @@ extends RefCounted
 ## to_dict writes Order.remaining_qty into `qty`, unlike Order.to_dict, which
 ## writes the original qty. The order as submitted is in each step's `input`.
 
+## `setup.prep` op `mint_cr` writes CR through the referee's internal
+## `fleet._move`, not any public API. A GDScript replay must reproduce that
+## starting state with its own setup step (credit the agent, debit SYSTEM)
+## rather than expecting a public call to do it.
+
 const REFEREE_COMMIT := "587b07f"
 const ORDERBOOK_DIR := "res://tests/golden/orderbook"
 
