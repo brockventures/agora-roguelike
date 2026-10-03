@@ -96,7 +96,9 @@ func test_route_endpoints_and_alignment() -> String:
 	var rc := RunController.new(null, 42, clock, 60)
 	m.bind_controller(rc)
 	for i in 30:
-		rc.advance(1.0 / 60.0) # round_progress = 0.5
+		rc.advance(1.0 / 60.0)
+	if absf(m.round_progress - 0.5) > 0.001:
+		return "round_progress should be exactly 0.5"
 	var live_route := m.get_route_screen_endpoints("earth:mars")
 	var live_earth := m.get_station_screen_pos("earth")
 	var live_mars := m.get_station_screen_pos("mars")
@@ -128,7 +130,9 @@ func test_transit_vessel_interpolation() -> String:
 	var rc := RunController.new(null, 42, clock, 60)
 	m.bind_controller(rc)
 	for i in 30:
-		rc.advance(1.0 / 60.0) # round_progress = 0.5
+		rc.advance(1.0 / 60.0)
+	if absf(m.round_progress - 0.5) > 0.001:
+		return "round_progress should be exactly 0.5"
 	var live_start := m.get_station_screen_pos("earth")
 	var live_end := m.get_station_screen_pos("mars")
 	var live_mid := m.get_transit_vessel_screen_pos("earth", "mars", 0.5)
