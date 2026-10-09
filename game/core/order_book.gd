@@ -191,3 +191,25 @@ func to_dict() -> Dictionary:
 		"bids": bid_dicts,
 		"asks": ask_dicts,
 	}
+
+## Rebuilds a book from to_dict() output (JSON-safe: numbers may be floats).
+## Resting orders carry only their remaining qty, so they come back unfilled.
+static func from_dict(d: Dictionary) -> OrderBook:
+	var book := OrderBook.new(str(d.get("instrument", "FRAG")))
+	for side_key in ["bids", "asks"]:
+		var rows = d.get(side_key, [])
+		if not (rows is Array):
+			continue
+		var target: Array = book.bids if side_key == "bids" else book.asks
+		for row in rows:
+			if not (row is Dictionary):
+				continue
+			var vessel = row.get("vessel_id", null)
+			# Rows are already in book order; append to keep price-time priority.
+			target.append(Order.new(
+				str(row.get("order_id", "")), str(row.get("agent_id", "")), book.instrument,
+				str(row.get("side", "bid" if side_key == "bids" else "ask")),
+				int(row.get("qty", 0)), int(row.get("limit_price", 0)),
+				int(row.get("seq_seen", 0)), 0.0, 0, null,
+				vessel if vessel is String else null))
+	return book

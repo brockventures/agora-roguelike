@@ -156,7 +156,22 @@ func to_dict() -> Dictionary:
 	var out: Dictionary = {}
 	for key in books:
 		out[key] = (books[key] as OrderBook).to_dict()
-	return out
+	return {"books": out, "seq": _seq, "order_counter": _order_counter}
+
+
+## Rebuilds a market from to_dict() output. Unlike _init, no book is reseeded:
+## the restored books are exactly the saved ones (an empty "books" stays empty).
+static func from_dict(d: Dictionary) -> StationMarket:
+	var m := StationMarket.new([])
+	m.books.clear()  # _init seeds the default stations; a restore keeps only saved books
+	m._seq = int(d.get("seq", 0))
+	m._order_counter = int(d.get("order_counter", 0))
+	var raw = d.get("books", {})
+	if raw is Dictionary:
+		for key in raw:
+			if raw[key] is Dictionary:
+				m.books[str(key)] = OrderBook.from_dict(raw[key])
+	return m
 
 
 func _maker_order(commodity: String, side: String, qty: int, price: int) -> Order:
