@@ -60,6 +60,7 @@ var market: StationMarket = null:
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
 var galnet_headlines: Array = []
+var _crisis_deck: CrisisDeck = null
 var order_book_depth_levels: int = 5
 
 ## Ticker marquee clocks keyed by headline seq (seconds since the line appeared).
@@ -463,6 +464,24 @@ func bind_hazards(h: Hazards) -> void:
 	_hazards = h
 	if _hazards != null:
 		_hazards.hazard_recorded.connect(_on_hazard_recorded)
+
+## Feeds crisis draws and expiries from the deck (#12) into the ticker.
+func bind_crisis_deck(d: CrisisDeck) -> void:
+	if _crisis_deck != null:
+		if _crisis_deck.crisis_drawn.is_connected(_on_crisis_drawn):
+			_crisis_deck.crisis_drawn.disconnect(_on_crisis_drawn)
+		if _crisis_deck.crisis_expired.is_connected(_on_crisis_expired):
+			_crisis_deck.crisis_expired.disconnect(_on_crisis_expired)
+	_crisis_deck = d
+	if _crisis_deck != null:
+		_crisis_deck.crisis_drawn.connect(_on_crisis_drawn)
+		_crisis_deck.crisis_expired.connect(_on_crisis_expired)
+
+func _on_crisis_drawn(c: Dictionary) -> void:
+	post_headline(str(c.get("text", c.get("name", ""))), "CRISIS", "CRITICAL" if str(c.get("tier", "")) == "endgame" else "WARNING")
+
+func _on_crisis_expired(c: Dictionary) -> void:
+	post_headline("%s has lifted, books restored" % str(c.get("name", "")), "CRISIS", "INFO")
 
 ## Feeds pirate demands and their settlement on a Piracy desk into the ticker.
 func bind_piracy(p: Piracy) -> void:

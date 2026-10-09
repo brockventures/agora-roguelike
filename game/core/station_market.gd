@@ -23,6 +23,11 @@ const MAKER_NAME: String = "ARES HEAVY"
 const DEPTH_LEVELS: int = 5
 
 var books: Dictionary = {}
+## Active crisis modifiers (CrisisDeck.market_mods()): entries of
+## {station, commodity ("*" = any), depth_bps, price_bps, spread_bps}. seed_book()
+## folds them in, so they survive the per-round replenish(); with none set, a
+## book is byte-identical to the unmodified one.
+var crisis_mods: Array = []
 var _seq: int = 0
 var _order_counter: int = 0
 
@@ -56,8 +61,16 @@ func seed_book(station: String, commodity: String) -> bool:
 	var c: String = commodity.to_upper()
 	if not Transit.BASE_PRICES.has(s) or not Transit.BASE_PRICES[s].has(c):
 		return false
+	var fx: Dictionary = _mods_for(s, c)
 	var base: float = float(Transit.BASE_PRICES[s][c])
+	if int(fx["price_bps"]) != 0:
+		base *= float(10000 + int(fx["price_bps"])) / 10000.0
 	var half: int = maxi(1, int(round(base * 0.02)))
+	if int(fx["spread_bps"]) != 10000:
+		# Scale the integer half-spread (books quote whole CR, so scaling the raw
+		# float would round most cheap commodities back to one CR).
+		half = maxi(1, int(round(float(half) * float(fx["spread_bps"]) / 10000.0)))
+	var depth_bps: int = int(fx["depth_bps"])
 	var mid: int = maxi(2, int(round(base)))
 	var best_bid: int = maxi(1, mid - half)
 	var best_ask: int = best_bid + 2 * half
@@ -65,11 +78,48 @@ func seed_book(station: String, commodity: String) -> bool:
 	var book := OrderBook.new(c)
 	for i in DEPTH_LEVELS:
 		_seq += 1
-		book.insert_order(_maker_order(c, "bid", 15 + (i + 1) * 8, maxi(1, best_bid - i * step)))
-		book.insert_order(_maker_order(c, "ask", 12 + (i + 1) * 7, best_ask + i * step))
+		book.insert_order(_maker_order(c, "bid", maxi(1, (15 + (i + 1) * 8) * depth_bps / 10000), maxi(1, best_bid - i * step)))
+		book.insert_order(_maker_order(c, "ask", maxi(1, (12 + (i + 1) * 7) * depth_bps / 10000), best_ask + i * step))
 	books[book_key(s, c)] = book
 	book_changed.emit(s, c)
 	return true
+
+
+## Replaces the active crisis modifiers and reseeds every book the old or new
+## set touches, so an effect starts (and reverts) immediately.
+func set_crisis_mods(mods: Array) -> void:
+	var old: Array = crisis_mods
+	crisis_mods = mods.duplicate(true)
+	for key in books.keys():
+		var parts: PackedStringArray = str(key).split(":")
+		if _mods_touch(old, parts[0], parts[1]) or _mods_touch(crisis_mods, parts[0], parts[1]):
+			seed_book(parts[0], parts[1])
+
+
+func _mods_touch(mods: Array, station: String, commodity: String) -> bool:
+	for m in mods:
+		if _mod_matches(m, station, commodity):
+			return true
+	return false
+
+
+static func _mod_matches(m: Dictionary, station: String, commodity: String) -> bool:
+	var ms: String = str(m.get("station", "*")).to_lower()
+	var mc: String = str(m.get("commodity", "*")).to_upper()
+	return (ms == "*" or ms == station) and (mc == "*" or mc == commodity)
+
+
+## Combined modifier for one book: depth and spread multiply, price adds.
+func _mods_for(station: String, commodity: String) -> Dictionary:
+	var depth: int = 10000
+	var spread: int = 10000
+	var price: int = 0
+	for m in crisis_mods:
+		if _mod_matches(m, station, commodity):
+			depth = depth * int(m.get("depth_bps", 10000)) / 10000
+			spread = spread * int(m.get("spread_bps", 10000)) / 10000
+			price += int(m.get("price_bps", 0))
+	return {"depth_bps": depth, "spread_bps": spread, "price_bps": price}
 
 
 ## Refills every book to full depth (called once per round).
