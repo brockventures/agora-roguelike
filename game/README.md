@@ -31,11 +31,12 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | Action | Pad | Keyboard |
 |---|---|---|
 | Tab prev / next (Map, Market, Fleet) | LB / RB | Q / E |
-| Station prev / next | LT / RT | 1 / 2 |
+| Station prev / next (disabled in M0: the one tradable station is Mars) | LT / RT | 1 / 2 |
 | Commodity prev / next | Right stick left / right | 3 / 4 |
 | Focus ladder, BUY/SELL, quantity | D-pad or left stick | Arrows or WASD |
 | Submit order (A) | A | Space / Enter |
 | Cancel / back (B) | B | Esc / Backspace |
+| Run over: A summary → perks → new run; D-pad picks perks, A buys / starts | A, D-pad | Space, arrows |
 | File Chapter 11 (X) | X | X |
 | Cycle speed 1x, 2x, 5x, pause (Y) | Y | R |
 | Pause / resume | Start | P |

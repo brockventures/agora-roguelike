@@ -50,13 +50,15 @@ var _voice_counter: int = 0
 
 ## Starting seed for the run MainScene creates when none was bound.
 const DEFAULT_RUN_SEED: int = 84
+## Chapter 11 resolution modal; the collapse screens use the larger market modal rect.
+const RESOLUTION_RECT: Rect2 = Rect2(340.0, 240.0, 600.0, 320.0)
 ## Voices for routine UI feedback. PRIORITY_VOICES more are reserved for alarms and
 ## market bells, which may also steal the oldest routine voice if all are busy.
 const SFX_POLYPHONY: int = 4
 const PRIORITY_VOICES: int = 2
 
 ## Controls hint shown under the header readout.
-const CONTROLS_HINT: String = "LB/RB tab  LT/RT station  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed"
+const CONTROLS_HINT: String = "LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed"
 
 var is_initialized: bool = false
 
@@ -121,7 +123,19 @@ func initialize_systems(p_controller: RunController = null) -> void:
 		loop = M0Loop.new(hud)
 	else:
 		loop.rebind_controller()
+	# M0 is one station: Mars (Arcadia Foundries). Dock there and disable station cycling.
+	loop.lock_station(M0Loop.M0_STATION)
+	if not loop.run_restarted.is_connected(_on_run_restarted):
+		loop.run_restarted.connect(_on_run_restarted)
 	is_initialized = true
+
+
+## The collapse flow replaced the run: follow the loop's new controller.
+func _on_run_restarted(rc: RunController) -> void:
+	controller = rc
+	tactical_map = hud.tactical_map
+	trading_overlay = hud.trading_overlay
+	vector_orrery = hud.vector_orrery
 
 
 func _resolve_child_nodes() -> void:
@@ -349,8 +363,13 @@ func _build_readouts() -> void:
 	market_modal.add_child(market_highlight)
 	market_label = _make_label(market_modal, Rect2(20, 16, 840, 528), 18)
 	resolution_modal = Panel.new()
-	resolution_modal.position = Vector2(340, 240)
-	resolution_modal.size = Vector2(600, 320)
+	var opaque := StyleBoxFlat.new()
+	opaque.bg_color = Color(0.02, 0.06, 0.04, 0.97)
+	opaque.border_color = Color(0.3, 0.8, 0.5)
+	opaque.set_border_width_all(2)
+	resolution_modal.add_theme_stylebox_override("panel", opaque)
+	resolution_modal.position = RESOLUTION_RECT.position
+	resolution_modal.size = RESOLUTION_RECT.size
 	hud_container.add_child(resolution_modal)
 	resolution_label = _make_label(resolution_modal, Rect2(20, 16, 560, 288), 20)
 	resolution_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
@@ -392,6 +411,10 @@ func _refresh_readouts() -> void:
 	market_label.text = _board_text() if market_modal.visible else ""
 	_update_market_highlight()
 	resolution_modal.visible = loop.overlay_state != M0Loop.OVERLAY_NONE
+	var collapsed: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED
+	resolution_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position if collapsed else RESOLUTION_RECT.position
+	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if collapsed else RESOLUTION_RECT.size
+	resolution_label.size = resolution_modal.size - Vector2(40, 32)
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	tactical_map_panel.queue_redraw()
 
@@ -418,12 +441,13 @@ func _sidebar_text() -> String:
 		out.append("REJECTED: " + f.get_rejection_message())
 	elif not f.last_executed_order.is_empty():
 		var o: Dictionary = f.last_executed_order
-		out.append("FILLED %s %d @ %.1f" % [o["side"], o["qty"], o["price"]])
+		var who: String = str(o.get("counterparty", ""))
+		out.append("FILLED %s %d @ %.1f%s" % [o["side"], o["qty"], o["price"], "  vs %s" % who if who != "" else ""])
 	return "\n".join(out)
 
 
 func _board_text() -> String:
-	var out: PackedStringArray = ["%s QUOTES" % StationMarket.station_name(hud.active_station).to_upper(), ""]
+	var out: PackedStringArray = ["%s QUOTES   counterparty %s" % [StationMarket.station_name(hud.active_station).to_upper(), StationMarket.MAKER_NAME], ""]
 	for c in Transit.COMMODITIES:
 		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", c]
 		if loop.market.has_book(hud.active_station, c):
@@ -460,7 +484,28 @@ func _resolution_text() -> String:
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return "CHAPTER 11\n\nInsolvent: debt %s exceeds liquidation value %s.\nThe clock is halted.\n\nPress X to file and found a new corp." % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))]
-	return "SOVEREIGN DEFAULT\n\nThe Doomsday Clock has run out. Run collapsed."
+	if loop.collapse_phase == M0Loop.PHASE_PERKS:
+		return _perks_text()
+	return _summary_text()
+
+
+func _summary_text() -> String:
+	var r: Dictionary = loop.run_summary()
+	return "SOVEREIGN DEFAULT   RUN OVER\n\nThe Doomsday Clock has run out.\n\nNET WORTH        %s CR\nPEAK NET WORTH   %s CR\nROUNDS SURVIVED  %d\nSEVERANCE BANKED +%d  (balance %d)\n\nPress A for Golden Parachutes." % [
+		_fmt(int(r["net_worth"])), _fmt(int(r["peak_net_worth"])), int(r["rounds_survived"]), int(r["severance_awarded"]), int(r["severance_balance"])]
+
+
+func _perks_text() -> String:
+	var rows: Array = loop.perk_rows()
+	var out: PackedStringArray = ["GOLDEN PARACHUTES   Severance %d" % controller.profile.severance_points, ""]
+	for i in rows.size():
+		var row: Dictionary = rows[i]
+		var tag: String = "OWNED" if bool(row["owned"]) else ("%d" % int(row["cost"]) if bool(row["can_buy"]) else "%d  locked" % int(row["cost"]))
+		out.append("%s T%d  %s  [%s]  -  %s" % [">" if i == loop.perk_cursor else " ", int(row["tier"]), row["name"], row["branch"], tag])
+	out.append("%s START NEW RUN" % (">" if loop.perk_cursor >= rows.size() else " "))
+	out.append("")
+	out.append("D-pad up/down select   A buy perk / start run   B back")
+	return "\n".join(out)
 
 
 static func _fmt(n: int) -> String:

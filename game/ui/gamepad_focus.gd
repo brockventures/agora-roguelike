@@ -283,9 +283,10 @@ func execute_focused_order() -> Dictionary:
 			rc.cargo[commodity] = current_cargo - order_qty
 			rc.cr += total_cost
 
+	var counterparty: String = ""
 	if use_book:
 		# Gates passed: consume the resting liquidity the sweep priced.
-		mkt.execute(station, commodity, side_str, order_qty, px)
+		counterparty = str(mkt.execute(station, commodity, side_str, order_qty, px).get("counterparty", ""))
 
 	var result: Dictionary = {
 		"ok": true,
@@ -294,6 +295,7 @@ func execute_focused_order() -> Dictionary:
 		"side": "BUY" if is_buy else "SELL",
 		"price": (float(total_cost) / float(order_qty)) if use_book else px,
 		"limit_price": px,
+		"counterparty": counterparty,
 		"qty": order_qty,
 		"total_cr": total_cost,
 		"ladder_index": ladder_index,
