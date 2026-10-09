@@ -34,7 +34,8 @@ var ticker_panel: Panel = null
 # tree, as the unit tests do, never creates them).
 var header_label: Label = null
 var sidebar_label: Label = null
-var ticker_label: Label = null
+var ticker_clip: Control = null
+var ticker_labels: Array[Label] = []
 var map_label: Label = null
 var market_modal: Panel = null
 var market_label: Label = null
@@ -81,6 +82,8 @@ func _process(delta: float) -> void:
 	if loop == null:
 		return
 	loop.advance(delta)
+	if hud != null:
+		hud.advance_ticker(delta)
 	_refresh_readouts()
 
 
@@ -336,7 +339,16 @@ func _build_readouts() -> void:
 	header_label = _make_label(header_panel, Rect2(16, 6, 1248, 56), 18)
 	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 120), 16)
 	sidebar_label = _make_label(sidebar_panel, Rect2(16, 8, 368, 656), 16)
-	ticker_label = _make_label(ticker_panel, Rect2(16, 6, 1248, 52), 16)
+	ticker_clip = Control.new()
+	ticker_clip.position = Vector2(16, 6)
+	ticker_clip.size = Vector2(OrbitalHUD.TICKER_VIEW_WIDTH, 52)
+	ticker_clip.clip_contents = true
+	ticker_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ticker_panel.add_child(ticker_clip)
+	for i in OrbitalHUD.TICKER_VISIBLE_LINES:
+		var tl := _make_label(ticker_clip, Rect2(0, i * 24, 4096, 24), 16)
+		tl.autowrap_mode = TextServer.AUTOWRAP_OFF
+		ticker_labels.append(tl)
 	tactical_map_panel.clip_contents = true
 	tactical_map_panel.draw.connect(_draw_map)
 	market_modal = Panel.new()
@@ -347,7 +359,7 @@ func _build_readouts() -> void:
 	market_highlight.color = Color(0.2, 0.6, 0.4, 0.35)
 	market_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	market_modal.add_child(market_highlight)
-	market_label = _make_label(market_modal, Rect2(20, 16, 840, 528), 18)
+	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 18)
 	resolution_modal = Panel.new()
 	resolution_modal.position = Vector2(340, 240)
 	resolution_modal.size = Vector2(600, 320)
@@ -384,16 +396,30 @@ func _refresh_readouts() -> void:
 		_fmt(int(h["cr"])), _fmt(int(h["total_debt"])), secs / 60, secs % 60, h["stage_name"], h["speed_label"], "  ".join(tabs), CONTROLS_HINT]
 	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else "SOL TACTICAL MAP   docked: %s" % StationMarket.station_name(controller.docked_at)
 	sidebar_label.text = _sidebar_text()
-	var lines: PackedStringArray = []
-	for item in hud.get_recent_headlines(2):
-		lines.append("%s: %s" % [item["category"], item["text"]])
-	ticker_label.text = "\n".join(lines)
+	_refresh_ticker()
 	market_modal.visible = hud.is_trading_overlay_open() and loop.overlay_state == M0Loop.OVERLAY_NONE
 	market_label.text = _board_text() if market_modal.visible else ""
 	_update_market_highlight()
 	resolution_modal.visible = loop.overlay_state != M0Loop.OVERLAY_NONE
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	tactical_map_panel.queue_redraw()
+
+
+## Draws the newest GalNet lines; a line wider than the panel scrolls sideways.
+func _refresh_ticker() -> void:
+	if ticker_labels.is_empty():
+		return
+	var font: Font = ticker_labels[0].get_theme_default_font()
+	var measure := func(t: String) -> float: return font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	var lines: Array = hud.get_ticker_lines(measure)
+	for i in ticker_labels.size():
+		var tl: Label = ticker_labels[i]
+		if i < lines.size():
+			tl.text = lines[i]["text"]
+			tl.position.x = -float(lines[i]["offset"])
+		else:
+			tl.text = ""
+			tl.position.x = 0.0
 
 
 func _sidebar_text() -> String:
