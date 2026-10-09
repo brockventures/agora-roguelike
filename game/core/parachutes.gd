@@ -123,6 +123,7 @@ static func _normalise(src: Dictionary) -> Dictionary:
 	return {
 		"id": id if id is String else "",
 		"name": str(src.get("name", "")),
+		"branch": str(src.get("branch", "")),
 		"tier": _int_or_self(src.get("tier", 1)),
 		"cost": _int_or_self(src.get("cost", 0)),
 		"requires": req,

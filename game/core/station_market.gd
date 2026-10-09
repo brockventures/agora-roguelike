@@ -16,7 +16,10 @@ const STATION_NAMES: Dictionary = {
 	"mars": "Arcadia Foundries",
 }
 const PLAYER_ID: String = "player"
-const MAKER_ID: String = "maker"
+## The resting book's maker: the Ares Heavy syndicate (M0 counterparty, #34).
+## Identity and label only; the Baron AI framework is out of scope for M0.
+const MAKER_ID: String = "ares_heavy"
+const MAKER_NAME: String = "ARES HEAVY"
 const DEPTH_LEVELS: int = 5
 
 var books: Dictionary = {}
@@ -121,7 +124,7 @@ func sweep_quote(station: String, commodity: String, side: String, qty: int, lim
 func execute(station: String, commodity: String, side: String, qty: int, limit_px: float) -> Dictionary:
 	var book: OrderBook = get_book(station, commodity)
 	if book == null or qty <= 0:
-		return {"filled": 0, "cost": 0, "trades": []}
+		return {"filled": 0, "cost": 0, "trades": [], "counterparty": ""}
 	_seq += 1
 	_order_counter += 1
 	var is_buy: bool = side == "BUY"
@@ -135,10 +138,18 @@ func execute(station: String, commodity: String, side: String, qty: int, limit_p
 	if result[1] != null:
 		book.remove_order(order.order_id, PLAYER_ID)
 	var cost: int = 0
+	var counterparty: String = ""
 	for t: Order.Trade in trades:
 		cost += t.price * t.qty
+		var other: String = t.seller_id if is_buy else t.buyer_id
+		counterparty = counterparty_name(other)
 	book_changed.emit(station.to_lower(), commodity.to_upper())
-	return {"filled": order.filled_qty, "cost": cost, "trades": trades}
+	return {"filled": order.filled_qty, "cost": cost, "trades": trades, "counterparty": counterparty}
+
+
+## Display name of a resting-book participant id ("" for an unknown id).
+static func counterparty_name(participant_id: String) -> String:
+	return MAKER_NAME if participant_id == MAKER_ID else ""
 
 
 func to_dict() -> Dictionary:

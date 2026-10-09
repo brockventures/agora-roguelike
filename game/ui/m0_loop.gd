@@ -22,6 +22,10 @@ signal tab_changed(tab_name: String)
 signal overlay_changed(overlay_state: String)
 signal speed_changed(label: String)
 signal action_handled(action: String)
+## Collapse flow moved on: "" (none), "summary" or "perks".
+signal collapse_phase_changed(phase: String)
+## A fresh run replaced the collapsed one (rc is the new controller).
+signal run_restarted(rc: RunController)
 
 enum Tab { MAP = 0, MARKET = 1, FLEET = 2 }
 
@@ -31,6 +35,16 @@ const TAB_NAMES: Array[String] = ["MAP", "MARKET", "FLEET"]
 const OVERLAY_NONE: String = ""
 const OVERLAY_CHAPTER_11: String = "chapter11"
 const OVERLAY_COLLAPSED: String = "collapsed"
+
+## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
+const PHASE_NONE: String = ""
+const PHASE_SUMMARY: String = "summary"
+const PHASE_PERKS: String = "perks"
+
+## The one tradable station in M0: Arcadia Foundries on Mars (#34). Other
+## stations stay visible on the map, but LT/RT station cycling is disabled
+## while a station is locked, so no path leads to a "Not docked" rejection.
+const M0_STATION: String = "mars"
 
 const ACT_TAB_PREV: String = "m0_tab_prev"
 const ACT_TAB_NEXT: String = "m0_tab_next"
@@ -81,6 +95,12 @@ var market: StationMarket = null
 var tab: Tab = Tab.MAP
 var overlay_state: String = OVERLAY_NONE
 var total_fills: int = 0
+## Non-empty: the player is docked here and station cycling is disabled (see M0_STATION).
+var locked_station: String = ""
+var collapse_phase: String = PHASE_NONE
+## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
+var perk_cursor: int = 0
+var parachutes: Parachutes = null
 
 ## Stick axes held past the deadzone, so a held stick fires once per push.
 var _held: Dictionary = {}
@@ -104,6 +124,8 @@ func bind_hud(p_hud: OrbitalHUD) -> void:
 	hud.market = market
 	_connect_all()
 	_sync_overlay_from_controller()
+	if locked_station != "":
+		_apply_lock()
 
 
 ## Rebinds after the HUD's controller changed (MainScene.initialize_systems).
@@ -148,6 +170,21 @@ func _disconnect_all() -> void:
 		if hud.gamepad_focus.order_rejected.is_connected(_reject_callable):
 			hud.gamepad_focus.order_rejected.disconnect(_reject_callable)
 	controller = null
+
+
+# --- Station lock ---
+
+## Docks the player at `station` and disables LT/RT station cycling.
+func lock_station(station: String) -> void:
+	locked_station = station.to_lower()
+	_apply_lock()
+
+
+func _apply_lock() -> void:
+	if controller != null and Transit.STATIONS.has(locked_station):
+		controller.docked_at = locked_station
+	if hud != null and locked_station != "":
+		hud.set_station(locked_station)
 
 
 # --- Clock ---
@@ -254,6 +291,10 @@ func handle_input(event: InputEvent) -> bool:
 func dispatch_action(action: String) -> bool:
 	if hud == null or not ALL_ACTIONS.has(action):
 		return false
+	if overlay_state == OVERLAY_COLLAPSED:
+		return _collapsed_action(action)
+	if locked_station != "" and (action == ACT_STATION_PREV or action == ACT_STATION_NEXT):
+		return false
 	if overlay_state != OVERLAY_NONE and not OVERLAY_ACTIONS.has(action):
 		return false
 	if MARKET_ONLY_ACTIONS.has(action) and tab != Tab.MARKET:
@@ -303,6 +344,124 @@ func _click() -> void:
 		hud.tactile_audio.play_sfx(TactileAudio.KEY_CLICK_DOWN)
 
 
+# --- Collapse: run summary, Golden Parachutes, restart ---
+
+## Run-end numbers for the summary screen, from what RunController already tracks.
+func run_summary() -> Dictionary:
+	if controller == null:
+		return {}
+	return {
+		"reason": controller.end_reason,
+		"net_worth": controller.net_worth(),
+		"peak_net_worth": controller.peak_net_worth,
+		"rounds_survived": controller.get_current_round(),
+		"corp_number": controller.corp_number,
+		"severance_awarded": controller.severance_award,
+		"severance_balance": controller.profile.severance_points,
+		"runs_completed": controller.profile.runs_completed,
+	}
+
+
+## Golden Parachutes rows (enabled perks by tier then id) with live buy state
+## from Parachutes.can_buy (requires, requires_any, cost).
+func perk_rows() -> Array:
+	var rows: Array = []
+	if controller == null:
+		return rows
+	if parachutes == null:
+		parachutes = Parachutes.load()
+	for id in parachutes.perks:
+		var perk: Dictionary = parachutes.perks[id]
+		if not bool(perk["enabled"]):
+			continue
+		var check: Dictionary = parachutes.can_buy(controller.profile, str(id))
+		rows.append({
+			"id": str(id),
+			"name": str(perk["name"]),
+			"branch": str(perk["branch"]),
+			"tier": int(perk["tier"]),
+			"cost": int(perk["cost"]),
+			"owned": controller.profile.has_unlock(str(id)),
+			"can_buy": bool(check["ok"]),
+		})
+	rows.sort_custom(func(a, b): return [a["tier"], a["id"]] < [b["tier"], b["id"]])
+	return rows
+
+
+func _set_phase(phase: String) -> void:
+	if collapse_phase != phase:
+		collapse_phase = phase
+		collapse_phase_changed.emit(phase)
+
+
+## Collapse overlay input. A advances summary -> perk select -> new run; in perk
+## select up/down move the cursor and A on a perk buys it. Something is always
+## accepted (A), so the screen can never soft-lock.
+func _collapsed_action(action: String) -> bool:
+	if controller == null:
+		return false
+	if collapse_phase == PHASE_NONE:
+		_set_phase(PHASE_SUMMARY)
+	if collapse_phase == PHASE_SUMMARY:
+		if action != ACT_SUBMIT:
+			return false
+		_open_perk_select()
+		return true
+	var rows: Array = perk_rows()
+	match action:
+		ACT_UP:
+			perk_cursor = maxi(0, perk_cursor - 1)
+			return true
+		ACT_DOWN:
+			perk_cursor = mini(rows.size(), perk_cursor + 1)
+			return true
+		ACT_SUBMIT:
+			if perk_cursor >= rows.size():
+				start_next_run()
+				return true
+			var res: Dictionary = parachutes.buy(controller.profile, str(rows[perk_cursor]["id"]))
+			return bool(res["ok"])
+		ACT_CANCEL:
+			_set_phase(PHASE_SUMMARY)
+			return true
+	return false
+
+
+func _open_perk_select() -> void:
+	var rows: Array = perk_rows()
+	perk_cursor = rows.size()
+	for i in rows.size():
+		if bool(rows[i]["can_buy"]):
+			perk_cursor = i
+			break
+	_set_phase(PHASE_PERKS)
+
+
+## Starts a fresh run from the collapsed one: same profile (so the perks bought
+## above become RunController modifiers), new seed, fresh books, docked at the
+## M0 station. Returns the new controller.
+func start_next_run() -> RunController:
+	if controller == null or hud == null:
+		return null
+	var rc: RunController = controller.next_run()
+	hud.bind_controller(rc)
+	market = StationMarket.new()
+	tab = Tab.MAP
+	hud.close_trading_overlay()
+	hud.gamepad_focus.set_zone(GamepadFocus.Zone.TACTICAL_MAP)
+	hud.gamepad_focus.last_executed_order = {}
+	hud.gamepad_focus.last_rejection_reason = ""
+	hud.gamepad_focus.last_rejection_payload = {}
+	total_fills = 0
+	bind_hud(hud)
+	collapse_phase = PHASE_NONE
+	perk_cursor = 0
+	collapse_phase_changed.emit(PHASE_NONE)
+	run_restarted.emit(rc)
+	tab_changed.emit(tab_name())
+	return rc
+
+
 # --- Signal handlers ---
 
 func _on_order_executed(_payload: Dictionary) -> void:
@@ -331,6 +490,7 @@ func _on_bankruptcy_filed(_report: Dictionary) -> void:
 
 func _on_collapsed() -> void:
 	controller.sim_clock.pause()
+	_set_phase(PHASE_SUMMARY)
 	_set_overlay(OVERLAY_COLLAPSED)
 
 
@@ -346,6 +506,7 @@ func _sync_overlay_from_controller() -> void:
 	if controller == null:
 		_set_overlay(OVERLAY_NONE)
 	elif controller.is_collapsed():
+		_set_phase(PHASE_SUMMARY)
 		_set_overlay(OVERLAY_COLLAPSED)
 	elif controller.pending_bankruptcy:
 		_set_overlay(OVERLAY_CHAPTER_11)
