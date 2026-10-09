@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "_placeholder": "PLACEHOLDER numbers for Ryan to tune. Every odds, magnitude, duration and threshold below is a conservative guess, not a balance pass. Percentages are in basis points (10000 = x1.0 / 100%). Rounds are sim rounds (15 s at 1x).",
+  "grace_rounds": 2,
+  "max_active": 2,
+  "bands": [
+    {"id": "low", "min_net_worth": -1000000000},
+    {"id": "mid", "min_net_worth": 6000},
+    {"id": "high", "min_net_worth": 15000}
+  ],
+  "tiers": {
+    "early": {
+      "label": "LOCALIZED",
+      "stages": ["NORMAL"],
+      "p": 0.15,
+      "p_mult_bps": {"low": 10000, "mid": 10000, "high": 10000}
+    },
+    "mid": {
+      "label": "REGULATORY",
+      "stages": ["UNSTABLE", "CRITICAL"],
+      "p": 0.15,
+      "p_mult_bps": {"low": 10000, "mid": 12500, "high": 15000}
+    },
+    "endgame": {
+      "label": "SYSTEMIC",
+      "stages": ["IMMINENT"],
+      "p": 0.20,
+      "p_mult_bps": {"low": 10000, "mid": 12500, "high": 15000}
+    }
+  },
+  "crises": [
+    {
+      "id": "localized_shortage",
+      "kind": "shortage",
+      "tier": "early",
+      "name": "Localized Shortage",
+      "headline": "SHORTAGE: {commodity} supply at {station} has dried up, Ares Heavy book thin for {rounds} rounds",
+      "min_band": "low",
+      "weight": 1,
+      "duration_rounds": [3, 5],
+      "stations": ["mars"],
+      "commodities": [],
+      "effects": {"depth_bps": 4000, "price_bps": 2500, "spread_bps": 15000}
+    },
+    {
+      "id": "supply_chain_shortage",
+      "kind": "shortage",
+      "tier": "mid",
+      "name": "Supply Chain Shortage",
+      "headline": "SHORTAGE: {commodity} convoys to {station} are stalled, book near empty for {rounds} rounds",
+      "min_band": "low",
+      "weights": {"low": 3, "mid": 2, "high": 1},
+      "duration_rounds": [3, 5],
+      "stations": ["mars"],
+      "commodities": [],
+      "effects": {"depth_bps": 2500, "price_bps": 4000, "spread_bps": 20000}
+    },
+    {
+      "id": "antitrust_audit",
+      "kind": "audit",
+      "tier": "mid",
+      "name": "Antitrust Audit",
+      "headline": "REGULATION: Sol Commerce Commission opens an antitrust audit, trades capped and taxed for {rounds} rounds",
+      "min_band": "mid",
+      "weights": {"mid": 2, "high": 3},
+      "duration_rounds": [3, 4],
+      "effects": {"trade_cap_qty": 20, "fee_base_bps": 50, "fee_bps_per_10k_net_worth": 25, "fee_max_bps": 400}
+    },
+    {
+      "id": "systemic_margin_collapse",
+      "kind": "collapse",
+      "tier": "endgame",
+      "name": "Systemic Margin Collapse",
+      "headline": "COLLAPSE: margin calls cascade across the book, spreads blown out for {rounds} rounds",
+      "min_band": "low",
+      "weights": {"low": 3, "mid": 2, "high": 2},
+      "duration_rounds": [3, 4],
+      "effects": {"depth_bps": 6000, "price_bps": 0, "spread_bps": 25000, "margin_call_bps": 150}
+    },
+    {
+      "id": "emergency_antitrust_sweep",
+      "kind": "audit",
+      "tier": "endgame",
+      "name": "Emergency Antitrust Sweep",
+      "headline": "REGULATION: emergency antitrust sweep, trades capped and heavily taxed for {rounds} rounds",
+      "min_band": "high",
+      "weights": {"high": 3},
+      "duration_rounds": [2, 3],
+      "effects": {"trade_cap_qty": 10, "fee_base_bps": 100, "fee_bps_per_10k_net_worth": 40, "fee_max_bps": 800}
+    }
+  ]
+}

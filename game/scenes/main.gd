@@ -474,6 +474,7 @@ func _build_readouts() -> void:
 	resolution_label = _make_label(resolution_modal, Rect2(20, 16, 560, 288), 20)
 	# Body text keeps the shared HUD phosphor green (_make_label). A red override here
 	# was unreadable on the dark panel once the CRT aberration split its channels.
+	resolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _draw_map() -> void:
@@ -509,9 +510,9 @@ func _refresh_readouts() -> void:
 	market_label.text = _board_text() if market_modal.visible else ""
 	_update_market_highlight()
 	resolution_modal.visible = loop.overlay_state != M0Loop.OVERLAY_NONE
-	var collapsed: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED
-	resolution_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position if collapsed else RESOLUTION_RECT.position
-	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if collapsed else RESOLUTION_RECT.size
+	var big: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED or loop.overlay_state == M0Loop.OVERLAY_CRISIS
+	resolution_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position if big else RESOLUTION_RECT.position
+	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if big else RESOLUTION_RECT.size
 	resolution_label.size = resolution_modal.size - Vector2(40, 32)
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	tactical_map_panel.queue_redraw()
@@ -552,12 +553,16 @@ func _sidebar_text() -> String:
 	out.append("")
 	out.append("ORDER  %s  qty %d" % ["BUY" if buying else "SELL", f.order_qty])
 	out.append("HELD   %d %s   CARGO %d/%d" % [hud.get_cargo_qty(hud.active_commodity), hud.active_commodity, controller.get_total_cargo(), controller.cargo_capacity])
+	var crisis_lines: Array = _crisis_sidebar_lines()
+	if not crisis_lines.is_empty():
+		out.append("")
+		out.append_array(PackedStringArray(crisis_lines))
 	if f.last_rejection_reason != "":
 		out.append("REJECTED: " + f.get_rejection_message())
 	elif not f.last_executed_order.is_empty():
 		var o: Dictionary = f.last_executed_order
 		var who: String = str(o.get("counterparty", ""))
-		out.append("FILLED %s %d @ %.1f%s" % [o["side"], o["qty"], o["price"], "  vs %s" % who if who != "" else ""])
+		out.append("FILLED %s %d @ %.1f%s%s" % [o["side"], o["qty"], o["price"], "  vs %s" % who if who != "" else "", "  fee %d" % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""])
 	return "\n".join(out)
 
 
@@ -567,7 +572,8 @@ func _board_text() -> String:
 		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", c]
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
-			out.append("%s BID %6.1f   ASK %6.1f" % [key_prefix, lad["best_bid"], lad["best_ask"]])
+			var tag: String = loop.crisis_deck.tag_for(hud.active_station, c) if loop.crisis_deck != null else ""
+			out.append("%s BID %6.1f   ASK %6.1f%s" % [key_prefix, lad["best_bid"], lad["best_ask"], "   [%s]" % tag if tag != "" else ""])
 		else:
 			out.append("%s base %6.1f   (no live book)" % [key_prefix, Transit.BASE_PRICES[hud.active_station][c]])
 	out.append("")
@@ -596,12 +602,40 @@ func _fleet_text() -> String:
 
 
 func _resolution_text() -> String:
+	if loop.overlay_state == M0Loop.OVERLAY_CRISIS:
+		return _crisis_text()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return "CHAPTER 11\n\nInsolvent: debt %s exceeds liquidation value %s.\nThe clock is halted.\n\nPress X to file and found a new corp." % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))]
 	if loop.collapse_phase == M0Loop.PHASE_PERKS:
 		return _perks_text()
 	return _summary_text()
+
+
+func _crisis_text() -> String:
+	var c: Dictionary = loop.current_crisis()
+	if c.is_empty():
+		return ""
+	var tier_label: String = str(loop.crisis_deck.data.get("tiers", {}).get(str(c["tier"]), {}).get("label", c["tier"]))
+	var out: PackedStringArray = ["CRISIS   %s   %s" % [tier_label, str(c["name"]).to_upper()], "", str(c["text"]), ""]
+	out.append("DURATION  %d rounds (until round %d)" % [int(c["rounds"]), int(c["expires_round"])])
+	for line in CrisisDeck.describe(c):
+		out.append("  - " + str(line))
+	out.append("")
+	out.append("The clock is halted.   Press A to acknowledge.")
+	return "\n".join(out)
+
+
+func _crisis_sidebar_lines() -> Array:
+	var out: Array = []
+	if loop == null or loop.crisis_deck == null:
+		return out
+	var round_num: int = controller.get_current_round()
+	for c in loop.crisis_deck.active:
+		out.append("CRISIS %s  %d rd left" % [str(c["name"]).to_upper(), maxi(0, int(c["expires_round"]) - round_num)])
+		for line in CrisisDeck.describe(c, true):
+			out.append("  " + str(line))
+	return out
 
 
 func _summary_text() -> String:
