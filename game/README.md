@@ -10,6 +10,7 @@ Pinned Godot version: **4.7.2-stable** (see `.github/workflows/godot.yml`).
 ./run_demo.sh            # Standard windowed demo (1280x800)
 ./run_demo.sh --deck     # Steam Deck Game Mode preset (fullscreen 1280x800)
 ./run_demo.sh -f         # Fullscreen mode
+./run_demo.sh --fetch    # Download verified Godot 4.7.2 into .godot-bin/
 ./run_demo.sh --headless # Headless smoke test
 ```
 

@@ -12,6 +12,17 @@ class TestDemoLauncher(unittest.TestCase):
         self.assertTrue(script_path.is_file(), "run_demo.sh must exist in repo root")
         self.assertTrue(os.access(script_path, os.X_OK), "run_demo.sh must be executable")
 
+    def test_git_index_permission(self):
+        res = subprocess.run(
+            ["git", "ls-files", "-s", "run_demo.sh"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(res.returncode, 0)
+        mode = res.stdout.strip().split()[0]
+        self.assertEqual(mode, "100755", f"run_demo.sh git index mode must be 100755, got {mode}")
+
     def test_run_demo_help(self):
         res = subprocess.run(
             ["./run_demo.sh", "--help"],
@@ -22,6 +33,8 @@ class TestDemoLauncher(unittest.TestCase):
         )
         self.assertEqual(res.returncode, 0, f"--help failed: {res.stderr}")
         self.assertIn("--deck", res.stdout)
+        self.assertIn("--fetch", res.stdout)
+        self.assertIn("--headless", res.stdout)
         self.assertIn("--fullscreen", res.stdout)
         self.assertIn("--windowed", res.stdout)
 
