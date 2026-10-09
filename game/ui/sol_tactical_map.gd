@@ -14,11 +14,16 @@ signal round_advanced(round_num: int)
 
 const VIEWPORT_WIDTH: float = 1280.0
 const VIEWPORT_HEIGHT: float = 800.0
-const MAP_CENTER: Vector2 = Vector2(640.0, 400.0)
+## Tactical panel rectangle in screen space (matches OrbitalHUD.TACTICAL_MAP_RECT;
+## kept literal so this model does not depend on the HUD script).
+const PANEL_RECT: Rect2 = Rect2(0.0, 64.0, 880.0, 672.0)
+## Centre of the panel: the Sun, and the origin of the projection.
+const MAP_CENTER: Vector2 = Vector2(440.0, 400.0)
 
 ## Scale factor converting AU coordinates to screen pixels.
-## Ceres at 2.767 AU projects to ~359.7px, comfortably within the 400px vertical half-height.
-const AU_SCALE_PX: float = 130.0
+## Ceres at 2.767 AU projects to ~310px, so its orbit ring plus node (324px) fits the
+## panel's 336px vertical half-height and cannot overdraw the header or ticker.
+const AU_SCALE_PX: float = 112.0
 
 ## Visual radius in pixels for celestial body / station icons.
 const STATION_NODE_RADIUS_PX: float = 14.0
@@ -93,6 +98,21 @@ func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
 
 	var au_pos := Transit.get_station_position(st, effective_r)
 	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
+
+## Offset from a station node to its label origin. Earth, Luna and Mars sit within
+## 70px of each other at round 0 and the station names are long, so labels are
+## stacked in separate rows instead of all going right: Earth one row above its
+## node, Mars two rows above, Luna below, Ceres right.
+static func get_label_offset(station_id: String) -> Vector2:
+	match station_id.to_lower():
+		"earth":
+			return Vector2(-24.0, -24.0)
+		"luna":
+			return Vector2(-8.0, 34.0)
+		"mars":
+			return Vector2(-8.0, -46.0)
+		_:
+			return Vector2(18.0, 5.0)
 
 ## Returns orbital radius in screen pixels for drawing concentric orbital track rings.
 func get_orbit_radius_px(station_id: String) -> float:

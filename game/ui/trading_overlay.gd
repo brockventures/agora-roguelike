@@ -95,6 +95,7 @@ func get_financial_summary() -> Dictionary:
 			DoomsdayClock.Stage.NORMAL: stage_name = "NORMAL"
 			DoomsdayClock.Stage.UNSTABLE: stage_name = "UNSTABLE"
 			DoomsdayClock.Stage.CRITICAL: stage_name = "CRITICAL"
+			DoomsdayClock.Stage.IMMINENT: stage_name = "IMMINENT"
 			DoomsdayClock.Stage.COLLAPSED: stage_name = "COLLAPSED"
 
 	return {

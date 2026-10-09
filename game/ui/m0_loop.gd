@@ -11,7 +11,8 @@ extends RefCounted
 ##    (declared in project.godot with joypad and keyboard bindings) onto the
 ##    existing GamepadFocus API:
 ##      LB/RB tabs (Map, Market, Fleet), LT/RT stations, right stick commodities,
-##      d-pad / left stick focus, A submit, B back, X Chapter 11, Y speed cycle,
+##      d-pad / left stick: up/down the ladder (crossing the spread flips
+##      BUY/SELL), left/right quantity, A submit, B back, X Chapter 11, Y speed cycle,
 ##      Start pause.
 ##  - Insolvency halts the clock and raises the Chapter 11 resolution overlay;
 ##    X files, which founds a new corp and lowers the overlay.
@@ -258,6 +259,7 @@ func dispatch_action(action: String) -> bool:
 	if MARKET_ONLY_ACTIONS.has(action) and tab != Tab.MARKET:
 		return false
 	var handled: bool = false
+	var heard_before: int = hud.tactile_audio.sounds_played_count if hud.tactile_audio != null else 0
 	match action:
 		ACT_TAB_PREV:
 			cycle_tab(-1)
@@ -278,7 +280,11 @@ func dispatch_action(action: String) -> bool:
 		_:
 			handled = hud.gamepad_focus.handle_action(str(FOCUS_ACTIONS[action]))
 	if handled:
-		_click()
+		# One sound per press: the click is the fallback for actions whose own
+		# feedback (tick, swoosh, modal, bell) did not already play.
+		var heard_now: int = hud.tactile_audio.sounds_played_count if hud.tactile_audio != null else 0
+		if heard_now == heard_before:
+			_click()
 		action_handled.emit(action)
 	return handled
 

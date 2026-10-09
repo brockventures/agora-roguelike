@@ -5,7 +5,7 @@ func test_init_defaults() -> String:
 	var m := SolTacticalMap.new()
 	if m.current_round != 0 or not m.selected_station.is_empty():
 		return "initial round or selected station should be default"
-	if m.MAP_CENTER != Vector2(640.0, 400.0) or m.AU_SCALE_PX != 130.0:
+	if m.MAP_CENTER != Vector2(440.0, 400.0) or m.AU_SCALE_PX != 112.0:
 		return "map center or scale mismatch"
 	if m.get_stations() != Transit.STATIONS:
 		return "stations list must match Transit.STATIONS"
@@ -18,14 +18,14 @@ func test_station_screen_projection_bounds() -> String:
 		if pos.x < 0.0 or pos.x > 1280.0 or pos.y < 0.0 or pos.y > 800.0:
 			return "station %s out of 1280x800 bounds: %s" % [st, str(pos)]
 
-	# Ceres at 2.767 AU should be ~359.7 px from center
+	# Ceres at 2.767 AU should be ~309.9 px from center
 	var ceres_r := m.get_orbit_radius_px("ceres")
-	if absf(ceres_r - (2.767 * 130.0)) > 0.01:
+	if absf(ceres_r - (2.767 * 112.0)) > 0.01:
 		return "ceres orbit radius incorrect: %f" % ceres_r
 
-	# Earth at 1.0 AU should be 130.0 px from center
+	# Earth at 1.0 AU should be 112.0 px from center
 	var earth_r := m.get_orbit_radius_px("earth")
-	if absf(earth_r - 130.0) > 0.01:
+	if absf(earth_r - 112.0) > 0.01:
 		return "earth orbit radius incorrect: %f" % earth_r
 
 	# Luna must have visual screen separation from Earth (32px) to prevent 14px node overlap
@@ -48,9 +48,9 @@ func test_orbital_motion_across_rounds() -> String:
 	if pos_r0.distance_to(pos_r24) > 0.01:
 		return "mars orbit period 24 failed to return to start: %s vs %s" % [str(pos_r0), str(pos_r24)]
 
-	# r0 and r12 are opposite sides of the orbit (distance ~ 2 * 1.524 * 130 = 396.24 px)
+	# r0 and r12 are opposite sides of the orbit (distance ~ 2 * 1.524 * 130 = 341.4 px)
 	var opp_dist := pos_r0.distance_to(pos_r12)
-	if absf(opp_dist - (2.0 * 1.524 * 130.0)) > 0.1:
+	if absf(opp_dist - (2.0 * 1.524 * 112.0)) > 0.1:
 		return "mars opposition distance wrong: %f" % opp_dist
 
 	# Luna orbits Earth with period 4, and Earth orbits Sol with period 12.
@@ -220,7 +220,7 @@ func test_to_dict_serialization() -> String:
 
 	if d["current_round"] != 5 or d["selected_station"] != "mars":
 		return "serialization fields wrong"
-	if d["viewport"] != [1280.0, 800.0] or d["map_center"] != [640.0, 400.0]:
+	if d["viewport"] != [1280.0, 800.0] or d["map_center"] != [440.0, 400.0]:
 		return "viewport or center mismatch"
 	var stations: Dictionary = d["stations"]
 	if stations.size() != 4 or not stations.has("mars"):
@@ -228,4 +228,39 @@ func test_to_dict_serialization() -> String:
 	if not bool(stations["mars"]["selected"]):
 		return "mars should be marked selected"
 
+	return "ok"
+
+func test_map_fits_tactical_panel_at_every_round() -> String:
+	var m := SolTacticalMap.new()
+	var panel := SolTacticalMap.PANEL_RECT
+	var margin := SolTacticalMap.STATION_NODE_RADIUS_PX
+	for r in 24:
+		for st in Transit.STATIONS:
+			var pos := m.get_station_screen_pos(st, r)
+			if not panel.grow(-margin).has_point(pos):
+				return "%s at round %d is at %s, outside the %s panel" % [st, r, str(pos), str(panel)]
+		var ring := m.get_orbit_radius_px("ceres")
+		if not panel.grow(-margin).has_point(SolTacticalMap.MAP_CENTER + Vector2(0, -ring)):
+			return "ceres orbit ring leaves the panel"
+	if SolTacticalMap.PANEL_RECT != OrbitalHUD.TACTICAL_MAP_RECT:
+		return "PANEL_RECT drifted from OrbitalHUD.TACTICAL_MAP_RECT"
+	return "ok"
+
+func test_station_labels_do_not_overprint_at_round_zero() -> String:
+	var m := SolTacticalMap.new()
+	var rects: Dictionary = {}
+	for st in Transit.STATIONS:
+		var pos := m.get_station_screen_pos(st, 0) + SolTacticalMap.get_label_offset(st)
+		# Label box: ~9px per glyph at 14pt, 14px tall; the offset is the baseline origin.
+		rects[st] = Rect2(pos + Vector2(0, -12), Vector2(9.0 * StationMarket.station_name(st).length(), 14.0))
+	for a in Transit.STATIONS:
+		for b in Transit.STATIONS:
+			if a < b and rects[a].intersects(rects[b]):
+				return "labels %s and %s overprint at round 0: %s vs %s" % [a, b, str(rects[a]), str(rects[b])]
+		# No label may sit on another station's node either.
+		for b in Transit.STATIONS:
+			if a != b:
+				var node := Rect2(m.get_station_screen_pos(b, 0) - Vector2.ONE * 14.0, Vector2.ONE * 28.0)
+				if rects[a].intersects(node):
+					return "label %s covers the %s node at round 0" % [a, b]
 	return "ok"

@@ -42,10 +42,21 @@ var resolution_modal: Panel = null
 var resolution_label: Label = null
 var sfx_players: Array[AudioStreamPlayer] = []
 var drone_player: AudioStreamPlayer = null
+var market_highlight: ColorRect = null
+## Per-voice bookkeeping for stealing: play order and whether it carries a priority sound.
+var _voice_order: Array[int] = []
+var _voice_priority: Array[bool] = []
+var _voice_counter: int = 0
 
 ## Starting seed for the run MainScene creates when none was bound.
 const DEFAULT_RUN_SEED: int = 84
+## Voices for routine UI feedback. PRIORITY_VOICES more are reserved for alarms and
+## market bells, which may also steal the oldest routine voice if all are busy.
 const SFX_POLYPHONY: int = 4
+const PRIORITY_VOICES: int = 2
+
+## Controls hint shown under the header readout.
+const CONTROLS_HINT: String = "LB/RB tab  LT/RT station  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed"
 
 var is_initialized: bool = false
 
@@ -194,17 +205,22 @@ func to_dict() -> Dictionary:
 func _setup_audio() -> void:
 	if tactile_audio == null or not sfx_players.is_empty():
 		return
-	for i in SFX_POLYPHONY:
+	for i in SFX_POLYPHONY + PRIORITY_VOICES:
 		var p := AudioStreamPlayer.new()
 		p.name = "Sfx%d" % i
 		add_child(p)
 		sfx_players.append(p)
+		_voice_order.append(0)
+		_voice_priority.append(false)
 	drone_player = AudioStreamPlayer.new()
 	drone_player.name = "Drone"
 	drone_player.stream = tactile_audio.get_or_generate_waveform(TactileAudio.DRONE_TENSION)
 	drone_player.bus = _bus_or_master(TactileAudio.BUS_AMBIENT)
 	add_child(drone_player)
 	tactile_audio.sound_played.connect(_on_sound_played)
+	tactile_audio.bus_volume_changed.connect(_on_bus_volume_changed)
+	tactile_audio.bus_mute_changed.connect(_on_bus_mute_changed)
+	sync_audio_buses()
 	tactile_audio.tension_level_changed.connect(_on_tension_changed)
 	_apply_drone(tactile_audio.current_drone_volume_db)
 	if is_inside_tree():
@@ -215,17 +231,78 @@ func _bus_or_master(bus_name: String) -> String:
 	return bus_name if AudioServer.get_bus_index(bus_name) >= 0 else "Master"
 
 
+## Pushes the model's volumes and mutes onto the AudioServer buses declared in
+## res://default_bus_layout.tres. Players then play at their dB offset only; the
+## bus carries the volume. Buses missing from the layout are skipped.
+func sync_audio_buses() -> void:
+	if tactile_audio == null:
+		return
+	for bus_name in TactileAudio.ALL_BUSES:
+		_on_bus_volume_changed(bus_name, tactile_audio.get_bus_volume(bus_name))
+		_on_bus_mute_changed(bus_name, tactile_audio.is_bus_muted(bus_name))
+
+
+func _on_bus_volume_changed(bus_name: String, volume: float) -> void:
+	var idx: int = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(0.0001, volume)))
+
+
+func _on_bus_mute_changed(bus_name: String, muted: bool) -> void:
+	var idx: int = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		AudioServer.set_bus_mute(idx, muted)
+
+
+## Chooses the sfx voice for a sound, or -1 to drop it. Routine sounds use only the
+## first SFX_POLYPHONY voices and are dropped when those are busy. Priority sounds
+## (alarms, market bells) may use any free voice, else steal the oldest routine
+## voice, else the oldest voice of all.
+func pick_sfx_voice(priority: bool) -> int:
+	var busy: Array[bool] = []
+	for p in sfx_players:
+		busy.append(p.playing)
+	return choose_sfx_voice(priority, busy)
+
+
+## Pure voice choice over a busy mask (index per voice); see pick_sfx_voice.
+func choose_sfx_voice(priority: bool, busy: Array[bool]) -> int:
+	var routine_count: int = mini(SFX_POLYPHONY, busy.size())
+	var limit: int = busy.size() if priority else routine_count
+	for i in limit:
+		if not busy[i]:
+			return i
+	if not priority:
+		return -1
+	var best: int = -1
+	for i in busy.size():
+		if not _voice_priority[i] and (best == -1 or _voice_order[i] < _voice_order[best]):
+			best = i
+	if best == -1:
+		for i in busy.size():
+			if best == -1 or _voice_order[i] < _voice_order[best]:
+				best = i
+	return best
+
+
 func _on_sound_played(sound_id: String, bus: String, volume_db: float, pitch: float) -> void:
 	if sound_id == TactileAudio.DRONE_TENSION or not is_inside_tree():
 		return
-	for p in sfx_players:
-		if not p.playing:
-			p.stream = tactile_audio.get_or_generate_waveform(sound_id)
-			p.bus = _bus_or_master(bus)
-			p.volume_db = volume_db
-			p.pitch_scale = pitch
-			p.play()
-			return
+	var priority: bool = tactile_audio.is_priority_sound(sound_id)
+	var v: int = pick_sfx_voice(priority)
+	if v < 0:
+		return
+	var p: AudioStreamPlayer = sfx_players[v]
+	p.stream = tactile_audio.get_or_generate_waveform(sound_id)
+	p.bus = _bus_or_master(bus)
+	# The AudioServer bus applies the model's bus/master volume; only the offset
+	# (and pitch jitter) belongs on the player. Without the bus, keep the full dB.
+	p.volume_db = volume_db - (tactile_audio.get_bus_base_db(bus) if AudioServer.get_bus_index(bus) >= 0 else 0.0)
+	p.pitch_scale = pitch
+	p.play()
+	_voice_counter += 1
+	_voice_order[v] = _voice_counter
+	_voice_priority[v] = priority
 
 
 func _on_tension_changed(_stage: int, _freq: float) -> void:
@@ -260,11 +337,16 @@ func _build_readouts() -> void:
 	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 120), 16)
 	sidebar_label = _make_label(sidebar_panel, Rect2(16, 8, 368, 656), 16)
 	ticker_label = _make_label(ticker_panel, Rect2(16, 6, 1248, 52), 16)
+	tactical_map_panel.clip_contents = true
 	tactical_map_panel.draw.connect(_draw_map)
 	market_modal = Panel.new()
 	market_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position
 	market_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size
 	hud_container.add_child(market_modal)
+	market_highlight = ColorRect.new()
+	market_highlight.color = Color(0.2, 0.6, 0.4, 0.35)
+	market_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	market_modal.add_child(market_highlight)
 	market_label = _make_label(market_modal, Rect2(20, 16, 840, 528), 18)
 	resolution_modal = Panel.new()
 	resolution_modal.position = Vector2(340, 240)
@@ -280,13 +362,14 @@ func _draw_map() -> void:
 	var origin: Vector2 = OrbitalHUD.TACTICAL_MAP_RECT.position
 	var round_num: int = controller.get_current_round() if controller != null else 0
 	var center: Vector2 = SolTacticalMap.MAP_CENTER - origin
+	# The panel clips to its own rect; the projection is sized to fit it.
 	tactical_map_panel.draw_circle(center, SolTacticalMap.SOL_NODE_RADIUS_PX, Color(1.0, 0.85, 0.3))
 	for st in tactical_map.get_stations():
 		var pos: Vector2 = tactical_map.get_station_screen_pos(st, round_num) - origin
 		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, Color(0.2, 0.5, 0.35), 1.0)
 		var col := Color(0.4, 1.0, 0.6) if st == hud.active_station else Color(0.3, 0.7, 0.5)
 		tactical_map_panel.draw_circle(pos, SolTacticalMap.STATION_NODE_RADIUS_PX, col)
-		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + Vector2(18, 5), StationMarket.station_name(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), StationMarket.station_name(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 
 
 func _refresh_readouts() -> void:
@@ -297,8 +380,8 @@ func _refresh_readouts() -> void:
 	var tabs: PackedStringArray = []
 	for i in M0Loop.TAB_NAMES.size():
 		tabs.append("[%s]" % M0Loop.TAB_NAMES[i] if i == int(loop.tab) else M0Loop.TAB_NAMES[i])
-	header_label.text = "AGORA   CR %s   DEBT %s   DOOMSDAY %d:%02d %s   SPEED %s\n%s     LB/RB tab   LT/RT station   A buy/sell   B back   X Chapter 11   Y speed" % [
-		_fmt(int(h["cr"])), _fmt(int(h["total_debt"])), secs / 60, secs % 60, h["stage_name"], h["speed_label"], "  ".join(tabs)]
+	header_label.text = "AGORA   CR %s   DEBT %s   DOOMSDAY %d:%02d %s   SPEED %s\n%s     %s" % [
+		_fmt(int(h["cr"])), _fmt(int(h["total_debt"])), secs / 60, secs % 60, h["stage_name"], h["speed_label"], "  ".join(tabs), CONTROLS_HINT]
 	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else "SOL TACTICAL MAP   docked: %s" % StationMarket.station_name(controller.docked_at)
 	sidebar_label.text = _sidebar_text()
 	var lines: PackedStringArray = []
@@ -307,6 +390,7 @@ func _refresh_readouts() -> void:
 	ticker_label.text = "\n".join(lines)
 	market_modal.visible = hud.is_trading_overlay_open() and loop.overlay_state == M0Loop.OVERLAY_NONE
 	market_label.text = _board_text() if market_modal.visible else ""
+	_update_market_highlight()
 	resolution_modal.visible = loop.overlay_state != M0Loop.OVERLAY_NONE
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	tactical_map_panel.queue_redraw()
@@ -331,7 +415,7 @@ func _sidebar_text() -> String:
 	out.append("ORDER  %s  qty %d" % ["BUY" if buying else "SELL", f.order_qty])
 	out.append("HELD   %d %s   CARGO %d/%d" % [hud.get_cargo_qty(hud.active_commodity), hud.active_commodity, controller.get_total_cargo(), controller.cargo_capacity])
 	if f.last_rejection_reason != "":
-		out.append("REJECTED: " + f.last_rejection_reason)
+		out.append("REJECTED: " + f.get_rejection_message())
 	elif not f.last_executed_order.is_empty():
 		var o: Dictionary = f.last_executed_order
 		out.append("FILLED %s %d @ %.1f" % [o["side"], o["qty"], o["price"]])
@@ -341,13 +425,28 @@ func _sidebar_text() -> String:
 func _board_text() -> String:
 	var out: PackedStringArray = ["%s QUOTES" % StationMarket.station_name(hud.active_station).to_upper(), ""]
 	for c in Transit.COMMODITIES:
-		var key_prefix: String = "%-10s" % c
+		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", c]
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
 			out.append("%s BID %6.1f   ASK %6.1f" % [key_prefix, lad["best_bid"], lad["best_ask"]])
 		else:
 			out.append("%s base %6.1f   (no live book)" % [key_prefix, Transit.BASE_PRICES[hud.active_station][c]])
+	out.append("")
+	out.append("R-STICK commodity   D-PAD up/down ladder, left/right qty   B back")
 	return "\n".join(out)
+
+
+## Index of the selected commodity's row in the board text (title + blank + rows).
+func market_row_line() -> int:
+	return 2 + maxi(0, Transit.COMMODITIES.find(hud.active_commodity))
+
+
+func _update_market_highlight() -> void:
+	if market_highlight == null or market_label == null or hud == null:
+		return
+	var lh: float = float(market_label.get_line_height() + market_label.get_theme_constant("line_spacing"))
+	market_highlight.position = market_label.position + Vector2(-4.0, lh * float(market_row_line()))
+	market_highlight.size = Vector2(market_label.size.x, lh)
 
 
 func _fleet_text() -> String:
