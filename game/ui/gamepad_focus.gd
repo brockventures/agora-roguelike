@@ -194,6 +194,13 @@ func execute_focused_order() -> Dictionary:
 		_note_rejection(rej_px)
 		return rej_px
 
+	# Antitrust audit (#12): per-order unit cap while one is active.
+	if rc != null and rc.trade_cap_qty() > 0 and order_qty > rc.trade_cap_qty():
+		last_rejection_reason = "AUDIT_TRADE_CAP"
+		var rej_audit: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty, "cap": rc.trade_cap_qty()}
+		_note_rejection(rej_audit)
+		return rej_audit
+
 	# Live resting book (Earth/Mars): sweep it up to the focused level's price.
 	var mkt: StationMarket = hud.market
 	var use_book: bool = mkt != null and mkt.has_book(station, commodity)
@@ -230,16 +237,19 @@ func execute_focused_order() -> Dictionary:
 
 	var total_cost: int = int(sweep["cost"]) if use_book else int(round(px * float(order_qty)))
 
+	# Antitrust fee (#12) on the swept notional; zero with no audit active.
+	var fee: int = rc.trade_fee(total_cost) if rc != null else 0
+
 	if rc != null:
 		if is_buy:
-			# 3. Solvency Gate: Player must have sufficient liquid CR
-			if rc.cr < total_cost:
+			# 3. Solvency Gate: Player must have sufficient liquid CR (fee included)
+			if rc.cr < total_cost + fee:
 				last_rejection_reason = "INSUFFICIENT_CR"
 				var rej_cr: Dictionary = {
 					"ok": false,
 					"reason": last_rejection_reason,
 					"cr": rc.cr,
-					"required": total_cost,
+					"required": total_cost + fee,
 					"quote": quote
 				}
 				_note_rejection(rej_cr)
@@ -262,7 +272,7 @@ func execute_focused_order() -> Dictionary:
 				return rej_cap
 
 			## Deduct CR and credit cargo
-			rc.cr -= total_cost
+			rc.cr -= total_cost + fee
 			var current_cargo: int = int(rc.cargo.get(commodity, 0))
 			rc.cargo[commodity] = current_cargo + order_qty
 		else:
@@ -281,7 +291,7 @@ func execute_focused_order() -> Dictionary:
 				return rej_cargo
 			## Deduct cargo and credit CR
 			rc.cargo[commodity] = current_cargo - order_qty
-			rc.cr += total_cost
+			rc.cr += maxi(0, total_cost - fee)
 
 	var counterparty: String = ""
 	if use_book:
@@ -298,6 +308,7 @@ func execute_focused_order() -> Dictionary:
 		"counterparty": counterparty,
 		"qty": order_qty,
 		"total_cr": total_cost,
+		"fee": fee,
 		"ladder_index": ladder_index,
 		"cr_remaining": rc.cr if rc != null else 0,
 		"cargo_remaining": int(rc.cargo.get(commodity, 0)) if rc != null else 0
@@ -399,6 +410,8 @@ static func rejection_message(reason: String, payload: Dictionary = {}) -> Strin
 			return "Cargo hold full"
 		"INSUFFICIENT_LIQUIDITY", "EXCEEDS_AVAILABLE_QTY":
 			return "Not enough volume at that price"
+		"AUDIT_TRADE_CAP":
+			return "Antitrust audit: orders capped at %d units" % int(payload.get("cap", 0))
 		"INVALID_PRICE":
 			return "No quote at that level"
 		"NO_HUD_BOUND":

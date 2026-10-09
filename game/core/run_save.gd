@@ -6,6 +6,9 @@ extends RefCounted
 ##   controller  RunController (ledger CR, cargo, ships, sim clock, doomsday
 ##               clock, profile copy, perk modifiers, bankruptcy bookkeeping)
 ##   market      StationMarket (every resting order book)
+##   crisis      CrisisDeck (#12): active crises with their expiry rounds, the
+##               unacknowledged list, and the deck's Bags/draw counters. Present
+##               only when the controller carries a deck.
 ##   bags        Bags (streak counters, drawn/remaining marbles, forced queue),
 ##               so bad-luck protection is never wiped by a save/load cycle
 ##
@@ -15,11 +18,14 @@ extends RefCounted
 
 
 static func capture(controller: RunController, market: StationMarket, bags: Bags) -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"controller": controller.to_dict(),
 		"market": market.to_dict() if market != null else {},
 		"bags": bags.to_dict() if bags != null else {},
 	}
+	if controller.crisis_deck != null:
+		out["crisis"] = controller.crisis_deck.to_dict()
+	return out
 
 
 ## Rebuilds the objects from capture() output (directly or via JSON).
@@ -30,11 +36,19 @@ static func restore(data: Dictionary) -> Dictionary:
 			return {"ok": false, "error": "corrupt: missing '%s'" % key}
 	var bags := Bags.new()
 	bags.from_dict(data["bags"])
+	var rc: RunController = RunController.from_dict(data["controller"])
+	var mkt: StationMarket = StationMarket.from_dict(data["market"])
+	var cd = data.get("crisis", null)
+	if cd is Dictionary:
+		rc.crisis_deck = CrisisDeck.from_dict(cd)
+		# Books were saved already shaped by the active crises: restore the
+		# modifiers without reseeding them.
+		mkt.crisis_mods = rc.crisis_deck.market_mods()
 	return {
 		"ok": true,
 		"error": "",
-		"controller": RunController.from_dict(data["controller"]),
-		"market": StationMarket.from_dict(data["market"]),
+		"controller": rc,
+		"market": mkt,
 		"bags": bags,
 	}
 

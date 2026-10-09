@@ -37,6 +37,9 @@ const TAB_NAMES: Array[String] = ["MAP", "MARKET", "FLEET"]
 const OVERLAY_NONE: String = ""
 const OVERLAY_CHAPTER_11: String = "chapter11"
 const OVERLAY_COLLAPSED: String = "collapsed"
+## A drawn crisis (#12): halts the clock until A acknowledges. Chapter 11 and
+## collapse outrank it.
+const OVERLAY_CRISIS: String = "crisis"
 
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
@@ -103,6 +106,8 @@ var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
 var parachutes: Parachutes = null
+## The run's crisis deck (#12); lives on the controller, wired to the market here.
+var crisis_deck: CrisisDeck = null
 
 ## Stick axes held past the deadzone, so a held stick fires once per push.
 var _held: Dictionary = {}
@@ -125,6 +130,7 @@ func bind_hud(p_hud: OrbitalHUD) -> void:
 		market = StationMarket.new()
 	hud.market = market
 	_connect_all()
+	_attach_crisis_deck()
 	_sync_overlay_from_controller()
 	if locked_station != "":
 		_apply_lock()
@@ -142,6 +148,7 @@ func _connect_all() -> void:
 		controller.bankruptcy_filed.connect(_on_bankruptcy_filed)
 		controller.run_collapsed.connect(_on_collapsed)
 		controller.round_advanced.connect(_on_round_advanced)
+		controller.margin_call_applied.connect(_on_margin_call)
 		controller.sim_clock.paused_changed.connect(_on_clock_changed)
 		controller.sim_clock.speed_changed.connect(_on_clock_changed)
 	if hud != null and hud.gamepad_focus != null:
@@ -162,6 +169,8 @@ func _disconnect_all() -> void:
 			controller.run_collapsed.disconnect(_on_collapsed)
 		if controller.round_advanced.is_connected(_on_round_advanced):
 			controller.round_advanced.disconnect(_on_round_advanced)
+		if controller.margin_call_applied.is_connected(_on_margin_call):
+			controller.margin_call_applied.disconnect(_on_margin_call)
 		if controller.sim_clock.paused_changed.is_connected(_on_clock_changed):
 			controller.sim_clock.paused_changed.disconnect(_on_clock_changed)
 		if controller.sim_clock.speed_changed.is_connected(_on_clock_changed):
@@ -171,8 +180,70 @@ func _disconnect_all() -> void:
 			hud.gamepad_focus.order_executed.disconnect(_fill_callable)
 		if hud.gamepad_focus.order_rejected.is_connected(_reject_callable):
 			hud.gamepad_focus.order_rejected.disconnect(_reject_callable)
+	if crisis_deck != null:
+		if crisis_deck.crisis_drawn.is_connected(_on_crisis_drawn):
+			crisis_deck.crisis_drawn.disconnect(_on_crisis_drawn)
+		if crisis_deck.changed.is_connected(_on_crisis_changed):
+			crisis_deck.changed.disconnect(_on_crisis_changed)
+		crisis_deck = null
 	controller = null
 
+
+# --- Crisis deck (#12) ---
+
+## Gives the controller a crisis deck (once) and wires it to the market, ticker
+## and overlay. Re-binding the same controller keeps its deck.
+func _attach_crisis_deck() -> void:
+	if controller == null:
+		return
+	if controller.crisis_deck == null:
+		controller.crisis_deck = CrisisDeck.new(controller.run_seed)
+	crisis_deck = controller.crisis_deck
+	crisis_deck.crisis_drawn.connect(_on_crisis_drawn)
+	crisis_deck.changed.connect(_on_crisis_changed)
+	hud.bind_crisis_deck(crisis_deck)
+	market.set_crisis_mods(crisis_deck.market_mods())
+
+
+func _on_crisis_changed() -> void:
+	if market != null and crisis_deck != null:
+		market.set_crisis_mods(crisis_deck.market_mods())
+
+
+func _on_crisis_drawn(_crisis: Dictionary) -> void:
+	_raise_crisis_if_pending()
+
+
+## Raises the crisis modal and halts the clock when a crisis awaits
+## acknowledgement and nothing outranks it. Otherwise it stays pending and is
+## raised once the higher overlay is resolved.
+func _raise_crisis_if_pending() -> void:
+	if crisis_deck == null or controller == null or not crisis_deck.has_pending_ack():
+		return
+	if overlay_state != OVERLAY_NONE:
+		return
+	controller.sim_clock.pause()
+	_set_overlay(OVERLAY_CRISIS)
+
+
+## The crisis awaiting acknowledgement ({} when none).
+func current_crisis() -> Dictionary:
+	return crisis_deck.pending_crisis() if crisis_deck != null else {}
+
+
+## A: acknowledge the crisis; the clock resumes at its prior speed.
+func acknowledge_crisis() -> bool:
+	if overlay_state != OVERLAY_CRISIS or crisis_deck == null:
+		return false
+	crisis_deck.acknowledge()
+	_set_overlay(OVERLAY_NONE)
+	controller.sim_clock.resume()
+	return true
+
+
+func _on_margin_call(amount: int) -> void:
+	if hud != null:
+		hud.post_headline("MARGIN CALL: %d CR drained from your account" % amount, "CRISIS", "WARNING")
 
 ## Swaps in a restored StationMarket (loading a saved run) and rebinds the HUD to it.
 func set_market(m: StationMarket) -> void:
@@ -302,6 +373,13 @@ func dispatch_action(action: String) -> bool:
 		return false
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
+	if overlay_state == OVERLAY_CRISIS and action != ACT_CHAPTER_11:
+		# A acknowledges; nothing else is live behind the modal.
+		var acked: bool = action == ACT_SUBMIT and acknowledge_crisis()
+		if acked:
+			_click()
+			action_handled.emit(action)
+		return acked
 	if locked_station != "" and (action == ACT_STATION_PREV or action == ACT_STATION_NEXT):
 		return false
 	if overlay_state != OVERLAY_NONE and not OVERLAY_ACTIONS.has(action):
@@ -495,6 +573,7 @@ func _on_bankruptcy_filed(_report: Dictionary) -> void:
 	# The controller leaves the clock paused for the caller; the new corp starts at 1x.
 	controller.sim_clock.set_speed(1)
 	controller.sim_clock.resume()
+	_raise_crisis_if_pending()
 
 
 func _on_collapsed() -> void:
@@ -522,6 +601,7 @@ func _sync_overlay_from_controller() -> void:
 		_set_overlay(OVERLAY_CHAPTER_11)
 	else:
 		_set_overlay(OVERLAY_NONE)
+		_raise_crisis_if_pending()
 
 
 func _set_overlay(state: String) -> void:

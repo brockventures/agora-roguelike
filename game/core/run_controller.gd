@@ -29,6 +29,8 @@ signal corp_ended(summary: Dictionary)
 signal severance_awarded(points: int)
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
+## A systemic margin collapse drained CR from the player this round (#12).
+signal margin_call_applied(amount_cr: int)
 
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = 900
@@ -45,6 +47,10 @@ var pending_bankruptcy: bool = false
 var ticks_per_round: int = DEFAULT_TICKS_PER_ROUND
 var docked_at: String = "earth"
 var cargo_capacity: int = DEFAULT_CARGO_CAPACITY
+## Procedural crisis deck (#12). Null until a loop attaches one (M0Loop does), so
+## a bare controller never draws or pauses for crises. Not part of to_dict()
+## here; the deck has its own to_dict()/from_dict() for the save layer.
+var crisis_deck: CrisisDeck = null
 
 func get_total_cargo() -> int:
 	var total: int = 0
@@ -139,6 +145,14 @@ func hazard_odds_bps() -> int:
 ## Piracy odds factor in bps (10000 = x1.0). Pass to Piracy.chance/roll_departure as odds_bps.
 func piracy_odds_bps() -> int:
 	return maxi(0, Parachutes.apply_stat(modifiers, "piracy_odds_bps", Parachutes.BPS))
+
+## Per-order unit cap while an antitrust audit is active, 0 = uncapped.
+func trade_cap_qty() -> int:
+	return crisis_deck.order_cap() if crisis_deck != null else 0
+
+## Audit trade fee in CR on a fill worth `cost` CR (0 with no audit).
+func trade_fee(cost: int) -> int:
+	return crisis_deck.fee_for(cost) if crisis_deck != null else 0
 
 ## Net worth in CR: liquidation value minus total debt. May be negative.
 func net_worth() -> int:
@@ -427,10 +441,30 @@ static func _sanitise_modifiers(raw) -> Dictionary:
 func _on_sub_ticked(total: int) -> void:
 	doomsday.step_ticks(1)
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
-		round_advanced.emit(int(total / ticks_per_round))
+		var round_num: int = int(total / ticks_per_round)
+		if crisis_deck != null:
+			_advance_crisis_deck(round_num)
+		round_advanced.emit(round_num)
+
+## Once per round, before round_advanced: expire / draw crises, then charge any
+## margin call owed by collapses that were already live.
+func _advance_crisis_deck(round_num: int) -> void:
+	crisis_deck.advance_round(round_num, int(doomsday.stage), net_worth())
+	var bps: int = crisis_deck.last_margin_call_bps
+	if bps > 0:
+		var value: int = 0
+		for c in cargo:
+			value += Piracy.cargo_value(str(c), int(cargo[c]))
+		var drain: int = mini(cr, value * bps / 10000)
+		if drain > 0:
+			cr -= drain
+			margin_call_applied.emit(drain)
 
 func _interrupt_check() -> bool:
 	var trip := doomsday.should_auto_pause()
+	# An unacknowledged crisis stops the clock on the sub-tick it was drawn.
+	if crisis_deck != null and crisis_deck.has_pending_ack():
+		trip = true
 	if not pending_bankruptcy:
 		var a := assess()
 		_track_peak(a)
