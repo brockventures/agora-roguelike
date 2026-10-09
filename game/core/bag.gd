@@ -226,8 +226,34 @@ func to_dict() -> Dictionary:
 		"forced": _forced.duplicate(true)
 	}
 
+## Restores streak counters, drawn/remaining marbles and the forced queue.
+## Accepts JSON-parsed data (numbers arrive as floats), so every row is rebuilt
+## with typed fields; bad-luck protection survives a save/load cycle intact.
 func from_dict(d: Dictionary) -> void:
-	ns = d.get("ns", ns)
+	ns = str(d.get("ns", ns))
 	seed = int(d.get("seed", seed))
-	_bags = d.get("bags", {}).duplicate(true)
-	_forced = d.get("forced", {}).duplicate(true)
+	_bags = {}
+	var raw_bags = d.get("bags", {})
+	if raw_bags is Dictionary:
+		for k in raw_bags:
+			var r = raw_bags[k]
+			if not (r is Dictionary):
+				continue
+			_bags[str(k)] = {
+				"seed": int(r.get("seed", seed)),
+				"p": float(r.get("p", -1.0)),
+				"marbles": str(r.get("marbles", "")),
+				"refills": int(r.get("refills", 0)),
+				"credit": float(r.get("credit", 0.0)),
+				"draws": int(r.get("draws", 0)),
+				"hits": int(r.get("hits", 0)),
+			}
+	_forced = {}
+	var raw_forced = d.get("forced", {})
+	if raw_forced is Dictionary:
+		for e in raw_forced:
+			if raw_forced[e] is Array:
+				var q: Array = []
+				for o in raw_forced[e]:
+					q.append(bool(o))
+				_forced[str(e)] = q
