@@ -27,48 +27,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.04, 0.05, 0.07, 1)
-
-[node name="HUDContainer" type="Control" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="HeaderPanel" type="Panel" parent="HUDContainer"]
-layout_mode = 0
-offset_right = 1280.0
-offset_bottom = 64.0
-
-[node name="TacticalMapPanel" type="Panel" parent="HUDContainer"]
-layout_mode = 0
-offset_top = 64.0
-offset_right = 880.0
-offset_bottom = 736.0
-
-[node name="SidebarPanel" type="Panel" parent="HUDContainer"]
-layout_mode = 0
-offset_left = 880.0
-offset_top = 64.0
-offset_right = 1280.0
-offset_bottom = 736.0
-
-[node name="TickerPanel" type="Panel" parent="HUDContainer"]
-layout_mode = 0
-offset_top = 736.0
-offset_right = 1280.0
-offset_bottom = 800.0
-
-[node name="CRTOverlay" type="ColorRect" parent="."]
+[node name="ViewportContainer" type="SubViewportContainer" parent="."]
 material = SubResource("ShaderMaterial_crt")
 layout_mode = 1
 anchors_preset = 15
@@ -76,4 +35,49 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="ViewportContainer"]
+handle_input_locally = false
+size = Vector2i(1280, 800)
+render_target_update_mode = 4
+
+[node name="Background" type="ColorRect" parent="ViewportContainer/SubViewport"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.07, 1)
+
+[node name="HUDContainer" type="Control" parent="ViewportContainer/SubViewport"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HeaderPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 64.0
+
+[node name="TacticalMapPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_top = 64.0
+offset_right = 880.0
+offset_bottom = 736.0
+
+[node name="SidebarPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_left = 880.0
+offset_top = 64.0
+offset_right = 1280.0
+offset_bottom = 736.0
+
+[node name="TickerPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_top = 736.0
+offset_right = 1280.0
+offset_bottom = 800.0

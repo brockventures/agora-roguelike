@@ -20,6 +20,27 @@ func test_scene_file_and_script_exist() -> String:
 	return "ok"
 
 
+func test_project_settings_main_scene_and_display() -> String:
+	var main_scene = ProjectSettings.get_setting("application/run/main_scene")
+	if main_scene != MAIN_SCENE_PATH:
+		return "application/run/main_scene mismatch: %s" % str(main_scene)
+
+	var w = ProjectSettings.get_setting("display/window/size/viewport_width")
+	var h = ProjectSettings.get_setting("display/window/size/viewport_height")
+	if w != 1280 or h != 800:
+		return "viewport size in ProjectSettings mismatch: %sx%s" % [str(w), str(h)]
+
+	var stretch_mode = ProjectSettings.get_setting("display/window/stretch/mode")
+	if stretch_mode != "canvas_items":
+		return "stretch mode mismatch: %s" % str(stretch_mode)
+
+	var stretch_aspect = ProjectSettings.get_setting("display/window/stretch/aspect")
+	if stretch_aspect != "keep":
+		return "stretch aspect mismatch: %s" % str(stretch_aspect)
+
+	return "ok"
+
+
 func test_main_scene_instantiation() -> String:
 	var packed: PackedScene = load(MAIN_SCENE_PATH)
 	var scene: Node = packed.instantiate()
@@ -118,13 +139,14 @@ func test_scene_node_tree_hierarchy() -> String:
 	var scene: Node = packed.instantiate()
 
 	var required_paths := [
-		"Background",
-		"HUDContainer",
-		"HUDContainer/HeaderPanel",
-		"HUDContainer/TacticalMapPanel",
-		"HUDContainer/SidebarPanel",
-		"HUDContainer/TickerPanel",
-		"CRTOverlay",
+		"ViewportContainer",
+		"ViewportContainer/SubViewport",
+		"ViewportContainer/SubViewport/Background",
+		"ViewportContainer/SubViewport/HUDContainer",
+		"ViewportContainer/SubViewport/HUDContainer/HeaderPanel",
+		"ViewportContainer/SubViewport/HUDContainer/TacticalMapPanel",
+		"ViewportContainer/SubViewport/HUDContainer/SidebarPanel",
+		"ViewportContainer/SubViewport/HUDContainer/TickerPanel",
 	]
 
 	for path in required_paths:
@@ -132,21 +154,28 @@ func test_scene_node_tree_hierarchy() -> String:
 			scene.free()
 			return "Missing required node in scene tree: %s" % path
 
-	var crt := scene.get_node("CRTOverlay") as ColorRect
-	if crt == null:
+	# Ensure legacy CRTOverlay ColorRect is completely removed
+	if scene.has_node("CRTOverlay"):
 		scene.free()
-		return "CRTOverlay is not a ColorRect"
-	if crt.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-		scene.free()
-		return "CRTOverlay must ignore mouse input (mouse_filter = 2)"
-	if crt.material == null:
-		scene.free()
-		return "CRTOverlay has no material assigned"
-	if not (crt.material is ShaderMaterial):
-		scene.free()
-		return "CRTOverlay material is not a ShaderMaterial"
+		return "CRTOverlay ColorRect must be removed (replaced by SubViewportContainer post-processing)"
 
-	var bg := scene.get_node("Background") as ColorRect
+	var container := scene.get_node("ViewportContainer") as SubViewportContainer
+	if container == null:
+		scene.free()
+		return "ViewportContainer is not a SubViewportContainer"
+	if container.material == null or not (container.material is ShaderMaterial):
+		scene.free()
+		return "ViewportContainer must carry ShaderMaterial for CRT shader pipeline"
+
+	var sub_vp := scene.get_node("ViewportContainer/SubViewport") as SubViewport
+	if sub_vp == null:
+		scene.free()
+		return "SubViewport missing or invalid"
+	if sub_vp.size != Vector2i(1280, 800):
+		scene.free()
+		return "SubViewport size mismatch (expected 1280x800, got %s)" % str(sub_vp.size)
+
+	var bg := scene.get_node("ViewportContainer/SubViewport/Background") as ColorRect
 	if bg == null:
 		scene.free()
 		return "Background is not a ColorRect"
@@ -160,8 +189,8 @@ func test_crt_shader_pipeline_controls() -> String:
 	var scene: Node = packed.instantiate()
 	var main: Variant = scene
 
-	var crt := scene.get_node("CRTOverlay") as ColorRect
-	var mat := crt.material as ShaderMaterial
+	var container := scene.get_node("ViewportContainer") as SubViewportContainer
+	var mat := container.material as ShaderMaterial
 	if mat.shader == null:
 		scene.free()
 		return "ShaderMaterial has no shader loaded"
@@ -216,6 +245,15 @@ func test_binding_run_controller() -> String:
 	if d["has_controller"] != true or d["initialized"] != true:
 		scene.free()
 		return "to_dict() telemetry invalid: %s" % str(d)
+
+	# Verify unbinding controller (Amos review item #3)
+	main.initialize_systems(null)
+	if main.controller != null:
+		scene.free()
+		return "controller was not cleared on initialize_systems(null)"
+	if main.hud.controller != null:
+		scene.free()
+		return "hud controller was not unbound on initialize_systems(null)"
 
 	scene.free()
 	return "ok"

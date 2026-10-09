@@ -3,7 +3,7 @@ extends Control
 ## Root Scene Controller for Agora Roguelike (M0 Vertical Slice #83).
 ##
 ## Assembles the decoupled presentation models and CRT retro shader pipeline
-## into a unified 1280x800 Steam Deck viewport.
+## into a unified 1280x800 Steam Deck viewport using SubViewportContainer.
 
 ## Native Steam Deck viewport geometry.
 const VIEWPORT_WIDTH: float = 1280.0
@@ -20,13 +20,14 @@ var gamepad_focus: GamepadFocus = null
 var controller: RunController = null
 
 # Visual node references
+var viewport_container: SubViewportContainer = null
+var sub_viewport: SubViewport = null
 var background: ColorRect = null
 var hud_container: Control = null
 var header_panel: Panel = null
 var tactical_map_panel: Panel = null
 var sidebar_panel: Panel = null
 var ticker_panel: Panel = null
-var crt_overlay: ColorRect = null
 
 var is_initialized: bool = false
 
@@ -47,6 +48,8 @@ func initialize_systems(p_controller: RunController = null) -> void:
 		hud = OrbitalHUD.new(controller)
 	elif controller != null:
 		hud.bind_controller(controller)
+	else:
+		hud.unbind_controller()
 
 	tactical_map = hud.tactical_map
 	trading_overlay = hud.trading_overlay
@@ -57,10 +60,14 @@ func initialize_systems(p_controller: RunController = null) -> void:
 
 
 func _resolve_child_nodes() -> void:
-	if background == null and has_node("Background"):
-		background = get_node("Background") as ColorRect
-	if hud_container == null and has_node("HUDContainer"):
-		hud_container = get_node("HUDContainer") as Control
+	if viewport_container == null and has_node("ViewportContainer"):
+		viewport_container = get_node("ViewportContainer") as SubViewportContainer
+	if sub_viewport == null and has_node("ViewportContainer/SubViewport"):
+		sub_viewport = get_node("ViewportContainer/SubViewport") as SubViewport
+	if background == null and has_node("ViewportContainer/SubViewport/Background"):
+		background = get_node("ViewportContainer/SubViewport/Background") as ColorRect
+	if hud_container == null and has_node("ViewportContainer/SubViewport/HUDContainer"):
+		hud_container = get_node("ViewportContainer/SubViewport/HUDContainer") as Control
 		if hud_container.has_node("HeaderPanel"):
 			header_panel = hud_container.get_node("HeaderPanel") as Panel
 		if hud_container.has_node("TacticalMapPanel"):
@@ -69,20 +76,18 @@ func _resolve_child_nodes() -> void:
 			sidebar_panel = hud_container.get_node("SidebarPanel") as Panel
 		if hud_container.has_node("TickerPanel"):
 			ticker_panel = hud_container.get_node("TickerPanel") as Panel
-	if crt_overlay == null and has_node("CRTOverlay"):
-		crt_overlay = get_node("CRTOverlay") as ColorRect
 
 
-func get_crt_overlay() -> ColorRect:
-	if crt_overlay == null and has_node("CRTOverlay"):
-		crt_overlay = get_node("CRTOverlay") as ColorRect
-	return crt_overlay
+func get_viewport_container() -> SubViewportContainer:
+	if viewport_container == null and has_node("ViewportContainer"):
+		viewport_container = get_node("ViewportContainer") as SubViewportContainer
+	return viewport_container
 
 
 func _setup_crt_pipeline() -> void:
-	var overlay := get_crt_overlay()
-	if overlay != null and overlay.material is ShaderMaterial:
-		var mat := overlay.material as ShaderMaterial
+	var container := get_viewport_container()
+	if container != null and container.material is ShaderMaterial:
+		var mat := container.material as ShaderMaterial
 		if vector_orrery != null:
 			var uniforms: Dictionary = vector_orrery.get_crt_shader_uniforms()
 			for key: String in uniforms:
@@ -92,9 +97,9 @@ func _setup_crt_pipeline() -> void:
 func set_crt_enabled(p_enabled: bool) -> void:
 	if vector_orrery != null:
 		vector_orrery.crt_enabled = p_enabled
-	var overlay := get_crt_overlay()
-	if overlay != null and overlay.material is ShaderMaterial:
-		var mat := overlay.material as ShaderMaterial
+	var container := get_viewport_container()
+	if container != null and container.material is ShaderMaterial:
+		var mat := container.material as ShaderMaterial
 		mat.set_shader_parameter("enabled", p_enabled)
 
 
