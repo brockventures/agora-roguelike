@@ -4,6 +4,15 @@ Godot project root. Layout: `res://core` (simulation), `res://ui`, `res://tests`
 
 Pinned Godot version: **4.7.2-stable** (see `.github/workflows/godot.yml`).
 
+## Run the interactive demo
+
+```bash
+./run_demo.sh            # Standard windowed demo (1280x800)
+./run_demo.sh --deck     # Steam Deck Game Mode preset (fullscreen 1280x800)
+./run_demo.sh -f         # Fullscreen mode
+./run_demo.sh --headless # Headless smoke test
+```
+
 ## Run the tests
 
 ```
