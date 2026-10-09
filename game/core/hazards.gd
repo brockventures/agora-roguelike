@@ -162,6 +162,9 @@ static func py_round4(x: float) -> float:
 # HazardEngine Instance Implementation
 # ==============================================================================
 
+## Emitted whenever a delay or loss is recorded (the HUD's GalNet ticker feed).
+signal hazard_recorded(record: Dictionary)
+
 var odds: Variant = null
 var bags: Bags = null
 var draw_source: DrawSource = null
@@ -299,6 +302,7 @@ func record(transit_id: String, agent_id: String, round_num: int, delay: int, lo
 					"commodity": commodity,
 					"note": note
 				}
+				hazard_recorded.emit(_records[i])
 				return
 		_records.append({
 			"transit_id": transit_id,
@@ -309,6 +313,7 @@ func record(transit_id: String, agent_id: String, round_num: int, delay: int, lo
 			"commodity": commodity,
 			"note": note
 		})
+		hazard_recorded.emit(_records[_records.size() - 1])
 
 ## Returns recent hazard events occurring at or after since_round, sorted descending.
 func recent(since_round: int) -> Array[Dictionary]:
