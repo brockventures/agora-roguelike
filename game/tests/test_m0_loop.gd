@@ -97,6 +97,24 @@ func test_order_sweeps_multiple_levels_at_resting_prices() -> String:
 	return "ok"
 
 
+func test_receipt_reports_paid_price_not_limit() -> String:
+	var ctx := _loop()
+	var hud: OrbitalHUD = ctx["hud"]
+	var lp: M0Loop = ctx["loop"]
+	lp.set_tab(M0Loop.Tab.MARKET)
+	var asks: Array = hud.get_order_book_ladder()["asks"]
+	hud.gamepad_focus.snap_depth_level(1)
+	hud.gamepad_focus.set_quantity(1)
+	if not lp.dispatch_action(M0Loop.ACT_SUBMIT):
+		return "rejected: %s" % hud.gamepad_focus.last_rejection_reason
+	var o: Dictionary = hud.gamepad_focus.last_executed_order
+	if not is_equal_approx(float(o["price"]), float(asks[0]["price"])):
+		return "receipt price %s, paid best ask %s" % [str(o["price"]), str(asks[0]["price"])]
+	if not is_equal_approx(float(o["limit_price"]), float(asks[1]["price"])):
+		return "limit_price %s, expected %s" % [str(o["limit_price"]), str(asks[1]["price"])]
+	return "ok"
+
+
 func test_rejections_leave_book_and_balances_alone() -> String:
 	var ctx := _loop()
 	var rc: RunController = ctx["rc"]
