@@ -26,6 +26,8 @@ signal action_handled(action: String)
 signal collapse_phase_changed(phase: String)
 ## A fresh run replaced the collapsed one (rc is the new controller).
 signal run_restarted(rc: RunController)
+## A sim round completed and the books were refilled (the autosave point).
+signal round_completed(round_num: int)
 
 enum Tab { MAP = 0, MARKET = 1, FLEET = 2 }
 
@@ -242,6 +244,12 @@ func acknowledge_crisis() -> bool:
 func _on_margin_call(amount: int) -> void:
 	if hud != null:
 		hud.post_headline("MARGIN CALL: %d CR drained from your account" % amount, "CRISIS", "WARNING")
+
+## Swaps in a restored StationMarket (loading a saved run) and rebinds the HUD to it.
+func set_market(m: StationMarket) -> void:
+	market = m
+	if hud != null:
+		hud.market = market
 
 
 # --- Station lock ---
@@ -574,8 +582,9 @@ func _on_collapsed() -> void:
 	_set_overlay(OVERLAY_COLLAPSED)
 
 
-func _on_round_advanced(_round_num: int) -> void:
+func _on_round_advanced(round_num: int) -> void:
 	market.replenish()
+	round_completed.emit(round_num)
 
 
 func _on_clock_changed(_value: Variant) -> void:

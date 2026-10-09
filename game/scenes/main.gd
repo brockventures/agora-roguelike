@@ -63,6 +63,14 @@ const CONTROLS_HINT: String = "LB/RB tab  R-stick commodity  D-pad ladder/qty  A
 
 var is_initialized: bool = false
 
+## Persistence (#35). Null until enable_persistence(); headless runs (tests,
+## smoke) never enable it, so they never touch the real user:// directory.
+var save_store: SaveStore = null
+## The marble bags backing bad-luck protection; saved and restored with the run.
+var bags: Bags = null
+var _loaded_profile: MetaProfile = null
+var _saved_profile_dict: Dictionary = {}
+
 
 func _init() -> void:
 	custom_minimum_size = VIEWPORT_SIZE
@@ -72,8 +80,12 @@ func _init() -> void:
 func _ready() -> void:
 	_resolve_child_nodes()
 	_setup_crt_pipeline()
+	if save_store == null and DisplayServer.get_name() != "headless":
+		enable_persistence(SaveStore.new())
 	if controller == null:
-		start_new_run(DEFAULT_RUN_SEED)
+		# Resume the autosaved run when there is a usable one, else start fresh.
+		if not continue_saved_run():
+			start_new_run(DEFAULT_RUN_SEED)
 	_build_readouts()
 	_setup_audio()
 	_refresh_readouts()
@@ -103,9 +115,80 @@ func handle_input(event: InputEvent) -> bool:
 
 ## Creates a fresh RunController and binds it to the HUD, loop and clock.
 func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
-	var rc := RunController.new(null, p_seed)
+	var rc := RunController.new(_loaded_profile, p_seed)
+	bags = Bags.new("m0", null, p_seed)
 	initialize_systems(rc)
 	return rc
+
+
+# --- Persistence (#35) ---
+
+## Turns on autosave (each round advance, profile changes, quit) and loads the
+## persisted MetaProfile so the next new run starts with its perks.
+func enable_persistence(store: SaveStore) -> void:
+	save_store = store
+	_loaded_profile = store.load_profile()
+	if _loaded_profile != null:
+		_saved_profile_dict = _loaded_profile.to_dict()
+	if not loop.round_completed.is_connected(_on_round_completed):
+		loop.round_completed.connect(_on_round_completed)
+		loop.action_handled.connect(_on_action_handled)
+
+
+## Replaces the current run with the one in the run slot. False (and nothing
+## changed) when persistence is off or the slot is missing, corrupt, or from an
+## unsupported schema version.
+func continue_saved_run() -> bool:
+	if save_store == null or not save_store.has_run():
+		return false
+	var r: Dictionary = save_store.load_run()
+	if not bool(r["ok"]):
+		push_warning("run save ignored: %s" % str(r["error"]))
+		return false
+	var rc: RunController = r["controller"]
+	bags = r["bags"]
+	initialize_systems(rc)
+	loop.set_market(r["market"])
+	return true
+
+
+## Writes the profile and the run slot. Returns true when both writes succeeded.
+func save_all() -> bool:
+	if save_store == null or controller == null:
+		return false
+	if bags == null:
+		bags = Bags.new("m0", null, controller.run_seed)
+	var ok: bool = _save_profile()
+	if save_store.save_run(controller, loop.market, bags) != OK:
+		push_warning("run autosave failed")
+		ok = false
+	return ok
+
+
+func _save_profile() -> bool:
+	if save_store == null or controller == null:
+		return false
+	var err: Error = save_store.save_profile(controller.profile)
+	if err != OK:
+		push_warning("profile save failed: error %d" % err)
+		return false
+	_saved_profile_dict = controller.profile.to_dict()
+	return true
+
+
+func _on_round_completed(_round_num: int) -> void:
+	save_all()
+
+
+## Perks are bought while the run is over; persist the profile as soon as it changes.
+func _on_action_handled(_action: String) -> void:
+	if controller != null and controller.profile.to_dict() != _saved_profile_dict:
+		_save_profile()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_all()
 
 
 func initialize_systems(p_controller: RunController = null) -> void:
@@ -136,6 +219,7 @@ func initialize_systems(p_controller: RunController = null) -> void:
 ## The collapse flow replaced the run: follow the loop's new controller.
 func _on_run_restarted(rc: RunController) -> void:
 	controller = rc
+	bags = Bags.new("m0", null, rc.run_seed)
 	tactical_map = hud.tactical_map
 	trading_overlay = hud.trading_overlay
 	vector_orrery = hud.vector_orrery
