@@ -203,6 +203,11 @@ static func hot_until(round_num: int) -> int:
 # PiracyDesk Instance Implementation
 # ==============================================================================
 
+## Emitted when a departure roll produces a pirate demand, and when the demand
+## is settled by respond(). Both feed the HUD's GalNet ticker.
+signal raid_demanded(demand: Dictionary)
+signal raid_resolved(row: Dictionary)
+
 var odds: Variant = null
 var seed_val: int = 0
 var draw_source: DrawSource = null
@@ -479,6 +484,7 @@ func roll_departure(
 	_raids[transit_id] = demand
 	out["raided"] = true
 	out["demand"] = demand
+	raid_demanded.emit(demand)
 	return out
 
 ## Responds to a pending pirate extortion demand.
@@ -538,6 +544,7 @@ func respond(agent_id: String, transit_id: String, choice_str: String, available
 	row["delay"] = delay
 	row["fenced_at"] = fenced
 
+	raid_resolved.emit(row)
 	return {"v": 1, "kind": "piracy_respond_ok", "payload": row}
 
 ## Hires privateers against a target fleet for PRIV_ROUNDS rounds.

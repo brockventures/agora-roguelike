@@ -27,7 +27,21 @@ const HEADER_RECT: Rect2 = Rect2(0.0, 0.0, 1280.0, 64.0)
 const TACTICAL_MAP_RECT: Rect2 = Rect2(0.0, 64.0, 880.0, 672.0)
 const SIDEBAR_RECT: Rect2 = Rect2(880.0, 64.0, 400.0, 672.0)
 const TICKER_RECT: Rect2 = Rect2(0.0, 736.0, 1280.0, 64.0)
-const MODAL_OVERLAY_RECT: Rect2 = Rect2(200.0, 120.0, 880.0, 560.0)
+## The market modal lives inside the tactical map panel (never over the
+## sidebar's order-book ladder), inset 24 px left/right and 32 px top/bottom.
+const MODAL_OVERLAY_RECT: Rect2 = Rect2(24.0, 96.0, 832.0, 608.0)
+
+## GalNet ticker feed: bounded history, lines visible at once, marquee tuning.
+const HEADLINE_HISTORY_MAX: int = 20
+const TICKER_VISIBLE_LINES: int = 2
+const TICKER_VIEW_WIDTH: float = 1248.0
+const TICKER_SCROLL_SPEED: float = 60.0
+const TICKER_DWELL_SECONDS: float = 1.5
+const TICKER_SCROLL_GAP: float = 32.0
+## Rough glyph width used when no real font measure is supplied (headless).
+const TICKER_FALLBACK_CHAR_WIDTH: float = 9.0
+## A book's mid price must move by at least this fraction to be reported.
+const MARKET_MOVE_THRESHOLD: float = 0.02
 
 ## Supported commodities for cycling, canonical from Transit.
 const COMMODITIES: Array[String] = Transit.COMMODITIES
@@ -40,12 +54,21 @@ var vector_orrery: VectorOrrery = null
 var tactile_audio: TactileAudio = null
 ## Resting books for the stations that trade live (Earth, Mars). Null or a
 ## station without a book falls back to the synthetic ladder below.
-var market: StationMarket = null
+var market: StationMarket = null:
+	set = set_market
 
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
 var galnet_headlines: Array = []
 var order_book_depth_levels: int = 5
+
+## Ticker marquee clocks keyed by headline seq (seconds since the line appeared).
+var _ticker_clock: Dictionary = {}
+var _headline_seq: int = 0
+var _last_mid: Dictionary = {}
+var _focus_executed_callable: Callable
+var _hazards: Hazards = null
+var _piracy: Piracy = null
 
 ## Controller signal callables for clean unbinding.
 var _round_callable: Callable
@@ -68,6 +91,8 @@ func _init(p_controller: RunController = null, p_station: String = "earth", p_co
 	trading_overlay = TradingOverlay.new(p_controller, active_station)
 	trading_overlay.set_commodity(active_commodity)
 	gamepad_focus = GamepadFocus.new(self)
+	_focus_executed_callable = Callable(self, "_on_order_executed")
+	gamepad_focus.order_executed.connect(_focus_executed_callable)
 	vector_orrery = VectorOrrery.new(tactical_map, p_controller)
 	tactile_audio = TactileAudio.new()
 
@@ -367,11 +392,13 @@ func post_headline(text: String, category: String = "MARKET", severity: String =
 		"text": text,
 		"category": category.to_upper(),
 		"severity": severity.to_upper(),
-		"round": r_num
+		"round": r_num,
+		"seq": _next_seq()
 	}
 	galnet_headlines.push_front(item)
-	if galnet_headlines.size() > 20:
-		galnet_headlines.pop_back()
+	while galnet_headlines.size() > HEADLINE_HISTORY_MAX:
+		var dropped: Dictionary = galnet_headlines.pop_back()
+		_ticker_clock.erase(int(dropped.get("seq", -1)))
 	if tactile_audio != null:
 		var sev_up: String = severity.to_upper()
 		if sev_up == "CRITICAL":
@@ -383,30 +410,177 @@ func post_headline(text: String, category: String = "MARKET", severity: String =
 	headline_emitted.emit(item)
 	return item
 
+func _next_seq() -> int:
+	_headline_seq += 1
+	return _headline_seq
+
 func get_recent_headlines(limit: int = 5) -> Array:
 	var cnt: int = mini(limit, galnet_headlines.size())
 	return galnet_headlines.slice(0, cnt)
 
 func _seed_default_headlines() -> void:
 	galnet_headlines.clear()
+	_ticker_clock.clear()
 	galnet_headlines.append({
 		"text": "SOL SYSTEM COMMERCE COMMISSION: Doomsday debt enforcement protocol active.",
 		"category": "REGULATION",
 		"severity": "WARNING",
-		"round": 0
+		"round": 0,
+		"seq": _next_seq()
 	})
 	galnet_headlines.append({
 		"text": "CERES MINING GUILD: Deep-core ore extractors reporting record yields at Station Alpha.",
 		"category": "MARKET",
 		"severity": "INFO",
-		"round": 0
+		"round": 0,
+		"seq": _next_seq()
 	})
 	galnet_headlines.append({
 		"text": "ORBITAL CORRIDORS: Earth-Luna syzygy alignment open for low-burn bulk transit.",
 		"category": "TRANSIT",
 		"severity": "INFO",
-		"round": 0
+		"round": 0,
+		"seq": _next_seq()
 	})
+
+# --- Live feed: hazards, piracy, transit, market ---
+
+func set_market(m: StationMarket) -> void:
+	if market != null and market.book_changed.is_connected(_on_book_changed):
+		market.book_changed.disconnect(_on_book_changed)
+	market = m
+	_last_mid.clear()
+	if market != null:
+		for key in market.books.keys():
+			var parts: PackedStringArray = str(key).split(":")
+			_last_mid[str(key)] = _book_mid(parts[0], parts[1])
+		market.book_changed.connect(_on_book_changed)
+
+## Feeds hazard rolls recorded on a Hazards engine into the ticker.
+func bind_hazards(h: Hazards) -> void:
+	if _hazards != null and _hazards.hazard_recorded.is_connected(_on_hazard_recorded):
+		_hazards.hazard_recorded.disconnect(_on_hazard_recorded)
+	_hazards = h
+	if _hazards != null:
+		_hazards.hazard_recorded.connect(_on_hazard_recorded)
+
+## Feeds pirate demands and their settlement on a Piracy desk into the ticker.
+func bind_piracy(p: Piracy) -> void:
+	if _piracy != null:
+		if _piracy.raid_demanded.is_connected(_on_raid_demanded):
+			_piracy.raid_demanded.disconnect(_on_raid_demanded)
+		if _piracy.raid_resolved.is_connected(_on_raid_resolved):
+			_piracy.raid_resolved.disconnect(_on_raid_resolved)
+	_piracy = p
+	if _piracy != null:
+		_piracy.raid_demanded.connect(_on_raid_demanded)
+		_piracy.raid_resolved.connect(_on_raid_resolved)
+
+## Transit is a static rules library with no events of its own, so whatever
+## dispatches a ship reports it here. kind is "departed" or "arrived".
+func post_transit_event(kind: String, origin: String, destination: String, commodity: String, qty: int, rounds: int = 0) -> Dictionary:
+	var route: String = "%s -> %s" % [StationMarket.station_name(origin).to_upper(), StationMarket.station_name(destination).to_upper()]
+	var text: String
+	if kind.to_lower() == "arrived":
+		text = "FLEET ARRIVAL: %d %s docked at %s from %s" % [qty, commodity.to_upper(), StationMarket.station_name(destination).to_upper(), StationMarket.station_name(origin).to_upper()]
+	else:
+		text = "FLEET DEPARTURE: %d %s on %s" % [qty, commodity.to_upper(), route]
+		if rounds > 0:
+			text += ", ETA %d round%s" % [rounds, "" if rounds == 1 else "s"]
+	return post_headline(text, "TRANSIT", "INFO")
+
+func _on_hazard_recorded(rec: Dictionary) -> void:
+	var lost: int = int(rec.get("lost_qty", 0))
+	var delay: int = int(rec.get("delay", 0))
+	var text: String = str(rec.get("note", "")).strip_edges()
+	if str(rec.get("note", "")).strip_edges().is_empty():
+		text = "transit %s delayed %d, lost %d" % [str(rec.get("transit_id", "?")), delay, lost]
+	var com: String = str(rec.get("commodity", ""))
+	if not com.is_empty():
+		text += " (%s, transit %s)" % [com, str(rec.get("transit_id", "?"))]
+	post_headline(text, "HAZARD", "WARNING" if lost > 0 else "INFO")
+
+func _on_raid_demanded(d: Dictionary) -> void:
+	var text: String = "ALERT: pirates demand %d CR ransom from %s, %s -> %s (%s)" % [
+		int(d.get("ransom", 0)), str(d.get("agent_id", "?")), str(d.get("origin", "?")).to_upper(), str(d.get("destination", "?")).to_upper(), str(d.get("commodity", "")).to_upper()]
+	post_headline(text, "PIRACY", "CRITICAL")
+
+func _on_raid_resolved(row: Dictionary) -> void:
+	var status: String = str(row.get("status", ""))
+	var text: String
+	match status:
+		"paid":
+			text = "%s paid %d CR ransom, cargo released" % [str(row.get("agent_id", "?")), int(row.get("cr_taken", 0))]
+		"surrendered":
+			text = "%s surrendered %d %s to the raiders" % [str(row.get("agent_id", "?")), int(row.get("qty_taken", 0)), str(row.get("commodity", "")).to_upper()]
+		"escaped":
+			text = "%s fought off the raiders and escaped" % str(row.get("agent_id", "?"))
+		_:
+			text = "%s lost %d %s after a failed fight" % [str(row.get("agent_id", "?")), int(row.get("qty_taken", 0)), str(row.get("commodity", "")).to_upper()]
+	post_headline(text, "PIRACY", "WARNING" if status in ["lost", "surrendered"] else "INFO")
+
+func _on_order_executed(o: Dictionary) -> void:
+	var text: String = "FILL: %s %d %s @ %.1f at %s" % [str(o.get("side", "")), int(o.get("qty", 0)), str(o.get("commodity", "")), float(o.get("price", 0.0)), StationMarket.station_name(str(o.get("station", active_station))).to_upper()]
+	post_headline(text, "MARKET", "INFO")
+
+func _book_mid(station: String, commodity: String) -> float:
+	if market == null or not market.has_book(station, commodity):
+		return 0.0
+	return float(market.ladder(station, commodity, 1).get("mid_price", 0.0))
+
+func _on_book_changed(station: String, commodity: String) -> void:
+	var key: String = StationMarket.book_key(station, commodity)
+	var mid: float = _book_mid(station, commodity)
+	var prev: float = float(_last_mid.get(key, 0.0))
+	_last_mid[key] = mid
+	if prev <= 0.0 or mid <= 0.0:
+		return
+	var change: float = (mid - prev) / prev
+	if absf(change) < MARKET_MOVE_THRESHOLD:
+		return
+	post_headline("MOVE: %s %s %s %.1f%% to %.1f at %s" % [commodity.to_upper(), "firms" if change > 0.0 else "eases", "up" if change > 0.0 else "down", absf(change) * 100.0, mid, StationMarket.station_name(station).to_upper()], "MARKET", "INFO")
+
+# --- Ticker marquee (headless-safe: pure state, no nodes) ---
+
+## Advances every visible ticker line's marquee clock by a frame delta.
+func advance_ticker(delta: float) -> void:
+	for item in get_recent_headlines(TICKER_VISIBLE_LINES):
+		var seq: int = int(item["seq"])
+		_ticker_clock[seq] = float(_ticker_clock.get(seq, 0.0)) + maxf(0.0, delta)
+
+## Pixel width of a ticker line, using measure when valid.
+## Optional measure is Callable(text) -> pixel width; the default estimates from
+## character count so the model works without a font (headless).
+func ticker_text_width(text: String, measure: Callable = Callable()) -> float:
+	if measure.is_valid():
+		return float(measure.call(text))
+	return float(text.length()) * TICKER_FALLBACK_CHAR_WIDTH
+
+## Horizontal marquee offset in px for a clock reading: dwell, scroll to the
+## end of the line, dwell, then restart. Lines that fit never scroll.
+static func marquee_offset(clock: float, text_width: float, view_width: float) -> float:
+	var travel: float = text_width - view_width + TICKER_SCROLL_GAP
+	if travel <= 0.0 or text_width <= view_width:
+		return 0.0
+	var scroll_time: float = travel / TICKER_SCROLL_SPEED
+	var cycle: float = TICKER_DWELL_SECONDS * 2.0 + scroll_time
+	var t: float = fposmod(clock, cycle) - TICKER_DWELL_SECONDS
+	return clampf(t, 0.0, scroll_time) * TICKER_SCROLL_SPEED
+
+## Newest ticker lines with their current scroll offsets, newest first.
+func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER_VIEW_WIDTH) -> Array:
+	var out: Array = []
+	for item in get_recent_headlines(TICKER_VISIBLE_LINES):
+		var text: String = "%s: %s" % [item["category"], item["text"]]
+		var w: float = ticker_text_width(text, measure)
+		out.append({
+			"text": text,
+			"severity": item["severity"],
+			"width": w,
+			"overflow": w > view_width,
+			"offset": marquee_offset(float(_ticker_clock.get(int(item["seq"]), 0.0)), w, view_width)
+		})
+	return out
 
 # --- Controller Signal Callbacks ---
 
