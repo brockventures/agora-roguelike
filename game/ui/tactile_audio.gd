@@ -74,6 +74,10 @@ var _time_offset_msec: int = 0
 var current_doomsday_stage: int = 0
 var current_drone_freq: float = 55.0
 
+## Drone loudness in dB; climbs with each Doomsday stage (see DRONE_VOLUME_DB).
+const DRONE_VOLUME_DB: Array[float] = [-30.0, -24.0, -17.0, -11.0, -6.0]
+var current_drone_volume_db: float = DRONE_VOLUME_DB[0]
+
 ## Recent sound event log (ring buffer of 20 items)
 var recent_sound_events: Array[Dictionary] = []
 
@@ -186,8 +190,13 @@ func update_doomsday_stage(new_stage: int) -> void:
 		_:
 			current_drone_freq = 55.0
 
+	current_drone_volume_db = DRONE_VOLUME_DB[clampi(new_stage, 0, DRONE_VOLUME_DB.size() - 1)]
 	tension_level_changed.emit(current_doomsday_stage, current_drone_freq)
 	play_sfx(DRONE_TENSION, current_drone_freq / 55.0)
+
+## Playback pitch_scale for the looping 55 Hz drone stream at the current stage.
+func get_drone_pitch_scale() -> float:
+	return current_drone_freq / 55.0
 
 ## Procedural Waveform Audio Synthesis (Self-contained, 0 assets required)
 func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
@@ -267,6 +276,7 @@ func to_dict() -> Dictionary:
 		"current_sim_time_sec": snappedf(float(get_current_time_msec()) / 1000.0, 0.001),
 		"doomsday_stage": current_doomsday_stage,
 		"drone_freq_hz": current_drone_freq,
+		"drone_volume_db": current_drone_volume_db,
 		"recent_events_count": recent_sound_events.size(),
 		"last_event": recent_sound_events[0] if recent_sound_events.size() > 0 else {}
 	}

@@ -174,10 +174,29 @@ func execute_focused_order() -> Dictionary:
 		order_rejected.emit(last_rejection_reason, rej_px)
 		return rej_px
 
+	# Live resting book (Earth/Mars): sweep it up to the focused level's price.
+	var mkt: StationMarket = hud.market
+	var use_book: bool = mkt != null and mkt.has_book(station, commodity)
+	var side_str: String = "BUY" if is_buy else "SELL"
+	var sweep: Dictionary = {}
+	if use_book:
+		sweep = mkt.sweep_quote(station, commodity, side_str, order_qty, px)
+		if int(sweep["filled"]) < order_qty:
+			last_rejection_reason = "INSUFFICIENT_LIQUIDITY"
+			var rej_liq: Dictionary = {
+				"ok": false,
+				"reason": last_rejection_reason,
+				"order_qty": order_qty,
+				"available_qty": int(sweep["filled"]),
+				"quote": quote
+			}
+			order_rejected.emit(last_rejection_reason, rej_liq)
+			return rej_liq
+
 	# 2. Level Available Quantity Gate (Marvin Review Catch):
 	# A single book depth level cannot fill more units than its resting liquidity.
 	var avail_qty: int = int(quote.get("available_qty", 0))
-	if avail_qty > 0 and order_qty > avail_qty:
+	if not use_book and avail_qty > 0 and order_qty > avail_qty:
 		last_rejection_reason = "EXCEEDS_AVAILABLE_QTY"
 		var rej_qty: Dictionary = {
 			"ok": false,
@@ -189,7 +208,7 @@ func execute_focused_order() -> Dictionary:
 		order_rejected.emit(last_rejection_reason, rej_qty)
 		return rej_qty
 
-	var total_cost: int = int(round(px * float(order_qty)))
+	var total_cost: int = int(sweep["cost"]) if use_book else int(round(px * float(order_qty)))
 
 	if rc != null:
 		if is_buy:
@@ -243,6 +262,10 @@ func execute_focused_order() -> Dictionary:
 			## Deduct cargo and credit CR
 			rc.cargo[commodity] = current_cargo - order_qty
 			rc.cr += total_cost
+
+	if use_book:
+		# Gates passed: consume the resting liquidity the sweep priced.
+		mkt.execute(station, commodity, side_str, order_qty, px)
 
 	var result: Dictionary = {
 		"ok": true,

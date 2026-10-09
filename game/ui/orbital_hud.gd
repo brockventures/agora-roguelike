@@ -38,6 +38,9 @@ var trading_overlay: TradingOverlay = null
 var gamepad_focus: GamepadFocus = null
 var vector_orrery: VectorOrrery = null
 var tactile_audio: TactileAudio = null
+## Resting books for the stations that trade live (Earth, Mars). Null or a
+## station without a book falls back to the synthetic ladder below.
+var market: StationMarket = null
 
 var active_station: String = "earth"
 var active_commodity: String = "ORE"
@@ -169,6 +172,7 @@ func get_header_telemetry() -> Dictionary:
 		"stage_name": stage_name,
 		"is_paused": is_paused,
 		"sim_speed": sim_speed,
+		"speed_label": speed_label(is_paused, sim_speed),
 		"current_round": round_num,
 		"round_progress": progress,
 		"pending_bankruptcy": pending_bankrupt
@@ -201,12 +205,15 @@ func get_market_quote() -> Dictionary:
 	var is_perish: bool = Transit.is_perishable(active_commodity)
 	return {
 		"station": active_station,
+		"station_name": StationMarket.station_name(active_station),
 		"commodity": active_commodity,
 		"base_price_cr": price,
 		"is_perishable": is_perish
 	}
 
 func get_order_book_ladder() -> Dictionary:
+	if market != null and market.has_book(active_station, active_commodity):
+		return market.ladder(active_station, active_commodity, order_book_depth_levels)
 	var quote: Dictionary = get_market_quote()
 	var base_px: float = quote["base_price_cr"]
 	var spread: float = maxf(1.0, snappedf(base_px * 0.04, 0.5))
@@ -347,6 +354,10 @@ func cycle_sim_speed() -> int:
 		controller.sim_clock.set_speed(nxt)
 		return nxt
 	return 1
+
+## Header text for the pace indicator: "PAUSED" or "1x" / "2x" / "5x".
+static func speed_label(p_paused: bool, p_speed: int) -> String:
+	return "PAUSED" if p_paused else "%dx" % p_speed
 
 # --- GalNet Ticker Stream ---
 
