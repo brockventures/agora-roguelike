@@ -1,0 +1,83 @@
+[gd_scene load_steps=4 format=3 uid="uid://b8m3y0k2r4n5v"]
+
+[ext_resource type="Script" path="res://scenes/main.gd" id="1_main"]
+[ext_resource type="Shader" path="res://shaders/crt_retro.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("2_shader")
+shader_parameter/scanline_count = 400.0
+shader_parameter/scanline_intensity = 0.25
+shader_parameter/curvature = 0.03
+shader_parameter/vignette_intensity = 0.4
+shader_parameter/vignette_opacity = 0.5
+shader_parameter/aberration_amount = 0.003
+shader_parameter/phosphor_glow = 0.15
+shader_parameter/flicker_speed = 15.0
+shader_parameter/flicker_intensity = 0.015
+shader_parameter/phosphor_tint = Color(0.92, 1, 0.94, 1)
+shader_parameter/enabled = true
+
+[node name="Main" type="Control"]
+custom_minimum_size = Vector2(1280, 800)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="ViewportContainer" type="SubViewportContainer" parent="."]
+material = SubResource("ShaderMaterial_crt")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="ViewportContainer"]
+handle_input_locally = false
+size = Vector2i(1280, 800)
+render_target_update_mode = 4
+
+[node name="Background" type="ColorRect" parent="ViewportContainer/SubViewport"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.07, 1)
+
+[node name="HUDContainer" type="Control" parent="ViewportContainer/SubViewport"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HeaderPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 64.0
+
+[node name="TacticalMapPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_top = 64.0
+offset_right = 880.0
+offset_bottom = 736.0
+
+[node name="SidebarPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_left = 880.0
+offset_top = 64.0
+offset_right = 1280.0
+offset_bottom = 736.0
+
+[node name="TickerPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+layout_mode = 0
+offset_top = 736.0
+offset_right = 1280.0
+offset_bottom = 800.0
