@@ -78,68 +78,83 @@ func test_dpad_depth_ladder_snapping() -> String:
 	if focus.ladder_index != 0:
 		return "expected starting index 0"
 
-	# Step down 0 -> 1 -> 2 -> 3 -> 4
-	focus.handle_action("dpad_down")
-	if focus.ladder_index != 1:
-		return "dpad_down step to 1 failed"
-	focus.handle_action("dpad_down")
-	focus.handle_action("dpad_down")
-	focus.handle_action("dpad_down")
-	if focus.ladder_index != 4:
-		return "dpad_down step to 4 failed"
-
-	# Clamped at max depth (4)
-	focus.handle_action("dpad_down")
-	if focus.ladder_index != 4:
-		return "dpad_down clamp at 4 failed"
-
-	# Step up 4 -> 3 -> 2 -> 1 -> 0
+	# Up on BUY deepens the ask cursor: 0 -> 1 -> 2 -> 3 -> 4 (rows above the spread)
 	for i in 4:
 		focus.handle_action("dpad_up")
-	if focus.ladder_index != 0:
-		return "dpad_up step back to 0 failed"
-
-	# Clamped at min depth (0)
+	if focus.ladder_index != 4 or focus.active_side != GamepadFocus.OrderSide.BUY:
+		return "dpad_up x4 should reach ask level 4, got %d" % focus.ladder_index
 	focus.handle_action("dpad_up")
-	if focus.ladder_index != 0:
-		return "dpad_up clamp at 0 failed"
+	if focus.ladder_index != 4:
+		return "dpad_up clamp at the deepest ask failed"
+
+	# Down walks back to the best ask, then crosses the spread to the best bid.
+	for i in 4:
+		focus.handle_action("dpad_down")
+	if focus.ladder_index != 0 or focus.active_side != GamepadFocus.OrderSide.BUY:
+		return "dpad_down back to the best ask failed"
+	focus.handle_action("dpad_down")
+	if focus.active_side != GamepadFocus.OrderSide.SELL or focus.ladder_index != 0:
+		return "dpad_down from the best ask should cross to the best bid"
+	for i in 6:
+		focus.handle_action("dpad_down")
+	if focus.ladder_index != 4 or focus.active_side != GamepadFocus.OrderSide.SELL:
+		return "dpad_down clamp at the deepest bid failed"
+	for i in 4:
+		focus.handle_action("dpad_up")
+	focus.handle_action("dpad_up")
+	if focus.active_side != GamepadFocus.OrderSide.BUY or focus.ladder_index != 0:
+		return "dpad_up from the best bid should cross back to the best ask"
 
 	if snaps.is_empty():
 		return "depth_level_snapped signal never emitted"
 	return "ok"
 
-func test_dpad_side_toggle_and_quantity() -> String:
+func test_dpad_left_right_adjust_quantity_on_both_sides() -> String:
 	var hud := OrbitalHUD.new()
 	var focus := hud.gamepad_focus
+	for side in [GamepadFocus.OrderSide.BUY, GamepadFocus.OrderSide.SELL]:
+		focus.set_order_side(side)
+		focus.set_quantity(1)
+		focus.handle_action("dpad_right")
+		focus.handle_action("dpad_right")
+		if focus.order_qty != 3 or focus.active_side != side:
+			return "right x2 must give qty 3 without changing side (side %d, qty %d)" % [side, focus.order_qty]
+		focus.handle_action("dpad_left")
+		if focus.order_qty != 2 or focus.active_side != side:
+			return "left must lower qty to 2 without changing side"
+		focus.handle_action("dpad_left")
+		focus.handle_action("dpad_left")
+		if focus.order_qty != 1:
+			return "quantity must not drop below 1"
+	return "ok"
 
-	if focus.active_side != GamepadFocus.OrderSide.BUY:
-		return "expected initial BUY"
+func test_rejection_messages_are_readable() -> String:
+	var rc := RunController.new(null, 4)
+	var hud := OrbitalHUD.new(rc)
+	var focus := hud.gamepad_focus
+	rc.docked_at = "earth"
+	hud.set_station("mars")
+	var res := focus.execute_focused_order()
+	if res.get("reason", "") != "NOT_DOCKED_AT_STATION":
+		return "expected NOT_DOCKED_AT_STATION, got %s" % str(res)
+	var msg := focus.get_rejection_message()
+	if msg != "Not docked at " + StationMarket.station_name("mars"):
+		return "unreadable not-docked message: '%s'" % msg
+	if "_" in msg:
+		return "message still looks like a code: '%s'" % msg
+	for code in ["INSUFFICIENT_CR", "INSUFFICIENT_CARGO", "INSUFFICIENT_CARGO_CAPACITY", "INSUFFICIENT_LIQUIDITY", "EXCEEDS_AVAILABLE_QTY", "INVALID_PRICE", "NO_HUD_BOUND"]:
+		var m := GamepadFocus.rejection_message(code)
+		if m == code or "_" in m:
+			return "%s has no readable message ('%s')" % [code, m]
+	focus.last_rejection_reason = ""
+	if focus.get_rejection_message() != "":
+		return "no rejection should give an empty message"
+	return "ok"
 
-	# D-pad right switches BUY to SELL
-	focus.handle_action("dpad_right")
-	if focus.active_side != GamepadFocus.OrderSide.SELL:
-		return "dpad_right failed to switch to SELL"
-
-	# D-pad right on SELL increments quantity
-	focus.handle_action("dpad_right")
-	if focus.order_qty != 2:
-		return "dpad_right on SELL should increment quantity to 2, got %d" % focus.order_qty
-
-	# D-pad left on SELL switches to BUY
-	focus.handle_action("dpad_left")
-	if focus.active_side != GamepadFocus.OrderSide.BUY:
-		return "dpad_left failed to switch to BUY"
-
-	# D-pad left on BUY decrements quantity
-	focus.handle_action("dpad_left")
-	if focus.order_qty != 1:
-		return "dpad_left on BUY should decrement quantity to 1, got %d" % focus.order_qty
-
-	# Lower bound clamp at 1
-	focus.handle_action("dpad_left")
-	if focus.order_qty != 1:
-		return "quantity must not decrement below 1"
-
+func test_handle_input_translator_is_gone() -> String:
+	var hud := OrbitalHUD.new()
+	if hud.gamepad_focus.has_method("handle_input") or hud.has_method("handle_gamepad_input"):
+		return "dead raw-event translator must stay removed; M0Loop owns input via m0_* actions"
 	return "ok"
 
 func test_face_buttons_navigation() -> String:
@@ -272,38 +287,6 @@ func test_face_button_a_rejection_validation() -> String:
 		return "sell with 0 cargo should be rejected"
 	if rejections.size() != 2 or rejections[1] != "INSUFFICIENT_CARGO":
 		return "expected INSUFFICIENT_CARGO rejection, got: %s" % str(rejections)
-
-	return "ok"
-
-func test_input_event_translation() -> String:
-	var hud := OrbitalHUD.new()
-	var focus := hud.gamepad_focus
-
-	# Test Joypad Button Event for RB
-	var ev_rb := InputEventJoypadButton.new()
-	ev_rb.button_index = JOY_BUTTON_RIGHT_SHOULDER
-	ev_rb.pressed = true
-	if not focus.handle_input(ev_rb) or hud.active_station != "luna":
-		return "InputEventJoypadButton RB translation failed"
-
-	# Unpressed event should be ignored
-	ev_rb.pressed = false
-	if focus.handle_input(ev_rb):
-		return "unpressed joypad event should return false"
-
-	# Test Joypad Motion Event for RT
-	var ev_rt := InputEventJoypadMotion.new()
-	ev_rt.axis = JOY_AXIS_TRIGGER_RIGHT
-	ev_rt.axis_value = 0.8
-	if not focus.handle_input(ev_rt) or hud.active_commodity != "MACHINERY":
-		return "InputEventJoypadMotion RT translation failed"
-
-	# Test Key Event for Q (LB equivalent)
-	var ev_key := InputEventKey.new()
-	ev_key.keycode = KEY_Q
-	ev_key.pressed = true
-	if not focus.handle_input(ev_key) or hud.active_station != "earth":
-		return "InputEventKey Q translation failed"
 
 	return "ok"
 

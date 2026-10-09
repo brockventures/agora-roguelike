@@ -466,11 +466,6 @@ func _normalize_commodity(c: String) -> String:
 
 # --- Gamepad Controller Action Delegation ---
 
-func handle_gamepad_input(event: InputEvent) -> bool:
-	if gamepad_focus != null:
-		return gamepad_focus.handle_input(event)
-	return false
-
 func handle_gamepad_action(action: String) -> bool:
 	if gamepad_focus != null:
 		return gamepad_focus.handle_action(action)

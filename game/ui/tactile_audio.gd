@@ -12,6 +12,7 @@ extends RefCounted
 
 signal sound_played(sound_id: String, bus: String, volume_db: float, pitch: float)
 signal bus_volume_changed(bus_name: String, volume: float)
+signal bus_mute_changed(bus_name: String, muted: bool)
 signal tension_level_changed(stage: int, drone_freq: float)
 
 ## Sound IDs
@@ -81,6 +82,13 @@ var current_drone_volume_db: float = DRONE_VOLUME_DB[0]
 ## Recent sound event log (ring buffer of 20 items)
 var recent_sound_events: Array[Dictionary] = []
 
+## Sounds actually emitted (past mute and cooldown) since creation. Lets callers
+## ask "did anything play?" without parsing the capped event log.
+var sounds_played_count: int = 0
+
+## Sounds that must never be dropped behind routine UI feedback (see MainScene voices).
+const PRIORITY_SOUNDS: Array[String] = [ALARM_WARNING, ALARM_CRITICAL, MARKET_BELL]
+
 ## Pitch jitter range for mechanical clicks (±4%)
 const PITCH_JITTER_RANGE: float = 0.04
 
@@ -112,8 +120,7 @@ func play_sfx(sound_id: String, pitch_scale: float = 1.0, volume_offset_db: floa
 	sound_last_played_msec[sound_id] = now_ms
 
 	# Calculate volume in dB from bus linear volume + offset
-	var bus_vol_lin: float = float(bus_volumes.get(bus_name, 1.0)) * float(bus_volumes.get(BUS_MASTER, 1.0))
-	var base_db: float = linear_to_db(maxf(0.0001, bus_vol_lin))
+	var base_db: float = get_bus_base_db(bus_name)
 	var final_db: float = base_db + volume_offset_db
 
 	# Apply slight pitch jitter for mechanical keyboard feel
@@ -136,8 +143,20 @@ func play_sfx(sound_id: String, pitch_scale: float = 1.0, volume_offset_db: floa
 	if recent_sound_events.size() > 20:
 		recent_sound_events.pop_back()
 
+	sounds_played_count += 1
 	sound_played.emit(sound_id, bus_name, final_db, final_pitch)
 	return true
+
+## dB of a bus's linear volume times Master's. This is what the AudioServer buses
+## apply once synced, so a player routed to the bus plays at (volume_db - this).
+func get_bus_base_db(bus_name: String) -> float:
+	var bus_vol_lin: float = float(bus_volumes.get(bus_name, 1.0))
+	if bus_name != BUS_MASTER:
+		bus_vol_lin *= float(bus_volumes.get(BUS_MASTER, 1.0))
+	return linear_to_db(maxf(0.0001, bus_vol_lin))
+
+func is_priority_sound(sound_id: String) -> bool:
+	return PRIORITY_SOUNDS.has(sound_id)
 
 ## Maps sound ID to logical audio mixing bus
 func get_sound_bus(sound_id: String) -> String:
@@ -168,6 +187,7 @@ func set_bus_mute(bus_name: String, muted: bool) -> bool:
 	if not ALL_BUSES.has(bus_name):
 		return false
 	bus_mutes[bus_name] = muted
+	bus_mute_changed.emit(bus_name, muted)
 	return true
 
 func is_bus_muted(bus_name: String) -> bool:

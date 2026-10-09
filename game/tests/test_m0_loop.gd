@@ -227,22 +227,19 @@ func test_actions_map_to_focus_submit_and_cancel() -> String:
 	if lp.dispatch_action(M0Loop.ACT_DOWN) or f.ladder_index != 0:
 		return "d-pad should do nothing on MAP"
 	lp.set_tab(M0Loop.Tab.MARKET)
-	lp.dispatch_action(M0Loop.ACT_DOWN)
-	lp.dispatch_action(M0Loop.ACT_DOWN)
-	if f.ladder_index != 2:
-		return "down x2 should snap to ladder level 2, got %d" % f.ladder_index
 	lp.dispatch_action(M0Loop.ACT_UP)
+	lp.dispatch_action(M0Loop.ACT_UP)
+	if f.ladder_index != 2 or f.active_side != GamepadFocus.OrderSide.BUY:
+		return "up x2 on BUY should deepen the ask cursor to level 2, got %d" % f.ladder_index
+	lp.dispatch_action(M0Loop.ACT_DOWN)
 	if f.ladder_index != 1:
-		return "up should snap to level 1"
+		return "down should step back toward the spread (level 1)"
 	lp.dispatch_action(M0Loop.ACT_RIGHT)
-	if f.active_side != GamepadFocus.OrderSide.SELL:
-		return "right should snap to SELL"
-	lp.dispatch_action(M0Loop.ACT_RIGHT)
-	if f.order_qty != 2:
-		return "right on SELL should step quantity up"
+	if f.active_side != GamepadFocus.OrderSide.BUY or f.order_qty != 2:
+		return "right on BUY must raise quantity and keep BUY"
 	lp.dispatch_action(M0Loop.ACT_LEFT)
-	if f.active_side != GamepadFocus.OrderSide.BUY:
-		return "left on SELL should snap back to BUY"
+	if f.active_side != GamepadFocus.OrderSide.BUY or f.order_qty != 1:
+		return "left on BUY must lower quantity and keep BUY"
 	lp.dispatch_action(M0Loop.ACT_COMMODITY_NEXT)
 	if hud.active_commodity != "MACHINERY":
 		return "commodity step failed: %s" % hud.active_commodity
@@ -312,11 +309,11 @@ func test_real_input_events_drive_the_loop() -> String:
 	down.physical_keycode = KEY_S
 	down.pressed = true
 	lp.handle_input(down)
-	if f.ladder_index != 1:
-		return "S key did not step the ladder"
+	if f.active_side != GamepadFocus.OrderSide.SELL or f.ladder_index != 0:
+		return "S key from the best ask should cross the spread to the best bid"
 	down.echo = true
 	lp.handle_input(down)
-	if f.ladder_index != 1:
+	if f.ladder_index != 0:
 		return "key echo must not repeat"
 	# Left stick: one step per push, re-arms after returning to centre.
 	var push := InputEventJoypadMotion.new()
@@ -324,14 +321,14 @@ func test_real_input_events_drive_the_loop() -> String:
 	push.axis_value = 1.0
 	lp.handle_input(push)
 	lp.handle_input(push)
-	if f.ladder_index != 2:
+	if f.ladder_index != 1:
 		return "held stick should step once, ladder at %d" % f.ladder_index
 	var centre := InputEventJoypadMotion.new()
 	centre.axis = JOY_AXIS_LEFT_Y
 	centre.axis_value = 0.0
 	lp.handle_input(centre)
 	lp.handle_input(push)
-	if f.ladder_index != 3:
+	if f.ladder_index != 2:
 		return "stick should re-arm after centring, ladder at %d" % f.ladder_index
 	var lt := InputEventJoypadMotion.new()
 	lt.axis = JOY_AXIS_TRIGGER_RIGHT
@@ -407,8 +404,6 @@ func test_fill_triggers_market_bell() -> String:
 	lp.dispatch_action(M0Loop.ACT_SUBMIT)
 	if not heard.has([TactileAudio.MARKET_BELL, TactileAudio.BUS_MARKET]):
 		return "fill did not ring the market bell: %s" % str(heard)
-	if not heard.has([TactileAudio.KEY_CLICK_DOWN, TactileAudio.BUS_UI]):
-		return "button press did not click: %s" % str(heard)
 	# A rejected order bumps instead of ringing.
 	heard.clear()
 	hud.tactile_audio.advance_time(1.0)
@@ -502,7 +497,7 @@ func test_main_scene_audio_nodes_follow_the_drone() -> String:
 	var main: Variant = packed.instantiate()
 	main.start_new_run(3)
 	main._setup_audio()
-	if main.sfx_players.size() != main.SFX_POLYPHONY or main.drone_player == null:
+	if main.sfx_players.size() != main.SFX_POLYPHONY + main.PRIORITY_VOICES or main.drone_player == null:
 		main.free()
 		return "audio players not created"
 	if main.drone_player.stream == null or main.drone_player.volume_db != main.tactile_audio.current_drone_volume_db:
@@ -516,3 +511,118 @@ func test_main_scene_audio_nodes_follow_the_drone() -> String:
 	main.free()
 	return "ok"
 
+
+
+func test_navigation_plays_exactly_one_sound() -> String:
+	var ctx := _loop()
+	var hud: OrbitalHUD = ctx["hud"]
+	var lp: M0Loop = ctx["loop"]
+	lp.set_tab(M0Loop.Tab.MARKET)
+	var heard: Array = []
+	hud.tactile_audio.sound_played.connect(func(id, _bus, _db, _pitch): heard.append(id))
+	for action in [M0Loop.ACT_STATION_NEXT, M0Loop.ACT_COMMODITY_NEXT, M0Loop.ACT_UP, M0Loop.ACT_RIGHT, M0Loop.ACT_TAB_NEXT]:
+		heard.clear()
+		hud.tactile_audio.advance_time(1.0)
+		if not lp.dispatch_action(action):
+			return "%s was not handled" % action
+		if heard.size() != 1:
+			return "%s played %d sounds: %s" % [action, heard.size(), str(heard)]
+	return "ok"
+
+
+func test_default_bus_layout_declares_every_modelled_bus() -> String:
+	var layout := load("res://default_bus_layout.tres") as AudioBusLayout
+	if layout == null:
+		return "res://default_bus_layout.tres missing"
+	# The project loads it as AudioServer's layout at startup (default setting).
+	for bus_name in TactileAudio.ALL_BUSES:
+		if AudioServer.get_bus_index(bus_name) < 0:
+			return "AudioServer has no bus '%s'" % bus_name
+	var a := TactileAudio.new()
+	for bus_name in TactileAudio.ALL_BUSES:
+		var idx := AudioServer.get_bus_index(bus_name)
+		if AudioServer.get_bus_send(idx) != "Master" and idx != 0:
+			return "bus %s does not send to Master" % bus_name
+		if idx != 0 and absf(AudioServer.get_bus_volume_db(idx) - a.get_bus_base_db(bus_name) + a.get_bus_base_db(TactileAudio.BUS_MASTER)) > 0.01:
+			return "bus %s layout volume disagrees with the model default" % bus_name
+	return "ok"
+
+
+func test_main_scene_syncs_mutes_and_volumes_to_audio_server() -> String:
+	var packed: PackedScene = load(MAIN_SCENE_PATH)
+	var main: Variant = packed.instantiate()
+	main.start_new_run(3)
+	main._setup_audio()
+	var ui_idx := AudioServer.get_bus_index(TactileAudio.BUS_UI)
+	main.tactile_audio.set_bus_mute(TactileAudio.BUS_UI, true)
+	var muted := AudioServer.is_bus_mute(ui_idx)
+	main.tactile_audio.set_bus_mute(TactileAudio.BUS_UI, false)
+	var unmuted := not AudioServer.is_bus_mute(ui_idx)
+	main.tactile_audio.set_bus_volume(TactileAudio.BUS_UI, 0.5)
+	var db := AudioServer.get_bus_volume_db(ui_idx)
+	main.tactile_audio.set_bus_volume(TactileAudio.BUS_UI, 0.85)
+	main.free()
+	if not muted or not unmuted:
+		return "model mute did not reach the AudioServer bus"
+	if absf(db - linear_to_db(0.5)) > 0.01:
+		return "model volume did not reach the AudioServer bus: %f" % db
+	return "ok"
+
+
+func test_priority_sounds_are_never_dropped_behind_clicks() -> String:
+	var packed: PackedScene = load(MAIN_SCENE_PATH)
+	var main: Variant = packed.instantiate()
+	main.start_new_run(3)
+	main._setup_audio()
+	var routine: int = main.SFX_POLYPHONY
+	var total: int = main.sfx_players.size()
+	if total != routine + main.PRIORITY_VOICES:
+		main.free()
+		return "expected reserved priority voices"
+	var busy: Array[bool] = []
+	busy.resize(total)
+	busy.fill(false)
+	for i in routine:
+		busy[i] = true
+	var routine_drop: int = main.choose_sfx_voice(false, busy)
+	var alarm_voice: int = main.choose_sfx_voice(true, busy)
+	# All voices busy: an alarm steals the oldest routine voice, never a priority one.
+	busy.fill(true)
+	main._voice_order.assign([5, 2, 9, 7, 3, 4])
+	main._voice_priority.assign([false, false, false, false, true, true])
+	var stolen: int = main.choose_sfx_voice(true, busy)
+	var routine_none: int = main.choose_sfx_voice(false, busy)
+	var is_prio: bool = main.tactile_audio.is_priority_sound(TactileAudio.ALARM_CRITICAL) and main.tactile_audio.is_priority_sound(TactileAudio.ALARM_WARNING) and main.tactile_audio.is_priority_sound(TactileAudio.MARKET_BELL) and not main.tactile_audio.is_priority_sound(TactileAudio.KEY_CLICK_DOWN)
+	main.free()
+	if routine_drop != -1:
+		return "routine sound should be dropped when its voices are busy, got %d" % routine_drop
+	if alarm_voice < routine:
+		return "alarm must take a reserved voice when clicks hold the routine ones, got %d" % alarm_voice
+	if stolen != 1:
+		return "with every voice busy an alarm must steal the oldest routine voice (1), got %d" % stolen
+	if routine_none != -1:
+		return "routine sounds must not steal"
+	if not is_prio:
+		return "priority set wrong"
+	return "ok"
+
+
+func test_market_board_marks_selected_commodity_and_hints_right_stick() -> String:
+	var packed: PackedScene = load(MAIN_SCENE_PATH)
+	var main: Variant = packed.instantiate()
+	main.start_new_run(3)
+	main.hud.set_commodity("ORE")
+	var rows: PackedStringArray = main._board_text().split("\n")
+	var marked: Array = []
+	for line in rows:
+		if line.begins_with(">"):
+			marked.append(line)
+	var line_idx: int = main.market_row_line()
+	var ok_marker: bool = marked.size() == 1 and "ORE" in marked[0] and rows[line_idx].begins_with("> ORE")
+	var hint_ok: bool = "R-stick commodity" in main.CONTROLS_HINT and "R-STICK commodity" in main._board_text()
+	main.free()
+	if not ok_marker:
+		return "selected commodity not uniquely marked at its row: %s" % str(marked)
+	if not hint_ok:
+		return "right-stick commodity control missing from the hints"
+	return "ok"

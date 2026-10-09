@@ -144,3 +144,20 @@ func test_overlay_to_dict_roundtrip() -> String:
 		return "dict telemetry keys missing"
 
 	return "ok"
+
+func test_financial_summary_names_every_doomsday_stage() -> String:
+	var rc := RunController.new(null, 5)
+	var o := TradingOverlay.new(rc)
+	var names := {
+		DoomsdayClock.Stage.NORMAL: "NORMAL",
+		DoomsdayClock.Stage.UNSTABLE: "UNSTABLE",
+		DoomsdayClock.Stage.CRITICAL: "CRITICAL",
+		DoomsdayClock.Stage.IMMINENT: "IMMINENT",
+		DoomsdayClock.Stage.COLLAPSED: "COLLAPSED",
+	}
+	for stage in names:
+		rc.doomsday.stage = stage
+		var fs := o.get_financial_summary()
+		if fs["stage_name"] != names[stage] or fs["stage"] != int(stage):
+			return "stage %d reported as '%s', expected %s" % [int(stage), fs["stage_name"], names[stage]]
+	return "ok"

@@ -3,17 +3,20 @@ extends RefCounted
 ## Steam Deck Gamepad Focus Graph and Controller Navigation Controller for Agora Roguelike (#22).
 ##
 ## Implements controller-first navigation across the 1280x800 Orbital Bloomberg Terminal:
-## - LB / RB: Cycle station tabs (Earth, Luna, Mars, Ceres)
-## - LT / RT: Cycle commodity tiers (FRAG, FUEL, FOOD, ORE, MACHINERY)
-## - D-pad Up / Down: Snap across order book depth ladder price levels (0..4)
-## - D-pad Left / Right: Switch between Bid and Ask sides (or adjust quantity)
+## - Stations / commodities: cycled by actions "station_prev/next" and
+##   "commodity_prev/next" (M0Loop maps LT/RT and the right stick onto them)
+## - Up / Down: move one cursor across the visible ladder. Asks sit above the
+##   spread, bids below; stepping past the best ask crosses to the best bid (and
+##   back), so the BUY/SELL side follows the cursor.
+## - Left / Right: decrease / increase order quantity, identically on both sides
 ## - Face Button A: Order execution (Buy/Sell on active ladder price with solvency & cargo validation)
 ## - Face Button B: Cancel / Close modal / return focus to tactical map
 ## - Face Button X: Toggle Trading Overlay modal
 ## - Face Button Y: Cycle Simulation Speed (1x -> 2x -> 5x)
 ## - Start / Select: Toggle Simulation Pause
 ##
-## Supports both raw Godot InputEvent (JoypadButton, JoypadMotion, Key) and semantic action strings.
+## Takes semantic action strings only; raw InputEvents are routed by M0Loop through
+## the m0_* InputMap actions (project.godot), which is the single binding table.
 
 signal station_navigated(station: String)
 signal commodity_navigated(commodity: String)
@@ -53,6 +56,7 @@ var ladder_index: int = 0  ## 0 is top of book (best bid / best ask), 4 is deepe
 var order_qty: int = DEFAULT_ORDER_QTY
 var last_executed_order: Dictionary = {}
 var last_rejection_reason: String = ""
+var last_rejection_payload: Dictionary = {}
 
 func _init(p_hud: OrbitalHUD = null) -> void:
 	if p_hud != null:
@@ -99,6 +103,22 @@ func snap_depth_level(index: int) -> int:
 func step_depth_level(delta: int) -> int:
 	return snap_depth_level(ladder_index + delta)
 
+## Moves the single ladder cursor one visible row. Direction -1 is up the screen,
+## +1 down. Asks are drawn deepest-first above the spread (best ask nearest it) and
+## bids best-first below, so up from the best bid crosses to the best ask (BUY) and
+## down from the best ask crosses to the best bid (SELL); elsewhere it deepens or
+## shallows the current side. Clamped at the deepest row on each end.
+func step_ladder_cursor(direction: int) -> int:
+	var visual: int = (MAX_LADDER_DEPTH - 1 - ladder_index) if active_side == OrderSide.BUY else (MAX_LADDER_DEPTH + ladder_index)
+	visual = clampi(visual + direction, 0, 2 * MAX_LADDER_DEPTH - 1)
+	var new_side: OrderSide = OrderSide.BUY if visual < MAX_LADDER_DEPTH else OrderSide.SELL
+	ladder_index = (MAX_LADDER_DEPTH - 1 - visual) if new_side == OrderSide.BUY else (visual - MAX_LADDER_DEPTH)
+	if new_side != active_side:
+		active_side = new_side
+		order_side_changed.emit("BUY" if active_side == OrderSide.BUY else "SELL")
+	_emit_depth_snap()
+	return ladder_index
+
 ## Adjusts order execution quantity with bounds clamping.
 func adjust_quantity(delta: int) -> int:
 	order_qty = clampi(order_qty + delta, 1, MAX_ORDER_QTY)
@@ -142,7 +162,7 @@ func execute_focused_order() -> Dictionary:
 	if hud == null:
 		last_rejection_reason = "NO_HUD_BOUND"
 		var rej: Dictionary = {"ok": false, "reason": last_rejection_reason}
-		order_rejected.emit(last_rejection_reason, rej)
+		_note_rejection(rej)
 		return rej
 
 	var is_buy: bool = (active_side == OrderSide.BUY)
@@ -163,7 +183,7 @@ func execute_focused_order() -> Dictionary:
 			"active_station": station,
 			"commodity": commodity
 		}
-		order_rejected.emit(last_rejection_reason, rej_dock)
+		_note_rejection(rej_dock)
 		return rej_dock
 
 	var quote: Dictionary = get_focused_quote()
@@ -171,7 +191,7 @@ func execute_focused_order() -> Dictionary:
 	if px <= 0.0:
 		last_rejection_reason = "INVALID_PRICE"
 		var rej_px: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote}
-		order_rejected.emit(last_rejection_reason, rej_px)
+		_note_rejection(rej_px)
 		return rej_px
 
 	# Live resting book (Earth/Mars): sweep it up to the focused level's price.
@@ -190,7 +210,7 @@ func execute_focused_order() -> Dictionary:
 				"available_qty": int(sweep["filled"]),
 				"quote": quote
 			}
-			order_rejected.emit(last_rejection_reason, rej_liq)
+			_note_rejection(rej_liq)
 			return rej_liq
 
 	# 2. Level Available Quantity Gate (Marvin Review Catch):
@@ -205,7 +225,7 @@ func execute_focused_order() -> Dictionary:
 			"available_qty": avail_qty,
 			"quote": quote
 		}
-		order_rejected.emit(last_rejection_reason, rej_qty)
+		_note_rejection(rej_qty)
 		return rej_qty
 
 	var total_cost: int = int(sweep["cost"]) if use_book else int(round(px * float(order_qty)))
@@ -222,7 +242,7 @@ func execute_focused_order() -> Dictionary:
 					"required": total_cost,
 					"quote": quote
 				}
-				order_rejected.emit(last_rejection_reason, rej_cr)
+				_note_rejection(rej_cr)
 				return rej_cr
 
 			# 4. Cargo Capacity Gate (Marvin Review Catch):
@@ -238,7 +258,7 @@ func execute_focused_order() -> Dictionary:
 					"cargo_capacity": rc.cargo_capacity,
 					"total_cargo": rc.get_total_cargo()
 				}
-				order_rejected.emit(last_rejection_reason, rej_cap)
+				_note_rejection(rej_cap)
 				return rej_cap
 
 			## Deduct CR and credit cargo
@@ -257,7 +277,7 @@ func execute_focused_order() -> Dictionary:
 					"required": order_qty,
 					"quote": quote
 				}
-				order_rejected.emit(last_rejection_reason, rej_cargo)
+				_note_rejection(rej_cargo)
 				return rej_cargo
 			## Deduct cargo and credit CR
 			rc.cargo[commodity] = current_cargo - order_qty
@@ -282,6 +302,7 @@ func execute_focused_order() -> Dictionary:
 	}
 	last_executed_order = result
 	last_rejection_reason = ""
+	last_rejection_payload = {}
 	order_executed.emit(result)
 	return result
 
@@ -314,24 +335,16 @@ func handle_action(action: String) -> bool:
 				_emit_depth_snap()
 				return true
 		"dpad_up", "up":
-			step_depth_level(-1)
+			step_ladder_cursor(-1)
 			return true
 		"dpad_down", "down":
-			step_depth_level(1)
+			step_ladder_cursor(1)
 			return true
 		"dpad_left", "left":
-			## If on SELL, switch to BUY; if on BUY, decrease quantity
-			if active_side == OrderSide.SELL:
-				set_order_side(OrderSide.BUY)
-			else:
-				adjust_quantity(-1)
+			adjust_quantity(-1)
 			return true
 		"dpad_right", "right":
-			## If on BUY, switch to SELL; if on SELL, increase quantity
-			if active_side == OrderSide.BUY:
-				set_order_side(OrderSide.SELL)
-			else:
-				adjust_quantity(1)
+			adjust_quantity(1)
 			return true
 		"button_a", "confirm", "execute":
 			var res: Dictionary = execute_focused_order()
@@ -366,53 +379,36 @@ func handle_action(action: String) -> bool:
 			return false
 	return false
 
-## Translates a Godot InputEvent into controller actions.
-func handle_input(event: InputEvent) -> bool:
-	if event is InputEventJoypadButton:
-		var jb := event as InputEventJoypadButton
-		if not jb.pressed:
-			return false
-		match jb.button_index:
-			JOY_BUTTON_A: return handle_action("button_a")
-			JOY_BUTTON_B: return handle_action("button_b")
-			JOY_BUTTON_X: return handle_action("button_x")
-			JOY_BUTTON_Y: return handle_action("button_y")
-			JOY_BUTTON_LEFT_SHOULDER: return handle_action("lb")
-			JOY_BUTTON_RIGHT_SHOULDER: return handle_action("rb")
-			JOY_BUTTON_DPAD_UP: return handle_action("dpad_up")
-			JOY_BUTTON_DPAD_DOWN: return handle_action("dpad_down")
-			JOY_BUTTON_DPAD_LEFT: return handle_action("dpad_left")
-			JOY_BUTTON_DPAD_RIGHT: return handle_action("dpad_right")
-			JOY_BUTTON_START: return handle_action("start")
-			JOY_BUTTON_BACK: return handle_action("select")
+## Records and emits a rejection; the payload keeps the context a message needs.
+func _note_rejection(payload: Dictionary) -> void:
+	last_rejection_payload = payload
+	order_rejected.emit(last_rejection_reason, payload)
 
-	elif event is InputEventJoypadMotion:
-		var jm := event as InputEventJoypadMotion
-		if jm.axis == JOY_AXIS_TRIGGER_LEFT and jm.axis_value > 0.6:
-			return handle_action("lt")
-		elif jm.axis == JOY_AXIS_TRIGGER_RIGHT and jm.axis_value > 0.6:
-			return handle_action("rt")
+## Player-facing text for a rejection reason code. Pass the payload for context.
+static func rejection_message(reason: String, payload: Dictionary = {}) -> String:
+	match reason:
+		"NOT_DOCKED_AT_STATION":
+			return "Not docked at %s" % StationMarket.station_name(str(payload.get("active_station", "this station")))
+		"INSUFFICIENT_CR":
+			return "Not enough CR"
+		"INSUFFICIENT_CARGO":
+			return "Not enough cargo to sell"
+		"INSUFFICIENT_CARGO_CAPACITY":
+			return "Cargo hold full"
+		"INSUFFICIENT_LIQUIDITY", "EXCEEDS_AVAILABLE_QTY":
+			return "Not enough volume at that price"
+		"INVALID_PRICE":
+			return "No quote at that level"
+		"NO_HUD_BOUND":
+			return "Terminal offline"
+		_:
+			return reason.capitalize()
 
-	elif event is InputEventKey:
-		var k := event as InputEventKey
-		if not k.pressed or k.echo:
-			return false
-		match k.keycode:
-			KEY_Q: return handle_action("lb")
-			KEY_E: return handle_action("rb")
-			KEY_1: return handle_action("lt")
-			KEY_2: return handle_action("rt")
-			KEY_UP, KEY_W: return handle_action("dpad_up")
-			KEY_DOWN, KEY_S: return handle_action("dpad_down")
-			KEY_LEFT, KEY_A: return handle_action("dpad_left")
-			KEY_RIGHT, KEY_D: return handle_action("dpad_right")
-			KEY_SPACE, KEY_ENTER: return handle_action("button_a")
-			KEY_ESCAPE, KEY_BACKSPACE: return handle_action("button_b")
-			KEY_TAB: return handle_action("button_x")
-			KEY_R: return handle_action("button_y")
-			KEY_P: return handle_action("start")
-
-	return false
+## Readable text for the last rejection ("" when the last order filled).
+func get_rejection_message() -> String:
+	if last_rejection_reason == "":
+		return ""
+	return rejection_message(last_rejection_reason, last_rejection_payload)
 
 func _emit_depth_snap() -> void:
 	var q: Dictionary = get_focused_quote()
