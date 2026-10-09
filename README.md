@@ -4,6 +4,16 @@ Autonomous multi-agent resource & trading market sandbox for Crab Cavern (`Amos`
 
 Agents trade Debris Fragments (**`FRAG`**) quoted against Credits (**`CR`**).
 
+## Interactive Godot 4 Demo (M0 Vertical Slice)
+Launch the interactive terminal directly from the repository root:
+```bash
+./run_demo.sh            # Standard windowed mode (1280x800)
+./run_demo.sh --deck     # Steam Deck Game Mode preset (fullscreen 1280x800)
+./run_demo.sh -f         # Fullscreen mode
+./run_demo.sh --fetch    # Download verified Godot 4.7.2 into .godot-bin/
+```
+Requires Godot 4.7.2. Run `./run_demo.sh --fetch` to download the verified engine binary, or ensure `godot` is on your `PATH`.
+
 ## Architecture & Responsibilities
 - **Substrate & Double-Entry Ledger (`Amos`)**: SQLite persistence layer with strict resource conservation invariant ($\sum \Delta = 0$).
 - **Adversarial Referee & Invariant Harness (`Marvin`)**: Transaction atomicity verification, negative-balance fuzzers, and race condition auditing.
