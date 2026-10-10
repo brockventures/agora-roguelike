@@ -44,7 +44,7 @@ Partner site setup (needs #30): Application, Cloud, enable Steam Cloud, set a by
 
 At run time `SteamHub` calls `input_init()` and each frame `poll_input()`; edges become `InputEventAction` for the InputMap names, so `Main`, `SettingsMenu` remapping and every test see the same actions as before. Without Steam, Godot's own joypad bindings are used unchanged.
 
-Shipping: Steam looks for `game_actions_<appid>.vdf` next to the executable (the depot root), and the default layout is uploaded in Steamworks, Steam Input, Edit Steam Input Configuration. Neither is done by `release.yml` yet.
+Shipping: Steam looks for `game_actions_<appid>.vdf` next to the executable (the depot root). `release.yml` copies the manifest for the configured App ID (read from `game/data/steam.json`) into `build/<dir>/` for all three presets after export and before zipping, so each zip carries it beside the binary. It is not `res://` content: the presets use `all_resources` with an empty `include_filter`, so the export does not pack it (guarded by `tests/test_export_presets.py`). The default layout is not shipped beside the binary; it is uploaded in Steamworks, Steam Input, Edit Steam Input Configuration, which `release.yml` does not do. When #30 (Steamworks onboarding) changes the App ID, rename the manifest as above; the workflow fails with a clear error if the file for the configured ID is missing.
 
 ## Adding GodotSteam
 
