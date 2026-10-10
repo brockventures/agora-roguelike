@@ -14,7 +14,7 @@ The workflow then:
 
 1. Runs the headless Godot suite and the preset guard test. If either fails, nothing is exported or published.
 2. For each preset (`Linux x86_64`, `Windows Desktop`, `Steam Deck`), stamps the version into `application/config/version` (`tools/stamp_version.py`), and exports with `--headless --export-release`.
-3. Zips each export as `agora-roguelike-<version>-<slug>.zip` with a `.sha256` beside it (slugs: `linux-x86_64`, `windows-x86_64`, `steamdeck`).
+3. Copies `game/steam/game_actions_<appid>.vdf` (App ID from `game/data/steam.json`) into each `build/<dir>/` so Steam Input finds it beside the executable (see `docs/steam.md`; the default Deck layout is uploaded in Steamworks instead and is not shipped). Then zips each export as `agora-roguelike-<version>-<slug>.zip` with a `.sha256` beside it (slugs: `linux-x86_64`, `windows-x86_64`, `steamdeck`).
 4. Attaches all of them to a GitHub Release for the tag, with generated notes.
 
 A tag with a hyphen (for example `v0.1.0-rc.1`) works the same and is stamped as `0.1.0-rc.1`.
@@ -29,7 +29,7 @@ Actions, "Release", "Run workflow" (`workflow_dispatch`). It does everything exc
 
 `Steam Deck` is a Linux x86_64 build with the PCK embedded in the binary (one file to ship as a Steam depot) and the feature tag `steamdeck`, so code can branch with `OS.has_feature("steamdeck")`. The `Linux x86_64` preset keeps a separate `.pck`.
 
-`tests/test_export_presets.py` guards the preset names, platforms, exclusions and that the workflow exports each one. Change a preset name and you must change the workflow matrix too.
+`tests/test_export_presets.py` guards the preset names, platforms, exclusions, that the workflow exports each one, and that it copies the Steam Input manifest (the copy script is run against a fake build dir). Change a preset name and you must change the workflow matrix too.
 
 ## Bumping Godot
 

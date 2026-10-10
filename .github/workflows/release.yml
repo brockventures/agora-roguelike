@@ -110,6 +110,22 @@ jobs:
           .godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game \
             --export-release "${{ matrix.preset }}"
           ls -la "build/${{ matrix.dir }}"
+      - name: Add Steam Input action manifest beside the binary
+        # Steam reads game_actions_<appid>.vdf from the depot root next to the
+        # executable (docs/steam.md). It is not res:// content, so it is copied
+        # here rather than packed by the export. The App ID comes from
+        # game/data/steam.json so renaming after Steamworks onboarding (#30)
+        # needs no change here. The default Deck layout is uploaded in the
+        # Steamworks partner site and deliberately not shipped.
+        run: |
+          app_id="$(python3 -c "import json;print(json.load(open('game/data/steam.json'))['app_id'])")"
+          manifest="game/steam/game_actions_${app_id}.vdf"
+          if [ ! -f "$manifest" ]; then
+            echo "::error::missing $manifest (rename it when app_id in game/data/steam.json changes)"
+            exit 1
+          fi
+          cp "$manifest" "build/${{ matrix.dir }}/"
+          ls -la "build/${{ matrix.dir }}"
       - name: Package
         run: |
           mkdir -p dist

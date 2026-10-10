@@ -1,7 +1,11 @@
 """Guards for the release pipeline (#28, multi-platform export pipeline; part of
 #26, Epic 5 Steamworks): game/export_presets.cfg and tools/stamp_version.py."""
 import configparser
+import json
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -74,6 +78,78 @@ class ExportPresets(unittest.TestCase):
             self.assertIn(f'preset: "{name}"', text)
         self.assertIn('--export-release', text)
         self.assertRegex(text, r'tags:\s*\["v\*"\]')
+
+
+class SteamInputShipping(unittest.TestCase):
+    """The release workflow copies the Steam Input action manifest beside the
+    binary (docs/steam.md); it is not res:// content."""
+
+    STEP = 'Add Steam Input action manifest beside the binary'
+
+    def step(self):
+        """Parse the step out of the workflow text (no PyYAML: the CI python
+        has only the stdlib)."""
+        text = WORKFLOW.read_text(encoding='utf-8')
+        order = [m.group(1) for m in re.finditer(r'^      - name: (.+)$', text, re.M)]
+        self.assertIn(self.STEP, order)
+        # after export, before zipping
+        self.assertLess(order.index('Export ${{ matrix.preset }}'), order.index(self.STEP))
+        self.assertLess(order.index(self.STEP), order.index('Package'))
+        m = re.search(r'^      - name: ' + re.escape(self.STEP) + r'\n(.*?)(?=^      - |\Z)',
+                      text, re.M | re.S)
+        body = m.group(1)
+        r = re.search(r'^        run: \|\n((?:          .*\n|\n)+)', body, re.M)
+        script = ''.join(l[10:] if l.strip() else l for l in r.group(1).splitlines(True))
+        return {'run': script}
+
+    def test_manifest_exists_for_configured_app_id(self):
+        app_id = json.loads((ROOT / 'game' / 'data' / 'steam.json').read_text())['app_id']
+        self.assertTrue((ROOT / 'game' / 'steam' / f'game_actions_{app_id}.vdf').is_file())
+
+    def test_step_reads_app_id_from_config_not_hardcoded(self):
+        run = self.step()['run']
+        self.assertIn('game/data/steam.json', run)
+        self.assertIn('game/steam/game_actions_${app_id}.vdf', run)
+        self.assertNotRegex(run, r'game_actions_\d')
+        self.assertNotIn('controller_steamdeck_default', run)
+
+    def test_export_does_not_pack_the_manifest(self):
+        for name, (p, _) in load().items():
+            self.assertEqual(p['export_filter'], 'all_resources', name)
+            self.assertEqual(p['include_filter'], '', name)
+
+    def _run_step(self, tmp, app_id, make_manifest=True):
+        (tmp / 'game' / 'data').mkdir(parents=True)
+        (tmp / 'game' / 'steam').mkdir()
+        (tmp / 'game' / 'data' / 'steam.json').write_text(json.dumps({'app_id': app_id}))
+        if make_manifest:
+            (tmp / 'game' / 'steam' / f'game_actions_{app_id}.vdf').write_text('m')
+        (tmp / 'game' / 'steam' / 'controller_steamdeck_default.vdf').write_text('l')
+        for d in ('linux', 'windows', 'steamdeck'):
+            (tmp / 'build' / d).mkdir(parents=True)
+        out = {}
+        for d in ('linux', 'windows', 'steamdeck'):
+            script = self.step()['run'].replace('${{ matrix.dir }}', d)
+            out[d] = subprocess.run(['bash', '-e', '-c', script], cwd=tmp,
+                                    capture_output=True, text=True)
+        return out
+
+    def test_copy_logic_follows_renamed_app_id(self):
+        for app_id in (480, 2345670):
+            with tempfile.TemporaryDirectory() as t:
+                tmp = Path(t)
+                res = self._run_step(tmp, app_id)
+                for d, r in res.items():
+                    self.assertEqual(r.returncode, 0, r.stderr)
+                    files = sorted(f.name for f in (tmp / 'build' / d).iterdir())
+                    self.assertEqual(files, [f'game_actions_{app_id}.vdf'], d)
+
+    def test_copy_fails_when_manifest_not_renamed(self):
+        with tempfile.TemporaryDirectory() as t:
+            res = self._run_step(Path(t), 999, make_manifest=False)
+            for r in res.values():
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn('missing', r.stdout + r.stderr)
 
 
 class StampVersion(unittest.TestCase):
