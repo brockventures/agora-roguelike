@@ -29,10 +29,10 @@ func test_clear_debt_wipes_buckets_but_not_countdown() -> String:
 
 func test_init_defaults() -> String:
 	var clock := DoomsdayClock.new()
-	if clock.total_ticks != 36000:
-		return "expected 36000 default total ticks, got %d" % clock.total_ticks
-	if clock.ticks_remaining != 36000:
-		return "expected 36000 default ticks remaining, got %d" % clock.ticks_remaining
+	if clock.total_ticks != 108000:
+		return "expected 108000 default total ticks (120 rounds), got %d" % clock.total_ticks
+	if clock.ticks_remaining != 108000:
+		return "expected 108000 default ticks remaining, got %d" % clock.ticks_remaining
 	if clock.ticks_per_second != 60:
 		return "expected 60 ticks per second, got %d" % clock.ticks_per_second
 	if clock.stage != DoomsdayClock.Stage.NORMAL:
@@ -45,10 +45,52 @@ func test_init_defaults() -> String:
 		return "expected 0 accrued interest, got %d" % clock.accrued_interest
 	if clock.get_total_debt() != 0:
 		return "expected 0 total debt, got %d" % clock.get_total_debt()
-	if clock.base_burn_per_second != 25:
-		return "expected 25 base burn rate, got %d" % clock.base_burn_per_second
-	if clock.interest_rate_bps_per_minute != 300:
-		return "expected 300 bps interest rate, got %d" % clock.interest_rate_bps_per_minute
+	if clock.base_burn_per_second != 8:
+		return "expected 8 base burn rate, got %d" % clock.base_burn_per_second
+	if clock.interest_rate_bps_per_minute != 100:
+		return "expected 100 bps interest rate, got %d" % clock.interest_rate_bps_per_minute
+	return "ok"
+
+## #134: the default run is 120 rounds, and collapse lands exactly at its end.
+func test_default_run_is_120_rounds_and_collapses_at_the_end() -> String:
+	if DoomsdayClock.DEFAULT_RUN_ROUNDS != 120 or RunController.DEFAULT_TICKS_PER_ROUND != 900:
+		return "run length constants moved: %d rounds, %d ticks/round" % [DoomsdayClock.DEFAULT_RUN_ROUNDS, RunController.DEFAULT_TICKS_PER_ROUND]
+	if DoomsdayClock.DEFAULT_TOTAL_TICKS != 120 * RunController.DEFAULT_TICKS_PER_ROUND:
+		return "default total ticks %d is not 120 rounds" % DoomsdayClock.DEFAULT_TOTAL_TICKS
+	var rc := RunController.new()
+	if rc.doomsday.total_ticks != 120 * rc.ticks_per_round:
+		return "a default run is %d ticks, not 120 rounds" % rc.doomsday.total_ticks
+	var clock := DoomsdayClock.new()
+	clock.step_ticks(119 * 900)
+	if clock.stage == DoomsdayClock.Stage.COLLAPSED or clock.ticks_remaining != 900:
+		return "collapsed early: stage %d, %d ticks left after 119 rounds" % [clock.stage, clock.ticks_remaining]
+	if clock.stage != DoomsdayClock.Stage.IMMINENT:
+		return "round 119 should be IMMINENT, got %d" % clock.stage
+	clock.step_ticks(900)
+	if clock.stage != DoomsdayClock.Stage.COLLAPSED or clock.ticks_remaining != 0:
+		return "did not collapse at round 120: stage %d, %d left" % [clock.stage, clock.ticks_remaining]
+	return "ok"
+
+## #134: burn and interest are re-tuned for the 3x run, so the pressure ramps with the
+## stages (each stage's share of the run is unchanged) and the total over a run is near
+## what a 40-round run cost.
+func test_pressure_ramps_over_the_longer_run() -> String:
+	var clock := DoomsdayClock.new()
+	var seen: Array = []
+	var total: int = clock.total_ticks
+	for round_i in 120:
+		clock.step_ticks(900)
+		if seen.is_empty() or seen[seen.size() - 1] != clock.stage:
+			seen.append(clock.stage)
+		if round_i == 28 and clock.stage != DoomsdayClock.Stage.NORMAL:
+			return "left NORMAL too early (round 29 of 120): %d" % clock.stage
+	if seen != [DoomsdayClock.Stage.NORMAL, DoomsdayClock.Stage.UNSTABLE, DoomsdayClock.Stage.CRITICAL, DoomsdayClock.Stage.IMMINENT, DoomsdayClock.Stage.COLLAPSED]:
+		return "stage order %s" % str(seen)
+	var old := DoomsdayClock.new(36000, 0, 25, 300)
+	old.step_ticks(36000)
+	var ratio_bps: int = clock.total_burn_accrued * 10000 / maxi(1, old.total_burn_accrued)
+	if ratio_bps < 8000 or ratio_bps > 12000:
+		return "a 120-round run burns %d bps of the old 40-round total (%d vs %d)" % [ratio_bps, clock.total_burn_accrued, old.total_burn_accrued]
 	return "ok"
 
 func test_stage_progression_across_exact_tick_thresholds() -> String:

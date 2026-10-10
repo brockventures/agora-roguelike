@@ -9,7 +9,7 @@ const TMP_ROOT := "user://test_tmp_travel"
 
 ## RunSave.state_hash of a run that never travels (seed 84, two trades' worth of play),
 ## measured on main before the travel loop existed. Travel must not move it.
-const NEVER_TRAVELS_HASH := "202720f44c967aa24ef7075983b0daee6a0199e566dff808735281d9e3b181cd"
+const NEVER_TRAVELS_HASH := "b30e7504c6f13e8c33288f628cc2337e913462b52f0d7193e635ffa5ddd65afc"
 
 
 ## A docked run on a short round (30 ticks) so a voyage is a few hundred frames.

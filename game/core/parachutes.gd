@@ -61,7 +61,7 @@ const STATS: Dictionary = {
 const SEVERANCE_PER_FILING: int = 100
 const SEVERANCE_NET_WORTH_BPS: int = 50   # 0.5% of peak net worth
 ## Epic 3 task 9: banked per baron the corp holds when it ends (placeholder; Ryan may overrule).
-const SEVERANCE_PER_BARON: int = 150
+const SEVERANCE_PER_BARON: int = 400
 
 var perks: Dictionary = {}          # id -> perk Dictionary (first occurrence wins)
 var _duplicate_ids: Array[String] = []

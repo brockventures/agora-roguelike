@@ -17,13 +17,13 @@ extends RefCounted
 ##    for the baron's archetype, injected straight into the deck's active list
 ##    (CrisisDeck.inject: no Bags, no max_active, no draw_count) and never touching doomsday
 ##    ticks. Its fine goes through Barons.penalize(.., "consequence"), uncapped, and may
-##    force Chapter 11 because the player's own choices exposed them (decision 9.4).
+##    force Chapter 11 because the player's own choices exposed them (decision 9.4). Its size is 4-6% of net worth (#134; 8-10% before).
 ##  - Random baron events. `consequence.random_event_bps` (shipped 300 = 3% a baron a round, a
 ##    placeholder; it was 0 until task 12 switched it on and re-pinned the world hashes) is the chance per baron per round
-##    of an `origin: "random"` entry for the archetype. Its fine goes through
-##    Barons.penalize(.., "random"): clamped by the lethal guard, so it can never push net
-##    worth below its pre-event value minus `consequence.random_max_loss_bps` and can never
-##    by itself make Chapter11.assess insolvent.
+##    of an `origin: "random"` entry for the archetype. It carries book effects only (price,
+##    depth, spread) and NO fine (#134): _fire forces its fine to 0, and the shipped
+##    entries carry `fine_bps` 0. It still goes through Barons.penalize(.., "random") with 0,
+##    so the lethal guard (`consequence.random_max_loss_bps`) stays in place as a backstop.
 ##  - Chapter 11. Heat is per corp: a filing zeroes every baron's heat and drops the queue.
 ##
 ## Determinism: integers only; barons walked in sorted id order; the one chance is a fresh
@@ -172,7 +172,11 @@ static func _fire(w: Barons, id: String, round_num: int, rc: RunController, orig
 		return {}
 	var anchor: String = str(w.def(id).get("anchor", ""))
 	var fx: Dictionary = def.get("effects", {})
-	var fine: int = maxi(0, rc.net_worth()) * int(fx.get("fine_bps", 0)) / 10000
+	# A random event moves prices and stock only (#134): it never fines, whatever fine_bps
+	# a data file carries. Only a retaliation (the player's own doing) is fined.
+	var fine: int = 0
+	if origin == "consequence":
+		fine = maxi(0, rc.net_worth()) * int(fx.get("fine_bps", 0)) / 10000
 	var res: Dictionary = w.penalize(rc, fine, origin)
 	var name: String = str(def.get("name", ""))
 	if deck != null:

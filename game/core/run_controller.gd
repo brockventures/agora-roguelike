@@ -40,7 +40,7 @@ signal transit_departed(info: Dictionary)
 signal transit_arrived(info: Dictionary)
 
 ## 15 seconds per round at 1x (60 ticks per second).
-const DEFAULT_TICKS_PER_ROUND: int = 900
+const DEFAULT_TICKS_PER_ROUND: int = DoomsdayClock.TICKS_PER_ROUND
 const DEFAULT_CARGO_CAPACITY: int = 100
 ## Sanity ceilings applied to loaded saves (D12). Far above anything reachable
 ## in play; they exist so a tampered file cannot carry absurd values.

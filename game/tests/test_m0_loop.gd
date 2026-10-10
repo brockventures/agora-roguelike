@@ -447,7 +447,7 @@ func test_stage_change_modulates_drone() -> String:
 	audio.tension_level_changed.connect(func(stage, freq): events.append([stage, freq]))
 	var vol0: float = audio.current_drone_volume_db
 	var freq0: float = audio.current_drone_freq
-	rc.doomsday.ticks_remaining = 27001
+	rc.doomsday.ticks_remaining = 81001  # just under 75% of the 120-round run
 	lp.advance(FRAME)
 	if events.size() != 1 or events[0][0] != DoomsdayClock.Stage.UNSTABLE:
 		return "stage change did not reach the audio engine: %s" % str(events)

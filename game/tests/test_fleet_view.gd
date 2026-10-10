@@ -228,6 +228,6 @@ func test_display_only_keys_leave_the_save_and_the_pin_alone() -> String:
 	FleetView.hull_pct(b.ships[0])
 	if a.to_dict() != b.to_dict():
 		return "reading ship display keys changed the save"
-	if TravelTest.NEVER_TRAVELS_HASH != "202720f44c967aa24ef7075983b0daee6a0199e566dff808735281d9e3b181cd":
+	if TravelTest.NEVER_TRAVELS_HASH != "b30e7504c6f13e8c33288f628cc2337e913462b52f0d7193e635ffa5ddd65afc":
 		return "NEVER_TRAVELS_HASH moved"
 	return "ok"

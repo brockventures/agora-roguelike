@@ -778,36 +778,51 @@ func test_a_consequence_may_force_chapter_11_when_the_players_choices_exposed_th
 
 # --- the lethal guard on random events ---
 
-func test_a_random_baron_event_is_clamped_and_cannot_make_the_corp_insolvent() -> String:
+func test_a_random_baron_event_never_fines_and_cannot_make_the_corp_insolvent() -> String:
 	var c := _ctx(21, 100)
 	var rc: RunController = c["rc"]
 	var w: Barons = c["w"]
 	rc.cargo = {"FRAG": 100}  # the same cheap-to-liquidate hold
 	w.data["consequence"]["random_event_bps"] = 10000
+	# The shipped random entries carry no fine at all (#134), and _fire ignores any fine_bps
+	# a data file adds: a random event moves prices and stock only.
 	for d in (c["deck"] as CrisisDeck).data["crises"]:
 		if str(d.get("origin", "random")) == "random" and str(d["tier"]) == "baron":
+			if int(d["effects"]["fine_bps"]) != 0:
+				return "%s ships a fine of %d bps" % [d["id"], int(d["effects"]["fine_bps"])]
 			d["effects"]["fine_bps"] = 10000
-	# Each event on its own: net worth stays within random_max_loss_bps of its pre-event value.
 	var fired: int = 0
 	for id in w.ids():
-		var pre: Dictionary = rc.assess()
-		var nw0: int = int(pre["liquidation_value"]) - int(pre["total_debt"])
+		var debt0: int = rc.doomsday.get_total_debt()
+		var nw0: int = rc.net_worth()
 		var e: Dictionary = Heat._fire(w, id, 1, rc, "random")
 		if e.is_empty():
 			return "no random event for %s" % id
 		fired += 1
-		var post: Dictionary = rc.assess()
-		var nw1: int = int(post["liquidation_value"]) - int(post["total_debt"])
-		if bool(post["insolvent"]) or bool(e["forced_ch11"]) or nw1 < nw0 - nw0 * w.random_max_loss_bps() / 10000:
-			return "%s: the guard failed, nw %d -> %d, insolvent %s" % [id, nw0, nw1, str(post["insolvent"])]
-		if not bool(e["clamped"]) or str(e["origin"]) != "random":
-			return "%s: a fine of 100%% of net worth was not clamped: %s" % [id, str(e)]
-	# And through the round step: every baron rolls, and the corp is still solvent.
+		if int(e["fine"]) != 0 or int(e["requested"]) != 0 or bool(e["forced_ch11"]) or str(e["origin"]) != "random":
+			return "%s: a random event fined: %s" % [id, str(e)]
+		if rc.doomsday.get_total_debt() != debt0 or rc.net_worth() != nw0 or bool(rc.assess()["insolvent"]):
+			return "%s: a random event moved the corp's money" % id
+	# And through the round step: every baron rolls, and the corp is still solvent and unfined.
 	(c["deck"] as CrisisDeck).active.clear()
+	var debt1: int = rc.doomsday.get_total_debt()
 	var ev: Array = _boundary(c, 2)
 	if not _kinds(ev).has("retaliation") or bool(rc.assess()["insolvent"]):
 		return "the round step: %s insolvent %s" % [str(_kinds(ev)), str(rc.assess()["insolvent"])]
+	for e in ev:
+		if str(e["kind"]) == "retaliation" and int(e["fine"]) != 0:
+			return "the round step fined: %s" % str(e)
 	return "ok" if fired == 3 else "fired %d" % fired
+
+
+func test_retaliation_fines_are_4_to_6_percent_of_net_worth() -> String:
+	for d in CrisisDeck.load_data()["crises"]:
+		if str(d.get("origin", "random")) == "consequence" and str(d["tier"]) == "baron":
+			var bps: int = int(d["effects"]["fine_bps"])
+			if bps < 400 or bps > 600:
+				return "%s fines %d bps, want 400..600" % [d["id"], bps]
+	return "ok"
+
 
 
 func test_the_guard_does_nothing_for_a_player_with_no_net_worth_and_never_goes_below_zero() -> String:
@@ -938,3 +953,97 @@ func test_a_retaliation_posts_its_headline_and_a_forced_filing_posts_the_warning
 	if lp.overlay_state != M0Loop.OVERLAY_CRISIS:
 		return "the retaliation did not raise the crisis modal (%s)" % lp.overlay_state
 	return "ok"
+
+
+# --- bounties cause real raids (#134) ---
+
+## A standing bounty and a belt-lane departure with `cargo`; returns the raid events.
+func _raid_trial(p_seed: int, cargo: Dictionary, cr: int = 50000) -> Dictionary:
+	var c := _ctx(p_seed, cr, {"bounty_chance_bps": 0, "react_chance_bps": 0, "decide_chance_bps": 0})
+	var w: Barons = c["w"]
+	(c["m"] as StationMarket).unlock_station("ceres")
+	w.desk().hire(BLACKWATER, "player", 0, 20000)
+	var rc: RunController = c["rc"]
+	var cargo0: int = 0
+	for q in cargo.values():
+		cargo0 += int(q)
+	var ev: Array = _depart(c, "mars", "ceres", cargo.duplicate())
+	var raids: Array = ev.filter(func(e): return str(e["kind"]) == "rival_raid")
+	return {"c": c, "raids": raids, "cargo0": cargo0, "cr0": cr, "cargo": rc.get_total_cargo(), "cr": rc.cr}
+
+
+func test_a_standing_bounty_raids_a_valuable_haul_and_takes_real_goods_or_cr() -> String:
+	var hits: int = 0
+	var misses: int = 0
+	for sd in range(1, 80):
+		var t: Dictionary = _raid_trial(sd, {"MACHINERY": 80})  # 80 x 21.2 = 1696 CR
+		var raids: Array = t["raids"]
+		if raids.is_empty():
+			misses += 1
+			if t["cargo"] != t["cargo0"] or t["cr"] != t["cr0"]:
+				return "seed %d: no raid but the hold or cash moved" % sd
+			continue
+		hits += 1
+		var e: Dictionary = raids[0]
+		if str(e["fleet"]) != BLACKWATER or raids.size() != 1:
+			return "seed %d: raid event %s" % [sd, str(e)]
+		if str(e["choice"]) == "pay":
+			if int(e["ransom"]) <= 0 or t["cr"] != t["cr0"] - int(e["ransom"]) or t["cargo"] != t["cargo0"]:
+				return "seed %d: a paid ransom did not cost CR only: %s" % [sd, str(e)]
+		elif int(e["qty_taken"]) <= 0 or t["cargo"] != t["cargo0"] - int(e["qty_taken"]):
+			return "seed %d: a surrender did not take goods: %s" % [sd, str(e)]
+		var k: Dictionary = (t["c"]["w"] as Barons).bounty_on_player(0)
+		if int(k["raids"]) != 1:
+			return "seed %d: the contract did not count the raid: %s" % [sd, str(k)]
+	# The contract's +0.15 on a 0.075 base is about 22%; 79 trials must show both outcomes.
+	if hits < 5 or misses < 5:
+		return "raids %d, none %d: the roll is not a roll" % [hits, misses]
+	return "ok"
+
+
+func test_a_haul_under_1500_cr_is_never_raided() -> String:
+	for sd in range(1, 80):
+		var t: Dictionary = _raid_trial(sd, {"FRAG": 90})  # 90 x 15 = 1350 CR
+		if not (t["raids"] as Array).is_empty() or t["cargo"] != t["cargo0"] or t["cr"] != t["cr0"]:
+			return "seed %d: a thin haul was raided" % sd
+	var w := Barons.for_new_run()
+	if int(Rivals.settings(w)["raid_min_value"]) != 1500:
+		return "raid_min_value is %d, want 1500" % int(Rivals.settings(w)["raid_min_value"])
+	return "ok"
+
+
+func test_no_bounty_means_no_raid() -> String:
+	for sd in range(1, 40):
+		var c := _ctx(sd, 50000, {"bounty_chance_bps": 0, "react_chance_bps": 0, "decide_chance_bps": 0})
+		(c["m"] as StationMarket).unlock_station("ceres")
+		if _kinds(_depart(c, "mars", "ceres", {"MACHINERY": 80})).has("rival_raid"):
+			return "seed %d: a raid with no bounty" % sd
+	return "ok"
+
+
+func test_a_raid_is_deterministic_and_survives_a_save() -> String:
+	for sd in range(1, 80):
+		var a: Dictionary = _raid_trial(sd, {"MACHINERY": 80})
+		if (a["raids"] as Array).is_empty():
+			continue
+		var b: Dictionary = _raid_trial(sd, {"MACHINERY": 80})
+		if str(a["raids"]) != str(b["raids"]) or RunSave.canonical((a["c"]["w"] as Barons).to_dict()) != RunSave.canonical((b["c"]["w"] as Barons).to_dict()):
+			return "seed %d: two identical runs raided differently" % sd
+		var w: Barons = a["c"]["w"]
+		var back: Barons = Barons.from_dict(_json(w.to_dict()))
+		if RunSave.canonical(back.to_dict()) != RunSave.canonical(w.to_dict()):
+			return "the raided world changed across JSON"
+		return "ok"
+	return "no seed raided"
+
+
+func test_a_broke_player_surrenders_goods_instead_of_paying() -> String:
+	for sd in range(1, 120):
+		var t: Dictionary = _raid_trial(sd, {"MACHINERY": 80}, 0)
+		if (t["raids"] as Array).is_empty():
+			continue
+		var e: Dictionary = t["raids"][0]
+		if str(e["choice"]) != "surrender" or int(e["qty_taken"]) <= 0 or t["cr"] != 0:
+			return "seed %d: %s" % [sd, str(e)]
+		return "ok"
+	return "no seed raided"

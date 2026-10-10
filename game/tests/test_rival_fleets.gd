@@ -21,8 +21,8 @@ const EMBER: String = "ember_haulage"
 ## were switched on (`consequence.random_event_bps` 0 -> 300 in barons.json). Old values:
 ## seed 84 7892044f12e33253d256227c836a81f886e8ee89f01b8c6a2cf655a9018932c4,
 ## seed 7 64af64b32b9201274720e65156cf4ecd1e632bb7c40f77efe912f40603b2a092.
-const RIVAL_WORLD_HASH_SEED_84 := "c94ee4e4cd9467163946685186d4b1f581c5d2e8aa608c99406daa8368dddcc3"
-const RIVAL_WORLD_HASH_SEED_7 := "53dcbf0cfac0e90562f25fbc6afe98993585948d9b04d12f1d320fe5467950f7"
+const RIVAL_WORLD_HASH_SEED_84 := "27f37cfb90a8bf2e6fc558aedadf3ee169230e24eab42d02ca8a52196fe24fdb"
+const RIVAL_WORLD_HASH_SEED_7 := "3af08a05e893569e342a1667b8c9c0e5ef8375f20ac4ffa9010d368838f9b654"
 
 
 func _json(d: Dictionary) -> Dictionary:

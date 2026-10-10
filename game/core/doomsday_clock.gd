@@ -44,10 +44,17 @@ enum Stage {
 
 # Baseline defaults (SimClock runs at 60 ticks/second)
 const DEFAULT_TICKS_PER_SECOND: int = 60
-const DEFAULT_TOTAL_TICKS: int = 36000          # 600s (10 min) at 60 tps
+## Run length (#134, Ryan: "40 rounds sounds very short"): 120 rounds at the default
+## 900 ticks/round (RunController.DEFAULT_TICKS_PER_ROUND) is 108000 ticks, 30 min at 1x.
+## Takeover pace is unchanged; the burn and interest below are the 40-round values divided
+## by the 3x length so the TOTAL pressure over a run is about what it was, and the stage
+## thresholds are ratios of the total, so they stretch with it. All tuning knobs live here.
+const DEFAULT_RUN_ROUNDS: int = 120
+const TICKS_PER_ROUND: int = 900
+const DEFAULT_TOTAL_TICKS: int = DEFAULT_RUN_ROUNDS * TICKS_PER_ROUND   # 108000 = 1800s (30 min) at 60 tps
 const DEFAULT_DEBT: int = 0                     # no opening debt: debt accrues only from burn and interest
-const DEFAULT_BASE_BURN_PER_SECOND: int = 25    # 25 CR/sec baseline upkeep burn
-const DEFAULT_INTEREST_RATE_BPS_PER_MINUTE: int = 300 # 300 bps (3.0%/min) compounding interest
+const DEFAULT_BASE_BURN_PER_SECOND: int = 8     # was 25 over 40 rounds; /3 for the 3x run (8.33 rounded down)
+const DEFAULT_INTEREST_RATE_BPS_PER_MINUTE: int = 100 # was 300 bps (3.0%/min); /3 for the 3x run
 
 ## Saturation ceiling for every CR bucket (2^60). Debt, interest and burn accrual
 ## clamp here instead of wrapping int64 negative (Epic 2 audit D8). Leaves

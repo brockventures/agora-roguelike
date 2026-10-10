@@ -67,6 +67,9 @@ const DEFAULTS: Dictionary = {
 	"bounty_chance_bps": 6000,
 	# Chance each round that a standing bounty on the player is traced (Piracy.PRIV_TRACE = 10%).
 	"bounty_trace_bps": 1000,
+	# Raids (#134): while a bounty stands on the player, each departure with a hold worth at
+	# least `raid_min_value` CR rolls a real Piracy raid (the +0.15 odds the contract adds).
+	"raid_min_value": 1500,
 }
 
 
@@ -212,6 +215,7 @@ static func react(w: Barons, rc: RunController, market: StationMarket, info: Dic
 			events[n0]["reaction"] = true
 			events[n0]["watched"] = str(info.get("origin", ""))
 	_try_bounty(w, rc, info, cfg, round_num, events)
+	_try_raid(w, rc, info, cfg, round_num, events)
 	return events
 
 
@@ -449,6 +453,64 @@ static func _try_bounty(w: Barons, rc: RunController, info: Dictionary, cfg: Dic
 		f.cr -= Piracy.PRIV_COST
 		events.append({"kind": "rival_bounty", "fleet": id, "rounds": Piracy.PRIV_ROUNDS, "fee": Piracy.PRIV_COST, "value": value})
 		return
+
+
+## A standing bounty makes real raids (#134). On the player's departure, when a privateer
+## contract stands on them and the hold is worth at least `raid_min_value` CR (1,500), the
+## departure rolls Piracy.roll_departure on an ephemeral desk seeded
+## hash32("rival-raid-<run_seed>-<round>") that carries the world's contracts, so the roll is
+## a pure function of (seed, round, saved contracts) and no bag state needs saving. The
+## contract's raid count, trace and fine are written back to the world's desk. The demand is
+## auto-settled (no modal exists yet): pay the ransom when the player holds it, else
+## surrender cargo (fenced, so lost to the player). A traced raid fines the sponsor.
+## Emits {kind: "rival_raid", fleet, choice, ransom, qty_taken, commodity, value}.
+static func _try_raid(w: Barons, rc: RunController, info: Dictionary, cfg: Dictionary, round_num: int, events: Array) -> void:
+	if w.bounty_on_player(round_num).is_empty():
+		return
+	var hold: Dictionary = _hold_value(rc)
+	var value: int = int(hold["value"])
+	if value <= 0 or value < int(cfg["raid_min_value"]):
+		return
+	var origin: String = str(info.get("origin", ""))
+	var dest: String = str(info.get("destination", ""))
+	var tolled: bool = Transit.route_key(origin, dest) in Transit.BELT_ROUTES
+	var sp: RivalFleet = w.rival(str(w.bounty_on_player(round_num).get("sponsor", "")))
+	var desk := Piracy.new(true, null, null, StableHash.hash32("rival-raid-%d-%d" % [rc.run_seed, round_num]))
+	desk.load_privateer_contracts(w.desk().privateer_contracts())
+	var com: String = str(hold["commodity"])
+	var tid: String = "raid-%d-%s-%s" % [round_num, origin, dest]
+	var res = desk.roll_departure(tid, StationMarket.PLAYER_ID, origin, dest, tolled, com, int(rc.cargo.get(com, 0)), false, round_num,
+		"", value, rc.get_total_cargo(), 1.0, 0, 1.0, 0, false, sp.cr if sp != null else null, 1.0, "", rc.piracy_odds_bps())
+	w.desk().load_privateer_contracts(desk.privateer_contracts())
+	if not (res is Dictionary) or not bool(res.get("raided", false)):
+		return
+	var demand: Dictionary = res["demand"]
+	var choice: String = "pay" if rc.cr >= int(demand["ransom"]) else "surrender"
+	var out: Dictionary = desk.respond(StationMarket.PLAYER_ID, tid, choice, rc.cr)
+	var row: Dictionary = out.get("payload", {})
+	rc.cr -= int(row.get("cr_taken", 0))
+	var left: int = int(row.get("qty_taken", 0))
+	var order: Array = rc.cargo.keys()
+	order.sort_custom(func(a, b) -> bool:
+		var va: int = Piracy.cargo_value(str(a), int(rc.cargo[a]))
+		var vb: int = Piracy.cargo_value(str(b), int(rc.cargo[b]))
+		return str(a) < str(b) if va == vb else va > vb)
+	var taken: int = 0
+	for c in order:
+		var n: int = mini(left, int(rc.cargo[c]))
+		if n <= 0:
+			continue
+		rc.cargo[c] = int(rc.cargo[c]) - n
+		if int(rc.cargo[c]) <= 0:
+			rc.cargo.erase(c)
+		left -= n
+		taken += n
+	var sponsor: String = str(demand.get("sponsor", ""))
+	var f: RivalFleet = w.rival(sponsor)
+	if f != null and int(demand.get("fine", 0)) > 0:
+		f.cr = maxi(0, f.cr - int(demand["fine"]))
+	events.append({"kind": "rival_raid", "fleet": sponsor, "choice": str(row.get("choice", choice)), "ransom": int(row.get("cr_taken", 0)),
+		"qty_taken": taken, "commodity": com, "value": value, "station": origin})
 
 
 ## Each round a standing bounty on the player may be traced (Piracy.PRIV_TRACE, here
