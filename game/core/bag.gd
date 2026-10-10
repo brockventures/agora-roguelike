@@ -91,7 +91,7 @@ func _rng(event: String, fleet: String, refills: int, override_source: DrawSourc
 		return draw_sources[fleet_key]
 	if draw_source != null and not (draw_source is NativeDrawSource):
 		return draw_source
-	return NativeDrawSource.new(hash(stream_key))
+	return NativeDrawSource.new(StableHash.hash32(stream_key))
 
 ## Fixed-p roll: draws a marble from the fleet's bag for this event.
 func draw(event: String, fleet: String, p: float, source: DrawSource = null) -> bool:

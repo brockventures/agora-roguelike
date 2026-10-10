@@ -253,6 +253,9 @@ func test_audit_cap_fee_scale_and_revert() -> String:
 		return "fee rounding wrong"
 	if rich.fee_bps() > 400:
 		return "fee exceeded the data cap"
+	# No re-roll at expiry: which seed re-draws is an RNG detail (the hash that
+	# derives the stream changed with D10), not what this test is about.
+	rich.data["grace_rounds"] = 1000000
 	rich.advance_round(int(c["expires_round"]), 1, RICH)
 	if rich.order_cap() != 0 or rich.fee_bps() != 0 or rich.fee_for(1000) != 0:
 		return "audit did not revert"
@@ -276,6 +279,7 @@ func test_collapse_widens_book_and_margin_call_follows_start() -> String:
 	deck.advance_round(6, 3, MID_NW)
 	if deck.last_margin_call_bps != 150:
 		return "margin call bps %d" % deck.last_margin_call_bps
+	deck.data["grace_rounds"] = 1000000  # no re-roll at expiry (seed-independent)
 	deck.advance_round(int(c["expires_round"]), 3, MID_NW)
 	if deck.last_margin_call_bps != 0 or deck.margin_call_bps() != 0:
 		return "no margin call once expired"

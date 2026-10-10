@@ -35,6 +35,12 @@ signal margin_call_applied(amount_cr: int)
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = 900
 const DEFAULT_CARGO_CAPACITY: int = 100
+## Sanity ceilings applied to loaded saves (D12). Far above anything reachable
+## in play; they exist so a tampered file cannot carry absurd values.
+const MAX_LOADED_CR: int = 1 << 40
+const MAX_LOADED_CARGO_CAPACITY: int = 100000
+const MAX_LOADED_MODIFIER_ADD: int = 1000000
+const MAX_LOADED_MODIFIER_MUL_BPS: int = 1000000
 
 var sim_clock: SimClock
 var doomsday: DoomsdayClock
@@ -81,6 +87,9 @@ var severance_award: int = 0
 ## both empty until a corp ends. See _build_carry_over().
 var end_reason: String = ""
 var carry_over: Dictionary = {}
+## Units traded so far this round while an audit cap was active (D5). Reset on
+## every round boundary. Saved.
+var audit_units_traded: int = 0
 ## Seed for the next corp, set when the run ends.
 var next_seed: int = 0
 ## Consecutive sim ticks the corp has stayed insolvent while auto-filing waits
@@ -128,7 +137,14 @@ func apply_modifiers(mods: Dictionary) -> void:
 			"burn": doomsday.base_burn_per_second,
 		}
 	doomsday.interest_rate_bps_per_minute = maxi(0, Parachutes.apply_stat(modifiers, "interest_bps", int(_doomsday_base["interest"])))
-	doomsday.base_burn_per_second = maxi(0, Parachutes.apply_stat(modifiers, "burn_rate", int(_doomsday_base["burn"])))
+	var burn_mod = modifiers.get("burn_rate")
+	if burn_mod is Dictionary:
+		# Keep the exact product (D9): a x0.85 perk on a 25 CR/s base is 21.25,
+		# which integer truncation would turn into 21 (x0.84).
+		doomsday.set_burn_scaled(int(_doomsday_base["burn"]), int(burn_mod.get("add", 0)), int(burn_mod.get("mul_bps", Parachutes.BPS)))
+	else:
+		doomsday.base_burn_per_second = maxi(0, int(_doomsday_base["burn"]))
+		doomsday.burn_per_second_bps = -1
 
 ## Liquidation haircut in bps after modifiers.
 func haircut_bps() -> int:
@@ -146,9 +162,23 @@ func hazard_odds_bps() -> int:
 func piracy_odds_bps() -> int:
 	return maxi(0, Parachutes.apply_stat(modifiers, "piracy_odds_bps", Parachutes.BPS))
 
-## Per-order unit cap while an antitrust audit is active, 0 = uncapped.
+## Unit cap per round while an antitrust audit is active, 0 = uncapped.
 func trade_cap_qty() -> int:
 	return crisis_deck.order_cap() if crisis_deck != null else 0
+
+## Units still tradable this round under an active audit cap (D5). The cap is
+## cumulative over the round, so splitting an order cannot get around it.
+## Returns -1 when no audit cap is active (uncapped).
+func audit_units_remaining() -> int:
+	var cap := trade_cap_qty()
+	if cap <= 0:
+		return -1
+	return maxi(0, cap - audit_units_traded)
+
+## Records a fill against the round's audit cap. No-op with no active cap.
+func record_audit_trade(qty: int) -> void:
+	if trade_cap_qty() > 0 and qty > 0:
+		audit_units_traded += qty
 
 ## Audit trade fee in CR on a fill worth `cost` CR (0 with no audit).
 func trade_fee(cost: int) -> int:
@@ -177,12 +207,20 @@ func fresh_start_cr() -> int:
 	var start_bonus := Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR) - Chapter11.FRESH_START_CR
 	return maxi(0, stake + start_bonus)
 
+## Seed schemes (D10), two on purpose, both StableHash (SHA-256) based:
+##  - corp_seed(n): per-corp seed, authoritative for bankruptcy filings (the
+##    value file_bankruptcy() reports and banks as next_seed).
+##  - Chapter11.next_seed_for(run_seed, filings): seed for the next RUN after a
+##    collapse (next_run()); it is keyed on filings so it differs per run.
+## They are not unified: unifying would change which seeds existing runs and
+## replays reach.
+##
 ## Per-corp seed, derived from (run_seed, corp_number) only. Filing never touches
 ## run_seed or any world RNG: every corp lives in the same Sol (same doomsday
 ## clock, rivals, markets). Anything per-corp that needs randomness uses this.
 func corp_seed(p_corp_number: int = -1) -> int:
 	var n := corp_number if p_corp_number < 0 else p_corp_number
-	return hash("corp-%d-%d" % [run_seed, n]) & 0x7FFFFFFF
+	return StableHash.hash32("corp-%d-%d" % [run_seed, n]) & 0x7FFFFFFF
 
 ## Sim ticks of continued insolvency tolerated before automatic filing
 ## (Deferred Audit). Base 0 = file on the first insolvent tick.
@@ -377,6 +415,7 @@ func to_dict() -> Dictionary:
 		"end_reason": end_reason,
 		"carry_over": carry_over.duplicate(true),
 		"next_seed": next_seed,
+		"audit_units_traded": audit_units_traded,
 		"banked_corp": _banked_corp,
 		"severance_award": severance_award,
 		"insolvent_ticks": insolvent_ticks,
@@ -395,13 +434,11 @@ static func from_dict(d: Dictionary) -> RunController:
 	var pd = d.get("profile", {})
 	rc.profile = MetaProfile.from_dict(pd if pd is Dictionary else {})
 	rc.run_seed = int(d.get("run_seed", 0))
-	rc.cr = maxi(0, int(d.get("cr", Chapter11.FRESH_START_CR)))
-	var cg = d.get("cargo", {})
-	rc.cargo = cg.duplicate(true) if cg is Dictionary else {}
+	rc.cr = clampi(_int_or(d.get("cr", Chapter11.FRESH_START_CR), Chapter11.FRESH_START_CR), 0, MAX_LOADED_CR)
 	var sh = d.get("ships", [])
 	rc.ships = sh.duplicate(true) if sh is Array else []
 	rc.pending_bankruptcy = bool(d.get("pending_bankruptcy", false))
-	rc.modifiers = _sanitise_modifiers(d.get("modifiers", {}))
+	rc._modifiers_explicit = bool(d.get("modifiers_explicit", false))
 	var db = d.get("doomsday_base", {})
 	if db is Dictionary and db.has("interest") and db.has("burn"):
 		rc._doomsday_base = {"interest": maxi(0, int(db["interest"])), "burn": maxi(0, int(db["burn"]))}
@@ -415,13 +452,47 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.carry_over = co.duplicate(true) if co is Dictionary else {}
 	rc.next_seed = int(d.get("next_seed", 0))
 	rc.insolvent_ticks = maxi(0, int(d.get("insolvent_ticks", 0)))
-	rc._modifiers_explicit = bool(d.get("modifiers_explicit", false))
+	rc.audit_units_traded = maxi(0, int(d.get("audit_units_traded", 0)))
 	rc.docked_at = str(d.get("docked_at", "earth")).to_lower()
 	if not (rc.docked_at in Transit.STATIONS):
 		rc.docked_at = "earth"
-	rc.cargo_capacity = maxi(1, int(d.get("cargo_capacity", DEFAULT_CARGO_CAPACITY)))
+	rc.cargo_capacity = clampi(_int_or(d.get("cargo_capacity", DEFAULT_CARGO_CAPACITY), DEFAULT_CARGO_CAPACITY), 1, MAX_LOADED_CARGO_CAPACITY)
+	rc.cargo = _sanitise_cargo(d.get("cargo", {}), rc.cargo_capacity)
+	# Perks must agree with the profile (D12): drop modifiers for unknown or
+	# unowned perks by re-deriving them from the profile's unlocks. A run that
+	# was started with explicit modifiers cannot be re-derived, so those are only
+	# bounded to known stats and sane values.
+	if rc._modifiers_explicit:
+		rc.modifiers = _sanitise_modifiers(d.get("modifiers", {}))
+	else:
+		rc.modifiers = _derive_modifiers(rc.profile)
+	if not rc._doomsday_base.is_empty():
+		rc.apply_modifiers(rc.modifiers)
 	rc._wire()
 	return rc
+
+static func _int_or(v, fallback: int) -> int:
+	return int(v) if (v is int or v is float) else fallback
+
+## Known commodities only, positive integer quantities, total within capacity
+## (trimmed in sorted commodity order so the result is deterministic).
+static func _sanitise_cargo(raw, capacity: int) -> Dictionary:
+	var out := {}
+	if not (raw is Dictionary):
+		return out
+	var keys: Array = []
+	for k in raw:
+		if k is String and Transit.COMMODITIES.has(k):
+			keys.append(k)
+	keys.sort()
+	var room: int = capacity
+	for k in keys:
+		var q: int = _int_or(raw[k], 0)
+		q = mini(maxi(0, q), room)
+		if q > 0:
+			out[k] = q
+			room -= q
+	return out
 
 ## Keeps only known stats with integer add / mul_bps; anything else is dropped.
 static func _sanitise_modifiers(raw) -> Dictionary:
@@ -435,13 +506,17 @@ static func _sanitise_modifiers(raw) -> Dictionary:
 		var a = m.get("add", 0)
 		var b = m.get("mul_bps", Parachutes.BPS)
 		if (a is int or a is float) and (b is int or b is float):
-			out[stat] = {"add": int(a), "mul_bps": maxi(0, int(b))}
+			out[stat] = {
+				"add": clampi(int(a), -MAX_LOADED_MODIFIER_ADD, MAX_LOADED_MODIFIER_ADD),
+				"mul_bps": clampi(int(b), 0, MAX_LOADED_MODIFIER_MUL_BPS),
+			}
 	return out
 
 func _on_sub_ticked(total: int) -> void:
 	doomsday.step_ticks(1)
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
 		var round_num: int = int(total / ticks_per_round)
+		audit_units_traded = 0
 		if crisis_deck != null:
 			_advance_crisis_deck(round_num)
 		round_advanced.emit(round_num)

@@ -91,15 +91,16 @@ func test_raid_key_formatting() -> String:
 
 func test_chance_calculation_and_escort_cut() -> String:
 	var desk := Piracy.new([0.15, 0.04], null, null, 7)
-	# Override hot station to luna for predictable test
-	var c_belt := desk.chance("amos", "ceres", "mars", true, "FRAG", 1000, false, 1)
+	# Pin the hot station to ceres so the odds do not depend on which station the
+	# seed happens to make hot (the x2 hot multiplier is part of the expected numbers).
+	var c_belt := desk.chance("amos", "ceres", "mars", true, "FRAG", 1000, false, 1, null, false, 1.0, 0, 1.0, 0, false, "ceres")
 	if absf(c_belt["base"] - 0.15) > 1e-6:
 		return "expected base 0.15 for tolled route, got %f" % c_belt["base"]
 	if absf(c_belt["value_mult"] - 1.5) > 1e-6:
 		return "expected value_mult 1.5 for 15,000 CR cargo, got %f" % c_belt["value_mult"]
 
 	# Escorted trip cuts odds by 75%
-	var c_esc := desk.chance("amos", "ceres", "mars", true, "FRAG", 1000, true, 1)
+	var c_esc := desk.chance("amos", "ceres", "mars", true, "FRAG", 1000, true, 1, null, false, 1.0, 0, 1.0, 0, false, "ceres")
 	if absf(c_esc["odds"] - roundf(c_belt["odds"] * (1.0 - Piracy.ESCORT_CUT) * 10000.0) / 10000.0) > 1e-4:
 		return "escort should cut odds by 75%%, unescorted=%f, escorted=%f" % [c_belt["odds"], c_esc["odds"]]
 

@@ -49,6 +49,15 @@ const DEFAULT_DEBT: int = 0                     # no opening debt: debt accrues 
 const DEFAULT_BASE_BURN_PER_SECOND: int = 25    # 25 CR/sec baseline upkeep burn
 const DEFAULT_INTEREST_RATE_BPS_PER_MINUTE: int = 300 # 300 bps (3.0%/min) compounding interest
 
+## Saturation ceiling for every CR bucket (2^60). Debt, interest and burn accrual
+## clamp here instead of wrapping int64 negative (Epic 2 audit D8). Leaves
+## headroom so two buckets can be summed without overflowing.
+const MAX_CR: int = 1 << 60
+## Ceiling for the configured burn rate (CR/sec), so the per-chunk burn product
+## below stays inside int64: MAX_BURN_PER_SECOND * 10000 * 100 * 216000 < 2^63.
+const MAX_BURN_PER_SECOND: int = 100_000_000
+const BPS: int = 10000
+
 # Stage thresholds in basis points (10000 bps = 100%)
 const UNSTABLE_RATIO_BPS: int = 7500   # <= 75% ticks remaining -> UNSTABLE
 const CRITICAL_RATIO_BPS: int = 4000   # <= 40% ticks remaining -> CRITICAL
@@ -81,6 +90,11 @@ var total_ticks_added_by_tributes: int = 0
 
 # Configuration rates
 var base_burn_per_second: int = DEFAULT_BASE_BURN_PER_SECOND
+## Exact burn rate in CR/sec x 10000, or -1 to use base_burn_per_second * 10000.
+## A burn perk (x0.85) set through RunController keeps the untruncated product
+## here, so accrual is exact over time; base_burn_per_second holds its truncated
+## integer for display and compatibility (audit D9: 25 * 0.85 is 21.25, not 21).
+var burn_per_second_bps: int = -1
 var interest_rate_bps_per_minute: int = DEFAULT_INTEREST_RATE_BPS_PER_MINUTE
 
 # Remainder accumulators for fractional CR accrual across discrete ticks
@@ -102,21 +116,45 @@ func _init(
 	ticks_per_second = maxi(1, p_ticks_per_sec)
 	total_ticks = maxi(1, p_total_ticks)
 	ticks_remaining = total_ticks
-	principal_debt = maxi(0, p_debt)
-	base_burn_per_second = maxi(0, p_base_burn)
+	principal_debt = clampi(p_debt, 0, MAX_CR)
+	base_burn_per_second = clampi(p_base_burn, 0, MAX_BURN_PER_SECOND)
 	interest_rate_bps_per_minute = maxi(0, p_interest_bps)
 	stage = _compute_stage(ticks_remaining, total_ticks)
 	_ticks_in_minute = 0
-	_compounding_base = principal_debt + accrued_interest
+	_compounding_base = _sat_add(principal_debt, accrued_interest)
+
+## Saturating helpers: operands are non-negative and at most MAX_CR.
+static func _sat_add(a: int, b: int) -> int:
+	return mini(MAX_CR, a + b)
+
+static func _sat_mul(a: int, b: int) -> int:
+	if a <= 0 or b <= 0:
+		return 0
+	if a > MAX_CR / b:
+		return MAX_CR
+	return a * b
+
+## Burn rate in CR/sec x 10000 (exact).
+func effective_burn_bps() -> int:
+	if burn_per_second_bps >= 0:
+		return mini(burn_per_second_bps, MAX_BURN_PER_SECOND * BPS)
+	return base_burn_per_second * BPS
+
+## Sets the burn rate from a pre-multiplier base plus add, scaled by mul_bps,
+## without truncating: the exact product is kept for accrual (D9).
+func set_burn_scaled(p_base: int, p_add: int, p_mul_bps: int) -> void:
+	var exact: int = clampi((p_base + p_add) * maxi(0, p_mul_bps), 0, MAX_BURN_PER_SECOND * BPS)
+	burn_per_second_bps = exact
+	base_burn_per_second = exact / BPS
 
 func get_stage_multiplier_tenths(p_stage: Stage) -> int:
 	return STAGE_BURN_MULTIPLIER_TENTHS.get(p_stage, 10)
 
 func get_current_burn_rate_cr_per_sec() -> float:
-	return float(base_burn_per_second * get_stage_multiplier_tenths(stage)) / 10.0
+	return float(effective_burn_bps() * get_stage_multiplier_tenths(stage)) / float(BPS * 10)
 
 func get_total_debt() -> int:
-	return principal_debt + accrued_burn + accrued_interest
+	return _sat_add(_sat_add(principal_debt, accrued_burn), accrued_interest)
 
 func get_compounding_debt_base() -> int:
 	return _compounding_base
@@ -178,7 +216,8 @@ func step_ticks(ticks: int = 1) -> void:
 	# Stop at 0: clamp total ticks stepped to ticks_remaining
 	var rem_ticks := mini(ticks, ticks_remaining)
 	var ticks_per_minute := ticks_per_second * 60
-	var burn_divisor := ticks_per_second * 10
+	var burn_divisor := ticks_per_second * 10 * BPS
+	var burn_bps := effective_burn_bps()
 	var interest_divisor := 10000 * ticks_per_minute if ticks_per_minute > 0 else 1
 
 	var total_burn_cr_this_step := 0
@@ -196,7 +235,7 @@ func step_ticks(ticks: int = 1) -> void:
 		if ticks_per_minute > 0:
 			if _ticks_in_minute >= ticks_per_minute:
 				_ticks_in_minute = 0
-				_compounding_base = principal_debt + accrued_interest
+				_compounding_base = _sat_add(principal_debt, accrued_interest)
 			var ticks_until_boundary := ticks_per_minute - _ticks_in_minute
 			chunk = mini(chunk, ticks_until_boundary)
 
@@ -214,25 +253,31 @@ func step_ticks(ticks: int = 1) -> void:
 
 		# Accrue operating burn for this chunk
 		var multiplier_tenths := get_stage_multiplier_tenths(stage)
-		var burn_units := base_burn_per_second * multiplier_tenths * chunk
+		var burn_units := burn_bps * multiplier_tenths * chunk
 		_burn_subunits += burn_units
 		var burn_cr := _burn_subunits / burn_divisor
 		_burn_subunits %= burn_divisor
 
-		accrued_burn += burn_cr
-		total_burn_accrued += burn_cr
+		accrued_burn = _sat_add(accrued_burn, burn_cr)
+		total_burn_accrued = _sat_add(total_burn_accrued, burn_cr)
 		total_burn_cr_this_step += burn_cr
 
 		# Accrue interest for this chunk
 		var interest_cr := 0
 		if interest_rate_bps_per_minute > 0 and ticks_per_minute > 0 and _compounding_base > 0:
-			var units := _compounding_base * interest_rate_bps_per_minute * chunk
-			_interest_subunits += units
-			interest_cr = _interest_subunits / interest_divisor
-			_interest_subunits %= interest_divisor
+			# interest = base * rate * chunk / interest_divisor, computed without
+			# forming the full product (it wraps int64 near a 2^50 principal, D8):
+			# split base = q * divisor + r so q * k is the whole-credit part and
+			# only the small r * k term goes through the remainder accumulator.
+			var k := interest_rate_bps_per_minute * chunk
+			var q := _compounding_base / interest_divisor
+			var r := _compounding_base % interest_divisor
+			var rem_units := r * k + _interest_subunits
+			interest_cr = _sat_add(_sat_mul(q, k), rem_units / interest_divisor)
+			_interest_subunits = rem_units % interest_divisor
 
-			accrued_interest += interest_cr
-			total_interest_accrued += interest_cr
+			accrued_interest = _sat_add(accrued_interest, interest_cr)
+			total_interest_accrued = _sat_add(total_interest_accrued, interest_cr)
 			total_interest_cr_this_step += interest_cr
 
 		# Advance minute counter and re-snapshot compounding base at boundary
@@ -240,7 +285,7 @@ func step_ticks(ticks: int = 1) -> void:
 			_ticks_in_minute += chunk
 			if _ticks_in_minute >= ticks_per_minute:
 				_ticks_in_minute = 0
-				_compounding_base = principal_debt + accrued_interest
+				_compounding_base = _sat_add(principal_debt, accrued_interest)
 
 		rem_ticks -= chunk
 
@@ -299,7 +344,7 @@ func service_debt(amount: int) -> int:
 		paid += pay_principal
 
 	# Immediately reduce compounding base if debt is paid down mid-minute
-	_compounding_base = mini(_compounding_base, principal_debt + accrued_interest)
+	_compounding_base = mini(_compounding_base, _sat_add(principal_debt, accrued_interest))
 
 	total_debt_serviced += paid
 	debt_serviced.emit(paid, get_total_debt())
@@ -354,6 +399,8 @@ func to_dict() -> Dictionary:
 		"total_debt_serviced": total_debt_serviced,
 		"total_ticks_added_by_tributes": total_ticks_added_by_tributes,
 		"base_burn_per_second": base_burn_per_second,
+		"burn_per_second_bps": burn_per_second_bps,
+		"burn_subunit_scale": BPS,
 		"interest_rate_bps_per_minute": interest_rate_bps_per_minute,
 		"_burn_subunits": _burn_subunits,
 		"_interest_subunits": _interest_subunits,
@@ -370,21 +417,32 @@ static func from_dict(d: Dictionary) -> DoomsdayClock:
 		int(d.get("interest_rate_bps_per_minute", DEFAULT_INTEREST_RATE_BPS_PER_MINUTE)),
 		int(d.get("ticks_per_second", DEFAULT_TICKS_PER_SECOND))
 	)
-	clock.ticks_remaining = maxi(0, int(d.get("ticks_remaining", clock.total_ticks)))
-	clock.accrued_burn = maxi(0, int(d.get("accrued_burn", 0)))
-	clock.accrued_interest = maxi(0, int(d.get("accrued_interest", 0)))
-	clock.total_burn_accrued = maxi(0, int(d.get("total_burn_accrued", 0)))
-	clock.total_interest_accrued = maxi(0, int(d.get("total_interest_accrued", 0)))
-	clock.total_debt_serviced = maxi(0, int(d.get("total_debt_serviced", 0)))
+	# Defensive state validation (PR #71 gap): never more time than the clock's
+	# own total, whatever a tampered or corrupt save claims.
+	clock.ticks_remaining = clampi(int(d.get("ticks_remaining", clock.total_ticks)), 0, clock.total_ticks)
+	clock.accrued_burn = clampi(int(d.get("accrued_burn", 0)), 0, MAX_CR)
+	clock.accrued_interest = clampi(int(d.get("accrued_interest", 0)), 0, MAX_CR)
+	clock.total_burn_accrued = clampi(int(d.get("total_burn_accrued", 0)), 0, MAX_CR)
+	clock.total_interest_accrued = clampi(int(d.get("total_interest_accrued", 0)), 0, MAX_CR)
+	clock.total_debt_serviced = clampi(int(d.get("total_debt_serviced", 0)), 0, MAX_CR)
+	# Exact burn rate: only trusted when consistent with the integer rate.
+	var bps_raw := int(d.get("burn_per_second_bps", -1))
+	if bps_raw >= 0 and bps_raw / BPS == clock.base_burn_per_second:
+		clock.burn_per_second_bps = bps_raw
 	clock.total_ticks_added_by_tributes = maxi(0, int(d.get("total_ticks_added_by_tributes", 0)))
-	clock._burn_subunits = maxi(0, int(d.get("_burn_subunits", 0)))
-	clock._interest_subunits = maxi(0, int(d.get("_interest_subunits", 0)))
+	# Burn remainders are now x10000 finer; a save from before that has no
+	# burn_subunit_scale, so scale its remainder up to keep the fraction.
+	var burn_sub := maxi(0, int(d.get("_burn_subunits", 0)))
+	if int(d.get("burn_subunit_scale", 1)) != BPS:
+		burn_sub = mini(burn_sub, clock.ticks_per_second * 10) * BPS
+	clock._burn_subunits = mini(burn_sub, clock.ticks_per_second * 10 * BPS - 1)
+	clock._interest_subunits = clampi(int(d.get("_interest_subunits", 0)), 0, maxi(0, 10000 * clock.ticks_per_second * 60 - 1))
 	var ticks_per_min := clock.ticks_per_second * 60
 	if ticks_per_min > 0:
 		clock._ticks_in_minute = posmod(int(d.get("_ticks_in_minute", 0)), ticks_per_min)
 	else:
 		clock._ticks_in_minute = 0
-	var max_base := clock.principal_debt + clock.accrued_interest
+	var max_base := _sat_add(clock.principal_debt, clock.accrued_interest)
 	clock._compounding_base = clampi(int(d.get("_compounding_base", max_base)), 0, max_base)
 	# Recompute stage strictly from ticks_remaining and total_ticks to prevent save-state divergence
 	clock.stage = clock._compute_stage(clock.ticks_remaining, clock.total_ticks)
