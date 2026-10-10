@@ -17,7 +17,7 @@ STAGE_COLLAPSED,COLLAPSED
 TAB_MAP,MAP
 TAB_MARKET,MARKET
 TAB_FLEET,FLEET
-HUD_CONTROLS_HINT,LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed  View settings
+HUD_CONTROLS_HINT,LB/RB tab  LT/RT station  R-stick commodity  D-pad qty  A trade  B back  X Ch.11  Y speed  View menu
 HUD_MAP_DOCKED,SOL TACTICAL MAP   docked: %s
 FLEET_HEADER,FLEET   hulls: %d
 FLEET_CARGO,  %s x%d
@@ -52,7 +52,10 @@ CRISIS_FX_MARGIN,Margin calls: %.2f%% of cargo value per round
 CRISIS_FX_CAP,Orders capped at %d units
 CRISIS_FX_FEE,Trade fee %.2f%%
 SUM_TITLE,SOVEREIGN DEFAULT   RUN OVER
-SUM_CLOCK_OUT,The Doomsday Clock has run out.
+SUM_CAUSE,CAUSE            %s
+SUM_CAUSE_COLLAPSE,The Doomsday Clock ran out
+SUM_CAUSE_BANKRUPTCY,Chapter 11 filing
+SUM_CAUSE_MANUAL,Run ended by the player
 SUM_NET_WORTH,NET WORTH        %s CR
 SUM_PEAK,PEAK NET WORTH   %s CR
 SUM_ROUNDS,ROUNDS SURVIVED  %d
@@ -150,6 +153,8 @@ SET_TEXT_SIZE,Text size
 SET_PALETTE,Colors
 SET_LANGUAGE,Language
 SET_CRT,Retro CRT filter
+SET_ALERT_VOLUME,Alert volume
+SET_ALERT_MUTE,Mute alerts
 SET_ON,On
 SET_OFF,Off
 SET_PALETTE_DEFAULT,Default

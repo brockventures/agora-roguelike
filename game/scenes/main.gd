@@ -332,6 +332,7 @@ func initialize_systems(p_controller: RunController = null) -> void:
 	gamepad_focus = hud.gamepad_focus
 	vector_orrery = hud.vector_orrery
 	tactile_audio = hud.tactile_audio
+	apply_alert_settings()
 	if loop == null:
 		loop = M0Loop.new(hud)
 	else:
@@ -586,6 +587,8 @@ func _load_settings() -> void:
 	settings.palette = fresh.palette
 	settings.locale = fresh.locale
 	settings.crt_filter = fresh.crt_filter
+	settings.alert_volume = fresh.alert_volume
+	settings.alert_mute = fresh.alert_mute
 	settings.bindings = fresh.bindings
 	var env_locale: bool = OS.get_environment(Loc.PSEUDO_ENV) in ["1", "true", "yes"] or OS.get_environment(Loc.LOCALE_ENV) != ""
 	if env_locale:
@@ -594,6 +597,16 @@ func _load_settings() -> void:
 	settings.changed.connect(_on_settings_changed)
 	apply_text_scale()
 	set_crt_enabled(settings.crt_filter)
+	apply_alert_settings()
+
+
+## Pushes the saved alert volume and mute onto the Alerts bus (via the audio model,
+## which syncs the AudioServer bus when inside the tree).
+func apply_alert_settings() -> void:
+	if tactile_audio == null:
+		return
+	tactile_audio.set_alert_volume(settings.alert_volume)
+	tactile_audio.set_alert_mute(settings.alert_mute)
 
 
 func _save_settings() -> void:
@@ -605,6 +618,7 @@ func _on_settings_changed() -> void:
 	settings.locale = Loc.current()
 	apply_text_scale()
 	set_crt_enabled(settings.crt_filter)
+	apply_alert_settings()
 	_save_settings()
 
 
@@ -1109,10 +1123,20 @@ func _crisis_sidebar_lines() -> Array:
 func _summary_text() -> String:
 	var r: Dictionary = loop.run_summary()
 	return "%s\n\n%s\n\n%s\n%s\n%s\n%s\n\n%s" % [
-		tr("SUM_TITLE"), tr("SUM_CLOCK_OUT"),
+		tr("SUM_TITLE"), tr("SUM_CAUSE") % _cause_text(str(r["reason"])),
 		tr("SUM_NET_WORTH") % _fmt(int(r["net_worth"])), tr("SUM_PEAK") % _fmt(int(r["peak_net_worth"])),
 		tr("SUM_ROUNDS") % int(r["rounds_survived"]), tr("SUM_SEVERANCE") % [int(r["severance_awarded"]), int(r["severance_balance"])],
 		tr("SUM_PRESS_A")]
+
+
+## Why the run ended, from RunController.end_reason ("collapse", "bankruptcy", "manual").
+static func _cause_text(reason: String) -> String:
+	match reason:
+		"bankruptcy":
+			return Loc.t("SUM_CAUSE_BANKRUPTCY")
+		"manual":
+			return Loc.t("SUM_CAUSE_MANUAL")
+	return Loc.t("SUM_CAUSE_COLLAPSE")
 
 
 func _perks_text() -> String:

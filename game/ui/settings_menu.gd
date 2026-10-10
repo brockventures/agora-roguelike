@@ -1,6 +1,7 @@
 class_name SettingsMenu
 extends RefCounted
-## The settings screen (#37): text size, colors, language, and one row per m0_*
+## The settings screen (#37): text size, colors, language, CRT, alert volume and
+## alert mute (#104), and one row per m0_*
 ## action for rebinding, plus reset and close. A pure model: Main owns the node
 ## that draws text() and routes events to handle_event().
 ##
@@ -14,7 +15,7 @@ extends RefCounted
 
 signal closed
 
-enum Row { SCALE, PALETTE, LANGUAGE, CRT, ACTION, RESET, CLOSE }
+enum Row { SCALE, PALETTE, LANGUAGE, CRT, ALERT_VOLUME, ALERT_MUTE, ACTION, RESET, CLOSE }
 
 var settings: AccessibilitySettings = null
 var is_open: bool = false
@@ -47,7 +48,7 @@ func close() -> void:
 
 ## One entry per selectable row: {"kind": Row, "action": String}.
 func rows() -> Array:
-	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}, {"kind": Row.CRT}]
+	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}, {"kind": Row.CRT}, {"kind": Row.ALERT_VOLUME}, {"kind": Row.ALERT_MUTE}]
 	for a in InputRemap.actions():
 		out.append({"kind": Row.ACTION, "action": a})
 	out.append({"kind": Row.RESET})
@@ -72,6 +73,10 @@ func row_text(i: int, row: Dictionary) -> String:
 			return tr_row(mark, "SET_LANGUAGE", "< %s >" % Loc.locale_label())
 		Row.CRT:
 			return tr_row(mark, "SET_CRT", "< %s >" % Loc.t("SET_ON" if settings.crt_filter else "SET_OFF"))
+		Row.ALERT_VOLUME:
+			return tr_row(mark, "SET_ALERT_VOLUME", "< %d%% >" % int(round(settings.alert_volume * 100.0)))
+		Row.ALERT_MUTE:
+			return tr_row(mark, "SET_ALERT_MUTE", "< %s >" % Loc.t("SET_ON" if settings.alert_mute else "SET_OFF"))
 		Row.ACTION:
 			var a: String = str(row["action"])
 			var value: String = Loc.t("SET_LISTENING") if a == listening_action else InputRemap.binding_text(settings.bindings.get(a, {}))
@@ -176,13 +181,23 @@ func _change(dir: int) -> void:
 			settings.step_locale(dir)
 		Row.CRT:
 			settings.set_crt_filter(not settings.crt_filter)
+		Row.ALERT_VOLUME:
+			settings.step_alert_volume(dir)
+		Row.ALERT_MUTE:
+			settings.set_alert_mute(not settings.alert_mute)
 
 
 func _activate() -> void:
 	var row: Dictionary = rows()[cursor]
 	match int(row["kind"]):
-		Row.SCALE, Row.PALETTE, Row.LANGUAGE, Row.CRT:
+		Row.SCALE, Row.PALETTE, Row.LANGUAGE, Row.CRT, Row.ALERT_MUTE:
 			_change(1)
+		Row.ALERT_VOLUME:
+			# A past the top wraps to silence, so A alone can reach every step.
+			if settings.alert_volume >= 1.0 - 0.001:
+				settings.set_alert_volume(0.0)
+			else:
+				_change(1)
 		Row.ACTION:
 			listening_action = str(row["action"])
 			message = []

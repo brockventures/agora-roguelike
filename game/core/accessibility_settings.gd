@@ -1,7 +1,7 @@
 class_name AccessibilitySettings
 extends RefCounted
 ## Player accessibility settings (#37): text scale, colorblind palette, control
-## bindings and language. Persisted to <save dir>/settings.json through SaveStore
+## bindings, language, and the alert volume / mute (Epic 4 follow-ups, #104). Persisted to <save dir>/settings.json through SaveStore
 ## (same atomic envelope as the profile and run slot), so a test pointed at a temp
 ## directory never touches the real user://.
 ##
@@ -21,6 +21,12 @@ var locale: String = Loc.LOCALE_EN
 ## Optional retro CRT filter (scanlines, chromatic fringe, phosphor glow). Off by default
 ## since the HUD re-skin (#105): the Scavengers Reign look is the default, CRT is opt-in.
 var crt_filter: bool = false
+## Alert sounds (warning and critical headlines): linear volume 0..1 in 10% steps, and a
+## mute toggle. They drive the Alerts bus only; UI clicks and market chimes are untouched.
+const ALERT_VOLUME_STEP: float = 0.1
+const ALERT_VOLUME_DEFAULT: float = 1.0
+var alert_volume: float = ALERT_VOLUME_DEFAULT
+var alert_mute: bool = false
 var bindings: Dictionary = {}
 
 
@@ -89,10 +95,27 @@ func set_crt_filter(on: bool) -> void:
 	changed.emit()
 
 
+func set_alert_volume(v: float) -> void:
+	alert_volume = snappedf(clampf(v, 0.0, 1.0), ALERT_VOLUME_STEP)
+	changed.emit()
+
+
+## Steps the alert volume by `dir` tenths, clamped at the ends.
+func step_alert_volume(dir: int) -> void:
+	set_alert_volume(alert_volume + float(dir) * ALERT_VOLUME_STEP)
+
+
+func set_alert_mute(on: bool) -> void:
+	alert_mute = on
+	changed.emit()
+
+
 ## Back to the shipped bindings, palette, scale and look (CRT off). Language is left alone.
 func reset_defaults() -> void:
 	text_scale = 1.0
 	crt_filter = false
+	alert_volume = ALERT_VOLUME_DEFAULT
+	alert_mute = false
 	set_palette(Palette.DEFAULT)
 	bindings = InputRemap.defaults()
 	InputRemap.apply(bindings)
@@ -108,7 +131,7 @@ func apply_all(apply_locale: bool = true) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "bindings": bindings.duplicate(true)}
+	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "alert_volume": alert_volume, "alert_mute": alert_mute, "bindings": bindings.duplicate(true)}
 
 
 ## Restores from a stored dictionary; every field is validated and a bad or
@@ -126,6 +149,11 @@ static func from_dict(d: Dictionary) -> AccessibilitySettings:
 		s.locale = str(d["locale"])
 	if d.has("crt_filter") and d["crt_filter"] is bool:
 		s.crt_filter = d["crt_filter"]
+	var av = d.get("alert_volume", ALERT_VOLUME_DEFAULT)
+	if (av is float or av is int) and not is_nan(float(av)):
+		s.alert_volume = snappedf(clampf(float(av), 0.0, 1.0), ALERT_VOLUME_STEP)
+	if d.has("alert_mute") and d["alert_mute"] is bool:
+		s.alert_mute = d["alert_mute"]
 	s.bindings = InputRemap.sanitize(d.get("bindings", {}))
 	return s
 

@@ -459,8 +459,8 @@ func test_stage_change_modulates_drone() -> String:
 		if audio.current_drone_volume_db <= last_vol:
 			return "drone volume must climb with each stage (stage %d)" % stage
 		last_vol = audio.current_drone_volume_db
-	if absf(audio.get_drone_pitch_scale() - 41.2 / 55.0) > 0.001:
-		return "COLLAPSED drone pitch scale should be 41.2/55"
+	if absf(audio.get_drone_pitch_scale() - TactileAudio.DRONE_STAGE_HZ[4] / TactileAudio.PAD_BASE_HZ) > 0.001:
+		return "COLLAPSED pad pitch scale should follow DRONE_STAGE_HZ"
 	return "ok"
 
 
@@ -509,7 +509,7 @@ func test_main_scene_audio_nodes_follow_the_drone() -> String:
 		return "drone not primed from the NORMAL stage"
 	var vol0: float = main.drone_player.volume_db
 	main.tactile_audio.update_doomsday_stage(DoomsdayClock.Stage.CRITICAL)
-	if main.drone_player.volume_db <= vol0 or absf(main.drone_player.pitch_scale - 98.0 / 55.0) > 0.001:
+	if main.drone_player.volume_db <= vol0 or absf(main.drone_player.pitch_scale - TactileAudio.DRONE_STAGE_HZ[2] / TactileAudio.PAD_BASE_HZ) > 0.001:
 		main.free()
 		return "drone player not modulated: vol %f pitch %f" % [main.drone_player.volume_db, main.drone_player.pitch_scale]
 	main.free()
