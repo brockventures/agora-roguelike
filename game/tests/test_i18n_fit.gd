@@ -43,6 +43,13 @@ static func text_extent(label: Label, text: String, box: Vector2 = Vector2.ZERO)
 ## Findings for one label showing text: [] when it fits.
 static func overflow_of(name: String, label: Label, text: String, box: Vector2, panel: Vector2) -> Array:
 	var out: Array = []
+	# Above 100% text size the sidebar scrolls vertically when its text outgrows the
+	# view (#37), like the ticker does sideways: checked for width, and for being scrollable, not for height.
+	if bool(label.get_meta("scrolls_vertically", false)):
+		var need_w: Vector2 = text_extent(label, text, box)
+		if need_w.x > box.x + 0.5:
+			out.append("%s: text %.0f px wide, label %.0f" % [name, need_w.x, box.x])
+		return out
 	var need: Vector2 = text_extent(label, text, box)
 	if need.x > box.x + 0.5:
 		out.append("%s: text %.0f px wide, label %.0f" % [name, need.x, box.x])

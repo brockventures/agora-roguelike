@@ -17,12 +17,12 @@ STAGE_COLLAPSED,COLLAPSED
 TAB_MAP,MAP
 TAB_MARKET,MARKET
 TAB_FLEET,FLEET
-HUD_CONTROLS_HINT,LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed  View lang
+HUD_CONTROLS_HINT,LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed  View settings
 HUD_MAP_DOCKED,SOL TACTICAL MAP   docked: %s
 FLEET_HEADER,FLEET   hulls: %d
 FLEET_CARGO,  %s x%d
-SIDE_ASK_ROW,%s ASK %6.1f  x%d
-SIDE_BID_ROW,%s BID %6.1f  x%d
+SIDE_ASK_ROW,%s - ASK %6.1f  x%d
+SIDE_BID_ROW,%s + BID %6.1f  x%d
 SIDE_SPREAD,---- spread %.1f ----
 SIDE_ORDER,ORDER  %s  qty %d
 ORDER_BUY,BUY
@@ -33,7 +33,7 @@ SIDE_FILLED,FILLED %s %d @ %.1f%s%s
 SIDE_FILLED_VS,  vs %s
 SIDE_FILLED_FEE,  fee %d
 BOARD_TITLE,%s QUOTES   counterparty %s
-BOARD_ROW_LIVE,%s BID %6.1f   ASK %6.1f%s
+BOARD_ROW_LIVE,%s + BID %6.1f   - ASK %6.1f%s
 BOARD_ROW_BASE,%s base %6.1f   (no live book)
 BOARD_HINT,"R-STICK commodity   D-PAD ladder/qty   B back"
 CH11_TITLE,CHAPTER 11
@@ -145,3 +145,42 @@ PERK_BRANCH_REGULATORY_CAPTURE,Regulatory Capture
 PERK_BRANCH_ASSET_LAUNDERING,Asset Laundering
 PERK_BRANCH_LOGISTICS_SMUGGLING,Logistics & Smuggling
 PERK_BRANCH_MONOPOLY_DRIVE,Monopoly Drive
+SET_TITLE,SETTINGS
+SET_TEXT_SIZE,Text size
+SET_PALETTE,Colors
+SET_LANGUAGE,Language
+SET_PALETTE_DEFAULT,Default
+SET_PALETTE_DEUTERANOPIA,Deuteranopia (blue/orange)
+SET_PALETTE_PROTANOPIA,Protanopia (blue/yellow)
+SET_PAD,Pad
+SET_KEY,Key
+SET_LISTENING,Press a button or key...
+SET_RESET,Reset to defaults
+SET_CLOSE,Back to game
+SET_HINT,D-pad move   Left/Right change   A select   B or View back
+SET_LISTEN_HINT,Press the new button or key. View or Esc cancels.
+SET_SCROLL,(%d / %d)
+SET_MSG_BOUND,%s is now %s
+SET_MSG_SWAPPED,%s was in use: swapped with %s
+SET_MSG_REFUSED,"%s is used by %s, which has nothing to swap: kept as it was"
+SET_MSG_RESERVED,%s is reserved for the settings screen
+SET_MSG_UNCHANGED,%s is already bound there
+SET_MSG_UNSUPPORTED,Only buttons and keys can be bound
+SET_MSG_CANCELLED,Rebind cancelled
+SET_MSG_RESET,Defaults restored
+SET_ACT_TAB_PREV,Previous tab
+SET_ACT_TAB_NEXT,Next tab
+SET_ACT_STATION_PREV,Previous station
+SET_ACT_STATION_NEXT,Next station
+SET_ACT_COMMODITY_PREV,Previous commodity
+SET_ACT_COMMODITY_NEXT,Next commodity
+SET_ACT_UP,Up
+SET_ACT_DOWN,Down
+SET_ACT_LEFT,Left
+SET_ACT_RIGHT,Right
+SET_ACT_SUBMIT,Confirm / submit
+SET_ACT_CANCEL,Cancel / back
+SET_ACT_CHAPTER11,File Chapter 11
+SET_ACT_SPEED,Cycle speed
+SET_ACT_PAUSE,Pause / resume
+SET_ACT_LOCALE,Cycle language

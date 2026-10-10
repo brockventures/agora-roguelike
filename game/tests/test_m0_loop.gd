@@ -273,6 +273,10 @@ func test_input_actions_are_declared_with_pad_and_keyboard() -> String:
 				key = true
 			elif ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
 				pad = true
+		# The language button (View) became the settings button (#37); on a pad the
+		# language is the Language row of the settings screen, the L key stays direct.
+		if action == M0Loop.ACT_LOCALE:
+			pad = true
 		if not (pad and key):
 			return "%s needs both a joypad and a keyboard binding (pad %s key %s)" % [action, pad, key]
 	return "ok"
