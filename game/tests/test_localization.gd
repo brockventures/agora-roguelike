@@ -8,7 +8,7 @@ const SCAN_DIRS := ["res://ui", "res://scenes", "res://core"]
 ## Literal keys the scan recognises (the prefixes the code base uses for tr keys).
 ## Sound ids (ORDER_FILL, TICKER_BLIP) share prefixes with text keys; they are not UI text.
 const NOT_TEXT_FILES := ["tactile_audio.gd"]
-const KEY_PREFIXES := "HUD|HL|REJ|SIDE|BOARD|CH11|CRISIS|SUM|PERKS?|SLEEP|TICKER|FLEET|ORDER|LANG|MAKER"
+const KEY_PREFIXES := "HUD|HL|REJ|SIDE|BOARD|CH11|CRISIS|SUM|PERKS?|SLEEP|SET|TICKER|FLEET|ORDER|LANG|MAKER"
 
 
 static func csv_rows() -> Dictionary:
@@ -96,7 +96,7 @@ func test_every_csv_key_is_reachable() -> String:
 	var corpus: String = ""
 	for path in script_paths():
 		corpus += FileAccess.get_file_as_string(path)
-	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "LANG_"]
+	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "LANG_", "SET_ACT_", "SET_PALETTE_"]
 	var dead: Array = []
 	for k in rows:
 		var fam := false

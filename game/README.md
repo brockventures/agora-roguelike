@@ -78,7 +78,29 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | File Chapter 11 (X) | X | X |
 | Cycle speed 1x, 2x, 5x, pause (Y) | Y | R |
 | Pause / resume | Start | P |
-| Cycle language (en, pseudo; hot swap) | View / Back | L |
+| Settings screen (text size, colors, language, rebinding) | View / Back | F1 |
+| Cycle language (en, pseudo; hot swap), also a row in Settings | - | L |
+
+## Accessibility (#37)
+
+View (F1) opens the settings screen; the sim freezes while it is open. It is
+driven only by the built-in `ui_*` actions (D-pad / left stick / A / B), never by
+the `m0_*` actions, so no rebinding can lock the player out of it.
+
+- **Text size:** 100 / 115 / 130%. Every readout keeps its 100% font size as
+  metadata (`base_font_size`) and `MainScene.apply_text_scale()` multiplies it, then
+  re-lays the rows that grow with it. Nothing is below 12 px at any scale (Deck
+  Verified). Above 100% the sidebar scrolls like the ticker if several crises
+  outgrow it; at 100% it must fit.
+- **Colors:** `core/palette.gd` is the only place bid/ask colors live (default,
+  deuteranopia, protanopia; Okabe-Ito blue/orange/yellow). Color is never the only
+  cue: bid rows read `+ BID`, ask rows `- ASK`.
+- **Rebinding:** one row per `m0_*` action; A, then press a pad button or key
+  (`core/input_remap.gd`). A conflict swaps the two actions, or is refused with a
+  message when the swap would leave one bare. View, F1 and Esc are reserved
+  (View/Esc also cancel a rebind). Stick axes are not remappable.
+- **Persistence:** `user://saves/settings.json` (SaveStore envelope, atomic write).
+  A missing, corrupt or hostile file falls back to defaults field by field.
 
 ## Localization (#40)
 

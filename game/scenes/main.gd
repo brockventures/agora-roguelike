@@ -82,6 +82,34 @@ const CONTROLS_HINT_KEY: String = "HUD_CONTROLS_HINT"
 
 var is_initialized: bool = false
 
+## Accessibility (#37): text scale, palette, bindings, language. Persisted next to
+## the profile once enable_persistence() runs; headless runs never write them.
+var settings: AccessibilitySettings = AccessibilitySettings.new()
+var settings_menu: SettingsMenu = null
+var settings_modal: Panel = null
+var settings_label: Label = null
+## Colour strips beside the ladder rows (bid / ask), tinted from Palette.
+var _ladder_swatches: Array[ColorRect] = []
+## The sidebar text sits in a clipping view. It only scrolls (an auto marquee, like
+## the GalNet ticker) when the text is taller than the view, which at 100% never
+## happens and at larger text sizes only with several crises active.
+var sidebar_clip: Control = null
+var _sidebar_scroll_t: float = 0.0
+const SIDEBAR_VIEW: Vector2 = Vector2(400.0, 656.0)
+const SIDEBAR_DWELL_TOP: float = 4.0
+const SIDEBAR_DWELL_BOTTOM: float = 2.5
+const SIDEBAR_SCROLL_SPEED: float = 36.0
+## Rows in the sidebar ladder as last rendered: [asks, bids].
+var _ladder_shape: Array[int] = [0, 0]
+## Label metadata key holding the font size at 100% text scale.
+const BASE_SIZE_META: String = "base_font_size"
+## Label metadata flag: this label may be taller than its view and then scrolls
+## (set while the text scale is above 100%; at 100% the text must simply fit).
+const SCROLLS_META: String = "scrolls_vertically"
+## Font size of the tactical map's station names at 100% text scale.
+const MAP_FONT_SIZE: int = 14
+const TICKER_FONT_SIZE: int = 16
+
 ## Persistence (#35). Null until enable_persistence(); headless runs (tests,
 ## smoke) never enable it, so they never touch the real user:// directory.
 var save_store: SaveStore = null
@@ -93,6 +121,8 @@ var _saved_profile_dict: Dictionary = {}
 
 func _init() -> void:
 	custom_minimum_size = VIEWPORT_SIZE
+	settings_menu = SettingsMenu.new(settings)
+	settings.changed.connect(_on_settings_changed)
 	initialize_systems()
 
 
@@ -120,12 +150,17 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if loop == null:
 		return
+	# The settings screen freezes the sim, as an overlay would.
+	if settings_menu != null and settings_menu.is_open:
+		_refresh_readouts()
+		return
 	# A wake-sized raw delta must not drive the ticker or anything else either.
 	if SimClock.is_wake_delta(delta):
 		loop.advance(delta)
 		_refresh_readouts()
 		return
 	loop.advance(delta)
+	_sidebar_scroll_t += delta
 	if hud != null:
 		hud.advance_ticker(delta)
 	_refresh_readouts()
@@ -140,6 +175,12 @@ func _input(event: InputEvent) -> void:
 
 ## Routes an InputEvent to the game loop (m0_* InputMap actions). True if consumed.
 func handle_input(event: InputEvent) -> bool:
+	if settings_menu != null:
+		if settings_menu.is_open:
+			return settings_menu.handle_event(event)
+		if InputMap.has_action(InputRemap.ACT_SETTINGS) and event.is_action_pressed(InputRemap.ACT_SETTINGS) and not event.is_echo():
+			settings_menu.open()
+			return true
 	return loop != null and loop.handle_input(event)
 
 
@@ -169,6 +210,7 @@ func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 ## persisted MetaProfile so the next new run starts with its perks.
 func enable_persistence(store: SaveStore) -> void:
 	save_store = store
+	_load_settings()
 	_loaded_profile = store.load_profile()
 	if _loaded_profile != null:
 		_saved_profile_dict = _loaded_profile.to_dict()
@@ -231,6 +273,10 @@ func _on_round_completed(_round_num: int) -> void:
 ## The run slot embeds a profile copy too, so refresh it in the same step (D3):
 ## a crash before the next round autosave must not leave a stale embedded profile.
 func _on_action_handled(_action: String) -> void:
+	# The language action cycles Loc directly: keep the saved setting in step.
+	if settings.locale != Loc.current():
+		settings.locale = Loc.current()
+		_save_settings()
 	if controller != null and controller.profile.to_dict() != _saved_profile_dict:
 		save_all()
 
@@ -501,6 +547,148 @@ func _apply_drone(volume_db: float) -> void:
 	drone_player.volume_db = volume_db
 
 
+# --- Accessibility settings (#37) ---
+
+## Loads settings.json (defaults when absent) and applies them to InputMap,
+## Palette and, unless the environment pins one, the language.
+func _load_settings() -> void:
+	settings.changed.disconnect(_on_settings_changed)
+	var fresh: AccessibilitySettings = AccessibilitySettings.load_from(save_store)
+	settings.text_scale = fresh.text_scale
+	settings.palette = fresh.palette
+	settings.locale = fresh.locale
+	settings.bindings = fresh.bindings
+	var env_locale: bool = OS.get_environment(Loc.PSEUDO_ENV) in ["1", "true", "yes"] or OS.get_environment(Loc.LOCALE_ENV) != ""
+	if env_locale:
+		settings.locale = Loc.current()
+	settings.apply_all(not env_locale)
+	settings.changed.connect(_on_settings_changed)
+	apply_text_scale()
+
+
+func _save_settings() -> void:
+	if save_store != null and settings.save(save_store) != OK:
+		push_warning("settings save failed")
+
+
+func _on_settings_changed() -> void:
+	settings.locale = Loc.current()
+	apply_text_scale()
+	_save_settings()
+
+
+## Font size for a label drawn at `base` px at 100%, under the current scale.
+func scaled_size(base: int) -> int:
+	return int(round(float(base) * settings.text_scale))
+
+
+## Height of one text line of a label at its current font size (Label.get_line_height()
+## lags a font-size override until the label is in the tree).
+func _line_height(label: Label) -> float:
+	var font: Font = label.get_theme_default_font()
+	return ceilf(font.get_height(label.get_theme_font_size("font_size"))) + float(label.get_theme_constant("line_spacing"))
+
+
+## Height the label's text needs at its width (Label.get_line_count() reads 1 until the
+## label is in the tree, so measure with the font directly).
+func _text_height(label: Label) -> float:
+	var font: Font = label.get_theme_default_font()
+	var fs: int = label.get_theme_font_size("font_size")
+	var flags: int = TextServer.BREAK_MANDATORY
+	var width: float = -1.0
+	if label.autowrap_mode != TextServer.AUTOWRAP_OFF:
+		width = label.size.x
+		flags |= TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	var h: float = font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, width, fs, -1, flags).y
+	var lines: int = int(round(h / maxf(1.0, font.get_height(fs))))
+	return h + float(maxi(0, lines - 1) * label.get_theme_constant("line_spacing"))
+
+
+## Marquee offset (px) for content `overflow` px taller than its view, `t` seconds
+## into the cycle: dwell at the top, scroll down, dwell at the bottom, jump back.
+static func marquee_offset(t: float, overflow: float) -> float:
+	if overflow <= 0.0:
+		return 0.0
+	var run: float = overflow / SIDEBAR_SCROLL_SPEED
+	var cycle: float = SIDEBAR_DWELL_TOP + run + SIDEBAR_DWELL_BOTTOM
+	var m: float = fposmod(t, cycle)
+	if m < SIDEBAR_DWELL_TOP:
+		return 0.0
+	return minf(overflow, (m - SIDEBAR_DWELL_TOP) * SIDEBAR_SCROLL_SPEED)
+
+
+## Sizes the sidebar label to its text and applies the marquee when it overflows.
+func _update_sidebar_scroll() -> void:
+	if sidebar_label == null:
+		return
+	var content: float = maxf(SIDEBAR_VIEW.y, _text_height(sidebar_label))
+	sidebar_label.size.y = content
+	var overflow: float = content - SIDEBAR_VIEW.y
+	sidebar_label.position.y = -marquee_offset(_sidebar_scroll_t, overflow)
+
+
+## True when the sidebar text is taller than its view (so it is scrolling).
+func sidebar_overflow() -> float:
+	if sidebar_label == null:
+		return 0.0
+	return maxf(0.0, sidebar_label.size.y - SIDEBAR_VIEW.y)
+
+
+func _fit_height(label: Label, minimum: float) -> float:
+	var font: Font = label.get_theme_default_font()
+	return maxf(minimum, ceilf(font.get_height(label.get_theme_font_size("font_size"))))
+
+
+## Applies the text scale to every readout and re-lays the rows that grow with it.
+func apply_text_scale() -> void:
+	if header_label == null:
+		return
+	for l in _scaled_labels():
+		l.add_theme_font_size_override("font_size", scaled_size(int(l.get_meta(BASE_SIZE_META))))
+	sidebar_label.set_meta(SCROLLS_META, settings.text_scale > 1.0)
+	header_label.size.y = _fit_height(header_label, 28.0)
+	hint_label.position.y = header_label.position.y + header_label.size.y + 2.0
+	hint_label.size.y = _fit_height(hint_label, 26.0)
+	var lh: float = _fit_height(ticker_labels[0], 24.0)
+	for i in ticker_labels.size():
+		ticker_labels[i].position.y = float(i) * lh
+		ticker_labels[i].size.y = lh
+	ticker_clip.size.y = maxf(52.0, lh * float(ticker_labels.size()))
+	map_label.size.y = ceilf(168.0 * settings.text_scale)
+	if tactical_map_panel != null:
+		tactical_map_panel.queue_redraw()
+
+
+func _scaled_labels() -> Array[Label]:
+	var out: Array[Label] = [header_label, hint_label, map_label, sidebar_label, market_label, resolution_label, sleep_label, settings_label]
+	out.append_array(ticker_labels)
+	return out
+
+
+## Strips beside the ladder: asks above the spread line, bids below.
+func _update_ladder_swatches() -> void:
+	if sidebar_label == null or sidebar_clip == null:
+		return
+	var rows: int = _ladder_shape[0] + _ladder_shape[1]
+	while _ladder_swatches.size() < rows:
+		var r := ColorRect.new()
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sidebar_clip.add_child(r)
+		_ladder_swatches.append(r)
+	var lh: float = _line_height(sidebar_label)
+	for i in _ladder_swatches.size():
+		var r: ColorRect = _ladder_swatches[i]
+		r.visible = i < rows
+		if not r.visible:
+			continue
+		var is_ask: bool = i < _ladder_shape[0]
+		# Layout: title, blank, asks, spread, bids.
+		var line: int = 2 + i if is_ask else 3 + i
+		r.color = Palette.ask_color() if is_ask else Palette.bid_color()
+		r.position = Vector2(3.0, sidebar_label.position.y + lh * float(line) + 3.0)
+		r.size = Vector2(9.0, maxf(4.0, lh - 6.0))
+
+
 # --- Readouts ---
 
 func _make_label(parent: Control, rect: Rect2, size: int = 16) -> Label:
@@ -508,6 +696,7 @@ func _make_label(parent: Control, rect: Rect2, size: int = 16) -> Label:
 	l.position = rect.position
 	l.size = rect.size
 	l.add_theme_font_size_override("font_size", size)
+	l.set_meta(BASE_SIZE_META, size)
 	l.add_theme_color_override("font_color", HUD_TEXT_COLOR)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Text arrives already translated via tr(); stop Label translating it a second
@@ -523,7 +712,14 @@ func _build_readouts() -> void:
 	header_label = _make_label(header_panel, Rect2(16, 4, 1248, 28), 18)
 	hint_label = _make_label(header_panel, Rect2(16, 34, 1248, 26), HINT_FONT_SIZE)
 	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 168), 16)
-	sidebar_label = _make_label(sidebar_panel, Rect2(16, 8, 368, 656), 16)
+	sidebar_clip = Control.new()
+	sidebar_clip.position = Vector2(0, 8)
+	sidebar_clip.size = SIDEBAR_VIEW
+	sidebar_clip.clip_contents = true
+	sidebar_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sidebar_panel.add_child(sidebar_clip)
+	sidebar_label = _make_label(sidebar_clip, Rect2(16, 0, 368, 656), 16)
+	sidebar_label.set_meta(SCROLLS_META, false)
 	# Translated lines can be wider than the panel: wrap instead of spilling out (#40).
 	sidebar_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ticker_clip = Control.new()
@@ -533,7 +729,7 @@ func _build_readouts() -> void:
 	ticker_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ticker_panel.add_child(ticker_clip)
 	for i in OrbitalHUD.TICKER_VISIBLE_LINES:
-		var tl := _make_label(ticker_clip, Rect2(0, i * 24, 4096, 24), 16)
+		var tl := _make_label(ticker_clip, Rect2(0, i * 24, 4096, 24), TICKER_FONT_SIZE)
 		tl.autowrap_mode = TextServer.AUTOWRAP_OFF
 		ticker_labels.append(tl)
 	tactical_map_panel.clip_contents = true
@@ -568,6 +764,15 @@ func _build_readouts() -> void:
 	sleep_label = _make_label(sleep_modal, Rect2(20, 12, SLEEP_BANNER_RECT.size.x - 40.0, SLEEP_BANNER_RECT.size.y - 24.0), 22)
 	sleep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sleep_modal.visible = false
+	settings_modal = Panel.new()
+	settings_modal.add_theme_stylebox_override("panel", opaque)
+	settings_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position
+	settings_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size
+	hud_container.add_child(settings_modal)
+	settings_label = _make_label(settings_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 18)
+	settings_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	settings_modal.visible = false
+	apply_text_scale()
 
 
 func _draw_map() -> void:
@@ -583,7 +788,7 @@ func _draw_map() -> void:
 		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, Color(0.2, 0.5, 0.35), 1.0)
 		var col := Color(0.4, 1.0, 0.6) if st == hud.active_station else Color(0.3, 0.7, 0.5)
 		tactical_map_panel.draw_circle(pos, SolTacticalMap.STATION_NODE_RADIUS_PX, col)
-		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), Loc.station(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), Loc.station(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, scaled_size(MAP_FONT_SIZE), col)
 
 
 func _refresh_readouts() -> void:
@@ -605,6 +810,7 @@ func _refresh_readouts() -> void:
 	hint_label.text = "%s     %s" % ["  ".join(tabs), controls_hint()]
 	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at)
 	sidebar_label.text = _sidebar_text()
+	_update_sidebar_scroll()
 	_refresh_ticker()
 	market_modal.visible = hud.is_trading_overlay_open() and loop.overlay_state == M0Loop.OVERLAY_NONE
 	market_label.text = _board_text() if market_modal.visible else ""
@@ -617,6 +823,14 @@ func _refresh_readouts() -> void:
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	sleep_modal.visible = loop.sleep_pause_active and controller.sim_clock.paused
 	sleep_label.text = "%s\n%s" % [tr("SLEEP_NOTICE"), tr("SLEEP_PRESS_START")] if sleep_modal.visible else ""
+	settings_modal.visible = settings_menu.is_open
+	if settings_modal.visible:
+		var lh: float = _line_height(settings_label)
+		# Title, blank, blank, hint and the scroll line take 5 lines; the rest are rows.
+		settings_label.text = settings_menu.text(int(settings_label.size.y / lh) - 5)
+	else:
+		settings_label.text = ""
+	_update_ladder_swatches()
 	tactical_map_panel.queue_redraw()
 
 
@@ -625,7 +839,7 @@ func _refresh_ticker() -> void:
 	if ticker_labels.is_empty():
 		return
 	var font: Font = ticker_labels[0].get_theme_default_font()
-	var measure := func(t: String) -> float: return font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	var measure := func(t: String) -> float: return font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, scaled_size(TICKER_FONT_SIZE)).x
 	var lines: Array = hud.get_ticker_lines(measure)
 	for i in ticker_labels.size():
 		var tl: Label = ticker_labels[i]
@@ -646,6 +860,7 @@ func _sidebar_text() -> String:
 	out.append("%s  %s" % [Loc.station(hud.active_station).to_upper(), Loc.commodity(hud.active_commodity)])
 	out.append("")
 	var asks: Array = ladder["asks"]
+	_ladder_shape = [asks.size(), (ladder["bids"] as Array).size()]
 	for i in range(asks.size() - 1, -1, -1):
 		out.append(tr("SIDE_ASK_ROW") % [">" if buying and i == f.ladder_index else " ", asks[i]["price"], asks[i]["quantity"]])
 	out.append(tr("SIDE_SPREAD") % float(ladder["spread"]))

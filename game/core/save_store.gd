@@ -5,6 +5,7 @@ extends RefCounted
 ## Steam Cloud layout (everything under one directory, fixed filenames, so the
 ## Cloud auto-sync root is the single folder `user://saves/`):
 ##   user://saves/profile.json      MetaProfile + bought Golden Parachutes perks
+##   user://saves/settings.json     accessibility settings, bindings, language (#37)
 ##   user://saves/run_slot_0.json   the in-progress run (ledger, cargo, clocks,
 ##                                  order books, Bags marble state)
 ## The two are separate files so a lost or corrupt run never takes the profile
@@ -24,9 +25,11 @@ const SCHEMA_VERSION: int = 1
 const DEFAULT_DIR: String = "user://saves"
 const PROFILE_FILE: String = "profile.json"
 const RUN_FILE: String = "run_slot_0.json"
+const SETTINGS_FILE: String = "settings.json"
 const TMP_SUFFIX: String = ".tmp"
 const KIND_RUN: String = "run"
 const KIND_PROFILE: String = "profile"
+const KIND_SETTINGS: String = "settings"
 
 var dir: String = DEFAULT_DIR
 ## Test hook: abort the next write halfway through the temp file, as a full
@@ -49,6 +52,10 @@ func profile_path() -> String:
 
 func run_path() -> String:
 	return dir.path_join(RUN_FILE)
+
+
+func settings_path() -> String:
+	return dir.path_join(SETTINGS_FILE)
 
 
 # --- Generic envelope IO ---
@@ -128,6 +135,18 @@ func load_profile() -> MetaProfile:
 	if not bool(r["ok"]):
 		return null
 	return MetaProfile.from_dict(r["data"])
+
+
+# --- Settings (#37) ---
+
+func save_settings(data: Dictionary) -> Error:
+	return write(settings_path(), KIND_SETTINGS, data)
+
+
+## The stored settings dictionary, or {} when there is none or it is unusable.
+func load_settings() -> Dictionary:
+	var r: Dictionary = read(settings_path(), KIND_SETTINGS)
+	return r["data"] if bool(r["ok"]) else {}
 
 
 # --- Run slot ---
