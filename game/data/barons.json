@@ -6,7 +6,7 @@
                "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600},
   "heat": {"decay_per_round": 1, "retaliation_at": 6, "corner_round": 2, "margin_call": 3, "credit_open": 1,
            "credit_default": 3, "missed_contract": 4, "bounty_sponsored": 3, "reset_to": 0},
-  "consequence": {"random_max_loss_bps": 1500, "random_event_bps": 0},
+  "consequence": {"random_max_loss_bps": 1500, "random_event_bps": 300},
   "rivals": {
     "capacity": 60,
     "decide_chance_bps": 3500,

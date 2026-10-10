@@ -27,8 +27,13 @@ const TMP_ROOT := "user://test_tmp_wiring"
 ## the world (rivals are off here), and a world with none saves no `rivals` key and trades
 ## nothing, so it hashes exactly as before. The shipped world (fleets on) is pinned by
 ## test_rival_fleets.gd instead.
-const WORLD_HASH_SEED_84 := "65d35e1895cf171203bccae83e812153d8509ad0d2fd5229814e440762738e48"
-const WORLD_HASH_SEED_7 := "30308d02bb390ff4028cd037eb181f93f7386d3e93d51a5772584e8af7894563"
+## Re-pinned by Epic 3 task 12 (whole-world goldens): both moved because random baron events
+## were switched on (`consequence.random_event_bps` 0 -> 300 in barons.json). A random event
+## injects a crisis and fines the player, so the run's state differs. Old values:
+## seed 84 65d35e1895cf171203bccae83e812153d8509ad0d2fd5229814e440762738e48,
+## seed 7 30308d02bb390ff4028cd037eb181f93f7386d3e93d51a5772584e8af7894563.
+const WORLD_HASH_SEED_84 := "a9c4a5197ddf211908cb6443e4881736aef15c0898de195a2abde69ad7f66c3b"
+const WORLD_HASH_SEED_7 := "0dd0ed7641fb9ba43c974d5a08246dc6624bd7ac191211a4545aa2ca44eb7058"
 
 
 func _json(d: Dictionary) -> Dictionary:

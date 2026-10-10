@@ -549,6 +549,9 @@ func test_filing_chapter_11_drops_the_queued_orders() -> String:
 
 func test_sol_central_never_touches_the_debt_or_forces_chapter_11() -> String:
 	var c := _ctx()
+	# Random baron events (on since task 12) fine the player on their own account; this
+	# test is about what an auction does to the debt.
+	(c["world"] as Barons).data["consequence"]["random_event_bps"] = 0
 	var rc: RunController = c["rc"]
 	var com: String = str(_auction(c, 5)["commodity"])
 	var debt0: int = rc.doomsday.principal_debt

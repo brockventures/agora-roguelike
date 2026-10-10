@@ -582,6 +582,9 @@ func test_no_random_event_forces_chapter_11() -> String:
 	var c := _ctx(21, 50000)
 	var rc: RunController = c["rc"]
 	var w: Barons = c["world"]
+	# Random baron events (on since task 12) fine the player under their own lethal guard,
+	# tested in test_heat_bounties.gd; this test is about settlements and takeovers.
+	w.data["consequence"]["random_event_bps"] = 0
 	for id in [ARES, TITAN, SOL]:
 		_distress(w, id, 100000)
 	var cr0: int = rc.cr

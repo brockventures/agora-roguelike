@@ -17,8 +17,12 @@ const EMBER: String = "ember_haulage"
 ## when Epic 3 task 10 landed. test_market_wiring.gd's WORLD_HASH_SEED_* pin the same run with
 ## the fleets taken out and did not move; these pin the fleets. A change that moves them
 ## is a replay-contract change and must be deliberate.
-const RIVAL_WORLD_HASH_SEED_84 := "7892044f12e33253d256227c836a81f886e8ee89f01b8c6a2cf655a9018932c4"
-const RIVAL_WORLD_HASH_SEED_7 := "64af64b32b9201274720e65156cf4ecd1e632bb7c40f77efe912f40603b2a092"
+## Re-pinned by Epic 3 task 12 (whole-world goldens): both moved because random baron events
+## were switched on (`consequence.random_event_bps` 0 -> 300 in barons.json). Old values:
+## seed 84 7892044f12e33253d256227c836a81f886e8ee89f01b8c6a2cf655a9018932c4,
+## seed 7 64af64b32b9201274720e65156cf4ecd1e632bb7c40f77efe912f40603b2a092.
+const RIVAL_WORLD_HASH_SEED_84 := "c94ee4e4cd9467163946685186d4b1f581c5d2e8aa608c99406daa8368dddcc3"
+const RIVAL_WORLD_HASH_SEED_7 := "53dcbf0cfac0e90562f25fbc6afe98993585948d9b04d12f1d320fe5467950f7"
 
 
 func _json(d: Dictionary) -> Dictionary:
