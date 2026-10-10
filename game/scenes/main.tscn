@@ -1,7 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8m3y0k2r4n5v"]
+[gd_scene load_steps=5 format=3 uid="uid://b8m3y0k2r4n5v"]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/crt_retro.gdshader" id="2_shader"]
+
+[ext_resource type="Theme" path="res://ui/hud_theme.tres" id="3_theme"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
 shader = ExtResource("2_shader")
@@ -15,7 +17,7 @@ shader_parameter/phosphor_glow = 0.15
 shader_parameter/flicker_speed = 15.0
 shader_parameter/flicker_intensity = 0.015
 shader_parameter/phosphor_tint = Color(0.92, 1, 0.94, 1)
-shader_parameter/enabled = true
+shader_parameter/enabled = false
 
 [node name="Main" type="Control"]
 custom_minimum_size = Vector2(1280, 800)
@@ -48,9 +50,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.04, 0.05, 0.07, 1)
+color = Color(0.1098, 0.1020, 0.0902, 1)
 
 [node name="HUDContainer" type="Control" parent="ViewportContainer/SubViewport"]
+theme = ExtResource("3_theme")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -59,11 +62,13 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="HeaderPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+theme_type_variation = &"HeaderPanel"
 layout_mode = 0
 offset_right = 1280.0
 offset_bottom = 64.0
 
 [node name="TacticalMapPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+theme_type_variation = &"MapPanel"
 clip_contents = true
 layout_mode = 0
 offset_top = 64.0
@@ -71,6 +76,7 @@ offset_right = 880.0
 offset_bottom = 736.0
 
 [node name="SidebarPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+theme_type_variation = &"SidebarPanel"
 layout_mode = 0
 offset_left = 880.0
 offset_top = 64.0
@@ -78,6 +84,7 @@ offset_right = 1280.0
 offset_bottom = 736.0
 
 [node name="TickerPanel" type="Panel" parent="ViewportContainer/SubViewport/HUDContainer"]
+theme_type_variation = &"TickerPanel"
 layout_mode = 0
 offset_top = 736.0
 offset_right = 1280.0
