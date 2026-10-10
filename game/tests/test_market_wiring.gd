@@ -16,8 +16,15 @@ const TMP_ROOT := "user://test_tmp_wiring"
 ## first frame. Not the arrival toll: this run teleports with dock_at and never arrives. They pin the whole world path: makers per station, the
 ## per-round world-mods step, the Ceres book unlocked mid-run. A change that moves
 ## them is a replay-contract change and must be deliberate.
-const WORLD_HASH_SEED_84 := "4b1464a8efc518458d138a930d7aa68ce54739157ea36a445061d5fe2520333a"
-const WORLD_HASH_SEED_7 := "3911b0ea99ec566004d6f0092b9fe69a98421d41634c3fadcf7b5a1c52a44625"
+## Re-pinned by Epic 3 task 4 (Ares Heavy), inherently: the run is ~60 rounds, so Ares
+## posts a defense contract at round 8 (and again once it is answered), and an offer
+## halts the clock until it is answered. The interrupt zeroes the sim clock's
+## sub-tick accumulator, which shifts the run's tick count against its frame
+## budget, exactly as a crisis does. Proved by making Ares a no-op: both old pins
+## (4b1464a8..., 3911b0ea...) matched again. _advance declines every offer
+## (a decline leaves no state), so the move is the halts and nothing else.
+const WORLD_HASH_SEED_84 := "65d35e1895cf171203bccae83e812153d8509ad0d2fd5229814e440762738e48"
+const WORLD_HASH_SEED_7 := "30308d02bb390ff4028cd037eb181f93f7386d3e93d51a5772584e8af7894563"
 
 
 func _json(d: Dictionary) -> Dictionary:
@@ -343,10 +350,10 @@ func test_the_board_and_sidebar_name_the_baron() -> String:
 func _world_run(p_seed: int) -> Replay.Session:
 	var s := Replay.Session.new(p_seed, {}, Replay.DEFAULT_FRAME_DELTA, TPR, true)
 	s.dispatch(M0Loop.ACT_TAB_NEXT)
-	s.advance_frames(40)
+	_advance(s, 40)
 	s.dispatch(M0Loop.ACT_RIGHT)
 	s.dispatch(M0Loop.ACT_SUBMIT)
-	s.advance_frames(300)
+	_advance(s, 300)
 	s.loop.dock_at("ceres")
 	s.dispatch(M0Loop.ACT_SUBMIT)
 	_advance(s, 1500)
@@ -358,6 +365,8 @@ func _advance(s: Replay.Session, n: int) -> void:
 	for i in n:
 		if s.loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 			s.loop.acknowledge_crisis()
+		elif s.loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			s.loop.decline_contract()
 		s.advance()
 
 
@@ -391,10 +400,10 @@ func test_save_load_then_continue_equals_the_uninterrupted_run() -> String:
 		var whole := _world_run(p_seed)
 		var split := Replay.Session.new(p_seed, {}, Replay.DEFAULT_FRAME_DELTA, TPR, true)
 		split.dispatch(M0Loop.ACT_TAB_NEXT)
-		split.advance_frames(40)
+		_advance(split, 40)
 		split.dispatch(M0Loop.ACT_RIGHT)
 		split.dispatch(M0Loop.ACT_SUBMIT)
-		split.advance_frames(300)
+		_advance(split, 300)
 		split.loop.dock_at("ceres")
 		split.dispatch(M0Loop.ACT_SUBMIT)
 		_advance(split, 700)
@@ -422,6 +431,8 @@ func test_save_load_then_continue_equals_the_uninterrupted_run() -> String:
 		for i in 800:
 			if lp.overlay_state == M0Loop.OVERLAY_CRISIS:
 				lp.acknowledge_crisis()
+			elif lp.overlay_state == M0Loop.OVERLAY_CONTRACT:
+				lp.decline_contract()
 			lp.advance(Replay.DEFAULT_FRAME_DELTA)
 		if RunSave.state_hash(rc, lp.market, r["bags"]) != whole.state_hash():
 			return "seed %d: save/load/continue diverged from the uninterrupted run" % p_seed

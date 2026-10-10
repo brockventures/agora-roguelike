@@ -21,6 +21,7 @@ const PARAM_KINDS: Dictionary = {
 		"squeeze_window_rounds": "int", "squeeze_price_bps_max": "int", "squeeze_depth_bps": "int",
 		"contract_every_rounds": "int", "contract_qty": "range", "contract_bid_bps": "int",
 		"contract_penalty_bps": "int",
+		"contract_deadline_rounds": "int",
 	},
 	"hoarder": {
 		"float_commodities": "commodities", "hoard_trigger_depth_bps": "int", "hoard_cap_qty": "int",
@@ -94,7 +95,125 @@ func _mods_of(id: String) -> Array:
 			"ask_depth_bps": int(pipe.get("depth_bps", 10000)),
 			"ask_price_bps": 0 if insider else int(pipe.get("outsider_ask_bps", 0)),
 		})
+	if str(d.get("archetype", "")) == "short_squeezer":
+		out.append_array(AresHeavy.squeeze_mods(self, id))
 	return out
+
+
+# --- Archetypes (Epic 3 task 4, design doc 4.1): Ares Heavy ---
+
+## The once-per-round world step (design doc 2.2), run by M0Loop after the crisis
+## deck and before the books are reseeded: barons by sorted id. Decides everything
+## from (run_seed, round, world state, player state) and writes the result into
+## BaronState.scratch, so market_mods() stays a pure function of saved state and a
+## restored run re-emits exactly the mods the original did. Returns the events the
+## UI turns into GalNet lines: dictionaries with a `kind`, a `baron` and the data.
+func advance_round(round_num: int, rc: RunController) -> Array:
+	var events: Array = []
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "short_squeezer":
+			events.append_array(AresHeavy.advance(self, id, round_num, rc))
+	return events
+
+
+## Whether a defense contract offer waits for the player's answer.
+func has_pending_offer() -> bool:
+	return not pending_offer().is_empty()
+
+
+## The contract offer awaiting an answer ({} when none), with its `baron` id.
+func pending_offer() -> Dictionary:
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "short_squeezer":
+			var c: Dictionary = AresHeavy.contract(self, id)
+			if str(c.get("state", "")) == "offered":
+				var out: Dictionary = c.duplicate()
+				out["baron"] = id
+				return out
+	return {}
+
+
+## The contract the player accepted and has not yet settled ({} when none).
+func open_contract() -> Dictionary:
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "short_squeezer":
+			var c: Dictionary = AresHeavy.contract(self, id)
+			if str(c.get("state", "")) == "accepted":
+				var out: Dictionary = c.duplicate()
+				out["baron"] = id
+				return out
+	return {}
+
+
+## The squeeze currently on a book as {baron, commodity, price_bps, depth_bps,
+## rounds_short}, {} when the book is not squeezed.
+func squeeze_on(station: String, commodity: String) -> Dictionary:
+	for id in ids():
+		if str(def(id).get("archetype", "")) != "short_squeezer" or str(def(id).get("anchor", "")) != station.to_lower():
+			continue
+		var q: Dictionary = AresHeavy.squeeze(self, id)
+		if not q.is_empty() and str(q["commodity"]) == commodity.to_upper():
+			var out: Dictionary = q.duplicate()
+			out["baron"] = id
+			return out
+	return {}
+
+
+func accept_offer(rc: RunController) -> Dictionary:
+	var o: Dictionary = pending_offer()
+	return AresHeavy.accept(self, str(o["baron"]), rc) if not o.is_empty() else {}
+
+
+func decline_offer() -> bool:
+	var o: Dictionary = pending_offer()
+	return not o.is_empty() and AresHeavy.decline(self, str(o["baron"]))
+
+
+## Settles an accepted contract if the ship is docked at the anchor holding the
+## full quantity. Returns the delivered event, {} when nothing was settled.
+func try_deliver(rc: RunController) -> Dictionary:
+	var c: Dictionary = open_contract()
+	return AresHeavy.deliver(self, str(c["baron"]), rc) if not c.is_empty() else {}
+
+
+## The failed corp's obligations end with it (a Chapter 11 filing founds a new
+## corp): open and offered contracts and any squeeze are dropped.
+func cancel_contracts() -> void:
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "short_squeezer":
+			AresHeavy.cancel(self, id)
+
+
+## Share of net worth a RANDOM baron event may cost at most, in bps.
+func random_max_loss_bps() -> int:
+	return clampi(int(data.get("consequence", {}).get("random_max_loss_bps", 0)), 0, 10000)
+
+
+## Adds a baron fine to the player's principal debt, under the lethal guard
+## (design doc 7, decision 4). `origin` is "consequence" (the player's own choices
+## exposed them: an accepted contract that was missed) or "random".
+##  - consequence: charged in full. It may tip the corp into Chapter 11, never
+##    touches doomsday ticks, and reports `forced_ch11` when it did.
+##  - random: clamped so net worth stays at or above its pre-event value minus
+##    `random_max_loss_bps`, and so the corp stays solvent. A random event never
+##    forces Chapter 11 alone.
+## Returns {origin, requested, applied, clamped, forced_ch11}.
+func penalize(rc: RunController, amount: int, origin: String) -> Dictionary:
+	var want: int = maxi(0, amount)
+	var pre: Dictionary = rc.assess()
+	var applied: int = want
+	if origin != "consequence":
+		var nw: int = int(pre["liquidation_value"]) - int(pre["total_debt"])
+		applied = mini(want, maxi(0, nw) * random_max_loss_bps() / 10000)
+	applied = rc.doomsday.add_principal(applied)
+	var post: Dictionary = rc.assess()
+	return {
+		"origin": origin if origin == "consequence" else "random",
+		"requested": want,
+		"applied": applied,
+		"clamped": applied < want,
+		"forced_ch11": not bool(pre["insolvent"]) and bool(post["insolvent"]),
+	}
 
 
 # --- Privileges (Epic 3 task 3, design doc 3.3) ---
@@ -239,6 +358,11 @@ static func validate(d: Dictionary) -> Array:
 			errs.append("heat.decay_per_round must be a whole number >= 0")
 		if not _is_int(heat.get("retaliation_at", null)) or int(heat["retaliation_at"]) <= 0:
 			errs.append("heat.retaliation_at must be a positive whole number")
+	var cons = d.get("consequence", null)
+	if not (cons is Dictionary):
+		errs.append("consequence must be an object")
+	elif not _is_int(cons.get("random_max_loss_bps", null)) or int(cons["random_max_loss_bps"]) < 0 or int(cons["random_max_loss_bps"]) > 10000:
+		errs.append("consequence.random_max_loss_bps must be 0..10000")
 	var vic = d.get("victory", null)
 	if not (vic is Dictionary):
 		errs.append("victory must be an object")

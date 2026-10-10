@@ -29,6 +29,8 @@ func _fly(lp: M0Loop, rc: RunController, max_ticks: int = 400) -> void:
 		guard -= 1
 		if lp.overlay_state == M0Loop.OVERLAY_CRISIS:
 			lp.acknowledge_crisis()
+		elif lp.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			lp.decline_contract()
 		lp.advance(FRAME)
 
 

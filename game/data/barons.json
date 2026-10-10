@@ -4,6 +4,7 @@
   "victory": {"barons_required": "all"},
   "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6},
   "heat": {"decay_per_round": 1, "retaliation_at": 6},
+  "consequence": {"random_max_loss_bps": 1500},
   "barons": [
     {
       "id": "ares_heavy",
@@ -30,7 +31,8 @@
         "contract_every_rounds": 8,
         "contract_qty": [30, 60],
         "contract_bid_bps": 1500,
-        "contract_penalty_bps": 2000
+        "contract_penalty_bps": 2000,
+        "contract_deadline_rounds": 6
       }
     },
     {

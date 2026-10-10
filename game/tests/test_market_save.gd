@@ -119,4 +119,6 @@ func _run(lp: M0Loop, rc: RunController, n: int) -> void:
 		guard -= 1
 		if lp.overlay_state == M0Loop.OVERLAY_CRISIS:
 			lp.acknowledge_crisis()
+		elif lp.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			lp.decline_contract()
 		lp.advance(FRAME)

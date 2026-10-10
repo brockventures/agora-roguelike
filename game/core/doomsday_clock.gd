@@ -350,6 +350,16 @@ func service_debt(amount: int) -> int:
 	debt_serviced.emit(paid, get_total_debt())
 	return paid
 
+## Adds a fine to the principal (Epic 3 Ares Heavy default penalty). Saturates at
+## MAX_CR and keeps the compounding base in step, as the constructor does, so the
+## new principal accrues interest from the next tick. Returns the amount added.
+func add_principal(amount: int) -> int:
+	var add: int = maxi(0, amount)
+	var before: int = principal_debt
+	principal_debt = _sat_add(principal_debt, add)
+	_compounding_base = _sat_add(principal_debt, accrued_interest)
+	return principal_debt - before
+
 ## Wipe every debt bucket (Chapter 11 filing, #10). Zeroes principal, accrued
 ## interest, accrued burn, the sub-credit remainders and the compounding base.
 ## Deliberately leaves ticks_remaining, stage and the lifetime totals untouched:

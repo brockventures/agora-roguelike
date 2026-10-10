@@ -150,6 +150,22 @@ TAG_PIPELINE_ASK,"PIPELINE +%s%% ASK"
 TAG_PIPELINE_YOURS,PIPELINE (YOURS)
 TAG_TOLL,DOCKING TOLL %d CR
 TAG_TOLL_EXEMPT,DOCKING TOLL EXEMPT
+TAG_SQUEEZE,SQUEEZE +%d%%
+HL_ARES_OFFER,"%s posts a defense contract: %d %s to %s within %d rounds, %d CR"
+HL_ARES_ACCEPTED,"%s: defense contract taken, %d %s due by round %d"
+HL_ARES_DECLINED,%s: defense contract declined
+HL_ARES_DELIVERED,"%s: %d %s delivered, %d CR paid"
+HL_ARES_SQUEEZE,"%s squeezes %s %s: price up %d%%, books thin"
+HL_ARES_MISSED,"%s: defense contract defaulted, %d CR penalty added to your debt"
+HL_ARES_RETALIATION,%s: the default penalty leaves you insolvent
+CONTRACT_TITLE,DEFENSE CONTRACT   %s
+CONTRACT_BODY,"Deliver %d %s to %s by round %d."
+CONTRACT_PAY,"Pays %d CR a unit, %d CR in all, on delivery."
+CONTRACT_PENALTY,Miss it and %d CR joins your debt.
+CONTRACT_SQUEEZE,"In its last %d rounds, holding under %d %s lets the baron squeeze that book, up to +%d%%."
+CONTRACT_KEYS,"A accept   B decline.   The clock is halted."
+SIDE_CONTRACT,"CONTRACT %d %s by rd %d"
+MAP_CONTRACT,"Contract: %d %s to %s, due round %d."
 STATION_EARTH,Kennedy Elevator
 STATION_MARS,Arcadia Foundries
 STATION_LUNA,Luna

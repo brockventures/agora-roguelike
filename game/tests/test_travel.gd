@@ -29,6 +29,8 @@ func _run_ticks(lp: M0Loop, rc: RunController, n: int) -> void:
 		guard -= 1
 		if lp.overlay_state == M0Loop.OVERLAY_CRISIS:
 			lp.acknowledge_crisis()
+		elif lp.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			lp.decline_contract()
 		lp.advance(FRAME)
 
 
@@ -374,6 +376,8 @@ func test_continue_saved_run_resumes_a_voyage_and_a_dock_elsewhere() -> String:
 			m2.loop.advance(FRAME)
 			if m2.loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 				m2.loop.acknowledge_crisis()
+			elif m2.loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+				m2.loop.decline_contract()
 			if not m2.controller.is_in_transit():
 				break
 		if m2.controller.docked_at != "earth":
@@ -537,6 +541,8 @@ func test_gamepad_selects_a_station_and_departs_then_docks() -> String:
 		m._process(FRAME)
 		if m.loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 			m.loop.acknowledge_crisis()
+		elif m.loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			m.loop.decline_contract()
 		if not rc.is_in_transit():
 			break
 	var r: String = "ok"
