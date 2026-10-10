@@ -26,6 +26,9 @@ const PARAM_KINDS: Dictionary = {
 	"hoarder": {
 		"float_commodities": "commodities", "hoard_trigger_depth_bps": "int", "hoard_cap_qty": "int",
 		"release_after_rounds": "int", "corner_premium_bps": "int",
+		"corner_inventory_qty": "qtymap", "corner_ask_depth_bps": "int", "release_ask_depth_bps": "int",
+		"release_discount_bps": "int", "release_rounds": "int", "release_sell_qty": "int",
+		"cooldown_rounds": "int", "food_decay_bps": "int",
 	},
 	"auctioneer": {
 		"auction_every_rounds": "int", "rig_bps_max": "int", "indicative_leak": "leak",
@@ -97,6 +100,8 @@ func _mods_of(id: String) -> Array:
 		})
 	if str(d.get("archetype", "")) == "short_squeezer":
 		out.append_array(AresHeavy.squeeze_mods(self, id))
+	elif str(d.get("archetype", "")) == "hoarder":
+		out.append_array(TitanCryoHydro.mods(self, id))
 	return out
 
 
@@ -108,12 +113,33 @@ func _mods_of(id: String) -> Array:
 ## BaronState.scratch, so market_mods() stays a pure function of saved state and a
 ## restored run re-emits exactly the mods the original did. Returns the events the
 ## UI turns into GalNet lines: dictionaries with a `kind`, a `baron` and the data.
-func advance_round(round_num: int, rc: RunController) -> Array:
+## `market` (optional) lets Titan Cryo-Hydro read the anchor's ask depth for its
+## hoard trigger; without it the trigger cannot fire.
+func advance_round(round_num: int, rc: RunController, market: StationMarket = null) -> Array:
 	var events: Array = []
 	for id in ids():
-		if str(def(id).get("archetype", "")) == "short_squeezer":
-			events.append_array(AresHeavy.advance(self, id, round_num, rc))
+		match str(def(id).get("archetype", "")):
+			"short_squeezer":
+				events.append_array(AresHeavy.advance(self, id, round_num, rc))
+			"hoarder":
+				events.append_array(TitanCryoHydro.advance(self, id, round_num, rc, market))
 	return events
+
+
+## The hoard on a (station, commodity) book as {baron, phase, price_bps, age},
+## {} when the book is not being hoarded (or no hoarder anchors the station).
+func hoard_on(station: String, commodity: String) -> Dictionary:
+	for id in ids():
+		if str(def(id).get("archetype", "")) != "hoarder" or str(def(id).get("anchor", "")) != station.to_lower():
+			continue
+		var st: BaronState = state(id)
+		if st == null or st.holder != "":
+			continue
+		var h: Dictionary = TitanCryoHydro.state_of(self, id, commodity.to_upper())
+		if not h.is_empty():
+			h["baron"] = id
+			return h
+	return {}
 
 
 ## Whether a defense contract offer waits for the player's answer.
@@ -480,6 +506,12 @@ static func _check_params(p: Variant, arch: String, where: String, errs: Array) 
 							ok = false
 			"leak":
 				ok = v is String and LEAK_MODES.has(v)
+			"qtymap":
+				ok = v is Dictionary and not (v as Dictionary).is_empty()
+				if ok:
+					for c in v:
+						if not Transit.COMMODITIES.has(str(c)) or not _is_int(v[c]) or int(v[c]) < 0:
+							ok = false
 		if not ok:
 			errs.append("%s: params.%s is invalid" % [where, k])
 
