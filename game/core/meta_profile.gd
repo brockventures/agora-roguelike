@@ -14,6 +14,9 @@ var contracts: Array[String] = []
 var bankruptcies_filed: int = 0
 ## Golden Parachutes currency (#11), banked when a run ends, spent on perks.
 var severance_points: int = 0
+## Barons broken (held by a corp when it ended), summed over every corp (Epic 3 task 9).
+## Saved only when non-zero, so a profile that never broke one hashes as it always did.
+var barons_broken: int = 0
 ## Runs (corps) finished under this profile, bumped when a corp ends.
 var runs_completed: int = 0
 
@@ -43,7 +46,7 @@ func _add(list: Array[String], id: String) -> bool:
 	return true
 
 func to_dict() -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"patents": patents.duplicate(),
 		"unlocks": unlocks.duplicate(),
 		"contracts": contracts.duplicate(),
@@ -51,6 +54,9 @@ func to_dict() -> Dictionary:
 		"severance_points": severance_points,
 		"runs_completed": runs_completed,
 	}
+	if barons_broken > 0:
+		out["barons_broken"] = barons_broken
+	return out
 
 static func from_dict(d: Dictionary) -> MetaProfile:
 	var p := MetaProfile.new()
@@ -63,6 +69,8 @@ static func from_dict(d: Dictionary) -> MetaProfile:
 	p.severance_points = maxi(0, int(sp)) if (sp is int or sp is float) else 0
 	var rc = d.get("runs_completed", 0)
 	p.runs_completed = maxi(0, int(rc)) if (rc is int or rc is float) else 0
+	var bb = d.get("barons_broken", 0)
+	p.barons_broken = maxi(0, int(bb)) if (bb is int or bb is float) else 0
 	return p
 
 static func _sanitise_ids(raw) -> Array[String]:

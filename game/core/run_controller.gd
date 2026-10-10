@@ -27,6 +27,9 @@ signal run_collapsed()
 signal corp_ended(summary: Dictionary)
 ## Emitted once per run when Severance is banked into the profile (#11).
 signal severance_awarded(points: int)
+## The player holds every baron (Epic 3 phase 1 of the win, design doc 5.4). The run
+## win itself, the Sol System Rescue, is #32 and is not built here.
+signal monopoly_achieved()
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
 ## A systemic margin collapse drained CR from the player this round (#12).
@@ -207,6 +210,10 @@ var peak_net_worth: int = 0
 var corp_number: int = 1
 var _banked_corp: int = 0
 var severance_award: int = 0
+## Barons this corp held when it was banked (Epic 3 task 9); saved only when non-zero.
+var barons_broken_award: int = 0
+## Transient: the monopoly signal fired for this corp (derived from holders, not saved).
+var _monopoly_signalled: bool = false
 ## Why the run ended ("collapse", "bankruptcy", "manual") and what carries over;
 ## both empty until a corp ends. See _build_carry_over().
 var end_reason: String = ""
@@ -318,6 +325,19 @@ func _track_peak(a: Dictionary) -> void:
 	if nw > peak_net_worth:
 		peak_net_worth = nw
 
+## True while the player holds every baron the victory rule needs.
+func has_monopoly() -> bool:
+	return world != null and world.monopoly_achieved()
+
+## Emits monopoly_achieved once per monopoly (re-armed by a Chapter 11 filing, which
+## forfeits the holdings). Returns true when it fired now. Nothing is stored.
+func check_monopoly() -> bool:
+	if _monopoly_signalled or not has_monopoly():
+		return false
+	_monopoly_signalled = true
+	monopoly_achieved.emit()
+	return true
+
 ## True once the doomsday clock has collapsed: the only true end of the run.
 ## Chapter 11 filing is NOT a game over; it founds a new corp in place.
 func is_run_over() -> bool:
@@ -368,7 +388,10 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 	_banked_corp = corp_number
 	end_reason = reason
 	profile.runs_completed += 1
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth)
+	# Breaking a baron = holding it as the corp ends. Counted here, before a filing's
+	# forfeit reverts the holdings, once per corp (the _banked_corp guard above).
+	barons_broken_award = world.held_by(Takeover.PLAYER).size() if world != null else 0
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award)
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
@@ -386,7 +409,7 @@ func _lost_snapshot() -> Dictionary:
 
 ## What survives into the next corp and what was lost. Data only, for a UI.
 func _build_carry_over(lost: Dictionary) -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"reason": end_reason,
 		"corp_number": corp_number,
 		"persists": {
@@ -402,6 +425,9 @@ func _build_carry_over(lost: Dictionary) -> Dictionary:
 		},
 		"lost": lost.duplicate(true),
 	}
+	if barons_broken_award > 0:  # absent otherwise, so a corp that broke none hashes as before
+		out["persists"]["barons_broken"] = barons_broken_award
+	return out
 
 ## Start a brand-new run (after doomsday collapse) from this run's profile:
 ## fresh seed, default doomsday clock, perks derived from the profile, and the
@@ -495,6 +521,7 @@ func file_bankruptcy() -> Dictionary:
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
 	pending_bankruptcy = false
+	_monopoly_signalled = false
 	sim_clock.accumulator = 0.0
 	sim_clock.pause()
 	peak_net_worth = 0
@@ -557,6 +584,8 @@ func to_dict() -> Dictionary:
 	}
 	if not transit.is_empty():
 		out["transit"] = transit.duplicate()
+	if barons_broken_award > 0:
+		out["barons_broken_award"] = barons_broken_award
 	return out
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -582,6 +611,7 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.corp_number = maxi(1, int(d.get("corp_number", 1)))
 	rc._banked_corp = maxi(0, int(d.get("banked_corp", 0)))
 	rc.severance_award = maxi(0, int(d.get("severance_award", 0)))
+	rc.barons_broken_award = maxi(0, int(d.get("barons_broken_award", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))
 	var co = d.get("carry_over", {})
 	rc.carry_over = co.duplicate(true) if co is Dictionary else {}

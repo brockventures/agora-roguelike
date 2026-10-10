@@ -48,6 +48,10 @@ const OVERLAY_CRISIS: String = "crisis"
 ## A defense contract offer from Ares Heavy (Epic 3 task 4): halts the clock until
 ## A accepts or B declines. Chapter 11, collapse and a crisis outrank it.
 const OVERLAY_CONTRACT: String = "contract"
+## The player holds every baron (Epic 3 task 9, design doc 5.4): a summary state that
+## halts the clock until A continues. Phase 1 of the win; the Sol System Rescue that
+## finishes the run is #32 and is not built. Chapter 11, collapse and a crisis outrank it.
+const OVERLAY_MONOPOLY: String = "monopoly"
 
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
@@ -345,6 +349,53 @@ func _refresh_world_mods() -> void:
 
 ## Turns a world event (Barons.advance_round / accept / deliver) into its GalNet line.
 func _post_baron_event(e: Dictionary) -> void:
+	_post_baron_headline(e)
+	if str(e.get("kind", "")) == "takeover" and str(e.get("holder", "")) == Takeover.PLAYER:
+		_raise_monopoly_if_any()
+
+
+## Raises the monopoly summary the first time the player holds every baron, unless a
+## filing is pending or the takeover itself tipped the corp insolvent (the filing
+## would forfeit the lot, so there is nothing to celebrate yet).
+func _raise_monopoly_if_any() -> void:
+	if controller == null or overlay_state != OVERLAY_NONE or controller.pending_bankruptcy:
+		return
+	if not controller.has_monopoly() or bool(controller.assess()["insolvent"]):
+		return
+	if controller.check_monopoly():
+		controller.sim_clock.pause()
+		_set_overlay(OVERLAY_MONOPOLY)
+
+
+## Numbers for the monopoly summary state.
+func monopoly_summary() -> Dictionary:
+	if controller == null or controller.world == null:
+		return {}
+	var held: int = controller.world.held_by(Takeover.PLAYER).size()
+	return {
+		"barons_held": held,
+		"barons_total": controller.world.ids().size(),
+		"net_worth": controller.net_worth(),
+		"peak_net_worth": controller.peak_net_worth,
+		"rounds": controller.get_current_round(),
+		"corp_number": controller.corp_number,
+		"severance_pending": held * Parachutes.SEVERANCE_PER_BARON,
+	}
+
+
+## A: carry on from the monopoly summary. The clock resumes.
+func acknowledge_monopoly() -> bool:
+	if overlay_state != OVERLAY_MONOPOLY or controller == null:
+		return false
+	_set_overlay(OVERLAY_NONE)
+	_raise_crisis_if_pending()
+	_raise_contract_if_pending()
+	if overlay_state == OVERLAY_NONE:
+		controller.sim_clock.resume()
+	return true
+
+
+func _post_baron_headline(e: Dictionary) -> void:
 	if hud == null:
 		return
 	var who: Dictionary = Loc.maker_arg(str(e.get("baron", "")))
@@ -997,6 +1048,13 @@ func dispatch_action(action: String) -> bool:
 			_click()
 			action_handled.emit(action)
 		return acked
+	if overlay_state == OVERLAY_MONOPOLY and action != ACT_CHAPTER_11:
+		# A continues; nothing else is live behind the modal.
+		var carried: bool = action == ACT_SUBMIT and acknowledge_monopoly()
+		if carried:
+			_click()
+			action_handled.emit(action)
+		return carried
 	if overlay_state == OVERLAY_CONTRACT and action != ACT_CHAPTER_11:
 		# A accepts, B declines; nothing else is live behind the modal.
 		var answered: bool = (action == ACT_SUBMIT and accept_contract()) or (action == ACT_CANCEL and decline_contract())
@@ -1080,6 +1138,8 @@ func run_summary() -> Dictionary:
 		"corp_number": controller.corp_number,
 		"severance_awarded": controller.severance_award,
 		"severance_balance": controller.profile.severance_points,
+		"barons_broken": controller.barons_broken_award,
+		"barons_severance": controller.barons_broken_award * Parachutes.SEVERANCE_PER_BARON,
 		"runs_completed": controller.profile.runs_completed,
 	}
 
