@@ -26,11 +26,16 @@ signal sub_ticked(total_ticks: int)
 signal paused_changed(is_paused: bool)
 signal auto_paused(reason: String)
 signal speed_changed(new_speed: int)
+## Emitted on every wake (raw delta over SUSPEND_THRESHOLD), whether or not the
+## clock was already paused, so audio and focus can be re-armed.
+signal suspend_detected()
 
 const DEFAULT_TICK_DELTA: float = 1.0 / 60.0
 const MIN_TICK_DELTA: float = 1.0 / 240.0
 const MAX_TICK_DELTA: float = 1.0
 const MAX_DELTA_CLAMP: float = 0.25
+## Raw frame delta (seconds, measured before the lag clamp) above which a frame is a
+## wake from system suspend rather than a long frame.
 const SUSPEND_THRESHOLD: float = 1.0
 const VALID_SPEEDS: Array[int] = [1, 2, 5]
 
@@ -93,23 +98,34 @@ func get_interpolation_alpha() -> float:
 		return 0.0
 	return clampf(accumulator / tick_delta, 0.0, 1.0)
 
+## True when a raw frame delta is a wake from suspend (finite, over SUSPEND_THRESHOLD).
+static func is_wake_delta(delta: float) -> bool:
+	return is_finite(delta) and delta > SUSPEND_THRESHOLD
+
+## Handles a wake: the slept time is discarded, the accumulator zeroed and the clock
+## auto-paused (a pause the player resumes from). Safe to call while already paused.
+func handle_suspend_wake(reason: String = "system_suspend") -> void:
+	accumulator = 0.0
+	if not paused:
+		paused = true
+		auto_paused_reason = reason
+		auto_paused.emit(reason)
+		paused_changed.emit(true)
+	suspend_detected.emit()
+
 func step(delta: float) -> int:
-	# 1. Zero Time on Pause/Sleep: No simulation advance while paused
+	# 1. Suspend/Wake Detection on the RAW delta, BEFORE the pause gate and the lag
+	# clamp: a wake while already paused still discards time and signals re-arm.
+	if is_wake_delta(delta):
+		handle_suspend_wake()
+		return 0
+
+	# 2. Zero Time on Pause/Sleep: No simulation advance while paused
 	if paused:
 		return 0
 
-	# 2. Non-finite or non-positive delta guard (NaN, inf, <= 0.0)
+	# 3. Non-finite or non-positive delta guard (NaN, inf, <= 0.0)
 	if not is_finite(delta) or delta <= 0.0:
-		return 0
-
-	# 3. Suspend/Wake Detection (Evaluated BEFORE lag clamp)
-	# Raw frame delta > 1.0s indicates host/device suspend (e.g. Steam Deck sleep)
-	if delta > SUSPEND_THRESHOLD:
-		paused = true
-		auto_paused_reason = "system_suspend"
-		accumulator = 0.0
-		auto_paused.emit("system_suspend")
-		paused_changed.emit(true)
 		return 0
 
 	# 4. Spiral-of-Death Clamp: Bound delta to 0.25s max to prevent lag cascades
