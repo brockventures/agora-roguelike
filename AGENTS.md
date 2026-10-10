@@ -40,6 +40,7 @@ Tagging `vX.Y.Z` runs `.github/workflows/release.yml`: tests, then Linux, Window
 - `ui/`: presentation models, plain `RefCounted` classes, not nodes (`orbital_hud.gd`, `gamepad_focus.gd`, `tactile_audio.gd`, `m0_loop.gd`, ...).
 - `scenes/main.tscn` + `main.gd`: the root scene. It owns the nodes (SubViewportContainer with the CRT shader, panels, labels, audio players) and delegates to the `ui/` models.
 - `tests/`: `test_*.gd` files, auto-discovered by `run_tests.gd`. `tests/golden/` holds fixtures shared with the Python referee.
+- `core/steam_*.gd`, `data/steam.json`, `data/achievements.json`, `steam/`: the optional Steam layer (achievements, cloud saves, Steam Input). It must keep working with no GodotSteam and no Steam client; tests drive it with `tests/steam_fake.gd`. See `docs/steam.md`. Never name a script or autoload `Steam` (GodotSteam's singleton).
 - `export_presets.cfg`: the three release presets (Linux x86_64, Windows Desktop, Steam Deck).
 - `project.godot`: window 1280x800 (Steam Deck), main scene, and the `m0_*` InputMap actions (joypad plus keyboard).
 

@@ -26,15 +26,22 @@ const DEFAULT_DIR: String = "user://saves"
 const PROFILE_FILE: String = "profile.json"
 const RUN_FILE: String = "run_slot_0.json"
 const SETTINGS_FILE: String = "settings.json"
+const STEAM_FILE: String = "steam_mirror.json"
 const TMP_SUFFIX: String = ".tmp"
 const KIND_RUN: String = "run"
 const KIND_PROFILE: String = "profile"
 const KIND_SETTINGS: String = "settings"
+const KIND_STEAM: String = "steam"
 
 var dir: String = DEFAULT_DIR
 ## Test hook: abort the next write halfway through the temp file, as a full
 ## disk or a crash would. The final file must survive untouched.
 var simulate_write_failure: bool = false
+## Optional Steam Cloud mirror (#27). Null (the default) means local-only, exactly
+## as before. When set and Steam Remote Storage is up, every successful write is
+## also pushed to the Cloud and every read first pulls a newer Cloud copy down.
+## The local file stays the source of truth and the format does not change.
+var cloud: SteamService = null
 
 
 func _init(p_dir: String = "") -> void:
@@ -56,6 +63,10 @@ func run_path() -> String:
 
 func settings_path() -> String:
 	return dir.path_join(SETTINGS_FILE)
+
+
+func steam_path() -> String:
+	return dir.path_join(STEAM_FILE)
 
 
 # --- Generic envelope IO ---
@@ -86,12 +97,16 @@ func write(path: String, kind: String, data: Dictionary) -> Error:
 	var rn: Error = DirAccess.rename_absolute(tmp, path)
 	if rn != OK:
 		DirAccess.remove_absolute(tmp)
+	elif cloud != null:
+		cloud.cloud_push(path.get_file(), text)
 	return rn
 
 
 ## Reads and validates an envelope. Returns {"ok": bool, "error": String,
 ## "data": Dictionary}. A missing file is {"ok": false, "error": "missing"}.
 func read(path: String, kind: String) -> Dictionary:
+	if cloud != null:
+		cloud.cloud_restore(path)
 	if not FileAccess.file_exists(path):
 		return _fail("missing")
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -164,9 +179,13 @@ func load_run() -> Dictionary:
 
 
 func has_run() -> bool:
+	if cloud != null:
+		cloud.cloud_restore(run_path())
 	return FileAccess.file_exists(run_path())
 
 
 func delete_run() -> void:
-	if has_run():
+	if FileAccess.file_exists(run_path()):
 		DirAccess.remove_absolute(run_path())
+	if cloud != null:
+		cloud.cloud_delete(RUN_FILE)

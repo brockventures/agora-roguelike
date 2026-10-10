@@ -1,0 +1,54 @@
+"In Game Controls"
+{
+	"actions"
+	{
+		"InGame"
+		{
+			"title"		"#Set_InGame"
+			"Button"
+			{
+				"m0_tab_prev"		"#Action_m0_tab_prev"
+				"m0_tab_next"		"#Action_m0_tab_next"
+				"m0_station_prev"		"#Action_m0_station_prev"
+				"m0_station_next"		"#Action_m0_station_next"
+				"m0_commodity_prev"		"#Action_m0_commodity_prev"
+				"m0_commodity_next"		"#Action_m0_commodity_next"
+				"m0_up"		"#Action_m0_up"
+				"m0_down"		"#Action_m0_down"
+				"m0_left"		"#Action_m0_left"
+				"m0_right"		"#Action_m0_right"
+				"m0_submit"		"#Action_m0_submit"
+				"m0_cancel"		"#Action_m0_cancel"
+				"m0_chapter11"		"#Action_m0_chapter11"
+				"m0_speed"		"#Action_m0_speed"
+				"m0_pause"		"#Action_m0_pause"
+				"m0_locale"		"#Action_m0_locale"
+				"m0_settings"		"#Action_m0_settings"
+			}
+		}
+	}
+	"localization"
+	{
+		"english"
+		{
+			"Set_InGame"		"In game"
+			"Action_m0_tab_prev"		"Previous tab"
+			"Action_m0_tab_next"		"Next tab"
+			"Action_m0_station_prev"		"Previous station"
+			"Action_m0_station_next"		"Next station"
+			"Action_m0_commodity_prev"		"Previous commodity"
+			"Action_m0_commodity_next"		"Next commodity"
+			"Action_m0_up"		"Up"
+			"Action_m0_down"		"Down"
+			"Action_m0_left"		"Left"
+			"Action_m0_right"		"Right"
+			"Action_m0_submit"		"Confirm / submit"
+			"Action_m0_cancel"		"Cancel / back"
+			"Action_m0_chapter11"		"File Chapter 11"
+			"Action_m0_speed"		"Cycle speed"
+			"Action_m0_pause"		"Pause / resume"
+			"Action_m0_locale"		"Cycle language"
+			"Action_m0_settings"		"Settings"
+		}
+	}
+}
