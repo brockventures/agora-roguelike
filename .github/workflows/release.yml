@@ -1,0 +1,144 @@
+name: Release
+
+# Tagged multi-platform export (#28, Build Automated Multi-Platform Export Pipeline,
+# part of #26, Epic 5 Steamworks Integration & Automated Release Pipeline).
+# Push a `v*` tag to build the three packages and attach them to a GitHub Release.
+# workflow_dispatch builds the same packages but only uploads them as run artifacts.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2-stable"
+  # Keep GODOT_SHA512 identical to godot.yml. Templates hash is from the release's SHA512-SUMS.txt.
+  GODOT_SHA512: "9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
+  TEMPLATES_SHA512: "ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079"
+  # Directory name Godot looks for: version with "-" replaced by "." (4.7.2.stable).
+  TEMPLATES_DIR: "4.7.2.stable"
+
+jobs:
+  test:
+    name: Headless tests (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Godot binary
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+      - name: Download Godot
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .godot-bin
+          curl -fsSL -o .godot-bin/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  .godot-bin/godot.zip" | sha512sum -c -
+          python3 -c "import zipfile;zipfile.ZipFile('.godot-bin/godot.zip').extractall('.godot-bin')"
+          chmod +x ".godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+      - name: Run headless tests
+        run: game/tests/run.sh "$PWD/.godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Guard the export presets
+        run: python -m unittest discover -s tests -p "test_export_presets.py" -v
+
+  export:
+    name: Export (${{ matrix.preset }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - preset: "Linux x86_64"
+            slug: linux-x86_64
+            dir: linux
+          - preset: "Windows Desktop"
+            slug: windows-x86_64
+            dir: windows
+          - preset: "Steam Deck"
+            slug: steamdeck
+            dir: steamdeck
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-dev.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+      - name: Cache Godot binary and export templates
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .godot-bin
+            ~/.local/share/godot/export_templates/${{ env.TEMPLATES_DIR }}
+          key: godot-export-${{ env.GODOT_VERSION }}-${{ env.TEMPLATES_SHA512 }}
+      - name: Download Godot and export templates
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}"
+          mkdir -p .godot-bin
+          curl -fsSL -o .godot-bin/godot.zip "${base}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  .godot-bin/godot.zip" | sha512sum -c -
+          python3 -c "import zipfile;zipfile.ZipFile('.godot-bin/godot.zip').extractall('.godot-bin')"
+          chmod +x ".godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+          curl -fsSL -o .godot-bin/templates.tpz "${base}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          echo "${TEMPLATES_SHA512}  .godot-bin/templates.tpz" | sha512sum -c -
+          # The .tpz is a zip whose entries live under templates/.
+          mkdir -p .godot-bin/tpl "$HOME/.local/share/godot/export_templates/${TEMPLATES_DIR}"
+          python3 -c "import zipfile;zipfile.ZipFile('.godot-bin/templates.tpz').extractall('.godot-bin/tpl')"
+          mv .godot-bin/tpl/templates/* "$HOME/.local/share/godot/export_templates/${TEMPLATES_DIR}/"
+          rm -rf .godot-bin/tpl .godot-bin/templates.tpz .godot-bin/godot.zip
+      - name: Stamp version into project.godot
+        run: python3 tools/stamp_version.py game/project.godot "${{ steps.ver.outputs.version }}"
+      - name: Import project
+        run: .godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game --import || true
+      - name: Export ${{ matrix.preset }}
+        run: |
+          mkdir -p "build/${{ matrix.dir }}"
+          .godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path game \
+            --export-release "${{ matrix.preset }}"
+          ls -la "build/${{ matrix.dir }}"
+      - name: Package
+        run: |
+          mkdir -p dist
+          name="agora-roguelike-${{ steps.ver.outputs.version }}-${{ matrix.slug }}"
+          (cd "build/${{ matrix.dir }}" && zip -r "$GITHUB_WORKSPACE/dist/${name}.zip" .)
+          (cd dist && sha256sum "${name}.zip" > "${name}.zip.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agora-roguelike-${{ matrix.slug }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: export
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: agora-roguelike-*
+          merge-multiple: true
+      - name: List release files
+        run: ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
