@@ -1093,6 +1093,7 @@ func _sidebar_text() -> String:
 	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.squeeze_tag(hud.active_station, hud.active_commodity), loop.hoard_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station), _contract_sidebar_line()]:
 		if line != "":
 			priv_lines.append(line)
+	priv_lines.append_array(loop.auction_lines(hud.active_station, hud.active_commodity))
 	if not priv_lines.is_empty():
 		out.append_array(PackedStringArray(priv_lines))
 	var crisis_lines: Array = _crisis_sidebar_lines()
@@ -1138,6 +1139,8 @@ func _board_text() -> String:
 			var pipe: String = loop.squeeze_tag(hud.active_station, c)
 			if pipe == "":
 				pipe = loop.hoard_tag(hud.active_station, c)
+			if pipe == "":
+				pipe = loop.auction_tag(hud.active_station, c)
 			if pipe == "":
 				pipe = loop.pipeline_tag(hud.active_station, c)
 			if pipe != "":

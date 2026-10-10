@@ -23,6 +23,9 @@ signal commodity_navigated(commodity: String)
 signal depth_level_snapped(index: int, side: String, price: float)
 signal order_executed(order_payload: Dictionary)
 signal order_rejected(reason: String, payload: Dictionary)
+## A limit order queued into Sol Central's call auction (Epic 3 task 6): nothing has
+## traded yet, so it is NOT order_executed (no fill headline, no bell).
+signal auction_queued(payload: Dictionary)
 signal overlay_toggled(is_open: bool)
 signal sim_speed_cycled(new_speed: int)
 signal pause_toggled(is_paused: bool)
@@ -214,6 +217,29 @@ func execute_focused_order() -> Dictionary:
 		var rej_audit: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty, "cap": rc.trade_cap_qty(), "remaining": rc.audit_units_remaining()}
 		_note_rejection(rej_audit)
 		return rej_audit
+
+	# Sol Central's call auction (Epic 3 task 6): at Earth, in an auction round, the
+	# commodity being auctioned takes limit orders into a buffer instead of sweeping
+	# the book. The focused level's price is the limit; the clear settles it.
+	if rc != null and rc.world != null:
+		var au: Dictionary = rc.world.auction_at(station, rc.get_current_round(), rc.run_seed)
+		if not au.is_empty() and str(au["commodity"]) == commodity:
+			var q: Dictionary = rc.world.submit_auction_order(rc, station, "BUY" if is_buy else "SELL", order_qty, int(round(px)))
+			if not bool(q["ok"]):
+				last_rejection_reason = str(q["reason"])
+				var rej_au: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote, "order_qty": order_qty}
+				_note_rejection(rej_au)
+				return rej_au
+			var queued: Dictionary = {
+				"ok": true, "buffered": true, "station": station, "commodity": commodity,
+				"side": "BUY" if is_buy else "SELL", "qty": order_qty, "limit_price": int(round(px)),
+				"close_round": int(au["close_round"]), "baron": str(au["baron"]),
+			}
+			last_executed_order = {}
+			last_rejection_reason = ""
+			last_rejection_payload = {}
+			auction_queued.emit(queued)
+			return queued
 
 	# Live resting book (Earth/Mars): sweep it up to the focused level's price.
 	var mkt: StationMarket = hud.market

@@ -173,6 +173,8 @@ func _connect_all() -> void:
 		if not hud.gamepad_focus.order_executed.is_connected(_fill_callable):
 			hud.gamepad_focus.order_executed.connect(_fill_callable)
 			hud.gamepad_focus.order_rejected.connect(_reject_callable)
+		if not hud.gamepad_focus.auction_queued.is_connected(_on_auction_queued):
+			hud.gamepad_focus.auction_queued.connect(_on_auction_queued)
 
 
 func _disconnect_all() -> void:
@@ -200,6 +202,8 @@ func _disconnect_all() -> void:
 			hud.gamepad_focus.order_executed.disconnect(_fill_callable)
 		if hud.gamepad_focus.order_rejected.is_connected(_reject_callable):
 			hud.gamepad_focus.order_rejected.disconnect(_reject_callable)
+		if hud.gamepad_focus.auction_queued.is_connected(_on_auction_queued):
+			hud.gamepad_focus.auction_queued.disconnect(_on_auction_queued)
 	if crisis_deck != null:
 		if crisis_deck.crisis_drawn.is_connected(_on_crisis_drawn):
 			crisis_deck.crisis_drawn.disconnect(_on_crisis_drawn)
@@ -358,6 +362,15 @@ func _post_baron_event(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_TITAN_RELEASE", [who, com, Loc.station_arg(str(e["station"])), -int(e["price_bps"]) / 100], "MARKET", "INFO")
 		"spoil":
 			hud.post_headline_tr("HL_TITAN_SPOIL", [who, int(e["qty"]), com], "MARKET", "INFO")
+		"auction_open":
+			hud.post_headline_tr("HL_SOL_OPEN", [who, com, Loc.station_arg(str(e["station"])), int(e["ref"]), int(e["close_round"])], "MARKET", "INFO")
+		"auction_clear":
+			hud.post_headline_tr("HL_SOL_CLEAR", [who, com, int(e["price"]), int(e["ref"]), int(e["qty"])], "MARKET", "INFO")
+		"auction_lapse":
+			if int(e["price"]) < 0:
+				hud.post_headline_tr("HL_SOL_NOCROSS", [who, com, int(e["qty"])], "MARKET", "WARNING")
+			else:
+				hud.post_headline_tr("HL_SOL_LAPSE", [who, int(e["qty"]), com, int(e["price"])], "MARKET", "WARNING")
 		"missed":
 			hud.post_headline_tr("HL_ARES_MISSED", [who, int(e["penalty"])], "DEBT", "CRITICAL")
 			if bool(e.get("forced_ch11", false)):
@@ -373,6 +386,64 @@ func squeeze_tag(station: String, commodity: String) -> String:
 	if q.is_empty():
 		return ""
 	return Loc.t("TAG_SQUEEZE") % (int(q["price_bps"]) / 100)
+
+
+## An order queued into Sol Central's call auction (nothing has traded yet).
+func _on_auction_queued(p: Dictionary) -> void:
+	if hud != null:
+		hud.post_headline_tr("HL_SOL_QUEUED", [Loc.key_arg("ORDER_" + str(p["side"])), int(p["qty"]), Loc.commodity_arg(str(p["commodity"])), Loc.maker_arg(str(p["baron"])), int(p["limit_price"])], "MARKET", "INFO")
+	if hud != null and hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
+
+
+## Auction tag for one book ("AUCTION") while Sol Central is auctioning that
+## commodity at that station, "" otherwise or with no world.
+func auction_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var au: Dictionary = controller.world.auction_at(station, controller.get_current_round(), controller.run_seed)
+	if au.is_empty() or str(au["commodity"]) != commodity.to_upper():
+		return ""
+	return Loc.t("TAG_AUCTION")
+
+
+## Sidebar rows for the auction on the selected book: when it closes, the
+## indicative price against the printed reference (the rig made legible), and the
+## player's queued orders. Empty when no auction runs on that book.
+func auction_lines(station: String, commodity: String) -> Array:
+	var out: Array = []
+	if controller == null or controller.world == null:
+		return out
+	var rd: int = controller.get_current_round()
+	var ind: Dictionary = controller.world.indicative_at(station, rd, controller.run_seed, market)
+	if ind.is_empty() or str(ind["commodity"]) != commodity.to_upper():
+		return out
+	out.append(Loc.t("SIDE_AUCTION") % [Loc.commodity(commodity), int(ind["close_round"])])
+	if bool(ind["hidden"]):
+		out.append(Loc.t("SIDE_AUCTION_HIDDEN") % int(ind["ref"]))
+	elif int(ind["price"]) < 0:
+		out.append(Loc.t("SIDE_AUCTION_NONE") % int(ind["ref"]))
+	else:
+		var ref: int = int(ind["ref"])
+		out.append(Loc.t("SIDE_AUCTION_IND") % [int(ind["price"]), ref, (int(ind["price"]) - ref) * 100 / maxi(1, ref)])
+	for o in ind["orders"]:
+		# A queued order the printed price walks past is flagged before the close.
+		var misses: bool = int(ind["price"]) >= 0 and int((ind["fills"] as Dictionary).get(int(o["seq"]), 0)) <= 0
+		out.append(Loc.t("SIDE_AUCTION_ORDER_MISS" if misses else "SIDE_AUCTION_ORDER") % [Loc.t("ORDER_" + str(o["side"])), int(o["qty"]), int(o["limit"])])
+	if not (ind["orders"] as Array).is_empty():
+		out.append(Loc.t("SIDE_AUCTION_HINT"))
+	return out
+
+
+## B on the Market tab takes queued auction orders back before it leaves the tab.
+func withdraw_auction_orders() -> int:
+	if controller == null or controller.world == null or controller.docked_at == "":
+		return 0
+	var n: int = controller.world.withdraw_auction_orders(controller.docked_at)
+	if n > 0 and hud != null:
+		var id: String = controller.world.baron_at(controller.docked_at)
+		hud.post_headline_tr("HL_SOL_WITHDRAWN", [Loc.maker_arg(id), n], "MARKET", "INFO")
+	return n
 
 
 ## Hoard tag for one book as the player sees it ("TITAN HOARDING", "CORNER +25%",
@@ -740,6 +811,8 @@ func dispatch_action(action: String) -> bool:
 
 ## B: leave the Market tab for the Map; on any other tab, return focus to the map.
 func _cancel() -> bool:
+	if tab == Tab.MARKET and withdraw_auction_orders() > 0:
+		return true
 	if tab != Tab.MAP:
 		set_tab(Tab.MAP)
 		return true

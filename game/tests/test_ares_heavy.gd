@@ -19,6 +19,11 @@ func _ctx(p_seed: int = 21, station: String = "mars") -> Dictionary:
 	return {"rc": rc, "hud": hud, "loop": lp, "world": rc.world}
 
 
+## Ares Heavy's events only: Sol Central announces its call auctions on its own clock.
+func _ares(events: Array) -> Array:
+	return events.filter(func(e): return str(e.get("baron", "")) == "ares_heavy")
+
+
 func _json(d: Dictionary) -> Dictionary:
 	return JSON.parse_string(JSON.stringify(d))
 
@@ -71,7 +76,7 @@ func test_offers_post_on_the_cadence_and_never_before() -> String:
 	var c := _ctx()
 	var w: Barons = c["world"]
 	for r in range(1, 8):
-		if not w.advance_round(r, c["rc"]).is_empty():
+		if not _ares(w.advance_round(r, c["rc"])).is_empty():
 			return "round %d produced an event before the first cadence round" % r
 	var offer: Dictionary = _offer(c, 8)
 	if offer.is_empty():
@@ -79,7 +84,7 @@ func test_offers_post_on_the_cadence_and_never_before() -> String:
 	if not w.has_pending_offer() or str(w.pending_offer()["baron"]) != "ares_heavy":
 		return "the offer is not pending"
 	# One contract at a time: nothing new while the first waits, and none on off rounds.
-	if not w.advance_round(9, c["rc"]).is_empty() or not w.advance_round(16, c["rc"]).is_empty():
+	if not _ares(w.advance_round(9, c["rc"])).is_empty() or not _ares(w.advance_round(16, c["rc"])).is_empty():
 		return "a second offer was posted over an unanswered one"
 	return "ok"
 
@@ -530,7 +535,7 @@ func test_a_held_baron_posts_no_contract_and_no_squeeze() -> String:
 	var c := _ctx()
 	var w: Barons = c["world"]
 	w.state("ares_heavy").holder = "player"
-	if not w.advance_round(8, c["rc"]).is_empty() or w.has_pending_offer():
+	if not _ares(w.advance_round(8, c["rc"])).is_empty() or w.has_pending_offer():
 		return "a held baron still offered its holder a contract"
 	return "ok"
 
