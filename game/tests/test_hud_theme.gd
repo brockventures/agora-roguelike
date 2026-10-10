@@ -13,7 +13,9 @@ func test_theme_loads_with_ink_outlined_panels() -> String:
 		var box := theme.get_stylebox("panel", variation) as StyleBoxFlat
 		if box == null:
 			return "%s has no flat panel style" % variation
-		if box.border_width_left < 3 or Vector3(box.border_color.r - HudTheme.INK.r, box.border_color.g - HudTheme.INK.g, box.border_color.b - HudTheme.INK.b).length() > 0.01:
+		# The ticker is a strip inside the map's own contour (HUD v3): an ink rule on its top edge.
+		var edge: int = box.border_width_top if variation == "TickerPanel" else box.border_width_left
+		if edge < (2 if variation == "TickerPanel" else 3) or Vector3(box.border_color.r - HudTheme.INK.r, box.border_color.g - HudTheme.INK.g, box.border_color.b - HudTheme.INK.b).length() > 0.01:
 			return "%s lacks a heavy ink contour" % variation
 	return "ok"
 
@@ -77,7 +79,7 @@ func test_every_panel_variation_is_a_flat_ink_or_accent_plate() -> String:
 		var box := theme.get_stylebox("panel", variation) as StyleBoxFlat
 		if box == null:
 			return "%s has no flat panel style" % variation
-		if box.border_width_left < 4:
+		if (box.border_width_top < 2) if variation == "TickerPanel" else (box.border_width_left < 4):
 			return "%s lacks a heavy contour" % variation
 		if box.corner_radius_top_left != 0:
 			return "%s is rounded; the style is flat" % variation
@@ -110,7 +112,8 @@ func test_header_map_sidebar_and_ticker_use_the_theme() -> String:
 			err = "%s variation is %s, want %s" % [(panel as Panel).name, (panel as Panel).theme_type_variation, variation]
 			continue
 		var box := HudTheme.panel_style(variation) as StyleBoxFlat
-		if box.border_width_left < 4 or not (_near(box.border_color, HudTheme.INK) or _near(box.border_color, HudTheme.OCHRE)):
+		var edge: int = box.border_width_top if variation == "TickerPanel" else box.border_width_left
+		if edge < (2 if variation == "TickerPanel" else 4) or not (_near(box.border_color, HudTheme.INK) or _near(box.border_color, HudTheme.OCHRE)):
 			err = "%s lacks an ink contour" % (panel as Panel).name
 	scene.free()
 	return "ok" if err == "" else err
@@ -136,40 +139,43 @@ func test_trading_overlay_modal_and_its_focus_bar_use_the_theme() -> String:
 	var scene := _scene()
 	scene.loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
-	var ok_style: bool = _uses_theme_style(scene.market_modal, "ModalPanel")
+	# The v3 quote board is a paper plate over the map (the ladder's SidebarPanel), so its
+	# focus bar is the paper one.
+	var ok_style: bool = _uses_theme_style(scene.market_modal, "SidebarPanel")
 	var bar_fill: Color = scene.market_highlight.color
 	var bar_visible: bool = scene.market_highlight.visible and scene.market_modal.visible
 	var bar_w: float = scene.market_highlight.size.x
 	scene.free()
 	if not ok_style:
-		return "trading overlay is not a ModalPanel"
+		return "trading overlay is not on the paper plate"
 	if not bar_visible or bar_w <= 0.0:
 		return "trading overlay row focus bar is not shown"
-	if bar_fill != MainScene.FOCUS_BAR_DARK_FILL:
+	if bar_fill != MainScene.FOCUS_BAR_PAPER_FILL:
 		return "focus bar is %s, not the theme fill" % bar_fill
 	return "ok"
 
 
-func test_chapter_11_and_collapse_use_the_alert_plate_and_perks_the_modal_plate() -> String:
+func test_chapter_11_and_collapse_use_the_alert_band_and_perks_the_teal_band() -> String:
+	# HUD v3: every modal is the ModalPanel plate; its title band carries the kind.
 	var scene := _scene()
 	scene.loop._set_overlay(M0Loop.OVERLAY_CHAPTER_11)
 	scene._refresh_readouts()
-	var ch11: bool = _uses_theme_style(scene.resolution_modal, "AlertPanel")
+	var ch11: bool = _uses_theme_style(scene.resolution_modal, "ModalPanel") and (scene._res["band"] as HudKit.Plate).fill == MainScene.BANDS["alert"][0]
 	scene.loop._set_overlay(M0Loop.OVERLAY_COLLAPSED)
 	scene.loop.collapse_phase = M0Loop.PHASE_SUMMARY
 	scene._refresh_readouts()
-	var summary: bool = _uses_theme_style(scene.resolution_modal, "AlertPanel")
+	var summary: bool = _uses_theme_style(scene.resolution_modal, "ModalPanel") and (scene._res["band"] as HudKit.Plate).fill == MainScene.BANDS["alert"][0]
 	scene.loop.collapse_phase = M0Loop.PHASE_PERKS
 	scene._refresh_readouts()
-	var perks: bool = _uses_theme_style(scene.resolution_modal, "ModalPanel")
+	var perks: bool = _uses_theme_style(scene.resolution_modal, "ModalPanel") and (scene._res["band"] as HudKit.Plate).fill == MainScene.BANDS["teal"][0]
 	var perk_bar: bool = scene.resolution_focus_bar.visible
 	scene.free()
 	if not ch11:
-		return "Chapter 11 is not an AlertPanel"
+		return "Chapter 11 is not the ModalPanel with the alert band"
 	if not summary:
-		return "collapse summary is not an AlertPanel"
+		return "collapse summary is not the ModalPanel with the alert band"
 	if not perks:
-		return "Golden Parachutes is not a ModalPanel"
+		return "Golden Parachutes is not the ModalPanel with the teal band"
 	if not perk_bar:
 		return "Golden Parachutes cursor has no focus bar"
 	return "ok"
@@ -193,13 +199,20 @@ func test_crisis_sleep_banner_and_settings_use_the_theme() -> String:
 func test_every_modal_text_is_readable_on_its_plate() -> String:
 	for variation in ["ModalPanel", "AlertPanel", "BannerPanel", "HeaderPanel", "TickerPanel"]:
 		var box := HudTheme.panel_style(variation) as StyleBoxFlat
-		var ratio: float = HudTheme.contrast(MainScene.HUD_TEXT_COLOR, box.bg_color)
+		# The ticker strip is paper (ink text), like the map and the ladder.
+		var text_color: Color = HudTheme.INK if variation == "TickerPanel" else MainScene.HUD_TEXT_COLOR
+		var ratio: float = HudTheme.contrast(text_color, box.bg_color)
 		if ratio < HudTheme.MIN_TEXT_CONTRAST:
 			return "%s: bone text only %.2f:1" % [variation, ratio]
 	for sev in ["INFO", "WARNING", "CRITICAL"]:
-		var ratio2: float = HudTheme.contrast(HudTheme.ticker_color(sev), (HudTheme.panel_style("TickerPanel") as StyleBoxFlat).bg_color)
+		# HUD v3 carries severity on the category chip; its text must read on the chip.
+		var chip: Array = MainScene._severity_chip(sev)
+		var ratio2: float = HudTheme.contrast(chip[1], chip[0])
 		if ratio2 < HudTheme.MIN_TEXT_CONTRAST:
-			return "ticker %s only %.2f:1" % [sev, ratio2]
+			return "ticker %s chip text only %.2f:1" % [sev, ratio2]
+		var ratio3: float = HudTheme.contrast(HudTheme.INK, (HudTheme.panel_style("TickerPanel") as StyleBoxFlat).bg_color)
+		if ratio3 < HudTheme.MIN_TEXT_CONTRAST:
+			return "ticker body text only %.2f:1 on the strip" % ratio3
 	# Ink text on the ochre ladder bar, bone text on the dark focus bar.
 	if HudTheme.contrast(HudTheme.INK, MainScene.FOCUS_BAR_PAPER_FILL) < HudTheme.MIN_TEXT_CONTRAST:
 		return "ink on the ladder focus bar is below 4.5:1"
@@ -213,14 +226,15 @@ func test_galnet_ticker_colours_follow_severity() -> String:
 	scene.hud.post_headline("Test warning line", "MARKET", "WARNING")
 	scene.hud.post_headline("Test critical line", "MARKET", "CRITICAL")
 	scene._refresh_readouts()
-	var top: Color = scene.ticker_labels[0].get_theme_color("font_color")
-	var next: Color = scene.ticker_labels[1].get_theme_color("font_color")
+	# Severity rides on the category chip (newest first): critical on top, then warning.
+	var top: Color = (scene.ticker_chips[0] as HudKit.Plate).fill
+	var next: Color = (scene.ticker_chips[1] as HudKit.Plate).fill
 	var panel_ok: bool = String(scene.ticker_panel.theme_type_variation) == "TickerPanel"
 	scene.free()
 	if not panel_ok:
 		return "ticker is not on the TickerPanel plate"
-	if top != HudTheme.ticker_color("CRITICAL") or next != HudTheme.ticker_color("WARNING"):
-		return "ticker colours %s / %s do not follow severity" % [top, next]
+	if top != MainScene._severity_chip("CRITICAL")[0] or next != MainScene._severity_chip("WARNING")[0]:
+		return "ticker chip colours %s / %s do not follow severity" % [top, next]
 	return "ok"
 
 
@@ -237,7 +251,7 @@ func test_every_palette_keeps_ladder_swatches_contrasting_with_their_ink_outline
 	return "ok"
 
 
-func test_ladder_swatches_carry_the_ink_outline_and_the_glyphs_remain() -> String:
+func test_ladder_tags_carry_the_ink_outline_and_the_glyphs_remain() -> String:
 	var scene := _scene()
 	scene.loop.set_tab(M0Loop.Tab.MARKET)
 	var err := ""
@@ -245,16 +259,16 @@ func test_ladder_swatches_carry_the_ink_outline_and_the_glyphs_remain() -> Strin
 		scene.settings.set_palette(id)
 		scene._refresh_readouts()
 		var shown: int = 0
-		for r in scene._ladder_swatches:
-			if not r.visible:
+		for row in scene._ladder["rows"]:
+			var tag: HudKit.Plate = row["tag"]
+			if not tag.visible:
 				continue
 			shown += 1
-			var edge := r.get_child(0) as ColorRect
-			if edge.color != HudTheme.INK:
-				err = "%s: swatch has no ink outline" % id
+			if tag.edge != HudTheme.INK or tag.border < 2.0:
+				err = "%s: side tag has no ink outline" % id
 		if shown < 2:
-			err = "%s: ladder swatches missing" % id
-		var text: String = scene.sidebar_label.text
+			err = "%s: ladder side tags missing" % id
+		var text: String = scene.panel_text(scene.sidebar_panel)
 		if not text.contains(Palette.BID_GLYPH + " BID") or not text.contains(Palette.ASK_GLYPH + " ASK"):
 			err = "%s: +BID / -ASK markers missing" % id
 	scene.settings.set_palette(Palette.DEFAULT)

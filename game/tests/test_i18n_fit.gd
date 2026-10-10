@@ -75,11 +75,45 @@ func _fake_crisis(def: Dictionary, deck: CrisisDeck) -> Dictionary:
 		"band": "high", "station": station, "commodity": commodity, "started_round": 4, "expires_round": 9, "rounds": 5, "effects": fx}
 
 
+## Adds every label on screen right now as a row [name, label, text, size, parent size].
+## Rows already seen with identical text and geometry are skipped.
+var _seen: Dictionary = {}
+
+
+## Node.get_path() errors on a scene that is not in the tree (the tests never add it).
+func _node_path(n: Node) -> String:
+	var parts: PackedStringArray = []
+	while n != null:
+		parts.append(str(n.name))
+		n = n.get_parent()
+	parts.reverse()
+	return "/".join(parts)
+
+
+func _snap(scene: Node, tag: String, rows: Array) -> void:
+	for l in scene.text_labels():
+		if l.text == "" or not scene.label_shown(l):
+			continue
+		# The ticker's text label is a wide marquee strip; its lines are checked in findings().
+		if str(l.name).begins_with("TickerText"):
+			continue
+		var box: Vector2 = (l.get_parent() as Control).size
+		var key: String = "%s|%s|%s|%s|%s" % [_node_path(l), l.text, str(l.size), str(l.position), str(box)]
+		if _seen.has(key):
+			continue
+		_seen[key] = true
+		# Judged now: the label's position, font and width axis are live state that a later
+		# state of the same scene will overwrite.
+		var nm: String = "%s %s" % [tag, l.name]
+		rows.append([nm, l, l.text, l.size, box, overflow_of(nm, l, l.text, l.size, box)])
+
+
 ## Every HUD readout in every state the game can show, as [name, label, text] rows.
 func _collect(scene: Node) -> Array:
 	var rows: Array = []
-	var add := func(name: String, label: Label) -> void:
-		rows.append([name, label, label.text, label.size, (label.get_parent() as Control).size])
+	_seen = {}
+	var add := func(name: String, _label: Label) -> void:
+		_snap(scene, name, rows)
 	var loop: M0Loop = scene.loop
 	var rc: RunController = scene.controller
 	rc.cr = 99999999
@@ -92,10 +126,10 @@ func _collect(scene: Node) -> Array:
 			rc.doomsday.stage = stage
 			scene._refresh_readouts()
 			var tag: String = "tab%d/stage%d" % [int(tab), int(stage)]
-			add.call("header[%s]" % tag, scene.header_label)
-			add.call("tabs+hint[%s]" % tag, scene.hint_label)
+			add.call("header[%s]" % tag, scene.wordmark_label)
+			add.call("tabs+hint[%s]" % tag, scene.wordmark_label)
 			add.call("map[%s]" % tag, scene.map_label)
-			add.call("sidebar[%s]" % tag, scene.sidebar_label)
+			add.call("sidebar[%s]" % tag, scene.wordmark_label)
 	rc.doomsday.stage = DoomsdayClock.Stage.NORMAL
 	_collect_travel(scene, add)
 	_collect_barons(scene, add)
@@ -105,27 +139,26 @@ func _collect(scene: Node) -> Array:
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
-	scene.market_label.text = scene._board_text()
-	add.call("market board", scene.market_label)
+	add.call("market board", scene.wordmark_label)
 	# Sidebar with every crisis active, and the filled-order line.
 	var deck: CrisisDeck = loop.crisis_deck
 	for def in deck.data["crises"]:
 		var c: Dictionary = _fake_crisis(def, deck)
 		deck.active = [c]
 		deck.awaiting_ack = [c["uid"]]
-		scene.sidebar_label.text = scene._sidebar_text()
-		add.call("sidebar[crisis %s]" % c["id"], scene.sidebar_label)
-		scene.market_label.text = scene._board_text()
-		add.call("market board[crisis %s]" % c["id"], scene.market_label)
+		scene._refresh_readouts()
+		add.call("sidebar[crisis %s]" % c["id"], scene.wordmark_label)
+		add.call("market board[crisis %s]" % c["id"], scene.wordmark_label)
 		loop.overlay_state = M0Loop.OVERLAY_CRISIS
 		scene._refresh_readouts()
 		add.call("crisis modal[%s]" % c["id"], scene.resolution_label)
+		loop.overlay_state = M0Loop.OVERLAY_NONE
 	deck.active = []
 	deck.awaiting_ack = []
 	scene.hud.gamepad_focus.last_rejection_reason = ""
 	scene.hud.gamepad_focus.last_executed_order = {"side": "BUY", "qty": 12, "price": 1234.5, "fee": 400, "counterparty": "Ares Heavy Syndicate"}
-	scene.sidebar_label.text = scene._sidebar_text()
-	add.call("sidebar[filled]", scene.sidebar_label)
+	scene._refresh_readouts()
+	add.call("sidebar[filled]", scene.wordmark_label)
 	# Resolution overlays.
 	loop.overlay_state = M0Loop.OVERLAY_CHAPTER_11
 	scene._refresh_readouts()
@@ -164,9 +197,8 @@ func _collect_barons(scene: Node, add: Callable) -> void:
 			scene.hud.set_commodity(c)
 			scene.hud.gamepad_focus.last_executed_order = {"side": "BUY", "qty": 12, "price": 1234.5, "fee": 400, "counterparty": "", "counterparty_id": "titan_cryo_hydro"}
 			scene._refresh_readouts()
-			scene.market_label.text = scene._board_text()
-			add.call("baron board[%s %s]" % [st, c], scene.market_label)
-			add.call("baron sidebar[%s %s]" % [st, c], scene.sidebar_label)
+			add.call("baron board[%s %s]" % [st, c], scene.wordmark_label)
+			add.call("baron sidebar[%s %s]" % [st, c], scene.wordmark_label)
 	scene.hud.gamepad_focus.last_executed_order = {}
 	rc.world = null
 	loop.market.set_world(null)
@@ -198,9 +230,8 @@ func _collect_ares(scene: Node, add: Callable) -> void:
 		scene._refresh_readouts()
 		var tag: String = "ares/tab%d" % int(tab)
 		add.call("map[%s]" % tag, scene.map_label)
-		add.call("sidebar[%s]" % tag, scene.sidebar_label)
-	scene.market_label.text = scene._board_text()
-	add.call("market board[ares squeeze]", scene.market_label)
+		add.call("sidebar[%s]" % tag, scene.wordmark_label)
+	add.call("market board[ares squeeze]", scene.wordmark_label)
 	rc.world = null
 	loop.market.set_world(null)
 	loop.market.set_world_mods([])
@@ -225,9 +256,8 @@ func _collect_titan(scene: Node, add: Callable) -> void:
 		scene.hud.set_commodity("FUEL")
 		loop.set_tab(M0Loop.Tab.MARKET)
 		scene._refresh_readouts()
-		scene.market_label.text = scene._board_text()
-		add.call("market board[titan %s]" % phase, scene.market_label)
-		add.call("sidebar[titan %s]" % phase, scene.sidebar_label)
+		add.call("market board[titan %s]" % phase, scene.wordmark_label)
+		add.call("sidebar[titan %s]" % phase, scene.wordmark_label)
 	rc.world = null
 	loop.market.set_world(null)
 	loop.market.set_world_mods([])
@@ -270,9 +300,8 @@ func _collect_sol(scene: Node, add: Callable) -> void:
 					if str(d["id"]) == "sol_central":
 						d["params"]["indicative_leak"] = "delayed"
 		scene._refresh_readouts()
-		scene.market_label.text = scene._board_text()
-		add.call("market board[sol %s]" % state, scene.market_label)
-		add.call("sidebar[sol %s]" % state, scene.sidebar_label)
+		add.call("market board[sol %s]" % state, scene.wordmark_label)
+		add.call("sidebar[sol %s]" % state, scene.wordmark_label)
 	rc.world.withdraw_auction_orders("earth")
 	rc.world = null
 	loop.market.set_world(null)
@@ -293,8 +322,8 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 	scene.hud.set_station("ceres")
 	loop.set_tab(M0Loop.Tab.MAP)
 	scene._refresh_readouts()
-	add.call("header[route]", scene.header_label)
-	add.call("tabs+hint[route]", scene.hint_label)
+	add.call("header[route]", scene.wordmark_label)
+	add.call("tabs+hint[route]", scene.wordmark_label)
 	add.call("map[route]", scene.map_label)
 	for reason in ["INSUFFICIENT_CR", "SAME_STATION", "IN_TRANSIT", "NO_ROUTE", "OTHER"]:
 		loop.last_depart_reason = reason
@@ -308,10 +337,10 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 		loop.set_tab(tab)
 		scene._refresh_readouts()
 		var tag: String = "transit/tab%d" % int(tab)
-		add.call("header[%s]" % tag, scene.header_label)
-		add.call("tabs+hint[%s]" % tag, scene.hint_label)
+		add.call("header[%s]" % tag, scene.wordmark_label)
+		add.call("tabs+hint[%s]" % tag, scene.wordmark_label)
 		add.call("map[%s]" % tag, scene.map_label)
-		add.call("sidebar[%s]" % tag, scene.sidebar_label)
+		add.call("sidebar[%s]" % tag, scene.wordmark_label)
 	rc.transit = {}
 	rc.docked_at = "mars"
 	scene.hud.set_station("mars")
@@ -324,7 +353,7 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 func findings(scene: Node) -> Array:
 	var out: Array = []
 	for row in _collect(scene):
-		for f in overflow_of(row[0], row[1], row[2], row[3], row[4]):
+		for f in (row[5] if row.size() > 5 else overflow_of(row[0], row[1], row[2], row[3], row[4])):
 			if not out.has(f):
 				out.append(f)
 	# Ticker: every visible line must be scrollable inside its strip.
@@ -387,17 +416,14 @@ func test_sol_central_rows_fit_at_every_text_scale() -> String:
 			scene.settings.text_scale = scale
 			scene.apply_text_scale()
 			var rows: Array = []
-			var add := func(name: String, label: Label) -> void:
-				rows.append([name, label, label.text, label.size, (label.get_parent() as Control).size])
+			_seen = {}
+			var add := func(name: String, _label: Label) -> void:
+				_snap(scene, name, rows)
 			_collect_sol(scene, add)
-			if rows.size() != 10:
+			if rows.size() < 10:
 				bad.append("%s %.2fx: collected %d rows" % [locale, scale, rows.size()])
 			for row in rows:
-				# The board's title and hint rows already outgrow it under pseudo above 100%
-				# whatever the tag (827 px of 792 with no baron at all): sidebar rows only there.
-				if scale > 1.0 and locale == Loc.LOCALE_PSEUDO and str(row[0]).begins_with("market board"):
-					continue
-				for f in overflow_of(row[0], row[1], row[2], row[3], row[4]):
+				for f in (row[5] if row.size() > 5 else overflow_of(row[0], row[1], row[2], row[3], row[4])):
 					bad.append("%s %.2fx: %s" % [locale, scale, f])
 			scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)

@@ -115,20 +115,18 @@ func test_layout_bounds_and_panels() -> String:
 		scene.free()
 		return "header rect size mismatch: %s" % str(header_rect)
 
-	var map_rect: Rect2 = bounds["tactical_map_rect"]
-	if map_rect.size != Vector2(880.0, 672.0) or map_rect.position != Vector2(0.0, 64.0):
-		scene.free()
-		return "tactical map rect mismatch: %s" % str(map_rect)
-
-	var sidebar_rect: Rect2 = bounds["sidebar_rect"]
-	if sidebar_rect.size != Vector2(400.0, 672.0) or sidebar_rect.position != Vector2(880.0, 64.0):
-		scene.free()
-		return "sidebar rect mismatch: %s" % str(sidebar_rect)
-
-	var ticker_rect: Rect2 = bounds["ticker_rect"]
-	if ticker_rect.size != Vector2(1280.0, 64.0) or ticker_rect.position != Vector2(0.0, 736.0):
-		scene.free()
-		return "ticker rect mismatch: %s" % str(ticker_rect)
+	# HUD v3 command deck: the map on top, the three deck panels under it, the ticker on the map's foot.
+	var want: Dictionary = {
+		"tactical_map_rect": Rect2(0.0, 64.0, 1280.0, 456.0),
+		"sidebar_rect": Rect2(8.0, 528.0, 440.0, 264.0),
+		"ticket_rect": Rect2(456.0, 528.0, 400.0, 264.0),
+		"card_rect": Rect2(864.0, 528.0, 408.0, 264.0),
+		"ticker_rect": Rect2(4.0, 460.0, 1272.0, 56.0),
+	}
+	for key in want:
+		if bounds[key] != want[key]:
+			scene.free()
+			return "%s mismatch: %s" % [key, str(bounds[key])]
 
 	scene.free()
 	return "ok"
@@ -146,6 +144,8 @@ func test_scene_node_tree_hierarchy() -> String:
 		"ViewportContainer/SubViewport/HUDContainer/HeaderPanel",
 		"ViewportContainer/SubViewport/HUDContainer/TacticalMapPanel",
 		"ViewportContainer/SubViewport/HUDContainer/SidebarPanel",
+		"ViewportContainer/SubViewport/HUDContainer/TicketPanel",
+		"ViewportContainer/SubViewport/HUDContainer/CardPanel",
 		"ViewportContainer/SubViewport/HUDContainer/TickerPanel",
 	]
 

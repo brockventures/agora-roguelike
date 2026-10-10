@@ -458,17 +458,17 @@ func test_header_and_map_show_the_voyage() -> String:
 	m._build_readouts()
 	m.controller.sim_clock.pause()
 	m._refresh_readouts()
-	var docked_header: String = m.header_label.text
+	var docked_header: String = m.panel_text(m.ticket_panel)
 	var r: String = "ok"
 	if docked_header.find("IN TRANSIT") >= 0:
 		r = "header claims transit while docked"
 	m.hud.set_station("ceres")
 	m.loop.dispatch_action(M0Loop.ACT_SUBMIT)
 	m._refresh_readouts()
-	if r == "ok" and (m.hint_label.text.find("IN TRANSIT to Ceres, ETA 2 rounds") < 0):
-		r = "header lacks the destination and ETA: %s" % m.hint_label.text
-	if r == "ok" and m.hint_label.text.find("A depart") >= 0:
-		r = "hint still offers A depart in transit"
+	if r == "ok" and (m.panel_text(m.ticket_panel).find("IN TRANSIT to Ceres, ETA 2 rounds") < 0):
+		r = "ticket lacks the destination and ETA: %s" % m.panel_text(m.ticket_panel)
+	if r == "ok" and m.panel_text(m.ticket_panel).find("Depart") >= 0:
+		r = "prompts still offer Depart in transit"
 	var voyage: Dictionary = m.tactical_map.get_player_transit()
 	if r == "ok" and (voyage.is_empty() or str(voyage["destination"]) != "ceres" or not bool(voyage["is_belt"])):
 		r = "tactical map has no belt voyage to ceres: %s" % str(voyage)
@@ -481,8 +481,8 @@ func test_header_and_map_show_the_voyage() -> String:
 		m.controller.transit = {}
 		m.controller.docked_at = "mars"
 		m._refresh_readouts()
-		if m.hint_label.text.find("A depart") < 0:
-			r = "docked Map tab hint should offer A depart: %s" % m.hint_label.text
+		if m.panel_text(m.ticket_panel).find("Depart") < 0:
+			r = "docked Map tab prompts should offer Depart: %s" % m.panel_text(m.ticket_panel)
 	m.free()
 	return r
 

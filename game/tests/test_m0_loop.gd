@@ -616,15 +616,17 @@ func test_market_board_marks_selected_commodity_and_hints_right_stick() -> Strin
 	var main: Variant = packed.instantiate()
 	main.start_new_run(3)
 	main.hud.set_commodity("ORE")
-	main.loop.set_tab(M0Loop.Tab.MARKET)  # the Map tab swaps this hint for the depart one (#111)
-	var rows: PackedStringArray = main._board_text().split("\n")
+	main.loop.set_tab(M0Loop.Tab.MARKET)
+	main._resolve_child_nodes()
+	main._build_readouts()
+	main._refresh_readouts()
+	var rows: PackedStringArray = main.panel_text(main.market_modal).split("\n")
 	var marked: Array = []
-	for line in rows:
-		if line.begins_with(">"):
-			marked.append(line)
-	var line_idx: int = main.market_row_line()
-	var ok_marker: bool = marked.size() == 1 and "ORE" in marked[0] and rows[line_idx].begins_with("> ORE")
-	var hint_ok: bool = "R-stick commodity" in main.controls_hint() and "R-STICK commodity" in main._board_text()
+	for i in rows.size() - 1:
+		if rows[i] == Loc.t("HUD_LADDER_MARKER"):
+			marked.append(rows[i + 1])
+	var ok_marker: bool = marked.size() == 1 and "ORE" in marked[0]
+	var hint_ok: bool = "R-STICK" in main.panel_text(main.sidebar_panel) and "R-STICK commodity" in main.panel_text(main.market_modal)
 	main.free()
 	if not ok_marker:
 		return "selected commodity not uniquely marked at its row: %s" % str(marked)

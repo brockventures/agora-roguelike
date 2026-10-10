@@ -1,10 +1,5 @@
 keys,en
 HUD_TITLE,AGORA
-HUD_CR,CR %s
-HUD_DEBT,DEBT %s
-HUD_DOOMSDAY,DOOMSDAY %d:%02d %s
-HUD_SPEED,SPEED %s
-HUD_LANG,LANG %s
 HUD_PAUSED,PAUSED
 HUD_SPEED_FMT,%dx
 LANG_EN,EN
@@ -17,10 +12,7 @@ STAGE_COLLAPSED,COLLAPSED
 TAB_MAP,MAP
 TAB_MARKET,MARKET
 TAB_FLEET,FLEET
-HUD_CONTROLS_HINT,LB/RB tab  LT/RT station  R-stick commodity  D-pad qty  A trade  B back  X Ch.11  Y speed  View menu
 HUD_MAP_DOCKED,SOL TACTICAL MAP   docked: %s
-HUD_CONTROLS_HINT_MAP,LB/RB tab  LT/RT station  A depart  B back  X Ch.11  Y speed  View menu
-HUD_CONTROLS_HINT_TRANSIT,LT/RT station  B back  Y speed  View menu
 HUD_TRANSIT,"IN TRANSIT to %s, ETA %s"
 ROUNDS_ONE,1 round
 ROUNDS_MANY,%d rounds
@@ -42,31 +34,17 @@ HL_SHIP_ARRIVED,YOUR SHIP DOCKED at %s from %s
 HL_DOCKING_TOLL,%s: %d CR docking toll charged at %s
 HL_DOCKING_TOLL_SHORT,%s: docking toll took your last %d CR at %s
 HL_DOCKING_EXEMPT,%s: docking toll waived at %s
-FLEET_HEADER,FLEET   hulls: %d
-FLEET_CARGO,  %s x%d
-SIDE_ASK_ROW,%s - ASK %6.1f  x%d
-SIDE_BID_ROW,%s + BID %6.1f  x%d
-SIDE_ROW_TAG,  %s
-SIDE_SPREAD,---- spread %.1f ----
-SIDE_ORDER,ORDER  %s  qty %d
 ORDER_BUY,BUY
 ORDER_SELL,SELL
-SIDE_HELD,HELD   %d %s   CARGO %d/%d
 SIDE_REJECTED,REJECTED: %s
 SIDE_FILLED,FILLED %s %d @ %.1f%s%s
 SIDE_FILLED_VS,  vs %s
 SIDE_FILLED_FEE,  fee %d
-BOARD_TITLE,%s QUOTES   counterparty %s
-BOARD_ROW_LIVE,%s + BID %6.1f   - ASK %6.1f%s
-BOARD_ROW_BASE,%s base %6.1f   (no live book)
+BOARD_TITLE,QUOTE BOARD
 BOARD_HINT,"R-STICK commodity   D-PAD ladder/qty   B back"
 CH11_TITLE,CHAPTER 11
 CH11_INSOLVENT,Insolvent: debt %s exceeds liquidation value %s.
-CH11_HALTED,The clock is halted.
-CH11_PRESS_X,Press X to file and found a new corp.
-CRISIS_TITLE,CRISIS   %s   %s
 CRISIS_DURATION,DURATION  %d rounds (until round %d)
-CRISIS_ACK,The clock is halted.   Press A to acknowledge.
 CRISIS_SIDEBAR,CRISIS %s  %d rd left
 CRISIS_FX_ALL_BOOKS,ALL BOOKS
 CRISIS_FX_BOOK,"%s: depth x%.2f, spread x%.2f%s"
@@ -75,22 +53,19 @@ CRISIS_FX_PRICE_COMPACT, px %+.0f%%
 CRISIS_FX_MARGIN,Margin calls: %.2f%% of cargo value per round
 CRISIS_FX_CAP,Orders capped at %d units
 CRISIS_FX_FEE,Trade fee %.2f%%
-SUM_TITLE,SOVEREIGN DEFAULT   RUN OVER
-SUM_CAUSE,CAUSE            %s
+SUM_TITLE,SOVEREIGN DEFAULT
+SUM_CAUSE,CAUSE
 SUM_CAUSE_COLLAPSE,The Doomsday Clock ran out
 SUM_CAUSE_BANKRUPTCY,Chapter 11 filing
 SUM_CAUSE_MANUAL,Run ended by the player
-SUM_NET_WORTH,NET WORTH        %s CR
-SUM_PEAK,PEAK NET WORTH   %s CR
-SUM_ROUNDS,ROUNDS SURVIVED  %d
-SUM_SEVERANCE,SEVERANCE BANKED +%d  (balance %d)
-SUM_PRESS_A,Press A for Golden Parachutes.
-PERKS_TITLE,GOLDEN PARACHUTES   Severance %d
+SUM_NET_WORTH,NET WORTH
+SUM_PEAK,PEAK NET WORTH
+SUM_ROUNDS,ROUNDS SURVIVED
+SUM_SEVERANCE,SEVERANCE BANKED
+PERKS_TITLE,GOLDEN PARACHUTES
 PERK_OWNED,OWNED
 PERK_LOCKED,%d  locked
-PERK_ROW,%s T%d  %s  [%s]  -  %s
 PERK_START,START NEW RUN
-PERK_HINT,D-pad up/down select   A buy perk / start run   B back
 SLEEP_NOTICE,PAUSED — resumed from sleep
 SLEEP_PRESS_START,Press Start to resume.
 CAT_MARKET,MARKET
@@ -179,12 +154,10 @@ HL_ARES_DELIVERED,"%s: %d %s delivered, %d CR paid"
 HL_ARES_SQUEEZE,"%s squeezes %s %s: price up %d%%, books thin"
 HL_ARES_MISSED,"%s: defense contract defaulted, %d CR penalty added to your debt"
 HL_ARES_RETALIATION,%s: the default penalty leaves you insolvent
-CONTRACT_TITLE,DEFENSE CONTRACT   %s
 CONTRACT_BODY,"Deliver %d %s to %s by round %d."
 CONTRACT_PAY,"Pays %d CR a unit, %d CR in all, on delivery."
 CONTRACT_PENALTY,Miss it and %d CR joins your debt.
 CONTRACT_SQUEEZE,"In its last %d rounds, holding under %d %s lets the baron squeeze that book, up to +%d%%."
-CONTRACT_KEYS,"A accept   B decline.   The clock is halted."
 SIDE_CONTRACT,"CONTRACT %d %s by rd %d"
 MAP_CONTRACT,"Contract: %d %s to %s, due round %d."
 STATION_EARTH,Kennedy Elevator
@@ -265,3 +238,72 @@ SET_ACT_CHAPTER11,File Chapter 11
 SET_ACT_SPEED,Cycle speed
 SET_ACT_PAUSE,Pause / resume
 SET_ACT_LOCALE,Cycle language
+HUD_CHIP_LANG,LANG
+HUD_CHIP_CREDITS,CREDITS
+HUD_CHIP_DEBT,DEBT
+HUD_CHIP_SPEED,SPEED
+HUD_CHIP_DOOMSDAY,DOOMSDAY · %s
+HUD_PAD_LB,LB
+HUD_PAD_RB,RB
+HUD_PAD_LT,LT
+HUD_PAD_RT,RT
+HUD_PAD_A,A
+HUD_PAD_B,B
+HUD_PAD_X,X
+HUD_PAD_Y,Y
+HUD_PAD_VIEW,VIEW
+HUD_PAD_DPAD,D-PAD
+HUD_PROMPT_MENU,Menu
+HUD_PROMPT_DEPART,Depart
+HUD_PROMPT_SUBMIT,Submit
+HUD_PROMPT_BACK,Back
+HUD_PROMPT_CH11,Ch. 11
+HUD_PROMPT_SPEED,Speed
+HUD_LADDER_TITLE,%s · %s
+HUD_LADDER_HINT,◂ R-STICK ▸
+HUD_LADDER_MARKER,▸
+HUD_LADDER_QTY,×%d
+HUD_LADDER_MORE_ASKS,▴ %d
+HUD_LADDER_MORE_BIDS,▾ %d
+HUD_LADDER_SPREAD,SPREAD %.1f
+HUD_SIDE_ASK,ASK
+HUD_SIDE_BID,BID
+HUD_TICKET_TITLE,ORDER TICKET
+HUD_TICKET_STATION,◂ %s ▸
+HUD_TICKET_BUY,BUY @ %s
+HUD_TICKET_SELL,SELL @ %s
+HUD_TICKET_QTY,QTY · D-PAD
+HUD_TICKET_QTY_VALUE,◂ %d ▸
+HUD_TICKET_TOTAL,TOTAL · CARGO
+HUD_TICKET_TOTAL_VALUE,%s CR · %d/%d
+HUD_HELD,HELD %d %s · CARGO %d/%d
+HUD_CARD_ART,ART 4:3
+HUD_CRISIS_EYEBROW,CRISIS · %s · %d RD
+HUD_CARGO_TOTAL,CARGO %d/%d
+HUD_CLOCK_HALTED,The clock is halted.
+HUD_ACT_FILE,File and found a new corp
+HUD_ACT_ACK,Acknowledge
+HUD_ACT_ACCEPT,Accept
+HUD_ACT_DECLINE,Decline
+HUD_ACT_PARACHUTES,Golden Parachutes
+HUD_ACT_SELECT,Select
+HUD_ACT_BUY,Buy perk / start run
+HUD_ACT_BACK,Back
+HUD_BULLET,· %s
+HUD_CRISIS_MODAL_EYEBROW,CRISIS · %s
+HUD_CR_VALUE,%s CR
+HUD_PERK_TIER,T%d
+BOARD_BASE,BASE %.1f · NO LIVE BOOK
+BOARD_STICK,R-STICK ▴▾
+BOARD_EYEBROW,%s · %s
+BOARD_COL_COMMODITY,COMMODITY
+FLEET_HULLS,HULLS %d
+FLEET_TITLE,FLEET
+FLEET_CARGO_QTY,×%d
+CH11_EYEBROW,INSOLVENCY
+CONTRACT_EYEBROW,DEFENSE CONTRACT
+SUM_EYEBROW,RUN OVER
+SUM_SEVERANCE_VALUE,+%d (balance %d)
+PERKS_EYEBROW,SEVERANCE %d
+SET_EYEBROW,ACCESSIBILITY AND CONTROLS
+MAP_DOCKED_TAG,%s · DOCKED

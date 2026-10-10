@@ -22,7 +22,9 @@ const VIEWPORT_WIDTH: float = 1280.0
 const VIEWPORT_HEIGHT: float = 800.0
 const VIEWPORT_SIZE: Vector2 = Vector2(VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
 
-## Panel layouts in 1280x800 screen space.
+## The tactical map's model space (the sim-facing projection SolTacticalMap and its tests
+## pin). The on-screen HUD v3 layout lives in HudLayout; Main maps this space onto it.
+## Panel layouts in 1280x800 model space.
 const HEADER_RECT: Rect2 = Rect2(0.0, 0.0, 1280.0, 64.0)
 const TACTICAL_MAP_RECT: Rect2 = Rect2(0.0, 64.0, 880.0, 672.0)
 const SIDEBAR_RECT: Rect2 = Rect2(880.0, 64.0, 400.0, 672.0)
@@ -632,14 +634,22 @@ static func marquee_offset(clock: float, text_width: float, view_width: float) -
 	var t: float = fposmod(clock, cycle) - TICKER_DWELL_SECONDS
 	return clampf(t, 0.0, scroll_time) * TICKER_SCROLL_SPEED
 
-## Newest ticker lines with their current scroll offsets, newest first.
-func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER_VIEW_WIDTH) -> Array:
+## Newest ticker lines with their current scroll offsets, newest first. Each line also
+## carries its localized `category` label and `body` text; the HUD v3 ticker draws the
+## category as a chip and scrolls the body alone, so with `body_only` the width (and so
+## the marquee) is measured on the body instead of the "CATEGORY: body" text.
+func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER_VIEW_WIDTH, body_only: bool = false) -> Array:
 	var out: Array = []
 	for item in get_recent_headlines(TICKER_VISIBLE_LINES):
-		var text: String = Loc.format("TICKER_LINE", [Loc.category(str(item["category"])), headline_text(item)])
-		var w: float = ticker_text_width(text, measure)
+		var cat: String = Loc.category(str(item["category"]))
+		var body: String = headline_text(item)
+		var text: String = Loc.format("TICKER_LINE", [cat, body])
+		var w: float = ticker_text_width(body if body_only else text, measure)
 		out.append({
 			"text": text,
+			"category": cat,
+			"category_id": str(item["category"]),
+			"body": body,
 			"severity": item["severity"],
 			"width": w,
 			"overflow": w > view_width,

@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=19 format=3]
+[gd_resource type="Theme" load_steps=21 format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/Archivo-VF.ttf" id="archivo"]
 
@@ -80,6 +80,19 @@ border_width_right = 4
 border_width_bottom = 4
 border_color = Color(0.7882, 0.6039, 0.1804, 1)
 
+[sub_resource type="StyleBoxFlat" id="card"]
+bg_color = Color(0.9020, 0.8627, 0.7647, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
+[sub_resource type="StyleBoxFlat" id="ticker_strip"]
+bg_color = Color(0.8510, 0.8039, 0.6902, 1)
+border_width_top = 2
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
 [sub_resource type="FontVariation" id="font_display"]
 base_font = ExtResource("archivo")
 spacing_space = 1
@@ -120,9 +133,13 @@ Panel/styles/panel = SubResource("base")
 HeaderPanel/base_type = &"Panel"
 HeaderPanel/styles/panel = SubResource("plate")
 TickerPanel/base_type = &"Panel"
-TickerPanel/styles/panel = SubResource("plate")
+TickerPanel/styles/panel = SubResource("ticker_strip")
 MapPanel/base_type = &"Panel"
 MapPanel/styles/panel = SubResource("map")
+TicketPanel/base_type = &"Panel"
+TicketPanel/styles/panel = SubResource("plate")
+CardPanel/base_type = &"Panel"
+CardPanel/styles/panel = SubResource("card")
 SidebarPanel/base_type = &"Panel"
 SidebarPanel/styles/panel = SubResource("side")
 ModalPanel/base_type = &"Panel"

@@ -54,7 +54,7 @@ func test_resolution_modal_text_contrast() -> String:
 func test_resolution_modal_uses_hud_text_palette() -> String:
 	var scene = _scene()
 	var modal_fg: Color = scene.resolution_label.get_theme_color("font_color")
-	var hud_fg: Color = scene.header_label.get_theme_color("font_color")
+	var hud_fg: Color = scene._ticket["title"].get_theme_color("font_color")
 	scene.free()
 	if modal_fg != hud_fg:
 		return "modal text %s differs from HUD text %s" % [modal_fg, hud_fg]

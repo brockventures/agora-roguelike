@@ -239,9 +239,9 @@ func test_collapse_to_new_run_driven_by_gamepad_buttons_only() -> String:
 	if lp.overlay_state != M0Loop.OVERLAY_COLLAPSED or lp.collapse_phase != M0Loop.PHASE_SUMMARY:
 		err = "collapse should open the summary"
 	# Summary: all four numbers plus the cause, and the prompt for A.
-	var sum_text: String = m._resolution_text()
+	var sum_text: String = str(m._resolution_model())
 	if err == "":
-		for needle in ["SOVEREIGN DEFAULT", "NET WORTH", "PEAK NET WORTH", "ROUNDS SURVIVED", "SEVERANCE BANKED", "CAUSE", "The Doomsday Clock ran out", "Press A for Golden Parachutes"]:
+		for needle in ["SOVEREIGN DEFAULT", "NET WORTH", "PEAK NET WORTH", "ROUNDS SURVIVED", "SEVERANCE BANKED", "CAUSE", "The Doomsday Clock ran out", "Golden Parachutes"]:
 			if sum_text.find(needle) < 0:
 				err = "summary missing '%s': %s" % [needle, sum_text]
 				break
@@ -250,7 +250,7 @@ func test_collapse_to_new_run_driven_by_gamepad_buttons_only() -> String:
 		err = "D-pad must not advance the summary"
 	if err == "" and (not lp.handle_input(_btn(JOY_BUTTON_A)) or lp.collapse_phase != M0Loop.PHASE_PERKS):
 		err = "A on the summary should open Golden Parachutes"
-	if err == "" and m._resolution_text().find("GOLDEN PARACHUTES") < 0:
+	if err == "" and str(m._resolution_model()).find("GOLDEN PARACHUTES") < 0:
 		err = "perk screen text missing"
 	# A buys the focused perk; D-pad down walks to START NEW RUN.
 	var pick := ""
@@ -296,8 +296,9 @@ func test_summary_names_the_cause() -> String:
 # --- Control hints match the shipped scheme ---
 
 func test_control_hint_matches_the_shipped_scheme() -> String:
-	var hint: String = Loc.t("HUD_CONTROLS_HINT")
-	for needle in ["LB/RB tab", "LT/RT station", "R-stick commodity"]:
+	# The on-screen prompts: LB / RB glyphs on the tabs, LT / RT around the station, R-STICK on the ladder.
+	var hint: String = "%s %s %s %s %s" % [Loc.t("HUD_PAD_LB"), Loc.t("HUD_PAD_RB"), Loc.t("HUD_PAD_LT"), Loc.t("HUD_PAD_RT"), Loc.t("HUD_LADDER_HINT")]
+	for needle in ["LB", "RB", "LT", "RT", "R-STICK"]:
 		if hint.find(needle) < 0:
 			return "control hint missing '%s': %s" % [needle, hint]
 	# And the hint agrees with project.godot: bumpers = tabs, triggers = stations, right stick = commodity.
