@@ -153,6 +153,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if loop == null:
 		return
+	# Toasts age on UI time alone (a modal, the settings screen or a pause does not hold them).
+	# A toast waits (neither drawn nor aged) while a modal owns the screen, so it never
+	# covers the dialog and is still there when the dialog closes.
+	if not _modal_has_focus():
+		toasts.advance(delta)
 	# The settings screen freezes the sim, as an overlay would.
 	if settings_menu != null and settings_menu.is_open:
 		_refresh_readouts()
@@ -743,6 +748,7 @@ func _build_readouts() -> void:
 	_build_board()
 	_build_fleet()
 	_build_modals()
+	_build_toasts()
 	_build_focus_frames()
 	apply_text_scale()
 
@@ -2090,7 +2096,11 @@ func _refresh_fleet() -> void:
 ## Pooled body rows of the resolution modal.
 var _res: Dictionary = {}
 var _dim: HudKit.Plate = null
+var _blocker: Control = null
 var _settings_parts: Dictionary = {}
+
+## Width of a modal's 4:3 art frame (height is three quarters of it).
+const MODAL_ART_W: float = 240.0
 
 ## Band colours by kind: [fill, text, accent].
 const BANDS: Dictionary = {
@@ -2119,6 +2129,16 @@ func _build_modals() -> void:
 	_dim = kit.plate(hud_container, Rect2(0.0, 64.0, 1280.0, 736.0), Color(HudTheme.INK.r, HudTheme.INK.g, HudTheme.INK.b, 0.55))
 	_dim.name = "ModalDim"
 	_dim.visible = false
+	# The mouse trap: while a modal is up this swallows every click, header included, so
+	# nothing behind the modal can be reached (the gamepad trap is M0Loop.dispatch_action).
+	_blocker = Control.new()
+	_blocker.name = "ModalBlocker"
+	_blocker.position = Vector2.ZERO
+	_blocker.size = HudLayout.VIEWPORT
+	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_blocker.focus_mode = Control.FOCUS_NONE
+	_blocker.visible = false
+	hud_container.add_child(_blocker)
 	var res: Dictionary = _make_modal("ResolutionPanel", HudLayout.MODAL_RECT)
 	_res = res
 	resolution_modal = res["panel"]
@@ -2133,12 +2153,21 @@ func _build_modals() -> void:
 	_res["texts"] = texts
 	resolution_label = texts[0]
 	var kvs: Array = []
-	for i in 6:
+	for i in 14:
 		kvs.append({
 			"key": kit.label(resolution_modal, "ResolutionKey%d" % i, HudTheme.ROLE_LABEL, 12, HudTheme.BONE_DIM),
 			"value": kit.label(resolution_modal, "ResolutionValue%d" % i, HudTheme.ROLE_READOUT, 20, HUD_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
 		})
 	_res["kvs"] = kvs
+	# The 4:3 art frame of a crisis or run-end card (ArtCard.dc.html): hatched placeholder,
+	# ink contour and a hard shadow. The shadow is its own plate, since a hatched plate clips.
+	var art_shadow: HudKit.Plate = kit.plate(resolution_modal, Rect2(), HudTheme.INK)
+	var art: HudKit.Plate = kit.plate(resolution_modal, Rect2(), HudTheme.PAPER_DEEP, HudTheme.INK, 4.0)
+	art.hatch = true
+	art.name = "ModalArt"
+	_res["art_shadow"] = art_shadow
+	_res["art"] = art
+	_res["art_l"] = kit.label(art, "ModalArtLabel", HudTheme.ROLE_LABEL, 12, HudTheme.INK, HORIZONTAL_ALIGNMENT_CENTER)
 	var perks: Array = []
 	for i in 12:
 		perks.append({
@@ -2195,7 +2224,7 @@ func _crisis_model() -> Dictionary:
 	for line in CrisisDeck.describe(c):
 		rows.append({"kind": "text", "text": tr("HUD_BULLET") % str(line)})
 	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
-	return {"eyebrow": tr("HUD_CRISIS_MODAL_EYEBROW") % tier_label, "title": Loc.crisis_name(c), "band": "alert", "wide": true, "rows": rows,
+	return {"eyebrow": tr("HUD_CRISIS_MODAL_EYEBROW") % tier_label, "title": Loc.crisis_name(c), "band": "alert", "wide": true, "art": tr("HUD_CARD_ART"), "rows": rows,
 		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_ACK")]]}
 
 
@@ -2228,10 +2257,16 @@ func _summary_model() -> Dictionary:
 		{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
 		{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
 		{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds_survived"]))}]
-	if int(r["barons_broken"]) > 0:
-		rows.append({"kind": "kv", "key": tr("SUM_BARONS"), "value": tr("SUM_BARONS_VALUE") % [int(r["barons_broken"]), int(r["barons_severance"])]})
+	# The severance calculation: per filing, the peak-net-worth share, per broken baron, total.
+	rows.append({"kind": "kv", "key": tr("SUM_SEV_FILINGS") % [int(r["severance_filings"]), Parachutes.SEVERANCE_PER_FILING], "value": tr("SUM_SEV_VALUE") % int(r["severance_filings_pts"])})
+	rows.append({"kind": "kv", "key": tr("SUM_SEV_PEAK") % ("%.1f" % (float(Parachutes.SEVERANCE_NET_WORTH_BPS) / 100.0)), "value": tr("SUM_SEV_VALUE") % int(r["severance_peak_pts"])})
+	var broken_ids: Array = r["broken_ids"]
+	for id in broken_ids:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARON") % [_maker_name(str(id)), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % Parachutes.SEVERANCE_PER_BARON})
+	if broken_ids.is_empty() and int(r["barons_broken"]) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARONS") % [int(r["barons_broken"]), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % int(r["barons_severance"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
-	return {"eyebrow": tr("SUM_EYEBROW"), "title": tr("SUM_TITLE"), "band": "alert", "wide": true,
+	return {"eyebrow": tr("SUM_EYEBROW"), "title": tr("SUM_TITLE"), "band": "alert", "wide": true, "art": tr("SUM_ART"),
 		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
 
 
@@ -2340,6 +2375,30 @@ func _refresh_resolution() -> void:
 	var x0: float = HudLayout.BORDER + 24.0
 	var inner: float = w - 2.0 * x0
 	y += 18.0
+	# A 4:3 art frame (crisis or audit interrupt, run-end card) takes the left of the body;
+	# the text rows flow in the column beside it.
+	var art_on: bool = model.has("art")
+	var art_plate: HudKit.Plate = _res["art"]
+	var art_shadow: HudKit.Plate = _res["art_shadow"]
+	var art_l: Label = _res["art_l"]
+	art_plate.visible = art_on
+	art_shadow.visible = art_on
+	var bx: float = x0
+	var binner: float = inner
+	var art_bottom: float = y
+	if art_on:
+		art_plate.position = Vector2(x0, y)
+		art_plate.size = Vector2(MODAL_ART_W, MODAL_ART_W * 3.0 / 4.0)
+		art_plate.queue_redraw()
+		art_shadow.position = art_plate.position + HudTheme.SHADOW_OFFSET
+		art_shadow.size = art_plate.size
+		kit.fit_text(art_l, str(model["art"]), art_plate.size.x - 24.0)
+		var art_lh: float = HudKit.wrapped_height(art_l, art_l.text, art_plate.size.x - 24.0) if art_l.autowrap_mode != TextServer.AUTOWRAP_OFF else HudKit.line_height(art_l)
+		art_l.position = Vector2(12.0, (art_plate.size.y - art_lh) * 0.5)
+		art_l.size = Vector2(art_plate.size.x - 24.0, art_lh)
+		bx = x0 + MODAL_ART_W + 20.0
+		binner = inner - MODAL_ART_W - 20.0
+		art_bottom = y + art_plate.size.y + HudTheme.SHADOW_OFFSET.y
 	var ti: int = 0
 	var ki: int = 0
 	var pi: int = 0
@@ -2354,9 +2413,9 @@ func _refresh_resolution() -> void:
 				l.visible = true
 				l.text = str(r["text"])
 				l.add_theme_color_override("font_color", HudTheme.BONE_DIM if str(r["kind"]) == "muted" else HUD_TEXT_COLOR)
-				var h: float = HudKit.wrapped_height(l, l.text, inner)
-				l.position = Vector2(x0, y)
-				l.size = Vector2(inner, h)
+				var h: float = HudKit.wrapped_height(l, l.text, binner)
+				l.position = Vector2(bx, y)
+				l.size = Vector2(binner, h)
 				y += h + 8.0
 			"kv":
 				var kv: Dictionary = kvs[ki]
@@ -2367,13 +2426,19 @@ func _refresh_resolution() -> void:
 				v.visible = true
 				k.text = str(r["key"])
 				v.text = str(r["value"])
-				var vw: float = kit.fit_text(v, v.text, inner * 0.6)
+				# The value may take what its key leaves (a long cause line, a short key), but
+				# never less than a third of the column; the key is then fitted to the rest.
+				var vmax: float = maxf(binner * 0.34, binner - kit.natural_width(k, k.text) - 14.0)
+				var vw: float = kit.fit_text(v, v.text, vmax)
+				var vh: float = HudKit.wrapped_height(v, v.text, vmax) if v.autowrap_mode != TextServer.AUTOWRAP_OFF else HudKit.line_height(v)
+				kit.fit_text(k, k.text, binner - vw - 14.0)
 				var kh: float = HudKit.line_height(k)
-				var vh: float = HudKit.line_height(v)
+				if k.autowrap_mode != TextServer.AUTOWRAP_OFF:
+					kh = HudKit.wrapped_height(k, k.text, binner - vw - 14.0)
 				var rh: float = maxf(kh, vh)
-				k.position = Vector2(x0, y + (rh - kh) * 0.5 + 2.0)
-				k.size = Vector2(inner - vw - 12.0, kh)
-				v.position = Vector2(x0 + inner - vw - 2.0, y)
+				k.position = Vector2(bx, y + (rh - kh) * 0.5 + 2.0)
+				k.size = Vector2(binner - vw - 12.0, kh)
+				v.position = Vector2(bx + binner - vw - 2.0, y)
 				v.size = Vector2(vw + 2.0, vh)
 				y += rh + 8.0
 			"perk", "start":
@@ -2423,7 +2488,7 @@ func _refresh_resolution() -> void:
 	for i in range(pi, perks.size()):
 		for key in ["marker", "tier", "name", "branch", "tag"]:
 			(perks[i][key] as CanvasItem).visible = false
-	y += 6.0
+	y = maxf(y, art_bottom) + 6.0
 	var h_total: float = _layout_footer(_res, w, y, model["actions"])
 	resolution_modal.size = Vector2(w, h_total)
 	resolution_modal.position = Vector2(rect.position.x, maxf(72.0, 64.0 + (736.0 - h_total) * 0.5))
@@ -2477,6 +2542,132 @@ func _refresh_settings() -> void:
 	settings_modal.position = Vector2(HudLayout.MODAL_WIDE_RECT.position.x, maxf(72.0, 64.0 + (736.0 - h_total) * 0.5))
 	settings_focus_bar.visible = true
 	HudTheme.place_focus_bar(settings_focus_bar, Rect2(settings_label.position.x - 4.0, settings_label.position.y + lh * float(settings_menu.cursor_line(max_rows) - 2), settings_label.size.x + 4.0, lh))
+
+
+
+# --- Toasts: trading fills, rejected orders and GalNet alerts (Toast.dc.html) ---
+
+## The toast model: UI time only, never the sim clock (see ToastTray).
+var toasts := ToastTray.new()
+var _toast_rows: Array = []
+const TOAST_RIGHT: float = 1264.0
+const TOAST_TOP: float = 76.0
+const TOAST_MAX_W: float = 460.0
+const TOAST_GAP: float = 10.0
+const TOAST_BORDER: float = 3.0
+
+
+func _build_toasts() -> void:
+	for i in ToastTray.MAX_VISIBLE:
+		var host := Control.new()
+		host.name = "Toast%d" % i
+		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		host.focus_mode = Control.FOCUS_NONE
+		host.visible = false
+		hud_container.add_child(host)
+		var shadow: HudKit.Plate = kit.plate(host, Rect2(), HudTheme.INK)
+		var frame: HudKit.Plate = kit.plate(host, Rect2(), HudTheme.INK)
+		var chip: HudKit.Plate = kit.plate(frame, Rect2(), HudTheme.OCHRE)
+		var kind: Label = kit.label(chip, "ToastKind%d" % i, HudTheme.ROLE_LABEL, 12, HudTheme.INK, HORIZONTAL_ALIGNMENT_CENTER)
+		var body: HudKit.Plate = kit.plate(frame, Rect2(), HudTheme.BONE)
+		var text: Label = kit.label(body, "ToastText%d" % i, HudTheme.ROLE_HINT, 15, HudTheme.INK)
+		text.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_toast_rows.append({"host": host, "shadow": shadow, "frame": frame, "chip": chip, "kind": kind, "body": body, "text": text})
+	if hud != null:
+		if not hud.headline_emitted.is_connected(_on_headline_toast):
+			hud.headline_emitted.connect(_on_headline_toast)
+		if hud.gamepad_focus != null and not hud.gamepad_focus.order_rejected.is_connected(_on_rejected_toast):
+			hud.gamepad_focus.order_rejected.connect(_on_rejected_toast)
+
+
+## A trading fill becomes a FILLED toast and a GalNet warning or critical alert a NOTICE
+## toast. Presentation only: the headline was already posted by the sim-side code.
+func _on_headline_toast(item: Dictionary) -> void:
+	if str(item.get("key", "")) == "HL_FILL":
+		toasts.push(ToastTray.KIND_FILLED, Loc.format("TOAST_FILL", item["args"]))
+	elif ["WARNING", "CRITICAL"].has(str(item.get("severity", ""))):
+		toasts.push(ToastTray.KIND_INFO, hud.headline_text(item))
+
+
+func _on_rejected_toast(_reason: String, _payload: Dictionary) -> void:
+	var msg: String = hud.gamepad_focus.get_rejection_message()
+	if msg != "":
+		toasts.push(ToastTray.KIND_REJECTED, msg)
+
+
+static func _toast_kind_style(kind: String) -> Array:
+	match kind:
+		ToastTray.KIND_REJECTED:
+			return ["TOAST_REJECTED", HudTheme.RUST, HudTheme.BONE]
+		ToastTray.KIND_INFO:
+			return ["TOAST_NOTICE", HudTheme.TEAL, HudTheme.BONE]
+	return ["TOAST_FILLED", HudTheme.OCHRE, HudTheme.INK]
+
+
+func _refresh_toasts() -> void:
+	var live: Array = toasts.toasts
+	var sig: Array = [Loc.current(), settings.text_scale]
+	for t in live:
+		sig.append([t["kind"], t["text"]])
+	var relayout: bool = _changed("toasts", sig)
+	var y: float = TOAST_TOP
+	for i in _toast_rows.size():
+		var r: Dictionary = _toast_rows[i]
+		var host: Control = r["host"]
+		host.visible = i < live.size() and not _modal_has_focus()
+		if i >= live.size() or not host.visible:
+			continue
+		var t: Dictionary = live[i]
+		var kind_l: Label = r["kind"]
+		var text_l: Label = r["text"]
+		var chip: HudKit.Plate = r["chip"]
+		var body: HudKit.Plate = r["body"]
+		var frame: HudKit.Plate = r["frame"]
+		var shadow: HudKit.Plate = r["shadow"]
+		var style: Array = _toast_kind_style(str(t["kind"]))
+		if relayout or host.size == Vector2.ZERO:
+			kind_l.text = tr(str(style[0]))
+			kind_l.add_theme_color_override("font_color", style[2])
+			chip.fill = style[1]
+			chip.queue_redraw()
+			var kw: float = kit.natural_width(kind_l, kind_l.text) + 20.0
+			var tmax: float = TOAST_MAX_W - kw - 3.0 * TOAST_BORDER - 24.0
+			var tw: float = kit.fit_text(text_l, str(t["text"]), tmax)
+			var wraps: bool = text_l.autowrap_mode != TextServer.AUTOWRAP_OFF
+			var th: float = HudKit.wrapped_height(text_l, str(t["text"]), tmax) if wraps else HudKit.line_height(text_l)
+			# Always a wrapping label (a one-line text is given its own width plus slack), so a
+			# line that needs the second row really wraps.
+			text_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			text_l.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			# The label's cached minimum width is still the unwrapped line's until it re-shapes;
+			# size would be clamped up to it.
+			HudKit.refresh_theme(text_l)
+			var h: float = th + 12.0 + 2.0 * TOAST_BORDER
+			var w: float = kw + 3.0 * TOAST_BORDER + tw + 24.0
+			frame.size = Vector2(w, h)
+			shadow.position = HudTheme.SHADOW_OFFSET
+			shadow.size = frame.size
+			chip.position = Vector2(TOAST_BORDER, TOAST_BORDER)
+			chip.size = Vector2(kw, h - 2.0 * TOAST_BORDER)
+			kind_l.position = Vector2.ZERO
+			kind_l.size = chip.size
+			body.position = Vector2(2.0 * TOAST_BORDER + kw, TOAST_BORDER)
+			body.size = Vector2(w - 3.0 * TOAST_BORDER - kw, h - 2.0 * TOAST_BORDER)
+			text_l.position = Vector2(12.0, 6.0)
+			text_l.size = Vector2(tmax if wraps else tw + 4.0, th)
+			host.size = frame.size + HudTheme.SHADOW_OFFSET
+			frame.queue_redraw()
+			body.queue_redraw()
+		host.position = Vector2(TOAST_RIGHT - frame.size.x - HudTheme.SHADOW_OFFSET.x, y)
+		# The design's stepped pop (filled, notice) and shake (rejected) while the toast is young.
+		var step: int = ToastTray.anim_step(float(t["age"]))
+		host.pivot_offset = frame.size * 0.5
+		if str(t["kind"]) == ToastTray.KIND_REJECTED:
+			host.scale = Vector2.ONE
+			host.position.x += ToastTray.shake_offset(step)
+		else:
+			host.scale = Vector2.ONE * ToastTray.pop_scale(step)
+		y += frame.size.y + TOAST_GAP
 
 
 # --- Focus frames ---
@@ -2758,6 +2949,8 @@ func _refresh_readouts() -> void:
 	_refresh_sleep()
 	_refresh_settings()
 	_dim.visible = resolution_modal.visible or settings_modal.visible
+	_blocker.visible = _modal_has_focus()
+	_refresh_toasts()
 	_update_ladder_focus()
 	_update_focus_frames()
 	_update_scrollers()

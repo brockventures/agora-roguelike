@@ -171,6 +171,7 @@ func _collect(scene: Node) -> Array:
 	loop.collapse_phase = M0Loop.PHASE_SUMMARY
 	scene._refresh_readouts()
 	add.call("run summary", scene.resolution_label)
+	_collect_modals(scene, add)
 	loop.collapse_phase = M0Loop.PHASE_PERKS
 	rc.profile.severance_points = 999999
 	scene._refresh_readouts()
@@ -184,6 +185,48 @@ func _collect(scene: Node) -> Array:
 	add.call("sleep banner", scene.sleep_label)
 	loop.sleep_pause_active = false
 	return rows
+
+
+## The Epic 6 (#123) modals and toasts: the run summary with its severance breakdown at its
+## longest (named barons, then the aggregate row), the monopoly summary, every crisis card
+## with its 4:3 art frame, and a stack of toasts with long lines.
+func _collect_modals(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	var deck: CrisisDeck = loop.crisis_deck
+	for def in deck.data["crises"]:
+		var c: Dictionary = _fake_crisis(def, deck)
+		deck.active = [c]
+		deck.awaiting_ack = [c["uid"]]
+		loop.overlay_state = M0Loop.OVERLAY_CRISIS
+		scene._refresh_readouts()
+		add.call("crisis card[%s]" % c["id"], scene.resolution_label)
+	deck.active = []
+	deck.awaiting_ack = []
+	loop.overlay_state = M0Loop.OVERLAY_COLLAPSED
+	loop.collapse_phase = M0Loop.PHASE_SUMMARY
+	rc.severance_award = 99999
+	rc.barons_broken_award = 3
+	rc.peak_net_worth = 9999999
+	loop._broken_ids = ["ares_heavy", "titan_cryo_hydro", "blackwater_lines"]
+	scene._refresh_readouts()
+	add.call("run summary[breakdown]", scene.resolution_label)
+	loop._broken_ids = []
+	scene._refresh_readouts()
+	add.call("run summary[aggregate]", scene.resolution_label)
+	rc.severance_award = 0
+	rc.barons_broken_award = 0
+	rc.peak_net_worth = 0
+	loop.overlay_state = M0Loop.OVERLAY_NONE
+	loop.collapse_phase = M0Loop.PHASE_NONE
+	# Toasts: a fill, a rejection and an alert, each with a long line.
+	scene.toasts.push(ToastTray.KIND_FILLED, "BUY 999 MACHINERY @ 99999.9 at Arcadia Foundries vs Ares Heavy Syndicate")
+	scene.toasts.push(ToastTray.KIND_REJECTED, "Orders capped at 20 units while the audit lasts")
+	scene.toasts.push(ToastTray.KIND_INFO, "Ares Heavy squeezes the machinery lanes: bids climbing across the sector")
+	scene._refresh_readouts()
+	add.call("toasts", scene.wordmark_label)
+	scene.toasts.clear()
+	scene._refresh_readouts()
 
 
 ## Baron-made books (Epic 3 task 2, part of #15): the board title and the ladder maker
@@ -582,6 +625,38 @@ func test_labels_fit_under_pseudolocalization() -> String:
 	scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
 	return "ok" if f.is_empty() else "pseudo layout overflows (%d): %s" % [f.size(), "\n  ".join(PackedStringArray(f))]
+
+
+
+## The modals and toasts at every text scale, English and pseudo-localization (the 130%
+## pseudo-locale is the worst case): only what sits in a modal or a toast is judged here,
+## the rest of the HUD has its own tests.
+func test_modals_and_toasts_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rows: Array = []
+			_seen = {}
+			var add := func(name: String, _label: Label) -> void:
+				_snap(scene, name, rows)
+			_collect_modals(scene, add)
+			var judged: int = 0
+			for row in rows:
+				var path: String = _node_path(row[1])
+				if not (path.contains("ResolutionPanel") or path.contains("/Toast")):
+					continue
+				judged += 1
+				for f in (row[5] if row.size() > 5 else overflow_of(row[0], row[1], row[2], row[3], row[4])):
+					bad.append("%s %.2fx: %s" % [locale, scale, f])
+			if judged < 20:
+				bad.append("%s %.2fx: judged only %d labels" % [locale, scale, judged])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if bad.is_empty() else "modals or toasts overflow (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad))]
 
 
 ## Sol Central's rows at every text scale (the Earth sidebar scrolls vertically above
