@@ -44,6 +44,13 @@ const HUD_TEXT_COLOR := HudTheme.BONE
 const MODAL_BG_COLOR := Color(0.1725, 0.2078, 0.2314, 1.0)
 ## Text on the light paper panels (map, sidebar).
 const PAPER_TEXT_COLOR := HudTheme.INK
+## Gamepad focus, in the new style (#105): the focused zone gets a heavy coloured frame
+## (rust on the paper panels, ochre on the slate ones) and the focused row a flat bar with
+## an ink or ochre outline. The ">" glyph stays, so focus never depends on colour alone.
+const FOCUS_BAR_PAPER_FILL := HudTheme.OCHRE
+const FOCUS_BAR_PAPER_EDGE := HudTheme.INK
+const FOCUS_BAR_DARK_FILL := HudTheme.RUST_DARK
+const FOCUS_BAR_DARK_EDGE := HudTheme.OCHRE
 
 ## "PAUSED - resumed from sleep" banner, shown while a wake-pause is active.
 var sleep_modal: Panel = null
@@ -61,6 +68,13 @@ var resolution_label: Label = null
 var sfx_players: Array[AudioStreamPlayer] = []
 var drone_player: AudioStreamPlayer = null
 var market_highlight: ColorRect = null
+## Focus bars (rows) and zone frames, built in _build_readouts.
+var sidebar_focus_bar: ColorRect = null
+var resolution_focus_bar: ColorRect = null
+var settings_focus_bar: ColorRect = null
+var focus_frames: Dictionary = {}
+## Accent stripes down the left edge of the dark modals.
+var _modal_stripes: Array[ColorRect] = []
 ## Per-voice bookkeeping for stealing: play order and whether it carries a priority sound.
 var _voice_order: Array[int] = []
 var _voice_priority: Array[bool] = []
@@ -571,6 +585,7 @@ func _load_settings() -> void:
 	settings.text_scale = fresh.text_scale
 	settings.palette = fresh.palette
 	settings.locale = fresh.locale
+	settings.crt_filter = fresh.crt_filter
 	settings.bindings = fresh.bindings
 	var env_locale: bool = OS.get_environment(Loc.PSEUDO_ENV) in ["1", "true", "yes"] or OS.get_environment(Loc.LOCALE_ENV) != ""
 	if env_locale:
@@ -578,6 +593,7 @@ func _load_settings() -> void:
 	settings.apply_all(not env_locale)
 	settings.changed.connect(_on_settings_changed)
 	apply_text_scale()
+	set_crt_enabled(settings.crt_filter)
 
 
 func _save_settings() -> void:
@@ -588,6 +604,7 @@ func _save_settings() -> void:
 func _on_settings_changed() -> void:
 	settings.locale = Loc.current()
 	apply_text_scale()
+	set_crt_enabled(settings.crt_filter)
 	_save_settings()
 
 
@@ -742,6 +759,7 @@ func _build_readouts() -> void:
 	sidebar_clip.clip_contents = true
 	sidebar_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sidebar_panel.add_child(sidebar_clip)
+	sidebar_focus_bar = HudTheme.make_focus_bar(sidebar_clip, FOCUS_BAR_PAPER_FILL, FOCUS_BAR_PAPER_EDGE)
 	sidebar_label = _make_label(sidebar_clip, Rect2(16, 0, 368, 656), 16)
 	sidebar_label.add_theme_color_override("font_color", PAPER_TEXT_COLOR)
 	sidebar_label.set_meta(SCROLLS_META, false)
@@ -760,32 +778,27 @@ func _build_readouts() -> void:
 	tactical_map_panel.clip_contents = true
 	tactical_map_panel.draw.connect(_draw_map)
 	market_modal = Panel.new()
+	HudTheme.style_panel(market_modal, "ModalPanel")
 	market_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position
 	market_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size
 	hud_container.add_child(market_modal)
-	market_highlight = ColorRect.new()
-	market_highlight.color = Color(HudTheme.OCHRE, 0.5)
-	market_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	market_modal.add_child(market_highlight)
+	_add_modal_stripe(market_modal)
+	market_highlight = HudTheme.make_focus_bar(market_modal, FOCUS_BAR_DARK_FILL, FOCUS_BAR_DARK_EDGE)
+	market_highlight.visible = true
 	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 16)
 	resolution_modal = Panel.new()
-	var opaque := StyleBoxFlat.new()
-	opaque.bg_color = MODAL_BG_COLOR
-	opaque.border_color = HudTheme.INK
-	opaque.set_border_width_all(HudTheme.OUTLINE_PANEL)
-	opaque.shadow_color = HudTheme.INK
-	opaque.shadow_size = 1
-	opaque.shadow_offset = HudTheme.SHADOW_OFFSET + Vector2(1, 1)
-	resolution_modal.add_theme_stylebox_override("panel", opaque)
+	HudTheme.style_panel(resolution_modal, "ModalPanel")
 	resolution_modal.position = RESOLUTION_RECT.position
 	resolution_modal.size = RESOLUTION_RECT.size
 	hud_container.add_child(resolution_modal)
+	_add_modal_stripe(resolution_modal)
+	resolution_focus_bar = HudTheme.make_focus_bar(resolution_modal, FOCUS_BAR_DARK_FILL, FOCUS_BAR_DARK_EDGE)
 	resolution_label = _make_label(resolution_modal, Rect2(20, 16, 560, 288), 20)
 	# Body text keeps the shared HUD bone colour (_make_label). A red override here
 	# was unreadable on the dark panel once the CRT aberration split its channels.
 	resolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sleep_modal = Panel.new()
-	sleep_modal.add_theme_stylebox_override("panel", opaque)
+	HudTheme.style_panel(sleep_modal, "BannerPanel")
 	sleep_modal.position = SLEEP_BANNER_RECT.position
 	sleep_modal.size = SLEEP_BANNER_RECT.size
 	hud_container.add_child(sleep_modal)
@@ -793,14 +806,65 @@ func _build_readouts() -> void:
 	sleep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sleep_modal.visible = false
 	settings_modal = Panel.new()
-	settings_modal.add_theme_stylebox_override("panel", opaque)
+	HudTheme.style_panel(settings_modal, "ModalPanel")
 	settings_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position
 	settings_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size
 	hud_container.add_child(settings_modal)
+	_add_modal_stripe(settings_modal)
+	settings_focus_bar = HudTheme.make_focus_bar(settings_modal, FOCUS_BAR_DARK_FILL, FOCUS_BAR_DARK_EDGE)
 	settings_label = _make_label(settings_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 18)
 	settings_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	settings_modal.visible = false
+	_build_focus_frames()
 	apply_text_scale()
+
+
+## Accent stripe down the left edge of a dark modal: a flat ochre band, ink outlined.
+func _add_modal_stripe(modal: Panel) -> void:
+	var stripe := ColorRect.new()
+	stripe.color = HudTheme.OCHRE
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stripe.position = Vector2(HudTheme.OUTLINE_PANEL, HudTheme.OUTLINE_PANEL)
+	stripe.size = Vector2(8.0, modal.size.y - 2.0 * HudTheme.OUTLINE_PANEL)
+	modal.add_child(stripe)
+	_modal_stripes.append(stripe)
+
+
+## One coloured frame per focusable zone, shown only on the zone the gamepad is in.
+func _build_focus_frames() -> void:
+	var specs: Array = [
+		[GamepadFocus.Zone.TACTICAL_MAP, tactical_map_panel, "FocusFrameRust"],
+		[GamepadFocus.Zone.ORDER_BOOK, sidebar_panel, "FocusFrameRust"],
+		[GamepadFocus.Zone.TRADING_OVERLAY, market_modal, "FocusFrameOchre"],
+		[GamepadFocus.Zone.SYSTEM_BAR, header_panel, "FocusFrameOchre"],
+	]
+	for spec in specs:
+		var host: Panel = spec[1]
+		var frame := Panel.new()
+		HudTheme.style_panel(frame, str(spec[2]))
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.position = Vector2.ZERO
+		frame.size = host.size
+		frame.visible = false
+		host.add_child(frame)
+		focus_frames[int(spec[0])] = frame
+
+
+## True while a full-screen modal (settings, collapse, Chapter 11, crisis, sleep banner) owns input.
+func _modal_has_focus() -> bool:
+	return settings_modal.visible or resolution_modal.visible or sleep_modal.visible
+
+
+## Frames follow the gamepad zone; the trading overlay frame only shows while it is up.
+func _update_focus_frames() -> void:
+	var zone: int = int(hud.gamepad_focus.current_zone)
+	if _modal_has_focus():
+		zone = -1
+	for z in focus_frames:
+		var frame: Panel = focus_frames[z]
+		var host: Control = frame.get_parent() as Control
+		frame.size = host.size
+		frame.visible = int(z) == zone and (int(z) != GamepadFocus.Zone.TRADING_OVERLAY or market_modal.visible)
 
 
 func _draw_map() -> void:
@@ -856,6 +920,11 @@ func _refresh_readouts() -> void:
 	market_label.text = _board_text() if market_modal.visible else ""
 	_update_market_highlight()
 	resolution_modal.visible = loop.overlay_state != M0Loop.OVERLAY_NONE
+	_style_resolution_modal()
+	# A paused game wears an ochre header contour.
+	var header_variation: String = "HeaderPanelPaused" if controller.sim_clock.paused else "HeaderPanel"
+	if String(header_panel.theme_type_variation) != header_variation:
+		HudTheme.style_panel(header_panel, header_variation)
 	var big: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED or loop.overlay_state == M0Loop.OVERLAY_CRISIS
 	resolution_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position if big else RESOLUTION_RECT.position
 	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if big else RESOLUTION_RECT.size
@@ -871,7 +940,49 @@ func _refresh_readouts() -> void:
 	else:
 		settings_label.text = ""
 	_update_ladder_swatches()
+	_update_focus_bars()
+	_update_focus_frames()
+	_update_modal_stripes()
 	tactical_map_panel.queue_redraw()
+
+
+## Alarm-coloured plate for the collapse summary and Chapter 11, the plain modal plate otherwise.
+func _style_resolution_modal() -> void:
+	var alarm: bool = loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11 or (loop.overlay_state == M0Loop.OVERLAY_COLLAPSED and loop.collapse_phase != M0Loop.PHASE_PERKS)
+	var variation: String = "AlertPanel" if alarm else "ModalPanel"
+	if String(resolution_modal.theme_type_variation) != variation:
+		HudTheme.style_panel(resolution_modal, variation)
+
+
+func _update_modal_stripes() -> void:
+	for stripe in _modal_stripes:
+		var modal: Control = stripe.get_parent() as Control
+		stripe.size = Vector2(8.0, modal.size.y - 2.0 * HudTheme.OUTLINE_PANEL)
+
+
+## Places the focus bar of each list: the ladder cursor, the perk cursor, the settings cursor.
+func _update_focus_bars() -> void:
+	var f: GamepadFocus = hud.gamepad_focus
+	# Ladder: asks print best-last above the spread, bids below it.
+	var on_ladder: bool = f.current_zone == GamepadFocus.Zone.ORDER_BOOK and _ladder_shape[0] + _ladder_shape[1] > 0 and not _modal_has_focus()
+	sidebar_focus_bar.visible = on_ladder
+	if on_ladder:
+		var buying: bool = f.active_side == GamepadFocus.OrderSide.BUY
+		var line: int = 2 + (_ladder_shape[0] - 1 - f.ladder_index) if buying else 3 + _ladder_shape[0] + f.ladder_index
+		var lh: float = _line_height(sidebar_label)
+		HudTheme.place_focus_bar(sidebar_focus_bar, Rect2(8.0, sidebar_label.position.y + lh * float(line), SIDEBAR_VIEW.x - 16.0, lh))
+	# Golden Parachutes list.
+	var perks: bool = resolution_modal.visible and loop.overlay_state == M0Loop.OVERLAY_COLLAPSED and loop.collapse_phase == M0Loop.PHASE_PERKS
+	resolution_focus_bar.visible = perks
+	if perks:
+		var lh2: float = _line_height(resolution_label)
+		HudTheme.place_focus_bar(resolution_focus_bar, Rect2(resolution_label.position.x - 4.0, resolution_label.position.y + lh2 * float(2 + loop.perk_cursor), resolution_label.size.x + 4.0, lh2))
+	# Settings list.
+	settings_focus_bar.visible = settings_modal.visible
+	if settings_modal.visible:
+		var lh3: float = _line_height(settings_label)
+		var max_rows: int = int(settings_label.size.y / lh3) - 5
+		HudTheme.place_focus_bar(settings_focus_bar, Rect2(settings_label.position.x - 4.0, settings_label.position.y + lh3 * float(settings_menu.cursor_line(max_rows)), settings_label.size.x + 4.0, lh3))
 
 
 ## Draws the newest GalNet lines; a line wider than the panel scrolls sideways.
@@ -885,6 +996,7 @@ func _refresh_ticker() -> void:
 		var tl: Label = ticker_labels[i]
 		if i < lines.size():
 			tl.text = lines[i]["text"]
+			tl.add_theme_color_override("font_color", HudTheme.ticker_color(str(lines[i]["severity"])))
 			tl.position.x = -float(lines[i]["offset"])
 		else:
 			tl.text = ""
@@ -947,8 +1059,7 @@ func _update_market_highlight() -> void:
 	if market_highlight == null or market_label == null or hud == null:
 		return
 	var lh: float = float(market_label.get_line_height() + market_label.get_theme_constant("line_spacing"))
-	market_highlight.position = market_label.position + Vector2(-4.0, lh * float(market_row_line()))
-	market_highlight.size = Vector2(market_label.size.x, lh)
+	HudTheme.place_focus_bar(market_highlight, Rect2(market_label.position + Vector2(-4.0, lh * float(market_row_line())), Vector2(market_label.size.x, lh)))
 
 
 func _fleet_text() -> String:

@@ -14,7 +14,7 @@ extends RefCounted
 
 signal closed
 
-enum Row { SCALE, PALETTE, LANGUAGE, ACTION, RESET, CLOSE }
+enum Row { SCALE, PALETTE, LANGUAGE, CRT, ACTION, RESET, CLOSE }
 
 var settings: AccessibilitySettings = null
 var is_open: bool = false
@@ -47,7 +47,7 @@ func close() -> void:
 
 ## One entry per selectable row: {"kind": Row, "action": String}.
 func rows() -> Array:
-	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}]
+	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}, {"kind": Row.CRT}]
 	for a in InputRemap.actions():
 		out.append({"kind": Row.ACTION, "action": a})
 	out.append({"kind": Row.RESET})
@@ -70,6 +70,8 @@ func row_text(i: int, row: Dictionary) -> String:
 			return tr_row(mark, "SET_PALETTE", "< %s >" % Palette.label(settings.palette))
 		Row.LANGUAGE:
 			return tr_row(mark, "SET_LANGUAGE", "< %s >" % Loc.locale_label())
+		Row.CRT:
+			return tr_row(mark, "SET_CRT", "< %s >" % Loc.t("SET_ON" if settings.crt_filter else "SET_OFF"))
 		Row.ACTION:
 			var a: String = str(row["action"])
 			var value: String = Loc.t("SET_LISTENING") if a == listening_action else InputRemap.binding_text(settings.bindings.get(a, {}))
@@ -83,13 +85,25 @@ func tr_row(mark: String, key: String, value: String) -> String:
 	return "%s %s   %s" % [mark, Loc.t(key), value]
 
 
+## Index of the first row text() shows for `max_rows`.
+func first_visible(max_rows: int = 99) -> int:
+	var n: int = rows().size()
+	var shown: int = clampi(max_rows, 3, n)
+	return clampi(cursor - shown / 2, 0, n - shown)
+
+
+## Line of text(max_rows) that holds the cursor row (title and a blank line come first).
+func cursor_line(max_rows: int = 99) -> int:
+	return 2 + cursor - first_visible(max_rows)
+
+
 ## The screen text. Only `max_rows` rows are shown, scrolled so the cursor stays
 ## in view (larger text scales leave room for fewer rows).
 func text(max_rows: int = 99) -> String:
 	var all: Array = rows()
 	var n: int = all.size()
 	var shown: int = clampi(max_rows, 3, n)
-	var first: int = clampi(cursor - shown / 2, 0, n - shown)
+	var first: int = first_visible(max_rows)
 	var out: PackedStringArray = [Loc.t("SET_TITLE"), ""]
 	for i in range(first, first + shown):
 		out.append(row_text(i, all[i]))
@@ -160,12 +174,14 @@ func _change(dir: int) -> void:
 			settings.step_palette(dir)
 		Row.LANGUAGE:
 			settings.step_locale(dir)
+		Row.CRT:
+			settings.set_crt_filter(not settings.crt_filter)
 
 
 func _activate() -> void:
 	var row: Dictionary = rows()[cursor]
 	match int(row["kind"]):
-		Row.SCALE, Row.PALETTE, Row.LANGUAGE:
+		Row.SCALE, Row.PALETTE, Row.LANGUAGE, Row.CRT:
 			_change(1)
 		Row.ACTION:
 			listening_action = str(row["action"])
