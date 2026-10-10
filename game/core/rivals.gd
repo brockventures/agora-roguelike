@@ -49,6 +49,24 @@ const DEFAULTS: Dictionary = {
 	"bid_chance_bps": 5000,
 	# Share of its CR a fleet will put into one lot of shares.
 	"bid_cr_share_bps": 5000,
+	# Front-running (task 11, trait front_runner): the least a departing hold must be worth
+	# (Piracy.cargo_value), the CR the fleet must keep after fuel and tolls, the chance it
+	# acts, how much of the destination book's depth it takes (depth_bps left, 6000 = -40%)
+	# and for how many rounds.
+	"front_run_min_value": 1000,
+	"front_run_min_cr": 3000,
+	"front_run_chance_bps": 7000,
+	"front_run_depth_bps": 6000,
+	"front_run_rounds": 2,
+	# Privateer bounties (task 11, trait privateer_sponsor). The doc's floor is Piracy.VALUE_REF
+	# (10,000 CR), which a 100-unit hold can never reach (the dearest unit is 21.2 CR), so the
+	# floor is a placeholder of its own. Each point of total baron heat lowers it by
+	# `bounty_heat_value_step` CR (rival targeting reads the same heat, doc 6.2).
+	"bounty_min_value": 1500,
+	"bounty_heat_value_step": 150,
+	"bounty_chance_bps": 6000,
+	# Chance each round that a standing bounty on the player is traced (Piracy.PRIV_TRACE = 10%).
+	"bounty_trace_bps": 1000,
 }
 
 
@@ -149,7 +167,10 @@ static func advance(w: Barons, round_num: int, rc: RunController, market: Statio
 	for id in w.rival_ids():
 		var f: RivalFleet = w.rival(id)
 		if f.in_flight() and round_num >= int(f.route.get("arrival_round", 0)):
-			_arrive(w, f, market, round_num, events)
+			if int(f.route.get("front", 0)) == 1:
+				_front_arrive(w, f, round_num, events)
+			else:
+				_arrive(w, f, market, round_num, events)
 		if f.in_flight():
 			continue
 		if f.cargo_units() > 0:
@@ -173,6 +194,10 @@ static func react(w: Barons, rc: RunController, market: StationMarket, info: Dic
 		var f: RivalFleet = w.rival(id)
 		if f.in_flight():
 			continue
+		# A front_runner that can beat the player to the destination front-runs INSTEAD of
+		# its ordinary reaction; one that cannot (or loses its chance draw) reacts as before.
+		if str(w.rival_def(id).get("trait", "")) == "front_runner" and _try_front_run(w, f, rc, market, info, cfg, round_num, events):
+			continue
 		var roll: int = _draw("rival-react", id, rc.run_seed, round_num).randint(0, 9999)
 		if roll >= int(cfg["react_chance_bps"]):
 			continue
@@ -186,6 +211,7 @@ static func react(w: Barons, rc: RunController, market: StationMarket, info: Dic
 		if events.size() > n0:
 			events[n0]["reaction"] = true
 			events[n0]["watched"] = str(info.get("origin", ""))
+	_try_bounty(w, rc, info, cfg, round_num, events)
 	return events
 
 
@@ -281,3 +307,161 @@ static func moves_on(w: Barons, station: String, commodity: String, round_num: i
 		if not l.is_empty() and int(l.get("round", -1)) == round_num and str(l.get("station", "")) == station.to_lower() and str(l.get("commodity", "")) == commodity.to_upper():
 			out.append({"fleet": id, "side": str(l["side"]), "qty": int(l["qty"]), "price": int(l["price"])})
 	return out
+
+
+# --- Front-running (Epic 3 task 11, design doc 6.1) ---
+
+## The player's most valuable commodity aboard and the whole hold's value (Piracy.cargo_value),
+## commodities in sorted order, the first of equal value winning.
+static func _hold_value(rc: RunController) -> Dictionary:
+	var keys: Array = rc.cargo.keys()
+	keys.sort()
+	var best: String = ""
+	var best_v: int = 0
+	var total: int = 0
+	for c in keys:
+		var v: int = Piracy.cargo_value(str(c), int(rc.cargo[c]))
+		total += v
+		if v > best_v:
+			best_v = v
+			best = str(c)
+	return {"commodity": best, "value": total}
+
+
+## A front_runner reacts to the player's DEPARTURE only (never a resting order: the
+## player has none). It qualifies when the hold is worth `front_run_min_value`, it can reach
+## the destination in no more rounds than the player's trip, and it keeps `front_run_min_cr`
+## after fuel and tolls. It then sails there to pre-position (or, already docked there,
+## starts at once); on arrival `front_run_depth_bps` of the commodity's depth stays on the
+## destination book for `front_run_rounds` rounds and one GalNet line says so. Its chance is
+## a fresh source seeded hash32("rival-front-<id>-<run_seed>-<round>").
+static func _try_front_run(w: Barons, f: RivalFleet, rc: RunController, market: StationMarket, info: Dictionary, cfg: Dictionary, round_num: int, events: Array) -> bool:
+	if market == null or not f.front.is_empty():
+		return false
+	var hold: Dictionary = _hold_value(rc)
+	var com: String = str(hold["commodity"])
+	var dest: String = str(info.get("destination", ""))
+	if com == "" or int(hold["value"]) < int(cfg["front_run_min_value"]) or not market.has_book(dest, com):
+		return false
+	var trip: int = int(info.get("rounds", 0))
+	var rounds: int = 0
+	var fuel_cr: int = 0
+	var belt: int = 0
+	var dock: int = 0
+	if f.at != dest:
+		var r = Transit.get_route(f.at, dest, round_num)
+		if r == null or int(r["rounds"]) > trip:
+			return false
+		rounds = int(r["rounds"])
+		var fuel_px: int = _mid(market, f.at, "FUEL")
+		if fuel_px <= 0:
+			fuel_px = int(round(float(Transit.BASE_PRICES.get(f.at, {}).get("FUEL", 0.0))))
+		fuel_cr = int(r["fuel"]) * fuel_px
+		belt = int(r["toll"])
+		dock = w.docking_toll_due(f.id, dest)
+	if f.cr - fuel_cr - belt - dock < int(cfg["front_run_min_cr"]):
+		return false
+	if _draw("rival-front", f.id, rc.run_seed, round_num).randint(0, 9999) >= int(cfg["front_run_chance_bps"]):
+		return false
+	if f.cargo_units() > 0:
+		_sell_cargo(f, market, round_num, events)
+	f.cr = maxi(0, f.cr - fuel_cr - belt)
+	var ev: Dictionary = {"kind": "rival_frontrun", "fleet": f.id, "station": dest, "commodity": com, "depth_bps": int(cfg["front_run_depth_bps"]), "rounds": int(cfg["front_run_rounds"]), "watched": str(info.get("origin", ""))}
+	if f.at == dest:
+		# Already docked there: the dent starts at the next boundary's reseed.
+		f.front = {"station": dest, "commodity": com, "depth_bps": int(cfg["front_run_depth_bps"]), "until_round": round_num + 1 + int(cfg["front_run_rounds"])}
+		events.append(ev)
+		return true
+	f.route = {"origin": f.at, "destination": dest, "depart_round": round_num, "arrival_round": round_num + rounds, "commodity": com, "qty": 0, "front": 1, "depth_bps": int(cfg["front_run_depth_bps"]), "hold_rounds": int(cfg["front_run_rounds"])}
+	f.last = {}
+	return true
+
+
+## Fleets that front-ran and have landed: runs at the START of the round boundary
+## (Barons.advance_round), before the books are reseeded, so the dent is on the book the
+## player docks to. Also expires finished front-runs. Returns the GalNet events.
+static func front_arrivals(w: Barons, round_num: int) -> Array:
+	var events: Array = []
+	for id in w.rival_ids():
+		var f: RivalFleet = w.rival(id)
+		if not f.front.is_empty() and round_num >= int(f.front["until_round"]):
+			f.front = {}
+		if f.in_flight() and int(f.route.get("front", 0)) == 1 and round_num >= int(f.route.get("arrival_round", 0)):
+			_front_arrive(w, f, round_num, events)
+	return events
+
+
+static func _front_arrive(w: Barons, f: RivalFleet, round_num: int, events: Array) -> void:
+	var dest: String = str(f.route.get("destination", f.at))
+	var com: String = str(f.route.get("commodity", ""))
+	var depth: int = int(f.route.get("depth_bps", 10000))
+	var hold: int = int(f.route.get("hold_rounds", 2))
+	f.at = dest
+	f.route = {}
+	f.cr -= w.docking_toll(f.id, dest, f.cr)
+	f.front = {"station": dest, "commodity": com, "depth_bps": depth, "until_round": round_num + hold}
+	events.append({"kind": "rival_frontrun", "fleet": f.id, "station": dest, "commodity": com, "depth_bps": depth, "rounds": hold, "arrived": true})
+
+
+## One fleet's standing front-run as a book mod, [] when none. Emitted by Barons.market_mods
+## AFTER every baron's mods, fleets by sorted id, so the fold-order contract holds.
+static func mods_of(f: RivalFleet) -> Array:
+	if f.front.is_empty():
+		return []
+	return [{"station": str(f.front["station"]), "commodity": str(f.front["commodity"]), "depth_bps": int(f.front["depth_bps"]), "price_bps": 0, "spread_bps": 10000}]
+
+
+## The front-run standing on a book as {fleet, depth_bps, until_round}, {} when none.
+static func front_on(w: Barons, station: String, commodity: String) -> Dictionary:
+	for id in w.rival_ids():
+		var fr: Dictionary = w.rival(id).front
+		if not fr.is_empty() and str(fr["station"]) == station.to_lower() and str(fr["commodity"]) == commodity.to_upper():
+			return {"fleet": id, "depth_bps": int(fr["depth_bps"]), "until_round": int(fr["until_round"])}
+	return {}
+
+
+# --- Privateer bounties (Epic 3 task 11, design doc 6.1) ---
+
+## On the player's departure each privateer_sponsor (sorted id) may hire privateers against
+## the player through Piracy.hire, so a fleet can do nothing the player cannot: it pays
+## Piracy.PRIV_COST, the desk allows one contract per sponsor and one per target, and
+## the contract is the existing +0.15 raid odds for 20 rounds. Conditions: the hold is worth at
+## least `bounty_min_value` less the heat the barons carry, the lane is a belt lane, the hold
+## is unescorted (there is no escort in play yet, so always), and the fleet holds PRIV_COST.
+## Its chance is a fresh source seeded hash32("rival-bounty-<id>-<run_seed>-<round>").
+static func _try_bounty(w: Barons, rc: RunController, info: Dictionary, cfg: Dictionary, round_num: int, events: Array) -> void:
+	var key: String = Transit.route_key(str(info.get("origin", "")), str(info.get("destination", "")))
+	if not (key in Transit.BELT_ROUTES):
+		return
+	var value: int = int(_hold_value(rc)["value"])
+	var floor_cr: int = maxi(0, int(cfg["bounty_min_value"]) - Heat.total(w) * int(cfg["bounty_heat_value_step"]))
+	if value <= 0 or value < floor_cr:
+		return
+	for id in w.rival_ids():
+		var f: RivalFleet = w.rival(id)
+		if str(w.rival_def(id).get("trait", "")) != "privateer_sponsor" or f.cr < Piracy.PRIV_COST:
+			continue
+		if _draw("rival-bounty", id, rc.run_seed, round_num).randint(0, 9999) >= int(cfg["bounty_chance_bps"]):
+			continue
+		var res: Dictionary = w.desk().hire(id, StationMarket.PLAYER_ID, round_num, f.cr)
+		if str(res.get("kind", "")) != "privateer_hire_ok":
+			continue
+		f.cr -= Piracy.PRIV_COST
+		events.append({"kind": "rival_bounty", "fleet": id, "rounds": Piracy.PRIV_ROUNDS, "fee": Piracy.PRIV_COST, "value": value})
+		return
+
+
+## Each round a standing bounty on the player may be traced (Piracy.PRIV_TRACE, here
+## `bounty_trace_bps`): a fresh source seeded hash32("rival-trace-<contract>-<run_seed>-<round>").
+## A traced contract is marked once and the GalNet line says who hired it. Runs at the
+## start of the round boundary (Barons.advance_round).
+static func trace_bounties(w: Barons, round_num: int, rc: RunController) -> Array:
+	var events: Array = []
+	var cfg: Dictionary = settings(w)
+	var c: Dictionary = w.bounty_on_player(round_num)
+	if c.is_empty() or int(c.get("traced", 0)) > 0 or rc == null:
+		return events
+	if _draw("rival-trace", str(c["contract_id"]), rc.run_seed, round_num).randint(0, 9999) < int(cfg["bounty_trace_bps"]):
+		w.mark_bounty_traced(str(c["contract_id"]))
+		events.append({"kind": "rival_bounty_traced", "fleet": str(c["sponsor"]), "rounds": maxi(0, int(c["expires_round"]) - round_num)})
+	return events

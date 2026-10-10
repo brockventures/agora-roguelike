@@ -388,3 +388,29 @@ HL_RIVAL_DEPART,"%s loads %d %s at %s for %s"
 HL_RIVAL_SELL,"%s dumps %d %s at %s, avg %d CR"
 TAG_RIVAL_BOUGHT,%s BOUGHT %d
 TAG_RIVAL_SOLD,%s SOLD %d
+CRISIS_TIER_BARON,BARON
+CRISIS_FX_FINE,Fine: %d CR added to your debt
+CRISIS_ARES_RETALIATION_NAME,Ares Markers
+CRISIS_ARES_RETALIATION_HEADLINE,"RETALIATION: Ares Heavy calls its markers on you, {station} book squeezed for {rounds} rounds"
+CRISIS_TITAN_RETALIATION_NAME,Titan Embargo
+CRISIS_TITAN_RETALIATION_HEADLINE,"RETALIATION: Titan Cryo-Hydro embargoes you, {station} book thin and dear for {rounds} rounds"
+CRISIS_SOL_RETALIATION_NAME,Sol Audit
+CRISIS_SOL_RETALIATION_HEADLINE,"RETALIATION: Sol Central audits you, {station} book blown out for {rounds} rounds"
+CRISIS_ARES_OPPORTUNISTIC_SQUEEZE_NAME,Ares Squeeze
+CRISIS_ARES_OPPORTUNISTIC_SQUEEZE_HEADLINE,SQUEEZE: Ares Heavy leans on the {station} book for {rounds} rounds
+CRISIS_TITAN_OPPORTUNISTIC_HOARD_NAME,Titan Hoard
+CRISIS_TITAN_OPPORTUNISTIC_HOARD_HEADLINE,HOARD: Titan Cryo-Hydro buys up the {station} book for {rounds} rounds
+CRISIS_SOL_OPPORTUNISTIC_LEVY_NAME,Sol Levy
+CRISIS_SOL_OPPORTUNISTIC_LEVY_HEADLINE,LEVY: Sol Central posts a surprise levy at {station} for {rounds} rounds
+HL_RIVAL_FRONTRUN,"%s front-runs your %s run: pre-positioned at %s, book depth -%d%% for %d rounds"
+HL_RIVAL_BOUNTY_TRACED,Traced: %s has hired privateers against you for %d rounds
+HL_HEAT_QUEUED,"%s remembers: heat %d, retaliation lands next round"
+HL_BARON_RETALIATION_CH11,%s: the retaliation leaves you insolvent
+TAG_RIVAL_FRONT,%s FRONT-RUN -%d%% DEPTH
+TAG_HEAT,HEAT
+SIDE_HEAT,HEAT %d / %d
+TAG_RETALIATION,RETALIATION DUE
+SIDE_RETALIATION,"LANDS ROUND %d, FINE AND BOOK SQUEEZE"
+TAG_BOUNTY,BOUNTY ON YOU
+SIDE_BOUNTY,"%s PRIVATEERS: %d RD LEFT, +%d%% RAID ODDS"
+CRISIS_FX_ALL_GOODS,ALL GOODS

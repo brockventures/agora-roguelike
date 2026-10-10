@@ -40,6 +40,9 @@ var data: Dictionary = {}
 var states: Dictionary = {}
 ## RivalFleet by fleet id (Epic 3 task 10); empty when barons.json lists no `rivals`.
 var rivals: Dictionary = {}
+## The privateer desk the bounties are hired through (Epic 3 task 11). Its contracts are the
+## only state, saved under `bounties` only while any exist.
+var _desk: Piracy = null
 
 
 func _init(p_data: Dictionary = {}) -> void:
@@ -82,6 +85,10 @@ func market_mods() -> Array:
 	var out: Array = []
 	for id in ids():
 		out.append_array(_mods_of(id))
+	# Rival fleets after every baron (task 11): a standing front-run is a depth mod on the
+	# destination book. A fleet with none emits nothing, so the fold is as it was.
+	for id in rival_ids():
+		out.append_array(Rivals.mods_of(rivals[id]))
 	return out
 
 
@@ -127,6 +134,10 @@ func _mods_of(id: String) -> Array:
 ## hoard trigger; without it the trigger cannot fire.
 func advance_round(round_num: int, rc: RunController, market: StationMarket = null) -> Array:
 	var events: Array = []
+	# Fleets that front-ran have landed (or their dent has run out) before the books are
+	# reseeded, and a standing bounty may be traced (task 11).
+	events.append_array(Rivals.front_arrivals(self, round_num))
+	events.append_array(Rivals.trace_bounties(self, round_num, rc))
 	for id in ids():
 		match str(def(id).get("archetype", "")):
 			"short_squeezer":
@@ -145,6 +156,9 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 	# that is solvent and not held writes nothing.
 	for id in ids():
 		events.append_array(Takeover.advance(self, id, round_num, rc))
+	# Heat (task 11): decay, queue and deliver the retaliation, last, so a lever that
+	# fired this boundary is counted before the threshold is read.
+	events.append_array(Heat.advance(self, round_num, rc))
 	return events
 
 
@@ -193,6 +207,83 @@ func rival_voyages() -> Array:
 		if f.in_flight():
 			out.append({"fleet": id, "origin": str(f.route["origin"]), "destination": str(f.route["destination"]), "depart_round": int(f.route["depart_round"]), "arrival_round": int(f.route["arrival_round"])})
 	return out
+
+
+# --- Heat and bounties (Epic 3 task 11, design doc 6.1 and 6.2): see Heat and Rivals ---
+
+## Raises a baron's heat (Heat.raise). Returns the heat standing.
+func raise_heat(id: String, n: int) -> int:
+	return Heat.raise(self, id, n)
+
+
+func heat_of(id: String) -> int:
+	return Heat.level(self, id)
+
+
+## The privateer desk bounties are hired through. Lazily built; contracts persist in
+## to_dict() under `bounties`.
+func desk() -> Piracy:
+	if _desk == null:
+		_desk = Piracy.new()
+	return _desk
+
+
+## The privateer contract standing against the player at `round_num` as a copy, {} when none.
+func bounty_on_player(round_num: int) -> Dictionary:
+	if _desk == null:
+		return {}
+	var c = _desk.active_contract(StationMarket.PLAYER_ID, round_num)
+	return (c as Dictionary).duplicate() if c is Dictionary else {}
+
+
+## The +0.15 raid odds a standing bounty adds to a player trip, in bps (0 when none). Raids
+## are not rolled in play yet, so nothing consumes this today; Piracy.chance reads the same
+## contract through active_contract when they are.
+func bounty_raid_odds_bps(round_num: int) -> int:
+	return int(round(Piracy.PRIV_ADD * 10000.0)) if not bounty_on_player(round_num).is_empty() else 0
+
+
+func mark_bounty_traced(contract_id: String) -> bool:
+	return desk().mark_traced(contract_id)
+
+
+## The player hires privateers against a rival fleet through Piracy.hire (PRIV_COST CR,
+## 20 rounds), the same way a rival does against the player. It hurts the baron anchoring the
+## fleet's dock (the fleet's station, or the origin of its voyage), which takes
+## `heat.bounty_sponsored` heat. Refused when the player cannot pay or the hire would leave the
+## corp insolvent. {ok, reason, heat}. Not bound to a key: Epic 4 controls are unchanged.
+func sponsor_bounty(rc: RunController, fleet_id: String) -> Dictionary:
+	var f: RivalFleet = rival(fleet_id)
+	if f == null:
+		return {"ok": false, "reason": "NO_FLEET", "heat": 0}
+	var snap: Dictionary = rc.snapshot()
+	snap["cr"] = rc.cr - Piracy.PRIV_COST
+	if rc.cr < Piracy.PRIV_COST or bool(Chapter11.assess(snap, rc.haircut_bps())["insolvent"]):
+		return {"ok": false, "reason": "NO_CR", "heat": 0}
+	var res: Dictionary = desk().hire(StationMarket.PLAYER_ID, fleet_id, rc.get_current_round(), rc.cr)
+	if str(res.get("kind", "")) != "privateer_hire_ok":
+		return {"ok": false, "reason": str(res.get("payload", {}).get("reason", "REJECTED")).to_upper(), "heat": 0}
+	rc.cr -= Piracy.PRIV_COST
+	var dock: String = str(f.route.get("origin", f.at)) if f.in_flight() else f.at
+	var id: String = baron_at(dock)
+	var h: int = 0
+	if id != "":
+		h = Heat.raise(self, id, int(Heat.settings(self)["bounty_sponsored"]))
+	return {"ok": true, "reason": "", "heat": h, "baron": id}
+
+
+## A Chapter 11 filing ends the failed corp's grudges: every baron's heat and queued
+## retaliation, the bounties on its ship, and its live consequence events.
+func forget_corp(rc: RunController) -> void:
+	Heat.reset(self)
+	if _desk != null:
+		var rows: Dictionary = _desk.privateer_contracts()
+		for cid in rows.keys():
+			if str(rows[cid].get("target", "")) == StationMarket.PLAYER_ID:
+				rows.erase(cid)
+		_desk.load_privateer_contracts(rows)
+	if rc != null and rc.crisis_deck != null:
+		rc.crisis_deck.drop_consequences()
 
 
 # --- The levers (Epic 3 task 8, design doc 5.2): see Levers ---
@@ -582,6 +673,11 @@ func to_dict() -> Dictionary:
 		for id in rival_ids():
 			rv[id] = (rivals[id] as RivalFleet).to_dict()
 		d["rivals"] = rv
+	# Privateer contracts: only while any exist, so a world nobody hires against hashes as before.
+	if _desk != null:
+		var contracts: Dictionary = _desk.privateer_contracts()
+		if not contracts.is_empty():
+			d["bounties"] = contracts
 	return d
 
 
@@ -608,6 +704,9 @@ static func from_dict(d: Dictionary, p_data: Dictionary = {}) -> Barons:
 				var f: RivalFleet = RivalFleet.from_dict(saved_rv[id])
 				f.id = str(id)
 				w.rivals[id] = f
+	var saved_b = d.get("bounties", null)
+	if saved_b is Dictionary and not (saved_b as Dictionary).is_empty():
+		w.desk().load_privateer_contracts(saved_b)
 	return w
 
 
@@ -656,11 +755,18 @@ static func validate(d: Dictionary) -> Array:
 			errs.append("heat.decay_per_round must be a whole number >= 0")
 		if not _is_int(heat.get("retaliation_at", null)) or int(heat["retaliation_at"]) <= 0:
 			errs.append("heat.retaliation_at must be a positive whole number")
+		for k in heat:
+			if not Heat.DEFAULTS.has(k):
+				errs.append("heat.%s is not a heat setting" % k)
+			elif not _is_int(heat[k]) or int(heat[k]) < 0:
+				errs.append("heat.%s must be a whole number >= 0" % k)
 	var cons = d.get("consequence", null)
 	if not (cons is Dictionary):
 		errs.append("consequence must be an object")
 	elif not _is_int(cons.get("random_max_loss_bps", null)) or int(cons["random_max_loss_bps"]) < 0 or int(cons["random_max_loss_bps"]) > 10000:
 		errs.append("consequence.random_max_loss_bps must be 0..10000")
+	elif cons.has("random_event_bps") and (not _is_int(cons["random_event_bps"]) or int(cons["random_event_bps"]) < 0 or int(cons["random_event_bps"]) > 10000):
+		errs.append("consequence.random_event_bps must be 0..10000")
 	var vic = d.get("victory", null)
 	if not (vic is Dictionary):
 		errs.append("victory must be an object")

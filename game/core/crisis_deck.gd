@@ -34,6 +34,13 @@ signal changed()
 
 const DEFAULT_PATH: String = "res://data/crises.json"
 const EVENT: String = "crisis"
+## Where an event came from (Epic 3 task 11, design doc 7). `origin` is a crises.json
+## field, default random. Only a consequence is written onto an instance, so a random
+## crisis serialises exactly as it did before the field existed.
+const ORIGIN_RANDOM: String = "random"
+const ORIGIN_CONSEQUENCE: String = "consequence"
+## The tier id baron events sit in: not a run-depth tier, so the weighted pool never offers it.
+const TIER_BARON: String = "baron"
 const TIER_ORDER: Array[String] = ["early", "mid", "endgame"]
 const BAND_ORDER: Array[String] = ["low", "mid", "high"]
 
@@ -105,7 +112,11 @@ func eligible(tier: String, band: String) -> Array:
 	var out: Array = []
 	var rank: int = band_rank(band)
 	for def in data.get("crises", []):
-		if str(def.get("tier", "")) != tier:
+		if str(def.get("tier", "")) != tier or tier == TIER_BARON:
+			continue
+		# Baron events (Epic 3 task 11) are never drawn from the weighted pool: a
+		# consequence is queued by heat, a random one by Heat's own per-baron chance.
+		if str(def.get("origin", ORIGIN_RANDOM)) != ORIGIN_RANDOM:
 			continue
 		if rank < band_rank(str(def.get("min_band", "low"))):
 			continue
@@ -233,10 +244,61 @@ func _instantiate(def: Dictionary, round_num: int, net_worth: int, band: String,
 
 
 func _is_active(id: String) -> bool:
+	return is_active(id)
+
+
+func is_active(id: String) -> bool:
 	for c in active:
 		if str(c["id"]) == id:
 			return true
 	return false
+
+
+## Puts a baron event straight into the active list (Epic 3 task 11, design doc 7). It
+## bypasses Bags and the tier / band gates, ignores max_active, and does not count as a
+## draw (draw_count is the Bags-driven deck's own tally). It needs the player's
+## acknowledgement like any crisis, touches only the books (never doomsday ticks), and
+## carries its `origin` and `baron` on the instance. `extra` merges into the effects
+## (the fine the caller charged, as `fine_cr`). Duration comes from a source seeded
+## hash32("crisis-baron-<seed>-<baron>-<round>"), so it keeps no RNG state.
+func inject(def: Dictionary, round_num: int, station: String, baron: String, origin: String, extra: Dictionary = {}) -> Dictionary:
+	_uid += 1
+	var rng := NativeDrawSource.new(StableHash.hash32("crisis-baron-%d-%s-%d" % [seed_val, baron, round_num]))
+	var dur: Array = def.get("duration_rounds", [3, 3])
+	var rounds: int = rng.randint(int(dur[0]), int(dur[maxi(0, dur.size() - 1)]))
+	var fx: Dictionary = def.get("effects", {})
+	var effects: Dictionary = {
+		"depth_bps": int(fx.get("depth_bps", 10000)), "price_bps": int(fx.get("price_bps", 0)),
+		"spread_bps": int(fx.get("spread_bps", 10000)),
+	}
+	for k in extra:
+		effects[str(k)] = int(extra[k])
+	var text: String = str(def.get("headline", def.get("name", ""))).replace("{rounds}", str(rounds)).replace("{commodity}", "*").replace("{station}", StationMarket.station_name(station))
+	var inst: Dictionary = {
+		"uid": _uid, "id": str(def.get("id", "")), "kind": str(def.get("kind", "")), "tier": str(def.get("tier", "")),
+		"name": str(def.get("name", "")), "text": text, "band": "low", "station": station, "commodity": "*",
+		"started_round": round_num, "expires_round": round_num + rounds, "rounds": rounds,
+		"effects": effects, "origin": origin, "baron": baron,
+	}
+	active.append(inst)
+	awaiting_ack.append(inst["uid"])
+	changed.emit()
+	crisis_drawn.emit(inst)
+	return inst
+
+
+## Drops the live consequence events (a Chapter 11 filing: the grudge belonged to the
+## failed corp). Returns how many were dropped.
+func drop_consequences() -> int:
+	var n: int = 0
+	for c in active.duplicate():
+		if str(c.get("origin", ORIGIN_RANDOM)) == ORIGIN_CONSEQUENCE:
+			active.erase(c)
+			awaiting_ack.erase(c["uid"])
+			n += 1
+	if n > 0:
+		changed.emit()
+	return n
 
 
 # --- Interrupt ---
@@ -333,6 +395,8 @@ static func describe(c: Dictionary, compact: bool = false) -> Array:
 		var scope: String
 		if str(c.get("station", "")) == "*":
 			scope = Loc.t("CRISIS_FX_ALL_BOOKS")
+		elif str(c.get("commodity", "")) == "*":
+			scope = Loc.station(str(c.get("station", ""))).to_upper() if compact else "%s %s" % [Loc.station(str(c.get("station", ""))).to_upper(), Loc.t("CRISIS_FX_ALL_GOODS")]
 		elif compact:
 			scope = Loc.commodity(str(c.get("commodity", "")))
 		else:
@@ -345,6 +409,8 @@ static func describe(c: Dictionary, compact: bool = false) -> Array:
 		lines.append(Loc.t("CRISIS_FX_MARGIN") % (float(fx["margin_call_bps"]) / 100.0))
 	if int(fx.get("trade_cap_qty", 0)) > 0:
 		lines.append(Loc.t("CRISIS_FX_CAP") % int(fx["trade_cap_qty"]))
+	if int(fx.get("fine_cr", 0)) > 0:
+		lines.append(Loc.t("CRISIS_FX_FINE") % int(fx["fine_cr"]))
 	if int(fx.get("fee_bps", 0)) > 0:
 		lines.append(Loc.t("CRISIS_FX_FEE") % (float(fx["fee_bps"]) / 100.0))
 	return lines
@@ -406,7 +472,7 @@ static func _sanitise(raw: Dictionary) -> Dictionary:
 	if rfx is Dictionary:
 		for k in rfx:
 			fx[str(k)] = int(rfx[k])
-	return {
+	var inst := {
 		"uid": int(raw.get("uid", 0)),
 		"id": str(raw.get("id", "")),
 		"kind": str(raw.get("kind", "")),
@@ -421,3 +487,8 @@ static func _sanitise(raw: Dictionary) -> Dictionary:
 		"rounds": int(raw.get("rounds", 0)),
 		"effects": fx,
 	}
+	# Baron events only: a random crisis never carries these keys (hash stability).
+	if raw.has("origin"):
+		inst["origin"] = str(raw["origin"])
+		inst["baron"] = str(raw.get("baron", ""))
+	return inst

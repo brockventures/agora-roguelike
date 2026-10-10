@@ -412,6 +412,13 @@ func _post_baron_headline(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_ARES_DELIVERED", [who, int(e["qty"]), com, int(e["paid"])], "MARKET", "INFO")
 		"squeeze":
 			hud.post_headline_tr("HL_ARES_SQUEEZE", [who, Loc.station_arg(str(e["station"])), com, int(e["price_bps"]) / 100], "CRISIS", "WARNING")
+		"heat_queued":
+			hud.post_headline_tr("HL_HEAT_QUEUED", [who, int(e["heat"])], "CRISIS", "WARNING")
+		"retaliation":
+			# The deck already posted the event's own headline when it was injected; the
+			# line here is only for the fine that the player's own choices made fatal.
+			if bool(e.get("forced_ch11", false)):
+				hud.post_headline_tr("HL_BARON_RETALIATION_CH11", [who], "INSOLVENCY", "CRITICAL")
 		"hoard":
 			hud.post_headline_tr("HL_TITAN_HOARD", [who, com, Loc.station_arg(str(e["station"]))], "MARKET", "INFO")
 		"corner":
@@ -492,6 +499,10 @@ func _post_rival_headline(e: Dictionary) -> void:
 				hud.post_headline_tr("HL_RIVAL_REACT", [fleet, Loc.station_arg(str(e.get("watched", ""))), int(e["qty"]), com, dest], "MARKET", "WARNING")
 			elif here:
 				hud.post_headline_tr("HL_RIVAL_DEPART", [fleet, int(e["qty"]), com, station, dest], "MARKET", "INFO")
+		"rival_frontrun":
+			hud.post_headline_tr("HL_RIVAL_FRONTRUN", [fleet, com, station, (10000 - int(e["depth_bps"])) / 100, int(e["rounds"])], "MARKET", "WARNING")
+		"rival_bounty_traced":
+			hud.post_headline_tr("HL_RIVAL_BOUNTY_TRACED", [fleet, int(e["rounds"])], "CRISIS", "WARNING")
 		"rival_trade":
 			if here:
 				hud.post_headline_tr("HL_RIVAL_SELL", [fleet, int(e["qty"]), com, station, int(e["price"])], "MARKET", "INFO")
@@ -502,6 +513,12 @@ func _post_rival_headline(e: Dictionary) -> void:
 func rival_tag(station: String, commodity: String) -> String:
 	if controller == null or controller.world == null:
 		return ""
+	# A standing front-run is the louder fact about a book than one fleet's last fill.
+	var fr: Dictionary = Rivals.front_on(controller.world, station, commodity)
+	if not fr.is_empty():
+		var fdef: Dictionary = controller.world.rival_def(str(fr["fleet"]))
+		var ftag: String = Loc.maker_tag(str(fr["fleet"]), str(fdef.get("name", "")).split(" ")[0].to_upper())
+		return Loc.t("TAG_RIVAL_FRONT") % [ftag, (10000 - int(fr["depth_bps"])) / 100]
 	var moves: Array = controller.world.rival_moves_on(station, commodity, controller.get_current_round())
 	if moves.is_empty():
 		return ""
@@ -769,6 +786,31 @@ func lever_notes(station: String) -> Array:
 		out.append({"kind": "line", "text": Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), Takeover.threshold_for(w, Takeover.PLAYER, controller)], "tone": "tender"})
 		if docked:
 			out.append({"kind": "line", "text": Loc.t("SIDE_SHARES_HINT"), "tone": "tender"})
+	# heat (task 11): what this baron remembers, and the retaliation it has queued
+	var rq: Dictionary = Heat.queued(w, id)
+	if not rq.is_empty():
+		out.append({"kind": "chip", "text": Loc.t("TAG_RETALIATION"), "tone": "bad"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_RETALIATION") % int(rq["due"]), "tone": "bad"})
+	elif s.heat > 0:
+		out.append({"kind": "chip", "text": Loc.t("TAG_HEAT"), "tone": "bad"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_HEAT") % [s.heat, int(Heat.settings(w)["retaliation_at"])], "tone": "bad"})
+	return out
+
+
+## Sidebar notes for a bounty on the player the player has traced (it is secret until
+## then, design doc 6.1): the chip, who hired it and how long it runs. {kind, text, tone}.
+func bounty_notes() -> Array:
+	var out: Array = []
+	if controller == null or controller.world == null:
+		return out
+	var rd: int = controller.get_current_round()
+	var c: Dictionary = controller.world.bounty_on_player(rd)
+	if c.is_empty() or int(c.get("traced", 0)) <= 0:
+		return out
+	var def: Dictionary = controller.world.rival_def(str(c["sponsor"]))
+	var who: String = Loc.maker_tag(str(c["sponsor"]), str(def.get("name", "")).split(" ")[0].to_upper())
+	out.append({"kind": "chip", "text": Loc.t("TAG_BOUNTY"), "tone": "bad"})
+	out.append({"kind": "line", "text": Loc.t("SIDE_BOUNTY") % [who, maxi(0, int(c["expires_round"]) - rd), controller.world.bounty_raid_odds_bps(rd) / 100], "tone": "bad"})
 	return out
 
 

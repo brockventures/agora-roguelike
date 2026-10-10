@@ -1509,6 +1509,12 @@ func _card_notes() -> Array:
 			out.append({"kind": "chip", "text": n["text"], "bg": bg, "fg": HudTheme.INK if str(n["tone"]) == "credit" else HudTheme.BONE})
 		else:
 			out.append({"kind": "line", "text": n["text"], "color": HudTheme.INK})
+	# A traced privateer bounty on the player (task 11).
+	for n in loop.bounty_notes():
+		if str(n["kind"]) == "chip":
+			out.append({"kind": "chip", "text": n["text"], "bg": HudTheme.RUST_DARK, "fg": HudTheme.BONE})
+		else:
+			out.append({"kind": "line", "text": n["text"], "color": HudTheme.INK})
 	# Crises beyond the one on the art card.
 	var active: Array = _active_crises()
 	var round_num: int = controller.get_current_round()

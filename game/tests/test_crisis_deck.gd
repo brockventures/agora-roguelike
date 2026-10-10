@@ -45,7 +45,7 @@ func test_data_file_is_well_formed() -> String:
 		ids[def["id"]] = true
 		if not d["tiers"].has(def["tier"]):
 			return "%s has unknown tier" % def["id"]
-		if not (def["kind"] in ["shortage", "audit", "collapse"]):
+		if not (def["kind"] in ["shortage", "audit", "collapse", "baron_event"]):
 			return "%s has unknown kind" % def["id"]
 		if not (def.get("min_band", "low") in CrisisDeck.BAND_ORDER):
 			return "%s has unknown band" % def["id"]
