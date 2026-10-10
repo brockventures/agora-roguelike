@@ -31,6 +31,7 @@ GENERATORS = [
     ('gen_draws.py', 'draws'),
     ('gen_sample_draws.py', 'draws'),
     ('gen_transit_hazards.py', 'transit_hazards'),
+    ('gen_clearing.py', 'clearing'),
 ]
 FIXTURE_EXT = '.json'
 

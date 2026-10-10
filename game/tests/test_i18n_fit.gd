@@ -101,6 +101,7 @@ func _collect(scene: Node) -> Array:
 	_collect_barons(scene, add)
 	_collect_ares(scene, add)
 	_collect_titan(scene, add)
+	_collect_sol(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -235,6 +236,55 @@ func _collect_titan(scene: Node, add: Callable) -> void:
 	scene._refresh_readouts()
 
 
+## Sol Central (Epic 3 task 6, part of #16): the Earth sidebar during an auction under
+## each indicative-price state (nothing crosses yet, a queued bid with the rig showing,
+## the delayed leak) with its queued-order and withdraw rows, and the AUCTION board tag.
+## The headlines are checked in findings().
+func _collect_sol(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	var cargo0: Dictionary = rc.cargo.duplicate()
+	var cr0: int = rc.cr
+	rc.cargo = {}
+	rc.docked_at = "earth"
+	rc.cr = 50000
+	rc.sim_clock.total_ticks = 5 * rc.ticks_per_round
+	var au: Dictionary = rc.world.auction_at("earth", 5, rc.run_seed)
+	scene.hud.set_station("earth")
+	scene.hud.set_commodity(str(au["commodity"]))
+	loop.set_tab(M0Loop.Tab.MARKET)
+	var ask: int = int(loop.market.ladder("earth", str(au["commodity"]), 1)["best_ask"])
+	for state in ["empty", "queued", "queued x3", "queued miss", "delayed"]:
+		match state:
+			"queued":
+				rc.world.submit_auction_order(rc, "earth", "BUY", 12, ask + 12)
+			"queued miss":
+				rc.world.submit_auction_order(rc, "earth", "BUY", 9, ask)
+			"queued x3":
+				rc.world.submit_auction_order(rc, "earth", "BUY", 100, ask + 10)
+				rc.world.submit_auction_order(rc, "earth", "BUY", 100, ask + 11)
+			"delayed":
+				for d in rc.world.data["barons"]:
+					if str(d["id"]) == "sol_central":
+						d["params"]["indicative_leak"] = "delayed"
+		scene._refresh_readouts()
+		scene.market_label.text = scene._board_text()
+		add.call("market board[sol %s]" % state, scene.market_label)
+		add.call("sidebar[sol %s]" % state, scene.sidebar_label)
+	rc.world.withdraw_auction_orders("earth")
+	rc.world = null
+	loop.market.set_world(null)
+	rc.cargo = cargo0
+	rc.cr = cr0
+	rc.sim_clock.total_ticks = 0
+	rc.docked_at = "mars"
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
 ## The travel loop (#111): the route preview with a belt toll, a refused departure,
 ## then the header ETA, the in-transit map text, hint and rejection while under way.
 func _collect_travel(scene: Node, add: Callable) -> void:
@@ -291,7 +341,17 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TITAN_RELEASE", [titan, fuel, ceres, 99])]),
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TITAN_SPOIL", [titan, 999, Loc.commodity_arg("FOOD")])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines:
+	var sol: Dictionary = Loc.maker_arg("sol_central")
+	var frag: Dictionary = Loc.commodity_arg("FRAG")
+	var sol_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_OPEN", [sol, frag, Loc.station_arg("earth"), 99999, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_QUEUED", [Loc.key_arg("ORDER_BUY"), 99999, frag, sol, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_CLEAR", [sol, frag, 99999, 99999, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_LAPSE", [sol, 99999, frag, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_NOCROSS", [sol, frag, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_WITHDRAWN", [sol, 99999])]),
+	]
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:
@@ -314,3 +374,31 @@ func test_labels_fit_under_pseudolocalization() -> String:
 	scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
 	return "ok" if f.is_empty() else "pseudo layout overflows (%d): %s" % [f.size(), "\n  ".join(PackedStringArray(f))]
+
+
+## Sol Central's rows at every text scale (the Earth sidebar scrolls vertically above
+## 100%, so this checks width), in English and under pseudo-localization.
+func test_sol_central_rows_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rows: Array = []
+			var add := func(name: String, label: Label) -> void:
+				rows.append([name, label, label.text, label.size, (label.get_parent() as Control).size])
+			_collect_sol(scene, add)
+			if rows.size() != 10:
+				bad.append("%s %.2fx: collected %d rows" % [locale, scale, rows.size()])
+			for row in rows:
+				# The board's title and hint rows already outgrow it under pseudo above 100%
+				# whatever the tag (827 px of 792 with no baron at all): sidebar rows only there.
+				if scale > 1.0 and locale == Loc.LOCALE_PSEUDO and str(row[0]).begins_with("market board"):
+					continue
+				for f in overflow_of(row[0], row[1], row[2], row[3], row[4]):
+					bad.append("%s %.2fx: %s" % [locale, scale, f])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if bad.is_empty() else "Sol Central rows overflow: %s" % str(bad)

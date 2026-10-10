@@ -120,6 +120,8 @@ func depart(destination: String) -> Dictionary:
 		"toll": int(check["toll"]),
 	}
 	docked_at = ""
+	if world != null:
+		world.cancel_auctions()  # queued call-auction orders do not follow the ship
 	check["origin"] = str(transit["origin"])
 	check["destination"] = dest
 	transit_departed.emit(transit_info())
@@ -502,6 +504,7 @@ func file_bankruptcy() -> Dictionary:
 	# corp's open contract must not fine the new one.
 	if world != null:
 		world.cancel_contracts()
+		world.cancel_auctions()  # so are its queued call-auction orders
 	bankruptcy_filed.emit(report)
 	return report
 

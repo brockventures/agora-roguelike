@@ -1,0 +1,435 @@
+{
+  "case": "clearing_price",
+  "cases": [
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 5
+        }
+      ],
+      "bids": [],
+      "expected": {
+        "price": null,
+        "volume": 0
+      },
+      "name": "empty_bids",
+      "ref_price": 10.0,
+      "why": "no buyers: None"
+    },
+    {
+      "asks": [],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 5
+        }
+      ],
+      "expected": {
+        "price": null,
+        "volume": 0
+      },
+      "name": "empty_asks",
+      "ref_price": 10.0,
+      "why": "no sellers: None"
+    },
+    {
+      "asks": [],
+      "bids": [],
+      "expected": {
+        "price": null,
+        "volume": 0
+      },
+      "name": "both_empty",
+      "ref_price": 10.0,
+      "why": "empty book: None"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 11,
+          "qty": 5
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 9,
+          "qty": 5
+        }
+      ],
+      "expected": {
+        "price": null,
+        "volume": 0
+      },
+      "name": "no_cross",
+      "ref_price": 10.0,
+      "why": "bid below ask: zero volume, None"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 5
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 12,
+          "qty": 5
+        }
+      ],
+      "expected": {
+        "price": 10,
+        "volume": 5
+      },
+      "name": "single_cross",
+      "ref_price": 11.0,
+      "why": "one bid, one ask, ties on 10..12 closest to the ref"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 9,
+          "qty": 8
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 11,
+          "qty": 8
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 13,
+          "qty": 8
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 14,
+          "qty": 10
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 12,
+          "qty": 10
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 12,
+        "volume": 16
+      },
+      "name": "volume_maximising",
+      "ref_price": 12.0,
+      "why": "the price that matches the most"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 20,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 10,
+        "volume": 10
+      },
+      "name": "tie_nearest_ref_low",
+      "ref_price": 11.0,
+      "why": "tie set 10..20, ref nearer the low end"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 20,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 20,
+        "volume": 10
+      },
+      "name": "tie_nearest_ref_high",
+      "ref_price": 19.0,
+      "why": "tie set 10..20, ref nearer the high end"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 14,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 10,
+        "volume": 10
+      },
+      "name": "tie_ref_midway_lower_wins",
+      "ref_price": 12.0,
+      "why": "ref exactly between 10 and 14: equidistant, the lower price wins"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 20,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 20,
+        "volume": 10
+      },
+      "name": "tie_ref_outside",
+      "ref_price": 50.0,
+      "why": "ref above every candidate: the highest candidate"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 10,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 20,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 10,
+        "volume": 10
+      },
+      "name": "fractional_ref",
+      "ref_price": 14.5,
+      "why": "a VWAP ref that is not a whole number"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 2,
+          "limit_price": 12,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 6,
+          "limit_price": 15,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": 12,
+        "volume": 4
+      },
+      "name": "partly_filled",
+      "ref_price": 13.0,
+      "why": "only the remaining quantity counts (4 vs 8)"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 12,
+          "qty": 5
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 10,
+          "limit_price": 15,
+          "qty": 10
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 13,
+          "qty": 3
+        }
+      ],
+      "expected": {
+        "price": 13,
+        "volume": 3
+      },
+      "name": "filled_order_ignored",
+      "ref_price": 13.0,
+      "why": "a fully filled bid adds no volume"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 12,
+          "qty": 10
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 10,
+          "limit_price": 15,
+          "qty": 10
+        }
+      ],
+      "expected": {
+        "price": null,
+        "volume": 0
+      },
+      "name": "zero_remaining_only",
+      "ref_price": 13.0,
+      "why": "every bid filled: zero volume, None"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 19,
+          "qty": 6
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 20,
+          "qty": 8
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 21,
+          "qty": 10
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 22,
+          "qty": 12
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 23,
+          "qty": 14
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 25,
+          "qty": 7
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 24,
+          "qty": 9
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 23,
+          "qty": 11
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 22,
+          "qty": 13
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 21,
+          "qty": 15
+        }
+      ],
+      "expected": {
+        "price": 22,
+        "volume": 36
+      },
+      "name": "many_levels",
+      "ref_price": 21.0,
+      "why": "five levels a side"
+    },
+    {
+      "asks": [
+        {
+          "filled_qty": 0,
+          "limit_price": 11,
+          "qty": 3
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 11,
+          "qty": 4
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 14,
+          "qty": 9
+        }
+      ],
+      "bids": [
+        {
+          "filled_qty": 0,
+          "limit_price": 15,
+          "qty": 4
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 15,
+          "qty": 6
+        },
+        {
+          "filled_qty": 0,
+          "limit_price": 12,
+          "qty": 5
+        }
+      ],
+      "expected": {
+        "price": 14,
+        "volume": 10
+      },
+      "name": "duplicate_prices",
+      "ref_price": 13.0,
+      "why": "several orders at one limit"
+    }
+  ],
+  "source": "agora/circuit_breaker.py:find_clearing_price"
+}

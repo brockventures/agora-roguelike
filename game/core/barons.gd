@@ -123,7 +123,60 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 				events.append_array(AresHeavy.advance(self, id, round_num, rc))
 			"hoarder":
 				events.append_array(TitanCryoHydro.advance(self, id, round_num, rc, market))
+			"auctioneer":
+				events.append_array(SolCentral.advance(self, id, round_num, rc, market))
 	return events
+
+
+# --- Sol Central (Epic 3 task 6, design doc 4.3): the call auction ---
+
+## The auction open at `station` during `round_num` as {baron, station, commodity,
+## round, close_round, ref_price}, {} when none (no auctioneer there, not an auction
+## round, or the baron is held). A pure function of (run_seed, round).
+func auction_at(station: String, round_num: int, run_seed: int) -> Dictionary:
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "auctioneer" and str(def(id).get("anchor", "")) == station.to_lower():
+			return SolCentral.open_auction(self, id, round_num, run_seed)
+	return {}
+
+
+## Queues a limit order into the open auction at `station`. {ok, reason, ...}.
+func submit_auction_order(rc: RunController, station: String, side: String, qty: int, limit: int) -> Dictionary:
+	var au: Dictionary = auction_at(station, rc.get_current_round(), rc.run_seed)
+	if au.is_empty():
+		return {"ok": false, "reason": "NO_AUCTION"}
+	return SolCentral.submit(self, str(au["baron"]), rc, side, qty, limit)
+
+
+## The orders queued for the auction open at `station`, sorted by (limit, seq).
+func auction_orders(station: String, round_num: int, run_seed: int) -> Array:
+	var au: Dictionary = auction_at(station, round_num, run_seed)
+	if au.is_empty():
+		return []
+	return SolCentral.buffer(self, str(au["baron"]))
+
+
+## The indicative-price row for the auction open at `station` ({} when none).
+func indicative_at(station: String, round_num: int, run_seed: int, market: StationMarket) -> Dictionary:
+	var au: Dictionary = auction_at(station, round_num, run_seed)
+	if au.is_empty():
+		return {}
+	return SolCentral.indicative(self, str(au["baron"]), round_num, run_seed, market)
+
+
+## Takes back every queued order at `station`; how many were withdrawn.
+func withdraw_auction_orders(station: String) -> int:
+	var id: String = baron_at(station)
+	if id == "" or str(def(id).get("archetype", "")) != "auctioneer":
+		return 0
+	return SolCentral.withdraw(self, id)
+
+
+## Drops every queued auction order (the ship left, or the corp failed).
+func cancel_auctions() -> void:
+	for id in ids():
+		if str(def(id).get("archetype", "")) == "auctioneer":
+			SolCentral.cancel(self, id)
 
 
 ## The hoard on a (station, commodity) book as {baron, phase, price_bps, age},
