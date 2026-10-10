@@ -18,6 +18,9 @@ signal changed
 var text_scale: float = 1.0
 var palette: String = Palette.DEFAULT
 var locale: String = Loc.LOCALE_EN
+## Optional retro CRT filter (scanlines, chromatic fringe, phosphor glow). Off by default
+## since the HUD re-skin (#105): the Scavengers Reign look is the default, CRT is opt-in.
+var crt_filter: bool = false
 var bindings: Dictionary = {}
 
 
@@ -81,9 +84,15 @@ func rebind(action: String, event: InputEvent) -> Dictionary:
 	return r
 
 
-## Back to the shipped bindings, palette and scale. Language is left alone.
+func set_crt_filter(on: bool) -> void:
+	crt_filter = on
+	changed.emit()
+
+
+## Back to the shipped bindings, palette, scale and look (CRT off). Language is left alone.
 func reset_defaults() -> void:
 	text_scale = 1.0
+	crt_filter = false
 	set_palette(Palette.DEFAULT)
 	bindings = InputRemap.defaults()
 	InputRemap.apply(bindings)
@@ -99,7 +108,7 @@ func apply_all(apply_locale: bool = true) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"text_scale": text_scale, "palette": palette, "locale": locale, "bindings": bindings.duplicate(true)}
+	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "bindings": bindings.duplicate(true)}
 
 
 ## Restores from a stored dictionary; every field is validated and a bad or
@@ -115,6 +124,8 @@ static func from_dict(d: Dictionary) -> AccessibilitySettings:
 		s.palette = str(d["palette"])
 	if Loc.CHOICES.has(str(d.get("locale", ""))):
 		s.locale = str(d["locale"])
+	if d.has("crt_filter") and d["crt_filter"] is bool:
+		s.crt_filter = d["crt_filter"]
 	s.bindings = InputRemap.sanitize(d.get("bindings", {}))
 	return s
 

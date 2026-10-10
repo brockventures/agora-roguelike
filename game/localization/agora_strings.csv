@@ -149,6 +149,9 @@ SET_TITLE,SETTINGS
 SET_TEXT_SIZE,Text size
 SET_PALETTE,Colors
 SET_LANGUAGE,Language
+SET_CRT,Retro CRT filter
+SET_ON,On
+SET_OFF,Off
 SET_PALETTE_DEFAULT,Default
 SET_PALETTE_DEUTERANOPIA,Deuteranopia (blue/orange)
 SET_PALETTE_PROTANOPIA,Protanopia (blue/yellow)

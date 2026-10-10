@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=6 format=3]
+[gd_resource type="Theme" load_steps=12 format=3]
 
 [sub_resource type="StyleBoxFlat" id="plate"]
 bg_color = Color(0.1725, 0.2078, 0.2314, 1)
@@ -32,6 +32,52 @@ border_width_right = 4
 border_width_bottom = 4
 border_color = Color(0.1098, 0.1020, 0.0902, 1)
 
+[sub_resource type="StyleBoxFlat" id="plate_paused"]
+bg_color = Color(0.1725, 0.2078, 0.2314, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.7882, 0.6039, 0.1804, 1)
+
+[sub_resource type="StyleBoxFlat" id="modal"]
+bg_color = Color(0.1725, 0.2078, 0.2314, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+shadow_color = Color(0.1098, 0.1020, 0.0902, 1)
+shadow_size = 1
+shadow_offset = Vector2(5, 5)
+
+[sub_resource type="StyleBoxFlat" id="alert"]
+bg_color = Color(0.4784, 0.1804, 0.0784, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+shadow_color = Color(0.1098, 0.1020, 0.0902, 1)
+shadow_size = 1
+shadow_offset = Vector2(5, 5)
+
+[sub_resource type="StyleBoxFlat" id="frame_rust"]
+draw_center = false
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.6588, 0.2627, 0.1216, 1)
+
+[sub_resource type="StyleBoxFlat" id="frame_ochre"]
+draw_center = false
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.7882, 0.6039, 0.1804, 1)
+
 [resource]
 default_font_size = 16
 Label/colors/font_color = Color(0.9020, 0.8627, 0.7647, 1)
@@ -44,3 +90,15 @@ MapPanel/base_type = &"Panel"
 MapPanel/styles/panel = SubResource("map")
 SidebarPanel/base_type = &"Panel"
 SidebarPanel/styles/panel = SubResource("side")
+ModalPanel/base_type = &"Panel"
+ModalPanel/styles/panel = SubResource("modal")
+AlertPanel/base_type = &"Panel"
+AlertPanel/styles/panel = SubResource("alert")
+BannerPanel/base_type = &"Panel"
+BannerPanel/styles/panel = SubResource("alert")
+FocusFrameRust/base_type = &"Panel"
+FocusFrameRust/styles/panel = SubResource("frame_rust")
+FocusFrameOchre/base_type = &"Panel"
+FocusFrameOchre/styles/panel = SubResource("frame_ochre")
+HeaderPanelPaused/base_type = &"Panel"
+HeaderPanelPaused/styles/panel = SubResource("plate_paused")
