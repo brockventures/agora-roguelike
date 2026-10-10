@@ -6,7 +6,9 @@ extends RefCounted
 ## - Crisp mechanical keyboard actuation and release clicks with pitch jitter
 ## - Dual-tone market opening bells and trade execution chimes
 ## - GalNet ticker blips, emergency warning buzzers, and insolvency klaxons
-## - Background tension drone whose frequency scales with Doomsday Clock stage
+## - Mid-range ambient pad (a soft chord, not a sub-bass drone) whose pitch and
+##   loudness follow the Doomsday Clock stage; the only looping sound
+## - Alerts (warning, critical) are one-shots: one event, one play, never looped
 ## - Multi-bus audio mixing, volume/mute telemetry, and cooldown throttling
 ## - Procedural PCM audio generation with zero external asset dependencies
 
@@ -31,7 +33,13 @@ const MARKET_BELL: String = "MARKET_BELL"
 const TICKER_BLIP: String = "TICKER_BLIP"
 const ALARM_WARNING: String = "ALARM_WARNING"
 const ALARM_CRITICAL: String = "ALARM_CRITICAL"
+## The looping ambient pad. Still named DRONE_TENSION in code and bus names
+## ("Ambient_Drone") so saved layouts and callers keep working.
 const DRONE_TENSION: String = "DRONE_TENSION"
+## Sounds that raise an alert. Each plays once per event and must never loop.
+const ALERT_SOUNDS: Array[String] = [ALARM_WARNING, ALARM_CRITICAL]
+## Alert volume steps (settings): linear volume of the Alerts bus.
+const ALERT_VOLUME_STEP: float = 0.1
 
 ## Audio Buses
 const BUS_MASTER: String = "Master"
@@ -71,12 +79,18 @@ const MIN_COOLDOWN_MSEC: int = 25
 var sound_last_played_msec: Dictionary = {}
 var _time_offset_msec: int = 0
 
-## Drone tension state
+## Ambient pad state. The pad stream is rendered at PAD_BASE_HZ; the stage
+## frequency sets its pitch_scale. All stage pitches stay mid-range (see
+## DRONE_STAGE_HZ), well above the old 41-110 Hz sub-bass drone.
+const PAD_BASE_HZ: float = 220.0
+## Pad root per Doomsday stage: A3, B3, C4, D4, then F3 for COLLAPSED (lower and darker, still mid-range).
+const DRONE_STAGE_HZ: Array[float] = [220.0, 246.9, 261.6, 293.7, 174.6]
 var current_doomsday_stage: int = 0
-var current_drone_freq: float = 55.0
+var current_drone_freq: float = PAD_BASE_HZ
 
-## Drone loudness in dB; climbs with each Doomsday stage (see DRONE_VOLUME_DB).
-const DRONE_VOLUME_DB: Array[float] = [-30.0, -24.0, -17.0, -11.0, -6.0]
+## Pad loudness in dB; climbs with each Doomsday stage (see DRONE_VOLUME_DB).
+## Mid-range carries further than sub-bass, so the curve sits lower than the old drone's.
+const DRONE_VOLUME_DB: Array[float] = [-34.0, -29.0, -23.0, -18.0, -14.0]
 var current_drone_volume_db: float = DRONE_VOLUME_DB[0]
 
 ## Recent sound event log (ring buffer of 20 items)
@@ -193,30 +207,27 @@ func set_bus_mute(bus_name: String, muted: bool) -> bool:
 func is_bus_muted(bus_name: String) -> bool:
 	return bool(bus_mutes.get(bus_name, false))
 
-## Doomsday Tension Drone Modulation
+## Ambient pad modulation: pitch and loudness follow the Doomsday stage.
 func update_doomsday_stage(new_stage: int) -> void:
 	current_doomsday_stage = new_stage
-	match new_stage:
-		0: # NORMAL
-			current_drone_freq = 55.0 # A1
-		1: # UNSTABLE
-			current_drone_freq = 73.4 # D2
-		2: # CRITICAL
-			current_drone_freq = 98.0 # G2
-		3: # IMMINENT
-			current_drone_freq = 110.0 # A2
-		4: # COLLAPSED
-			current_drone_freq = 41.2 # E1 (heavy sub-bass)
-		_:
-			current_drone_freq = 55.0
-
+	current_drone_freq = DRONE_STAGE_HZ[clampi(new_stage, 0, DRONE_STAGE_HZ.size() - 1)]
 	current_drone_volume_db = DRONE_VOLUME_DB[clampi(new_stage, 0, DRONE_VOLUME_DB.size() - 1)]
 	tension_level_changed.emit(current_doomsday_stage, current_drone_freq)
-	play_sfx(DRONE_TENSION, current_drone_freq / 55.0)
+	play_sfx(DRONE_TENSION, get_drone_pitch_scale())
 
-## Playback pitch_scale for the looping 55 Hz drone stream at the current stage.
+## Playback pitch_scale for the looping pad stream at the current stage.
 func get_drone_pitch_scale() -> float:
-	return current_drone_freq / 55.0
+	return current_drone_freq / PAD_BASE_HZ
+
+func is_alert_sound(sound_id: String) -> bool:
+	return ALERT_SOUNDS.has(sound_id)
+
+## Alerts bus controls used by the settings screen.
+func set_alert_volume(volume_lin: float) -> void:
+	set_bus_volume(BUS_ALERTS, snappedf(volume_lin, ALERT_VOLUME_STEP))
+
+func set_alert_mute(muted: bool) -> void:
+	set_bus_mute(BUS_ALERTS, muted)
 
 ## Procedural Waveform Audio Synthesis (Self-contained, 0 assets required)
 func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
@@ -251,24 +262,42 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 		ALARM_CRITICAL:
-			# Rapid emergency dual-tone alarm pulse (120ms)
+			# One-shot emergency dual-tone pulse (120ms), faded out so it ends without a click
 			sample_count = 2646
 			for i in range(sample_count):
 				var t := float(i) / 22050.0
 				var freq := 880.0 if (int(t * 16.0) % 2 == 0) else 660.0
-				var val := int(sin(t * TAU * freq) * 22000.0)
+				var fade := minf(1.0, float(sample_count - i) / 220.0)
+				var val := int(sin(t * TAU * freq) * fade * 22000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
+		ALARM_WARNING:
+			# One-shot soft two-note rising chime (260ms): lower and gentler than the critical pulse
+			sample_count = 5733
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var second: bool = t >= 0.13
+				var tn := t - (0.13 if second else 0.0)
+				var freq := 660.0 if second else 523.25
+				var val := int(sin(t * TAU * freq) * exp(-tn * 14.0) * minf(1.0, tn * 400.0) * 20000.0)
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 		DRONE_TENSION:
-			# Low-frequency ambient tension drone (55Hz base fundamental + 110Hz warmth, looped)
-			# 4410 samples at 22050Hz = exactly 11 cycles of 55Hz and 22 cycles of 110Hz (seamless loop)
-			sample_count = 4410
+			# Mid-range ambient pad: A3 + E4 + A4 (220 / 330 / 440 Hz), each paired with a
+			# 1 Hz-detuned twin for a slow chorus. One second at 22050 Hz holds a whole number
+			# of cycles of every partial (220..441 Hz), so the loop is seamless. Soft by design:
+			# no harmonics above 441 Hz, no attack. Pitched per Doomsday stage via pitch_scale.
+			sample_count = 22050
 			stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 			stream.loop_begin = 0
 			stream.loop_end = sample_count
 			for i in range(sample_count):
 				var t := float(i) / 22050.0
-				var val := int((sin(t * TAU * 55.0) * 0.75 + sin(t * TAU * 110.0) * 0.25) * 22000.0)
+				var v := 0.0
+				v += 0.34 * (sin(t * TAU * 220.0) + sin(t * TAU * 221.0))
+				v += 0.22 * (sin(t * TAU * 330.0) + sin(t * TAU * 331.0))
+				v += 0.10 * (sin(t * TAU * 440.0) + sin(t * TAU * 441.0))
+				var val := int(v * 0.5 * 18000.0)
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 		_:
@@ -281,6 +310,9 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 
+	# Only the ambient pad loops. Everything else, alerts included, plays once.
+	if sound_id != DRONE_TENSION:
+		stream.loop_mode = AudioStreamWAV.LOOP_DISABLED
 	stream.data = raw_bytes
 	cached_streams[sound_id] = stream
 	return stream

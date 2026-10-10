@@ -13,8 +13,8 @@ func test_init_defaults() -> String:
 		return "Master bus should not be muted by default"
 
 	var snap: Dictionary = audio.to_dict()
-	if snap["drone_freq_hz"] != 55.0:
-		return "Default drone frequency should be 55.0 Hz"
+	if snap["drone_freq_hz"] != TactileAudio.PAD_BASE_HZ:
+		return "Default pad frequency should be the 220 Hz base"
 	if snap["recent_events_count"] != 0:
 		return "Initial events count should be 0"
 	return "ok"
@@ -99,16 +99,16 @@ func test_doomsday_tension_drone_modulation() -> String:
 
 	# Advance stages: NORMAL (0) -> UNSTABLE (1) -> CRITICAL (2) -> IMMINENT (3) -> COLLAPSED (4)
 	audio.update_doomsday_stage(1)
-	if audio.current_drone_freq != 73.4:
-		return "UNSTABLE drone freq should be 73.4 Hz, got %f" % audio.current_drone_freq
+	if audio.current_drone_freq != TactileAudio.DRONE_STAGE_HZ[1]:
+		return "UNSTABLE pad freq should be %f Hz, got %f" % [TactileAudio.DRONE_STAGE_HZ[1], audio.current_drone_freq]
 
 	audio.update_doomsday_stage(3)
-	if audio.current_drone_freq != 110.0:
-		return "IMMINENT drone freq should be 110.0 Hz, got %f" % audio.current_drone_freq
+	if audio.current_drone_freq != TactileAudio.DRONE_STAGE_HZ[3]:
+		return "IMMINENT pad freq should be %f Hz, got %f" % [TactileAudio.DRONE_STAGE_HZ[3], audio.current_drone_freq]
 
 	audio.update_doomsday_stage(4)
-	if audio.current_drone_freq != 41.2:
-		return "COLLAPSED drone freq should drop to sub-bass 41.2 Hz"
+	if audio.current_drone_freq >= TactileAudio.DRONE_STAGE_HZ[0]:
+		return "COLLAPSED pad should drop below the NORMAL pitch"
 
 	return "ok"
 
@@ -129,16 +129,16 @@ func test_procedural_waveform_generation() -> String:
 	if bell_wav.get_length() <= 0.0:
 		return "MARKET_BELL length should be positive"
 
-	# Test drone tension waveform (looped, 4410 samples = exact 55Hz & 110Hz cycles)
+	# Test ambient pad waveform (looped, 22050 samples = one second, whole cycles of every partial)
 	var drone_wav := audio.get_or_generate_waveform(TactileAudio.DRONE_TENSION)
 	if drone_wav == null:
 		return "Failed to generate DRONE_TENSION waveform"
 	if drone_wav.loop_mode != AudioStreamWAV.LOOP_FORWARD:
 		return "DRONE_TENSION waveform should have LOOP_FORWARD mode"
-	if drone_wav.loop_end != 4410:
-		return "DRONE_TENSION loop_end should be 4410 samples, got %d" % drone_wav.loop_end
-	if drone_wav.data.size() != 8820:
-		return "DRONE_TENSION 16-bit PCM byte size should be 8820, got %d" % drone_wav.data.size()
+	if drone_wav.loop_end != 22050:
+		return "DRONE_TENSION loop_end should be 22050 samples, got %d" % drone_wav.loop_end
+	if drone_wav.data.size() != 44100:
+		return "DRONE_TENSION 16-bit PCM byte size should be 44100, got %d" % drone_wav.data.size()
 
 	# Test caching returns same instance
 	var cached_bell := audio.get_or_generate_waveform(TactileAudio.MARKET_BELL)
