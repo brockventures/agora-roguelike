@@ -18,7 +18,7 @@ const TICKET_RECT: Rect2 = Rect2(456.0, 528.0, 400.0, 264.0)
 const CARD_RECT: Rect2 = Rect2(864.0, 528.0, 408.0, 264.0)
 ## The Market tab's quote board and the Fleet tab's panel float over the map.
 const BOARD_RECT: Rect2 = Rect2(24.0, 112.0, 560.0, 340.0)
-const FLEET_RECT: Rect2 = Rect2(24.0, 112.0, 560.0, 340.0)
+const FLEET_RECT: Rect2 = Rect2(24.0, 112.0, 860.0, 340.0)
 ## Modals centre on the map region; the small ones (Chapter 11, perks banner) use MODAL_RECT.
 const MODAL_RECT: Rect2 = Rect2(340.0, 96.0, 600.0, 360.0)
 const MODAL_WIDE_RECT: Rect2 = Rect2(220.0, 76.0, 840.0, 400.0)

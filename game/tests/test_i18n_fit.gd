@@ -139,6 +139,7 @@ func _collect(scene: Node) -> Array:
 	_collect_takeover(scene, add)
 	_collect_levers(scene, add)
 	_collect_rivals(scene, add)
+	_collect_fleet(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -439,6 +440,32 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 	scene.hud.set_station("mars")
 	scene.hud.gamepad_focus.last_rejection_reason = "AUDIT_TRADE_CAP"
 	scene.hud.gamepad_focus.last_rejection_payload = {"cap": 20}
+	loop.set_tab(M0Loop.Tab.MAP)
+
+
+## Fleet tab (Epic 6 #122): all five archetypes in one list, the cursor on each, docked and
+## in transit with an ETA chip, a full hold and a damaged hull (the widest readouts).
+func _collect_fleet(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	var saved_ships: Array = rc.ships.duplicate(true)
+	rc.ships = []
+	for a in FleetView.ARCHETYPES:
+		rc.ships.append({"id": "fit_" + a, "hull_value_cr": 0, "archetype": a, "hull_pct": 88, "shield_pct": 7})
+	rc.cargo = {"FRAG": 100, "FUEL": 100, "FOOD": 100, "ORE": 100, "MACHINERY": 100}
+	loop.set_tab(M0Loop.Tab.FLEET)
+	for state in ["docked", "transit"]:
+		if state == "transit":
+			rc.docked_at = "ceres"
+			rc.transit = {"origin": "ceres", "destination": "earth", "depart_tick": 0, "arrive_tick": 3 * rc.ticks_per_round, "rounds": 3, "toll": 0}
+		for i in rc.ships.size():
+			loop.fleet_cursor = i
+			scene._refresh_readouts()
+			add.call("fleet[%s %d]" % [state, i], scene.wordmark_label)
+	rc.transit = {}
+	rc.docked_at = "mars"
+	rc.ships = saved_ships
+	loop.fleet_cursor = 0
 	loop.set_tab(M0Loop.Tab.MAP)
 
 

@@ -14,6 +14,7 @@ extends RefCounted
 ##      d-pad / left stick: up/down the ladder (crossing the spread flips
 ##      BUY/SELL), left/right quantity, A submit (on the Map tab: depart for the
 ##      selected station), B back, X Chapter 11, Y speed cycle, Start pause.
+##      On the Fleet tab (no ladder shown) d-pad / left stick up/down walk the hull list.
 ##  - Travel (Epic 3 task 0, #111): LT/RT pick a destination, A on the Map tab
 ##    departs. The voyage lives on RunController (transit); arrival docks the
 ##    ship, seeds the new station's books and switches the HUD to them.
@@ -128,6 +129,8 @@ var last_depart_reason: String = ""
 var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
+## Cursor over controller.ships on the Fleet tab (Epic 6 #122). UI only: never saved.
+var fleet_cursor: int = 0
 var parachutes: Parachutes = null
 ## The run's crisis deck (#12); lives on the controller, wired to the market here.
 var crisis_deck: CrisisDeck = null
@@ -1085,6 +1088,23 @@ func cycle_tab(direction: int) -> String:
 	return tab_name()
 
 
+## The hull the Fleet tab has selected, clamped into the current fleet.
+func selected_hull() -> int:
+	if controller == null:
+		return 0
+	fleet_cursor = FleetView.step_cursor(fleet_cursor, 0, controller.ships.size())
+	return fleet_cursor
+
+
+## Moves the Fleet tab's selection one hull (no wrap). False at either end of the list.
+func move_fleet_cursor(delta: int) -> bool:
+	if controller == null:
+		return false
+	var before: int = selected_hull()
+	fleet_cursor = FleetView.step_cursor(before, delta, controller.ships.size())
+	return fleet_cursor != before
+
+
 # --- Chapter 11 ---
 
 ## X: files Chapter 11 when insolvent or pending. Returns the filing report, or
@@ -1158,6 +1178,14 @@ func dispatch_action(action: String) -> bool:
 		_click()
 		action_handled.emit(action)
 		return true
+	if tab == Tab.FLEET and (action == ACT_UP or action == ACT_DOWN):
+		# The ladder is not shown on the Fleet tab, so the D-pad and left stick walk the
+		# hull list instead. Every other order-entry action stays inert here.
+		var moved: bool = move_fleet_cursor(-1 if action == ACT_UP else 1)
+		if moved:
+			_click()
+			action_handled.emit(action)
+		return moved
 	if MARKET_ONLY_ACTIONS.has(action) and tab != Tab.MARKET:
 		return false
 	var handled: bool = false
