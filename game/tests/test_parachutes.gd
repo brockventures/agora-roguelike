@@ -216,12 +216,91 @@ func test_apply_stat_integer_math() -> String:
 
 func test_award_severance_formula() -> String:
 	var p := MetaProfile.new()
-	var award := Parachutes.award_severance(p, 2, 100000)
-	var want: int = 2 * Parachutes.SEVERANCE_PER_FILING + 100000 * Parachutes.SEVERANCE_NET_WORTH_BPS / 10000
+	var award := Parachutes.award_severance(p, 2, 100000, 0, 4)
+	var want: int = 2 * Parachutes.SEVERANCE_PER_FILING + 100000 * Parachutes.SEVERANCE_NET_WORTH_BPS / 10000 + 4 * Parachutes.SEVERANCE_PER_ROUND
 	if award != want or p.severance_points != want:
 		return "award %d points %d want %d" % [award, p.severance_points, want]
-	if Parachutes.award_severance(p, -4, -9) != 0 or p.severance_points != want:
+	if Parachutes.award_severance(p, -4, -9, 0, -2) != 0 or p.severance_points != want:
 		return "negative inputs must award zero"
+	return "ok"
+
+func test_severance_idle_run_vs_active_trader() -> String:
+	# D1 acceptance: a run that only presses X / does no trading earns less than one cheap perk (cost 100),
+	# and a 20k-net-worth trader earns well above an idle run.
+	var s := Replay.Session.new(42)
+	var rc: RunController = s.controller
+	var lp: M0Loop = s.loop
+	if rc.cr != Chapter11.FRESH_START_CR:
+		return "starting stake is %d, expected %d" % [rc.cr, Chapter11.FRESH_START_CR]
+	var frames: int = 0
+	while rc.end_reason == "" and frames < 40000:
+		frames += 1
+		if lp.overlay_state == M0Loop.OVERLAY_CRISIS:
+			lp.acknowledge_crisis()
+		elif lp.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			lp.decline_contract()
+		elif lp.overlay_state == M0Loop.OVERLAY_CHAPTER_11 or rc.pending_bankruptcy:
+			rc.end_run("insolvency")
+			break
+		s.advance()
+	var idle_award: int = rc.severance_award
+	if idle_award >= 100:
+		return "idle run earned %d points, must be less than 100 (cheapest perk)" % idle_award
+
+	var p_active := MetaProfile.new()
+	# Active 20k trader: 20,000 CR peak net worth, survived 40 rounds.
+	var active_award := Parachutes.award_severance(p_active, 1, 20000, 0, 40)
+	if active_award < 140:
+		return "active trader earned %d, expected >= 140" % active_award
+	if active_award <= idle_award * 2:
+		return "active trader (%d) should earn well above idle run (%d)" % [active_award, idle_award]
+	return "ok"
+
+func test_dead_perks_roadmap_descriptions() -> String:
+	# D2 acceptance: keep corrupt_regulator, fuel_hedge, black_market_corridors in M0.
+	# Add a perk-status note to each one\'s description naming the follow-up roadmap system and issue number.
+	var t := _shipped()
+	var expected_issues := {
+		"corrupt_regulator": "#137",
+		"fuel_hedge": "#138",
+		"black_market_corridors": "#139",
+	}
+	for id in expected_issues:
+		if not t.has_perk(id):
+			return "missing perk %s" % id
+		var perk: Dictionary = t.perks[id]
+		var desc: String = str(perk.get("description", ""))
+		if desc.is_empty():
+			return "perk %s missing description" % id
+		var issue_tag: String = expected_issues[id]
+		if not desc.contains(issue_tag):
+			return "perk %s description missing roadmap issue tag %s: %s" % [id, issue_tag, desc]
+		if not ("roadmap" in desc.to_lower() or "lands" in desc.to_lower()):
+			return "perk %s description missing roadmap note: %s" % [id, desc]
+	return "ok"
+
+func test_corp_start_tick_saved_and_restored() -> String:
+	var rc := RunController.new(null, 42, null, {}, 30)
+	# Advance in corp 1 to tick 60 (2 rounds)
+	rc.sim_clock.total_ticks = 60
+	rc.pending_bankruptcy = true
+	rc.file_bankruptcy()
+	if rc.corp_number != 2:
+		return "expected corp 2, got %d" % rc.corp_number
+	if rc._corp_start_tick != 60:
+		return "expected _corp_start_tick 60, got %d" % rc._corp_start_tick
+	# Advance in corp 2 to tick 150 (90 ticks in corp 2 = 3 rounds)
+	rc.sim_clock.total_ticks = 150
+	var d := rc.to_dict()
+	if int(d.get("corp_start_tick", -1)) != 60:
+		return "to_dict missing corp_start_tick 60: %s" % str(d)
+	var loaded := RunController.from_dict(d)
+	if loaded._corp_start_tick != 60:
+		return "from_dict restored _corp_start_tick %d, want 60" % loaded._corp_start_tick
+	# Bank corp 2 and verify only corp 2 rounds (3 rounds, not 5 rounds) are counted
+	loaded.end_run("collapse")
+	if loaded.rounds_survived_award != 3:
+		return "expected 3 rounds survived in corp 2, got %d" % loaded.rounds_survived_award
 	return "ok"
 
 # --- profile ---

@@ -319,19 +319,19 @@ func test_summary_shows_the_severance_breakdown_that_adds_up() -> String:
 	if loop.overlay_state != M0Loop.OVERLAY_COLLAPSED:
 		return "no collapse"
 	var r: Dictionary = loop.run_summary()
-	var parts: int = int(r["severance_filings_pts"]) + int(r["severance_peak_pts"]) + int(r["barons_severance"])
+	var parts: int = int(r["severance_filings_pts"]) + int(r["severance_peak_pts"]) + int(r["barons_severance"]) + int(r["severance_rounds_pts"])
 	if parts != int(r["severance_awarded"]):
 		return "breakdown %d does not add up to the award %d (%s)" % [parts, int(r["severance_awarded"]), str(r)]
 	if (r["broken_ids"] as Array).size() != 2 or int(r["barons_broken"]) != 2:
 		return "per-baron rows need the two broken barons: %s" % str(r)
 	scene._refresh_readouts()
 	var shown: String = scene.panel_text(scene.resolution_modal)
-	for needle in ["PEAK NET WORTH", "ROUNDS SURVIVED", "FILINGS", "BROKEN", "SEVERANCE BANKED"]:
+	for needle in ["PEAK NET WORTH", "ROUNDS SURVIVED", "FILINGS", "ROUNDS x", "BROKEN", "SEVERANCE BANKED"]:
 		if not shown.contains(needle):
 			return "the summary does not show %s:\n%s" % [needle, shown]
 	var summed: int = 0
 	for row in scene._summary_model()["rows"]:
-		if str(row["key"]).begins_with("FILINGS") or str(row["key"]).begins_with("PEAK NET WORTH @") or str(row["key"]).begins_with("BROKEN"):
+		if str(row["key"]).begins_with("FILINGS") or str(row["key"]).begins_with("PEAK NET WORTH @") or str(row["key"]).begins_with("ROUNDS x") or str(row["key"]).begins_with("BROKEN"):
 			summed += int(str(row["value"]).trim_prefix("+"))
 	scene.free()
 	return "ok" if summed == int(r["severance_awarded"]) else "the rows on screen add to %d, not the award %d" % [summed, int(r["severance_awarded"])]

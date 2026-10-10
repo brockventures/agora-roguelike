@@ -15,7 +15,8 @@
           "op": "add",
           "value": -50
         }
-      ]
+      ],
+      "description": "Reduces debt interest by 50 bps. [M0 Roadmap: effect wired when loans and interest system lands (#137)]"
     },
     {
       "id": "deferred_audit",
@@ -32,7 +33,8 @@
           "op": "add",
           "value": 1800
         }
-      ]
+      ],
+      "description": "Extends insolvency grace ticks before automatic Chapter 11 filing by 1,800 ticks."
     },
     {
       "id": "seed_capital",
@@ -47,7 +49,8 @@
           "op": "add",
           "value": 2000
         }
-      ]
+      ],
+      "description": "Adds 2,000 CR starting stake to every new corporation."
     },
     {
       "id": "asset_protection",
@@ -64,7 +67,8 @@
           "op": "add",
           "value": 1000
         }
-      ]
+      ],
+      "description": "Recovers 1,000 bps (10%) of liquidated asset value on Chapter 11 filing."
     },
     {
       "id": "fuel_hedge",
@@ -79,7 +83,8 @@
           "op": "add",
           "value": 1000
         }
-      ]
+      ],
+      "description": "Reduces travel fuel burn by 1,000 bps (10%). [M0 Roadmap: effect wired when fuel market system lands (#138)]"
     },
     {
       "id": "black_market_corridors",
@@ -96,7 +101,8 @@
           "op": "mul_bps",
           "value": 8000
         }
-      ]
+      ],
+      "description": "Multiplies piracy encounter odds by 0.8 (20% reduction). [M0 Roadmap: effect wired when hazard and piracy corridors system lands (#139)]"
     },
     {
       "id": "corporate_shielding",
@@ -116,7 +122,8 @@
           "op": "mul_bps",
           "value": 8500
         }
-      ]
+      ],
+      "description": "Reduces doomsday clock debt burn rate to 85%."
     },
     {
       "id": "hostile_buyout_line",
@@ -136,7 +143,8 @@
           "op": "add",
           "value": -50
         }
-      ]
+      ],
+      "description": "Lowers hostile takeover threshold by 50 shares and unlocks tender offers."
     }
   ]
 }

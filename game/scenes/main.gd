@@ -2064,13 +2064,14 @@ func _refresh_fleet() -> void:
 			continue
 		var nm2: Label = r["name"]
 		var q: Label = r["qty"]
-		nm2.text = Loc.commodity(str(manifest[i][0]))
+		var colw: float = (rw - 16.0) * 0.5
+		var name_col_w: float = colw - 68.0
+		kit.fit_text(nm2, Loc.commodity(str(manifest[i][0])), name_col_w)
 		q.text = tr("FLEET_CARGO_QTY") % int(manifest[i][1])
 		var mh: float = HudKit.line_height(nm2)
-		var colw: float = (rw - 16.0) * 0.5
 		var cx: float = rx + float(i % 2) * (colw + 16.0)
 		nm2.position = Vector2(cx, ry)
-		nm2.size = Vector2(colw * 0.62, mh)
+		nm2.size = Vector2(name_col_w, mh)
 		q.position = Vector2(cx + colw - 64.0, ry)
 		q.size = Vector2(64.0, mh)
 		if i % 2 == 1 or i == manifest.size() - 1:
@@ -2260,6 +2261,7 @@ func _summary_model() -> Dictionary:
 	# The severance calculation: per filing, the peak-net-worth share, per broken baron, total.
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_FILINGS") % [int(r["severance_filings"]), Parachutes.SEVERANCE_PER_FILING], "value": tr("SUM_SEV_VALUE") % int(r["severance_filings_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_PEAK") % ("%.1f" % (float(Parachutes.SEVERANCE_NET_WORTH_BPS) / 100.0)), "value": tr("SUM_SEV_VALUE") % int(r["severance_peak_pts"])})
+	rows.append({"kind": "kv", "key": tr("SUM_SEV_ROUNDS") % [int(r.get("severance_rounds", 0)), Parachutes.SEVERANCE_PER_ROUND], "value": tr("SUM_SEV_VALUE") % int(r.get("severance_rounds_pts", 0))})
 	var broken_ids: Array = r["broken_ids"]
 	for id in broken_ids:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARON") % [_maker_name(str(id)), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % Parachutes.SEVERANCE_PER_BARON})

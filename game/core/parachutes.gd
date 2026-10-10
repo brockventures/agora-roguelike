@@ -56,10 +56,12 @@ const STATS: Dictionary = {
 	"takeover_threshold_shares": "live",  # Epic 3 task 8: Takeover.threshold_for (the player's 501 less the perk)
 }
 
-## Severance formula, placeholder constants (Ryan may overrule).
-## points = filings * SEVERANCE_PER_FILING + peak_net_worth * SEVERANCE_NET_WORTH_BPS / 10000
-const SEVERANCE_PER_FILING: int = 100
+## Severance formula (#97, D1):
+## Severance scales with success: comes mainly from peak net worth + rounds survived.
+## Flat per-filing grant is dropped to 0 so idle runs pressing X cannot afford perks.
+const SEVERANCE_PER_FILING: int = 0
 const SEVERANCE_NET_WORTH_BPS: int = 50   # 0.5% of peak net worth
+const SEVERANCE_PER_ROUND: int = 1        # 1 point per round survived
 ## Epic 3 task 9: banked per baron the corp holds when it ends (placeholder; Ryan may overrule).
 const SEVERANCE_PER_BARON: int = 400
 
@@ -129,6 +131,7 @@ static func _normalise(src: Dictionary) -> Dictionary:
 	return {
 		"id": id if id is String else "",
 		"name": str(src.get("name", "")),
+		"description": str(src.get("description", "")),
 		"branch": str(src.get("branch", "")),
 		"tier": _int_or_self(src.get("tier", 1)),
 		"cost": _int_or_self(src.get("cost", 0)),
@@ -295,9 +298,10 @@ static func apply_stat(mods: Dictionary, stat: String, base: int) -> int:
 ## Negative inputs count as zero.
 ## `barons_broken` adds SEVERANCE_PER_BARON each and is counted on the profile; it
 ## never enters peak_net_worth.
-static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0) -> int:
+static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0, rounds_survived: int = 0) -> int:
 	var broken: int = maxi(0, barons_broken)
-	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON
+	var rounds: int = maxi(0, rounds_survived)
+	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON + rounds * SEVERANCE_PER_ROUND
 	profile.severance_points += award
 	profile.barons_broken += broken
 	return award
