@@ -185,6 +185,9 @@ func fit_text(l: Label, text: String, max_w: float) -> float:
 		if w <= max_w + 0.01:
 			return w
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Until it re-shapes, the label's cached minimum width is the unwrapped line's, which
+	# would clamp any size the caller sets to the narrower wrap width.
+	refresh_theme(l)
 	return max_w
 
 

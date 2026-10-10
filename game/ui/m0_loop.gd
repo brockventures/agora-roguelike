@@ -117,6 +117,11 @@ var controller: RunController = null
 var market: StationMarket = null
 var tab: Tab = Tab.MAP
 var overlay_state: String = OVERLAY_NONE
+## Where the gamepad focus was when the open modal went up ({} when no modal is open);
+## closing the modal restores it (see _set_overlay).
+var focus_trap: Dictionary = {}
+## The barons held when the corp ended, for the summary's per-baron severance rows.
+var _broken_ids: Array = []
 ## True while the sim is paused by a wake (banner text: key SLEEP_NOTICE); cleared when the player resumes.
 const FOCUS_ANCHOR_PAUSE: String = "pause"
 var sleep_pause_active: bool = false
@@ -1151,6 +1156,8 @@ func dispatch_action(action: String) -> bool:
 		_click()
 		action_handled.emit(action)
 		return true
+	if overlay_state == OVERLAY_NONE and sleep_trap_active() and action != ACT_PAUSE:
+		return false  # the sleep banner: Start resumes, nothing behind it is live
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
 	if overlay_state == OVERLAY_CRISIS and action != ACT_CHAPTER_11:
@@ -1250,6 +1257,13 @@ func _click() -> void:
 func run_summary() -> Dictionary:
 	if controller == null:
 		return {}
+	# The severance breakdown, re-derived from the same terms Parachutes.award_severance
+	# summed: peak share and per-baron points are exact, the rest is filings.
+	var award: int = controller.severance_award
+	var broken: int = controller.barons_broken_award
+	var peak_pts: int = maxi(0, controller.peak_net_worth) * Parachutes.SEVERANCE_NET_WORTH_BPS / Parachutes.BPS
+	var baron_pts: int = broken * Parachutes.SEVERANCE_PER_BARON
+	var filing_pts: int = maxi(0, award - peak_pts - baron_pts)
 	return {
 		"reason": controller.end_reason,
 		"net_worth": controller.net_worth(),
@@ -1259,9 +1273,28 @@ func run_summary() -> Dictionary:
 		"severance_awarded": controller.severance_award,
 		"severance_balance": controller.profile.severance_points,
 		"barons_broken": controller.barons_broken_award,
-		"barons_severance": controller.barons_broken_award * Parachutes.SEVERANCE_PER_BARON,
+		"barons_severance": baron_pts,
+		"severance_filings": filing_pts / Parachutes.SEVERANCE_PER_FILING,
+		"severance_filings_pts": filing_pts,
+		"severance_peak_pts": peak_pts,
+		"broken_ids": _broken_baron_ids(broken),
 		"runs_completed": controller.profile.runs_completed,
 	}
+
+
+## The barons held when the corp ended (captured by _on_collapsed), else those held now
+## when that count matches the award; [] when the names are unknown (the summary then
+## shows one aggregate row).
+func _broken_baron_ids(count: int) -> Array:
+	if count <= 0:
+		return []
+	if _broken_ids.size() == count:
+		return _broken_ids.duplicate()
+	if controller != null and controller.world != null:
+		var held: Array = controller.world.held_by(Takeover.PLAYER)
+		if held.size() == count:
+			return held
+	return []
 
 
 ## Golden Parachutes rows (enabled perks by tier then id) with live buy state
@@ -1346,6 +1379,8 @@ func start_next_run() -> RunController:
 	if controller == null or hud == null:
 		return null
 	var rc: RunController = controller.next_run()
+	focus_trap = {}  # a new run starts on its own defaults, not the old corp's focus
+	_broken_ids = []
 	if controller.world != null:
 		rc.world = Barons.for_new_run()  # a new Sol: fresh barons
 	hud.bind_controller(rc)
@@ -1401,6 +1436,7 @@ func _on_bankruptcy_filed(report: Dictionary) -> void:
 
 
 func _on_collapsed() -> void:
+	_broken_ids = controller.world.held_by(Takeover.PLAYER) if controller.world != null else []
 	controller.sim_clock.pause()
 	_set_phase(PHASE_SUMMARY)
 	_set_overlay(OVERLAY_COLLAPSED)
@@ -1447,8 +1483,49 @@ func _sync_overlay_from_controller() -> void:
 
 func _set_overlay(state: String) -> void:
 	if overlay_state != state:
+		var was: String = overlay_state
 		overlay_state = state
+		# The focus trap: a modal opening notes where the gamepad focus was, and the
+		# modal closing puts it back there (UI state only; nothing here reaches the sim).
+		if was == OVERLAY_NONE:
+			focus_trap = _capture_focus()
 		overlay_changed.emit(overlay_state)
+		if state == OVERLAY_NONE and not focus_trap.is_empty():
+			_restore_focus(focus_trap)
+			focus_trap = {}
+
+
+## Where the gamepad focus is: the zone, the ladder cursor and side, the order quantity,
+## the tab, the fleet cursor and whether the trading overlay is up.
+func _capture_focus() -> Dictionary:
+	if hud == null or hud.gamepad_focus == null:
+		return {}
+	var f: GamepadFocus = hud.gamepad_focus
+	return {"zone": int(f.current_zone), "side": int(f.active_side), "ladder": f.ladder_index, "qty": f.order_qty,
+		"tab": int(tab), "fleet": fleet_cursor, "overlay": hud.is_trading_overlay_open()}
+
+
+func _restore_focus(snap: Dictionary) -> void:
+	if hud == null or hud.gamepad_focus == null:
+		return
+	var f: GamepadFocus = hud.gamepad_focus
+	if int(tab) != int(snap["tab"]):
+		set_tab(int(snap["tab"]) as Tab)
+	f.set_zone(int(snap["zone"]) as GamepadFocus.Zone)
+	f.set_order_side(int(snap["side"]) as GamepadFocus.OrderSide)
+	f.ladder_index = int(snap["ladder"])
+	f.order_qty = int(snap["qty"])
+	fleet_cursor = int(snap["fleet"])
+	if bool(snap["overlay"]) != hud.is_trading_overlay_open():
+		if bool(snap["overlay"]):
+			hud.open_trading_overlay()
+		else:
+			hud.close_trading_overlay()
+
+
+## True while the sleep banner holds the gamepad: only Start (resume) is live behind it.
+func sleep_trap_active() -> bool:
+	return sleep_pause_active and controller != null and controller.sim_clock.paused
 
 
 func to_dict() -> Dictionary:
