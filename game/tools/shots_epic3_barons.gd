@@ -36,6 +36,8 @@ func _fly(n: int) -> void:
 	while main.controller.sim_clock.total_ticks < target:
 		if main.loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 			main.loop.acknowledge_crisis()
+		elif main.loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			main.loop.decline_contract()
 		main.loop.advance(1.0 / 60.0 + 0.0001)
 	main.controller.sim_clock.pause()
 

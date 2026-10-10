@@ -498,6 +498,10 @@ func file_bankruptcy() -> Dictionary:
 	peak_net_worth = 0
 	_track_peak(assess())
 	report["next_seed"] = corp_seed()
+	# The failed corp's baron obligations end with it (Epic 3 task 4): a dead
+	# corp's open contract must not fine the new one.
+	if world != null:
+		world.cancel_contracts()
 	bankruptcy_filed.emit(report)
 	return report
 
@@ -669,6 +673,9 @@ func _interrupt_check() -> bool:
 	var trip := doomsday.should_auto_pause()
 	# An unacknowledged crisis stops the clock on the sub-tick it was drawn.
 	if crisis_deck != null and crisis_deck.has_pending_ack():
+		trip = true
+	# Likewise an unanswered baron contract offer (Epic 3 task 4).
+	if world != null and world.has_pending_offer():
 		trip = true
 	if not pending_bankruptcy:
 		var a := assess()

@@ -45,6 +45,9 @@ const OVERLAY_COLLAPSED: String = "collapsed"
 ## A drawn crisis (#12): halts the clock until A acknowledges. Chapter 11 and
 ## collapse outrank it.
 const OVERLAY_CRISIS: String = "crisis"
+## A defense contract offer from Ares Heavy (Epic 3 task 4): halts the clock until
+## A accepts or B declines. Chapter 11, collapse and a crisis outrank it.
+const OVERLAY_CONTRACT: String = "contract"
 
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
@@ -264,8 +267,104 @@ func acknowledge_crisis() -> bool:
 		return false
 	crisis_deck.acknowledge()
 	_set_overlay(OVERLAY_NONE)
+	# A contract offer drawn the same round waits behind the crisis; the clock
+	# stays halted for it.
+	_raise_contract_if_pending()
+	if overlay_state == OVERLAY_NONE:
+		controller.sim_clock.resume()
+	return true
+
+
+# --- Baron contracts (Epic 3 task 4, Ares Heavy) ---
+
+## Raises the offer modal and halts the clock when a defense contract awaits an
+## answer and nothing outranks it.
+func _raise_contract_if_pending() -> void:
+	if controller == null or controller.world == null or not controller.world.has_pending_offer():
+		return
+	if overlay_state != OVERLAY_NONE:
+		return
+	controller.sim_clock.pause()
+	_set_overlay(OVERLAY_CONTRACT)
+
+
+## The offer awaiting an answer ({} when none).
+func current_offer() -> Dictionary:
+	return controller.world.pending_offer() if controller != null and controller.world != null else {}
+
+
+## The accepted, unsettled contract ({} when none), for the HUD.
+func open_contract() -> Dictionary:
+	return controller.world.open_contract() if controller != null and controller.world != null else {}
+
+
+## A: accept the offer. A ship already docked at the anchor with the stock is paid
+## at once. The clock resumes.
+func accept_contract() -> bool:
+	if overlay_state != OVERLAY_CONTRACT or controller == null or controller.world == null:
+		return false
+	var ev: Dictionary = controller.world.accept_offer(controller)
+	if ev.is_empty():
+		return false
+	_post_baron_event(ev)
+	var done: Dictionary = controller.world.try_deliver(controller)
+	if not done.is_empty():
+		_post_baron_event(done)
+	_refresh_world_mods()
+	_set_overlay(OVERLAY_NONE)
 	controller.sim_clock.resume()
 	return true
+
+
+## B: decline. Nothing is kept of a declined offer.
+func decline_contract() -> bool:
+	if overlay_state != OVERLAY_CONTRACT or controller == null or controller.world == null:
+		return false
+	var o: Dictionary = controller.world.pending_offer()
+	if not controller.world.decline_offer():
+		return false
+	if hud != null and not o.is_empty():
+		hud.post_headline_tr("HL_ARES_DECLINED", [Loc.maker_arg(str(o["baron"]))], "MARKET", "INFO")
+	_set_overlay(OVERLAY_NONE)
+	controller.sim_clock.resume()
+	return true
+
+
+func _refresh_world_mods() -> void:
+	if market != null and controller != null and controller.world != null:
+		market.set_world_mods(controller.world.market_mods())
+
+
+## Turns a world event (Barons.advance_round / accept / deliver) into its GalNet line.
+func _post_baron_event(e: Dictionary) -> void:
+	if hud == null:
+		return
+	var who: Dictionary = Loc.maker_arg(str(e.get("baron", "")))
+	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
+	match str(e.get("kind", "")):
+		"offer":
+			hud.post_headline_tr("HL_ARES_OFFER", [who, int(e["qty"]), com, Loc.station_arg(str(e["station"])), int(e["rounds"]), int(e["total"])], "MARKET", "WARNING")
+		"accepted":
+			hud.post_headline_tr("HL_ARES_ACCEPTED", [who, int(e["qty"]), com, int(e["due_round"])], "MARKET", "INFO")
+		"delivered":
+			hud.post_headline_tr("HL_ARES_DELIVERED", [who, int(e["qty"]), com, int(e["paid"])], "MARKET", "INFO")
+		"squeeze":
+			hud.post_headline_tr("HL_ARES_SQUEEZE", [who, Loc.station_arg(str(e["station"])), com, int(e["price_bps"]) / 100], "CRISIS", "WARNING")
+		"missed":
+			hud.post_headline_tr("HL_ARES_MISSED", [who, int(e["penalty"])], "DEBT", "CRITICAL")
+			if bool(e.get("forced_ch11", false)):
+				hud.post_headline_tr("HL_ARES_RETALIATION", [who], "INSOLVENCY", "CRITICAL")
+
+
+## Squeeze tag for one book as the player sees it ("SHORT SQUEEZE +20%"), "" when
+## it is not squeezed or there is no world.
+func squeeze_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var q: Dictionary = controller.world.squeeze_on(station, commodity)
+	if q.is_empty():
+		return ""
+	return Loc.t("TAG_SQUEEZE") % (int(q["price_bps"]) / 100)
 
 
 func _on_margin_call(amount: int) -> void:
@@ -358,6 +457,13 @@ func _on_transit_arrived(info: Dictionary) -> void:
 	var dest: String = str(info["destination"])
 	if market != null:
 		market.unlock_station(dest)
+	# An accepted defense contract is paid the moment the ship docks at the anchor
+	# with the stock (Epic 3 task 4).
+	if controller != null and controller.world != null:
+		var done: Dictionary = controller.world.try_deliver(controller)
+		if not done.is_empty():
+			_post_baron_event(done)
+			_refresh_world_mods()
 	if hud == null:
 		return
 	# The book, ladder and quotes follow the dock, whatever the player was browsing.
@@ -557,6 +663,13 @@ func dispatch_action(action: String) -> bool:
 			_click()
 			action_handled.emit(action)
 		return acked
+	if overlay_state == OVERLAY_CONTRACT and action != ACT_CHAPTER_11:
+		# A accepts, B declines; nothing else is live behind the modal.
+		var answered: bool = (action == ACT_SUBMIT and accept_contract()) or (action == ACT_CANCEL and decline_contract())
+		if answered:
+			_click()
+			action_handled.emit(action)
+		return answered
 	if overlay_state != OVERLAY_NONE and not OVERLAY_ACTIONS.has(action):
 		return false
 	if action == ACT_SUBMIT and tab == Tab.MAP:
@@ -758,6 +871,7 @@ func _on_bankruptcy_filed(_report: Dictionary) -> void:
 	# The controller leaves the clock paused for the caller; the new corp starts at 1x.
 	controller.sim_clock.set_speed(1)
 	controller.sim_clock.resume()
+	_refresh_world_mods()  # the failed corp's contract and squeeze ended with it
 	_raise_crisis_if_pending()
 
 
@@ -769,9 +883,14 @@ func _on_collapsed() -> void:
 
 func _on_round_advanced(round_num: int) -> void:
 	# World first, then replenish (design doc 2.2); the crisis deck already ran.
+	# advance_round decides the baron behaviours and writes them into world state;
+	# the mods are then re-emitted from that state, since replenish() reseeds every book.
 	if controller != null and controller.world != null:
+		for e in controller.world.advance_round(round_num, controller):
+			_post_baron_event(e)
 		market.set_world_mods(controller.world.market_mods())
 	market.replenish()
+	_raise_contract_if_pending()
 	round_completed.emit(round_num)
 
 
@@ -792,6 +911,8 @@ func _sync_overlay_from_controller() -> void:
 	else:
 		_set_overlay(OVERLAY_NONE)
 		_raise_crisis_if_pending()
+		# A save can hold an unanswered contract offer (autosave runs after it was posted).
+		_raise_contract_if_pending()
 
 
 func _set_overlay(state: String) -> void:

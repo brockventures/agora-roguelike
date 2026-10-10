@@ -99,6 +99,7 @@ func _collect(scene: Node) -> Array:
 	rc.doomsday.stage = DoomsdayClock.Stage.NORMAL
 	_collect_travel(scene, add)
 	_collect_barons(scene, add)
+	_collect_ares(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -172,6 +173,40 @@ func _collect_barons(scene: Node, add: Callable) -> void:
 	scene._refresh_readouts()
 
 
+## Ares Heavy (Epic 3 task 4, part of #16): the defense contract offer modal, the
+## sidebar contract line and SHORT SQUEEZE tag, the board row tag, and the map line.
+func _collect_ares(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	var st: BaronState = rc.world.state("ares_heavy")
+	st.scratch["contract"] = {"state": "offered", "id": 8, "commodity": "MACHINERY", "qty": 60, "unit_px": 19, "offered_round": 8, "due_round": 14}
+	loop.overlay_state = M0Loop.OVERLAY_CONTRACT
+	scene._refresh_readouts()
+	add.call("contract offer modal", scene.resolution_label)
+	loop.overlay_state = M0Loop.OVERLAY_NONE
+	st.scratch["contract"]["state"] = "accepted"
+	st.scratch["squeeze"] = {"commodity": "MACHINERY", "price_bps": 5000, "depth_bps": 3000, "rounds_short": 5}
+	loop.market.set_world_mods(rc.world.market_mods())
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("MACHINERY")
+	for tab in [M0Loop.Tab.MAP, M0Loop.Tab.MARKET]:
+		loop.set_tab(tab)
+		scene._refresh_readouts()
+		var tag: String = "ares/tab%d" % int(tab)
+		add.call("map[%s]" % tag, scene.map_label)
+		add.call("sidebar[%s]" % tag, scene.sidebar_label)
+	scene.market_label.text = scene._board_text()
+	add.call("market board[ares squeeze]", scene.market_label)
+	rc.world = null
+	loop.market.set_world(null)
+	loop.market.set_world_mods([])
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
 ## The travel loop (#111): the route preview with a belt toll, a refused departure,
 ## then the header ETA, the in-transit map text, hint and rejection while under way.
 func _collect_travel(scene: Node, add: Callable) -> void:
@@ -215,7 +250,11 @@ func findings(scene: Node) -> Array:
 			if not out.has(f):
 				out.append(f)
 	# Ticker: every visible line must be scrollable inside its strip.
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])]:
+	var ares_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_ARES_OFFER", [Loc.maker_arg("ares_heavy"), 60, Loc.commodity_arg("MACHINERY"), Loc.station_arg("mars"), 6, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("DEBT"), Loc.format("HL_ARES_MISSED", [Loc.maker_arg("ares_heavy"), 99999])]),
+	]
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:

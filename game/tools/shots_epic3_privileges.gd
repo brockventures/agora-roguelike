@@ -55,6 +55,8 @@ func _run() -> void:
 		guard -= 1
 		if main.loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 			main.loop.acknowledge_crisis()
+		elif main.loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+			main.loop.decline_contract()
 		main.loop.advance(1.0 / 60.0 + 0.0001)
 	rc.sim_clock.pause()
 	print("arrived: ", rc.docked_at, " cr ", before, " -> ", rc.cr)

@@ -987,7 +987,7 @@ func _refresh_readouts() -> void:
 	var header_variation: String = "HeaderPanelPaused" if controller.sim_clock.paused else "HeaderPanel"
 	if String(header_panel.theme_type_variation) != header_variation:
 		HudTheme.style_panel(header_panel, header_variation)
-	var big: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED or loop.overlay_state == M0Loop.OVERLAY_CRISIS
+	var big: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED or loop.overlay_state == M0Loop.OVERLAY_CRISIS or loop.overlay_state == M0Loop.OVERLAY_CONTRACT
 	resolution_modal.position = OrbitalHUD.MODAL_OVERLAY_RECT.position if big else RESOLUTION_RECT.position
 	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if big else RESOLUTION_RECT.size
 	resolution_label.size = resolution_modal.size - Vector2(40, 32)
@@ -1085,7 +1085,7 @@ func _sidebar_text() -> String:
 	out.append(tr("SIDE_ORDER") % [tr("ORDER_BUY") if buying else tr("ORDER_SELL"), f.order_qty])
 	out.append(tr("SIDE_HELD") % [hud.get_cargo_qty(hud.active_commodity), Loc.commodity(hud.active_commodity), controller.get_total_cargo(), controller.cargo_capacity])
 	var priv_lines: Array = []
-	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station)]:
+	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.squeeze_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station), _contract_sidebar_line()]:
 		if line != "":
 			priv_lines.append(line)
 	if not priv_lines.is_empty():
@@ -1128,7 +1128,11 @@ func _board_text() -> String:
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
 			var tag: String = loop.crisis_deck.tag_for(hud.active_station, c) if loop.crisis_deck != null else ""
-			var pipe: String = loop.pipeline_tag(hud.active_station, c)
+			# A squeezed book shows SQUEEZE in place of its pipeline tag (the row has no room
+			# for both in the pseudo locale); the sidebar still lists the pipeline.
+			var pipe: String = loop.squeeze_tag(hud.active_station, c)
+			if pipe == "":
+				pipe = loop.pipeline_tag(hud.active_station, c)
 			if pipe != "":
 				tag = pipe if tag == "" else "%s, %s" % [pipe, tag]
 			out.append(tr("BOARD_ROW_LIVE") % [key_prefix, lad["best_bid"], lad["best_ask"], "   [%s]" % tag if tag != "" else ""])
@@ -1178,6 +1182,9 @@ func _map_text() -> String:
 	var refusal: String = loop.depart_message()
 	if refusal != "":
 		out.append(refusal)
+	var open: Dictionary = loop.open_contract()
+	if not open.is_empty():
+		out.append(tr("MAP_CONTRACT") % [int(open["qty"]), Loc.commodity(str(open["commodity"])), Loc.station(str(controller.world.def(str(open["baron"])).get("anchor", ""))), int(open["due_round"])])
 	return "\n".join(out)
 
 
@@ -1191,6 +1198,8 @@ func _fleet_text() -> String:
 func _resolution_text() -> String:
 	if loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 		return _crisis_text()
+	if loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
+		return _contract_text()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return "%s\n\n%s\n%s\n\n%s" % [tr("CH11_TITLE"), tr("CH11_INSOLVENT") % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))], tr("CH11_HALTED"), tr("CH11_PRESS_X")]
@@ -1211,6 +1220,36 @@ func _crisis_text() -> String:
 	out.append("")
 	out.append(tr("CRISIS_ACK"))
 	return "\n".join(out)
+
+
+## The defense contract offer modal (Epic 3 task 4): what is asked, what it pays,
+## what a miss costs, and when Ares squeezes. A accepts, B declines.
+func _contract_text() -> String:
+	var o: Dictionary = loop.current_offer()
+	if o.is_empty():
+		return ""
+	var w: Barons = controller.world
+	var id: String = str(o["baron"])
+	var p: Dictionary = w.def(id).get("params", {})
+	var com: String = Loc.commodity(str(o["commodity"]))
+	var qty: int = int(o["qty"])
+	var value: int = qty * int(o["unit_px"])
+	var out: PackedStringArray = [
+		tr("CONTRACT_TITLE") % _maker_name(id), "",
+		tr("CONTRACT_BODY") % [qty, com, Loc.station(str(w.def(id).get("anchor", ""))), int(o["due_round"])],
+		tr("CONTRACT_PAY") % [int(o["unit_px"]), value],
+		tr("CONTRACT_PENALTY") % (value * int(p.get("contract_penalty_bps", 0)) / 10000),
+		tr("CONTRACT_SQUEEZE") % [int(p.get("squeeze_window_rounds", 0)), qty, com, int(p.get("squeeze_price_bps_max", 0)) / 100],
+		"", tr("CONTRACT_KEYS")]
+	return "\n".join(out)
+
+
+## One sidebar line for the accepted contract ("" when none).
+func _contract_sidebar_line() -> String:
+	var c: Dictionary = loop.open_contract()
+	if c.is_empty():
+		return ""
+	return tr("SIDE_CONTRACT") % [int(c["qty"]), Loc.commodity(str(c["commodity"])), int(c["due_round"])]
 
 
 func _crisis_sidebar_lines() -> Array:
