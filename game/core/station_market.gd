@@ -85,6 +85,22 @@ func seed_book(station: String, commodity: String) -> bool:
 	return true
 
 
+## Seeds a station's books the first time the player has a reason to trade
+## there (travel, #111). A station that already has books is left alone, so
+## calling this is idempotent; from then on replenish() refills the new books
+## with the rest. Returns true when books were created. Stations are not
+## seeded up front: a run that never travels keeps its market byte-identical.
+func unlock_station(station: String) -> bool:
+	var s: String = station.to_lower()
+	if not Transit.BASE_PRICES.has(s):
+		return false
+	var created: bool = false
+	for c in Transit.COMMODITIES:
+		if not has_book(s, c):
+			created = seed_book(s, c) or created
+	return created
+
+
 ## Replaces the active crisis modifiers and reseeds every book the old or new
 ## set touches, so an effect starts (and reverts) immediately.
 func set_crisis_mods(mods: Array) -> void:

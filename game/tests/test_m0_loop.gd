@@ -616,6 +616,7 @@ func test_market_board_marks_selected_commodity_and_hints_right_stick() -> Strin
 	var main: Variant = packed.instantiate()
 	main.start_new_run(3)
 	main.hud.set_commodity("ORE")
+	main.loop.set_tab(M0Loop.Tab.MARKET)  # the Map tab swaps this hint for the depart one (#111)
 	var rows: PackedStringArray = main._board_text().split("\n")
 	var marked: Array = []
 	for line in rows:

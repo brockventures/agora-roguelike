@@ -79,7 +79,7 @@ func _audit_ctx() -> Dictionary:
 	var rc := RunController.new(null, 9, null, {}, 4)
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
-	lp.lock_station("mars")
+	lp.dock_at("mars")
 	var deck: CrisisDeck = rc.crisis_deck
 	var keep: Array = []
 	for def in deck.data["crises"]:

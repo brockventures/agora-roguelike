@@ -12,8 +12,11 @@ extends RefCounted
 ##    existing GamepadFocus API:
 ##      LB/RB tabs (Map, Market, Fleet), LT/RT stations, right stick commodities,
 ##      d-pad / left stick: up/down the ladder (crossing the spread flips
-##      BUY/SELL), left/right quantity, A submit, B back, X Chapter 11, Y speed cycle,
-##      Start pause.
+##      BUY/SELL), left/right quantity, A submit (on the Map tab: depart for the
+##      selected station), B back, X Chapter 11, Y speed cycle, Start pause.
+##  - Travel (Epic 3 task 0, #111): LT/RT pick a destination, A on the Map tab
+##    departs. The voyage lives on RunController (transit); arrival docks the
+##    ship, seeds the new station's books and switches the HUD to them.
 ##  - Insolvency halts the clock and raises the Chapter 11 resolution overlay;
 ##    X files, which founds a new corp and lowers the overlay.
 ##  - Button presses click, order fills ring the market bell.
@@ -48,9 +51,8 @@ const PHASE_NONE: String = ""
 const PHASE_SUMMARY: String = "summary"
 const PHASE_PERKS: String = "perks"
 
-## The one tradable station in M0: Arcadia Foundries on Mars (#34). Other
-## stations stay visible on the map, but LT/RT station cycling is disabled
-## while a station is locked, so no path leads to a "Not docked" rejection.
+## Where every run starts: docked at Arcadia Foundries on Mars (#34). Since #111
+## the player can travel on from there; this is only the starting dock.
 const M0_STATION: String = "mars"
 
 const ACT_TAB_PREV: String = "m0_tab_prev"
@@ -110,8 +112,8 @@ var sleep_pause_active: bool = false
 var focus_anchor: String = ""
 var wake_count: int = 0
 var total_fills: int = 0
-## Non-empty: the player is docked here and station cycling is disabled (see M0_STATION).
-var locked_station: String = ""
+## Why the last A-to-depart press did nothing ("" when it worked); see depart_message().
+var last_depart_reason: String = ""
 var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
@@ -142,8 +144,6 @@ func bind_hud(p_hud: OrbitalHUD) -> void:
 	_connect_all()
 	_attach_crisis_deck()
 	_sync_overlay_from_controller()
-	if locked_station != "":
-		_apply_lock()
 
 
 ## Rebinds after the HUD's controller changed (MainScene.initialize_systems).
@@ -159,6 +159,8 @@ func _connect_all() -> void:
 		controller.run_collapsed.connect(_on_collapsed)
 		controller.round_advanced.connect(_on_round_advanced)
 		controller.margin_call_applied.connect(_on_margin_call)
+		controller.transit_departed.connect(_on_transit_departed)
+		controller.transit_arrived.connect(_on_transit_arrived)
 		controller.sim_clock.paused_changed.connect(_on_clock_changed)
 		controller.sim_clock.speed_changed.connect(_on_clock_changed)
 	if hud != null and hud.gamepad_focus != null:
@@ -181,6 +183,10 @@ func _disconnect_all() -> void:
 			controller.round_advanced.disconnect(_on_round_advanced)
 		if controller.margin_call_applied.is_connected(_on_margin_call):
 			controller.margin_call_applied.disconnect(_on_margin_call)
+		if controller.transit_departed.is_connected(_on_transit_departed):
+			controller.transit_departed.disconnect(_on_transit_departed)
+		if controller.transit_arrived.is_connected(_on_transit_arrived):
+			controller.transit_arrived.disconnect(_on_transit_arrived)
 		if controller.sim_clock.paused_changed.is_connected(_on_clock_changed):
 			controller.sim_clock.paused_changed.disconnect(_on_clock_changed)
 		if controller.sim_clock.speed_changed.is_connected(_on_clock_changed):
@@ -262,19 +268,90 @@ func set_market(m: StationMarket) -> void:
 		hud.market = market
 
 
-# --- Station lock ---
+# --- Docking and travel (#111) ---
 
-## Docks the player at `station` and disables LT/RT station cycling.
-func lock_station(station: String) -> void:
-	locked_station = station.to_lower()
-	_apply_lock()
+## Docks the player at `station` and points the HUD at it. This is the run's
+## starting dock only: binding or rebinding never calls it, so a loaded save
+## (docked elsewhere, or in transit) keeps its place.
+func dock_at(station: String) -> void:
+	var s: String = station.to_lower()
+	if controller != null and Transit.STATIONS.has(s):
+		controller.docked_at = s
+		controller.transit = {}
+	if market != null:
+		market.unlock_station(s)
+	if hud != null and Transit.STATIONS.has(s):
+		hud.set_station(s)
 
 
-func _apply_lock() -> void:
-	if controller != null and Transit.STATIONS.has(locked_station):
-		controller.docked_at = locked_station
-	if hud != null and locked_station != "":
-		hud.set_station(locked_station)
+## Points the HUD at where a loaded run actually is: the dock, or the voyage's
+## destination while in transit. Does not move the ship.
+func sync_hud_to_ship() -> void:
+	if controller == null or hud == null:
+		return
+	var s: String = controller.docked_at
+	if controller.is_in_transit():
+		s = str(controller.transit["destination"])
+	if Transit.STATIONS.has(s):
+		hud.set_station(s)
+
+
+## A on the Map tab: leave the docked station for the station LT/RT selected.
+## Returns true when the ship left. Otherwise last_depart_reason says why.
+func depart_to_selected() -> bool:
+	if controller == null or hud == null:
+		return false
+	var res: Dictionary = controller.depart(hud.active_station)
+	last_depart_reason = "" if bool(res["ok"]) else str(res["reason"])
+	if not bool(res["ok"]) and hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
+	return bool(res["ok"])
+
+
+## Player-facing line for the last refused departure ("" when none).
+func depart_message() -> String:
+	var dest: String = hud.active_station if hud != null else ""
+	match last_depart_reason:
+		"":
+			return ""
+		"IN_TRANSIT":
+			return Loc.t("DEPART_IN_TRANSIT")
+		"SAME_STATION":
+			return Loc.t("DEPART_SAME_STATION")
+		"INSUFFICIENT_CR":
+			return Loc.t("DEPART_NO_TOLL") % Transit.calculate_toll(controller.docked_at, dest)
+		"NO_ROUTE":
+			return Loc.t("DEPART_NO_ROUTE")
+	return Loc.t("DEPART_REFUSED")
+
+
+func _on_transit_departed(info: Dictionary) -> void:
+	last_depart_reason = ""
+	# Unlock the destination's books now, so its ladder is live while the player browses it.
+	if market != null:
+		market.unlock_station(str(info["destination"]))
+	if hud == null:
+		return
+	var origin: Dictionary = Loc.station_arg(str(info["origin"]))
+	var dest: Dictionary = Loc.station_arg(str(info["destination"]))
+	var rounds: int = int(info["rounds"])
+	if rounds == 1:
+		hud.post_headline_tr("HL_SHIP_DEPART_ONE", [origin, dest], "TRANSIT", "INFO")
+	else:
+		hud.post_headline_tr("HL_SHIP_DEPART_MANY", [origin, dest, rounds], "TRANSIT", "INFO")
+	if int(info["toll"]) > 0:
+		hud.post_headline_tr("HL_BELT_TOLL", [int(info["toll"]), origin, dest], "TRANSIT", "WARNING")
+
+
+func _on_transit_arrived(info: Dictionary) -> void:
+	var dest: String = str(info["destination"])
+	if market != null:
+		market.unlock_station(dest)
+	if hud == null:
+		return
+	# The book, ladder and quotes follow the dock, whatever the player was browsing.
+	hud.set_station(dest)
+	hud.post_headline_tr("HL_SHIP_ARRIVED", [Loc.station_arg(dest), Loc.station_arg(str(info["origin"]))], "TRANSIT", "INFO")
 
 
 # --- Clock ---
@@ -430,10 +507,15 @@ func dispatch_action(action: String) -> bool:
 			_click()
 			action_handled.emit(action)
 		return acked
-	if locked_station != "" and (action == ACT_STATION_PREV or action == ACT_STATION_NEXT):
-		return false
 	if overlay_state != OVERLAY_NONE and not OVERLAY_ACTIONS.has(action):
 		return false
+	if action == ACT_SUBMIT and tab == Tab.MAP:
+		# On the Map tab A is not an order: it departs for the selected station.
+		if not depart_to_selected():
+			return false
+		_click()
+		action_handled.emit(action)
+		return true
 	if MARKET_ONLY_ACTIONS.has(action) and tab != Tab.MARKET:
 		return false
 	var handled: bool = false
@@ -591,6 +673,7 @@ func start_next_run() -> RunController:
 	hud.gamepad_focus.last_rejection_payload = {}
 	total_fills = 0
 	bind_hud(hud)
+	dock_at(M0_STATION)
 	collapse_phase = PHASE_NONE
 	perk_cursor = 0
 	collapse_phase_changed.emit(PHASE_NONE)
@@ -664,6 +747,8 @@ func _set_overlay(state: String) -> void:
 
 func to_dict() -> Dictionary:
 	return {
+		"docked_at": controller.docked_at if controller != null else "",
+		"in_transit": controller != null and controller.is_in_transit(),
 		"tab": tab_name(),
 		"overlay_state": overlay_state,
 		"speed_label": speed_label(),

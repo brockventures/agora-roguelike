@@ -32,20 +32,24 @@ func _t_starts_docked_at_mars(m: MainScene) -> String:
 	return "ok"
 
 
-func test_station_cycling_disabled_and_mars_trades() -> String:
+func test_station_cycling_allowed_but_trading_only_where_docked() -> String:
 	var m := _main()
-	var r: String = _t_station_cycling_disabled_and_mars_trades(m)
+	var r: String = _t_station_cycling_allowed_but_trading_only_where_docked(m)
 	m.free()
 	return r
 
 
-func _t_station_cycling_disabled_and_mars_trades(m: MainScene) -> String:
+## Was "station cycling must be disabled in M0". Since the travel loop (#111) LT/RT
+## select a destination; trading is still only possible at the docked station.
+func _t_station_cycling_allowed_but_trading_only_where_docked(m: MainScene) -> String:
 	var lp: M0Loop = m.loop
 	lp.set_tab(M0Loop.Tab.MARKET)
-	if lp.dispatch_action(M0Loop.ACT_STATION_NEXT) or lp.dispatch_action(M0Loop.ACT_STATION_PREV):
-		return "station cycling must be disabled in M0"
-	if m.hud.active_station != "mars":
-		return "station changed to %s" % m.hud.active_station
+	if not lp.dispatch_action(M0Loop.ACT_STATION_NEXT) or m.hud.active_station == "mars":
+		return "station cycling should move the selection, got %s" % m.hud.active_station
+	if lp.dispatch_action(M0Loop.ACT_SUBMIT) or m.hud.gamepad_focus.last_rejection_reason != "NOT_DOCKED_AT_STATION":
+		return "trading away from the dock must be rejected, got %s" % m.hud.gamepad_focus.last_rejection_reason
+	if not lp.dispatch_action(M0Loop.ACT_STATION_PREV) or m.hud.active_station != "mars":
+		return "station cycling back failed: %s" % m.hud.active_station
 	if not lp.dispatch_action(M0Loop.ACT_SUBMIT):
 		return "buy at mars rejected: %s" % m.hud.gamepad_focus.last_rejection_reason
 	return "ok"

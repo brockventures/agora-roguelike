@@ -19,6 +19,26 @@ TAB_MARKET,MARKET
 TAB_FLEET,FLEET
 HUD_CONTROLS_HINT,LB/RB tab  LT/RT station  R-stick commodity  D-pad qty  A trade  B back  X Ch.11  Y speed  View menu
 HUD_MAP_DOCKED,SOL TACTICAL MAP   docked: %s
+HUD_CONTROLS_HINT_MAP,LB/RB tab  LT/RT station  A depart  B back  X Ch.11  Y speed  View menu
+HUD_CONTROLS_HINT_TRANSIT,LT/RT station  B back  Y speed  View menu
+HUD_TRANSIT,"IN TRANSIT to %s, ETA %s"
+ROUNDS_ONE,1 round
+ROUNDS_MANY,%d rounds
+MAP_PICK,"LT/RT pick a destination, then A departs."
+MAP_ROUTE,"Route to %s: %s. A departs."
+MAP_ROUTE_TOLL,"Route to %s: %s, belt toll %d CR. A departs."
+MAP_TRANSIT,SOL TACTICAL MAP   in transit: %s -> %s
+MAP_TRANSIT_ETA,"ETA %s. No trading until you dock."
+MAP_SHIP_TAG,YOU
+DEPART_IN_TRANSIT,Already under way.
+DEPART_SAME_STATION,You are docked here. Pick another station.
+DEPART_NO_TOLL,"Cannot pay the %d CR belt toll."
+DEPART_NO_ROUTE,No route to that station.
+DEPART_REFUSED,Cannot depart right now.
+HL_SHIP_DEPART_ONE,"YOUR SHIP DEPARTS %s for %s, ETA 1 round"
+HL_SHIP_DEPART_MANY,"YOUR SHIP DEPARTS %s for %s, ETA %d rounds"
+HL_BELT_TOLL,BELT AUTHORITY: %d CR toll charged on %s -> %s
+HL_SHIP_ARRIVED,YOUR SHIP DOCKED at %s from %s
 FLEET_HEADER,FLEET   hulls: %d
 FLEET_CARGO,  %s x%d
 SIDE_ASK_ROW,%s - ASK %6.1f  x%d
@@ -107,6 +127,7 @@ HL_STAGE,SOL EMERGENCY LEVEL ESCALATION: Run stage advanced to %s
 HL_COLLAPSE,SOVEREIGN DEFAULT: Sol System asset seizure initiated. Run collapsed.
 HL_MARGIN_CALL,MARGIN CALL: %d CR drained from your account
 REJ_NOT_DOCKED,Not docked at %s
+REJ_IN_TRANSIT,"In transit to %s: no trading until you dock"
 REJ_THIS_STATION,this station
 REJ_INSUFFICIENT_CR,Not enough CR
 REJ_INSUFFICIENT_CARGO,Not enough cargo to sell
