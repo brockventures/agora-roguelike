@@ -161,14 +161,14 @@ func test_main_scene_ticker_labels_follow_the_feed() -> String:
 	scene.hud.post_headline("LONG ".repeat(120), "HAZARD", "WARNING")
 	scene.hud.advance_ticker(OrbitalHUD.TICKER_DWELL_SECONDS + 3.0)
 	scene._refresh_readouts()
-	var ok_text: bool = scene.ticker_labels.size() == OrbitalHUD.TICKER_VISIBLE_LINES and scene.ticker_labels[0].text.begins_with("HAZARD:")
+	var ok_text: bool = scene.ticker_labels.size() == OrbitalHUD.TICKER_VISIBLE_LINES and (scene.ticker_chips[0] as HudKit.Plate).get_meta("text").text.begins_with("HAZARD") and scene.ticker_labels[0].text.begins_with("LONG")
 	var moved: bool = scene.ticker_labels[0].position.x < 0.0
-	var modal_ok: bool = scene.market_modal.position == OrbitalHUD.MODAL_OVERLAY_RECT.position and scene.market_modal.size == OrbitalHUD.MODAL_OVERLAY_RECT.size
+	var modal_ok: bool = scene.market_modal.position == HudLayout.BOARD_RECT.position and scene.market_modal.size == HudLayout.BOARD_RECT.size
 	scene.free()
 	if not ok_text:
 		return "ticker labels not populated"
 	if not moved:
 		return "ticker label did not scroll"
 	if not modal_ok:
-		return "market modal does not use MODAL_OVERLAY_RECT"
+		return "market modal does not use HudLayout.BOARD_RECT"
 	return "ok"

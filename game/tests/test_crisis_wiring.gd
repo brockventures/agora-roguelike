@@ -232,7 +232,7 @@ func test_main_scene_renders_the_crisis_modal() -> String:
 	lp.crisis_deck.bags.force("crisis", true)
 	lp.crisis_deck.advance_round(3, 1, RICH)
 	lp._raise_crisis_if_pending()
-	var text: String = scene._resolution_text()
-	var ok: bool = text.contains("ANTITRUST AUDIT") and text.contains("Press A to acknowledge") and text.contains("capped at 20")
+	var text: String = str(scene._resolution_model())
+	var ok: bool = text.contains("Antitrust Audit") and text.contains("Acknowledge") and text.contains("capped at 20")
 	scene.free()
 	return "ok" if ok else "modal text: %s" % text

@@ -76,7 +76,7 @@ func test_no_label_is_smaller_than_the_deck_verified_minimum() -> String:
 			var fs: int = l.get_theme_font_size("font_size")
 			if fs < AccessibilitySettings.MIN_FONT_SIZE:
 				bad.append("%s at %.2fx: %d px" % [l.get_path(), scale, fs])
-		for px in [scene.scaled_size(MainScene.MAP_FONT_SIZE), scene.scaled_size(MainScene.TICKER_FONT_SIZE), scene.scaled_size(MainScene.HINT_FONT_SIZE)]:
+		for px in [scene.scaled_size(MainScene.MAP_FONT_SIZE)]:
 			if px < AccessibilitySettings.MIN_FONT_SIZE:
 				bad.append("drawn text %d px at %.2fx" % [px, scale])
 		scene.free()
@@ -86,7 +86,7 @@ func test_no_label_is_smaller_than_the_deck_verified_minimum() -> String:
 
 
 func test_no_font_size_literal_below_the_minimum_in_source() -> String:
-	var re := RegEx.create_from_string("(?:font_size\"\\s*,\\s*|_make_label\\([^\\n]*,\\s*|draw_string\\([^\\n]*,\\s*-1,\\s*|FONT_SIZE\\s*:\\s*int\\s*=\\s*)(\\d+)")
+	var re := RegEx.create_from_string("(?:font_size\"\\s*,\\s*|kit\\.label\\([^\\n]*?ROLE_\\w+,\\s*|_make_label\\([^\\n]*,\\s*|draw_string\\([^\\n]*,\\s*-1,\\s*|FONT_SIZE\\s*:\\s*int\\s*=\\s*)(\\d+)")
 	var bad: Array = []
 	var matches := 0
 	for d in ["res://ui", "res://scenes"]:
@@ -105,21 +105,21 @@ func test_no_font_size_literal_below_the_minimum_in_source() -> String:
 func test_text_scale_multiplies_every_label_and_keeps_100_percent_geometry() -> String:
 	var scene := _scene(1.0)
 	var base_sizes: Array = []
-	for l in scene._scaled_labels():
+	for l in scene.text_labels():
 		base_sizes.append(l.get_theme_font_size("font_size"))
-	var hint_y: float = scene.hint_label.position.y
+	var title_y: float = scene._ticket["title"].position.y
 	scene.settings.text_scale = 1.3
 	scene.apply_text_scale()
 	var i := 0
 	var err := ""
-	for l in scene._scaled_labels():
+	for l in scene.text_labels():
 		var want: int = int(round(float(base_sizes[i]) * 1.3))
 		if l.get_theme_font_size("font_size") != want:
 			err = "%s: %d, wanted %d" % [l.get_path(), l.get_theme_font_size("font_size"), want]
 		i += 1
 	scene.settings.text_scale = 1.0
 	scene.apply_text_scale()
-	var back_ok: bool = is_equal_approx(scene.hint_label.position.y, hint_y) and scene.header_label.get_theme_font_size("font_size") == 18
+	var back_ok: bool = is_equal_approx(scene._ticket["title"].position.y, title_y) and scene.wordmark_label.get_theme_font_size("font_size") == 22
 	scene.free()
 	if err != "":
 		return err
@@ -167,9 +167,9 @@ func test_palette_switch_changes_the_ladder_colors() -> String:
 		scene.settings.set_palette(id)
 		scene._refresh_readouts()
 		var swatches: Array = []
-		for r in scene._ladder_swatches:
-			if r.visible:
-				swatches.append(r.color)
+		for row in scene._ladder["rows"]:
+			if row["tag"].visible:
+				swatches.append(row["tag"].fill)
 		if swatches.size() < 2:
 			scene.free()
 			_reset_globals()
@@ -211,8 +211,8 @@ func test_bid_and_ask_keep_a_non_color_cue_in_every_palette() -> String:
 	for id in Palette.CHOICES:
 		scene.settings.set_palette(id)
 		scene._refresh_readouts()
-		var side: String = scene.sidebar_label.text
-		var board: String = scene._board_text()
+		var side: String = scene.panel_text(scene.sidebar_panel)
+		var board: String = scene.panel_text(scene.market_modal)
 		var asks := 0
 		var bids := 0
 		for line in side.split("\n"):
@@ -463,8 +463,8 @@ func test_main_saves_settings_changes_and_reloads_them() -> String:
 	var err := ""
 	if scene2.settings.text_scale != 1.3 or Palette.current() != Palette.PROTANOPIA:
 		err = "scale/palette not reloaded"
-	elif scene2.header_label.get_theme_font_size("font_size") != 23:
-		err = "scale not applied on load: %d" % scene2.header_label.get_theme_font_size("font_size")
+	elif scene2.wordmark_label.get_theme_font_size("font_size") != 29:
+		err = "scale not applied on load: %d" % scene2.wordmark_label.get_theme_font_size("font_size")
 	elif not InputMap.action_has_event("m0_speed", _btn(15)):
 		err = "binding not reloaded into the InputMap"
 	scene.free()
@@ -600,16 +600,17 @@ func test_sidebar_scrolls_instead_of_truncating_when_larger_text_overflows_it() 
 		uid += 1
 	deck.active = actives
 	scene._refresh_readouts()
-	var overflow: float = scene.sidebar_overflow()
+	var notes: Dictionary = scene._card["notes"]["view"]
+	var overflow: float = scene.scroll_overflow(notes)
 	var starts: float = MainScene.marquee_offset(0.0, overflow)
 	var ends: float = MainScene.marquee_offset(1000.0 * 0.0 + MainScene.SIDEBAR_DWELL_TOP + overflow / MainScene.SIDEBAR_SCROLL_SPEED + 0.5, overflow)
-	scene._sidebar_scroll_t = MainScene.SIDEBAR_DWELL_TOP + overflow / MainScene.SIDEBAR_SCROLL_SPEED + 0.5
+	scene._scroll_t = MainScene.SIDEBAR_DWELL_TOP + overflow / MainScene.SIDEBAR_SCROLL_SPEED + 0.5
 	scene._refresh_readouts()
-	var reaches_end: bool = is_equal_approx(-scene.sidebar_label.position.y, overflow)
+	var reaches_end: bool = is_equal_approx(-(notes["content"] as Control).position.y, overflow)
 	scene.free()
 	_reset_globals()
 	if overflow <= 0.0:
-		return "five crises at 130%% should overflow the sidebar view, got %.0f" % overflow
+		return "five crises at 130%% should overflow the desk notes view, got %.0f" % overflow
 	if starts != 0.0 or not is_equal_approx(ends, overflow) or not reaches_end:
 		return "marquee does not run from the top (%.1f) to the last line (%.1f of %.1f)" % [starts, ends, overflow]
 	return "ok"
@@ -618,6 +619,7 @@ func test_sidebar_scrolls_instead_of_truncating_when_larger_text_overflows_it() 
 func test_nothing_scrolls_at_100_percent() -> String:
 	var scene := _scene(1.0)
 	scene._refresh_readouts()
-	var none: bool = scene.sidebar_overflow() == 0.0 and scene.sidebar_label.position.y == 0.0
+	var notes: Dictionary = scene._card["notes"]["view"]
+	var none: bool = scene.scroll_overflow(notes) == 0.0 and (notes["content"] as Control).position.y == 0.0
 	scene.free()
 	return "ok" if none else "sidebar scrolls at 100%"

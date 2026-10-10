@@ -328,11 +328,15 @@ func test_the_board_and_sidebar_name_the_baron() -> String:
 	scene.start_new_run(84)
 	scene.hud.set_station("ceres")
 	scene.loop.market.unlock_station("ceres")
-	var board: String = scene._board_text()
-	var side: String = scene._sidebar_text()
-	var plain: String = ""
+	scene.loop.set_tab(M0Loop.Tab.MARKET)
+	scene._resolve_child_nodes()
+	scene._build_readouts()
+	scene._refresh_readouts()
+	var board: String = scene.panel_text(scene.market_modal)
+	var side: String = scene.panel_text(scene.sidebar_panel)
 	scene.hud.set_station("mars")
-	plain = scene._board_text()
+	scene._refresh_readouts()
+	var plain: String = scene.panel_text(scene.market_modal)
 	scene.free()
 	if not board.contains("TITAN CRYO-HYDRO"):
 		return "the Ceres board does not name Titan: %s" % board

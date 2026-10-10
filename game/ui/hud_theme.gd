@@ -75,7 +75,7 @@ const TAG_TNUM: int = 1953396077
 const MIN_WDTH: int = 62
 
 ## Panel variations in hud_theme.tres: the plate styles every screen draws from.
-const PANEL_VARIATIONS: Array[String] = ["HeaderPanel", "MapPanel", "SidebarPanel", "TickerPanel", "HeaderPanelPaused", "ModalPanel", "AlertPanel", "BannerPanel", "FocusFrameRust", "FocusFrameOchre"]
+const PANEL_VARIATIONS: Array[String] = ["HeaderPanel", "MapPanel", "SidebarPanel", "TickerPanel", "HeaderPanelPaused", "ModalPanel", "AlertPanel", "BannerPanel", "FocusFrameRust", "FocusFrameOchre", "TicketPanel", "CardPanel"]
 ## Minimum contrast for graphical objects (WCAG 1.4.11) and for text (1.4.3).
 const MIN_GRAPHIC_CONTRAST: float = 3.0
 const MIN_TEXT_CONTRAST: float = 4.5

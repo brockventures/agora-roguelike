@@ -75,8 +75,7 @@ func _t_fill_names_ares_heavy_counterparty(m: MainScene) -> String:
 		return "sell rejected"
 	if m.hud.gamepad_focus.last_executed_order.get("counterparty", "") != "ARES HEAVY":
 		return "sell counterparty wrong"
-	m._sidebar_text()
-	if m._sidebar_text().find("ARES HEAVY") < 0:
+	if str(m._card_notes()).find("ARES HEAVY") < 0:
 		return "receipt line missing ARES HEAVY"
 	for c in Transit.COMMODITIES:
 		for o: Order in lp.market.get_book("mars", c).asks:
@@ -132,7 +131,7 @@ func _t_collapse_summary_perks_new_run(m: MainScene) -> String:
 			return "summary missing %s" % k
 	if rc.profile.runs_completed != 1:
 		return "run not banked into the profile"
-	if m._resolution_text().find("PEAK NET WORTH") < 0:
+	if str(m._resolution_model()).find("PEAK NET WORTH") < 0:
 		return "summary text missing"
 	# Give the profile points, then pick a perk through the UI path.
 	rc.profile.severance_points = 100
@@ -155,7 +154,7 @@ func _t_collapse_summary_perks_new_run(m: MainScene) -> String:
 	lp.perk_cursor = locked_idx
 	if lp.dispatch_action(M0Loop.ACT_SUBMIT):
 		return "unaffordable or locked perk was accepted"
-	if m._resolution_text().find("GOLDEN PARACHUTES") < 0:
+	if str(m._resolution_model()).find("GOLDEN PARACHUTES") < 0:
 		return "perk text missing"
 	# Move to START NEW RUN and go.
 	for i in 20:

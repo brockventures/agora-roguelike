@@ -170,14 +170,14 @@ func tr_test(key: String) -> String:
 
 func test_pseudo_locale_expands_and_brackets_and_keeps_placeholders() -> String:
 	Loc.set_locale(Loc.LOCALE_PSEUDO)
-	var s: String = Loc.t("HUD_DOOMSDAY")
-	var en_len: int = "DOOMSDAY %d:%02d %s".length()
+	var s: String = Loc.t("HUD_CHIP_DOOMSDAY")
+	var en_len: int = "DOOMSDAY · %s".length()
 	var ok_form: bool = s.begins_with("[") and s.ends_with("]") and s.length() >= int(en_len * 1.3)
-	var formatted: String = s % [10, 0, "x"]
+	var formatted: String = s % "NORMAL"
 	Loc.set_locale(Loc.LOCALE_EN)
 	if not ok_form:
 		return "pseudo string not bracketed/expanded: %s" % s
-	if not formatted.contains("10:00"):
+	if not formatted.contains("NORMAL"):
 		return "placeholders broke under pseudo: %s" % formatted
 	return "ok"
 
@@ -199,6 +199,11 @@ func _scene() -> Node:
 	return scene
 
 
+## The first ticker line as "CATEGORY: body" (the category is a chip, the body a scrolling label).
+func _ticker0(scene: Node) -> String:
+	return "%s: %s" % [(scene.ticker_chips[0].get_meta("text") as Label).text, scene.ticker_labels[0].text]
+
+
 func test_language_action_hot_swaps_the_hud() -> String:
 	Loc.set_locale(Loc.LOCALE_EN)
 	var scene := _scene()
@@ -206,11 +211,11 @@ func test_language_action_hot_swaps_the_hud() -> String:
 	lp.set_tab(M0Loop.Tab.MARKET)
 	scene.hud.post_transit_event("arrived", "earth", "mars", "ORE", 5)
 	scene._refresh_readouts()
-	var en_header: String = scene.header_label.text
-	var en_hint: String = scene.hint_label.text
-	var en_side: String = scene.sidebar_label.text
-	var en_board: String = scene._board_text()
-	var en_ticker: String = scene.ticker_labels[0].text
+	var en_header: String = scene.panel_text(scene.header_panel)
+	var en_hint: String = scene.panel_text(scene.ticket_panel)
+	var en_side: String = scene.panel_text(scene.sidebar_panel)
+	var en_board: String = scene.panel_text(scene.market_modal)
+	var en_ticker: String = _ticker0(scene)
 	var err: String = ""
 	if not en_header.begins_with("AGORA") or not en_ticker.begins_with("TRANSIT: FLEET ARRIVAL: 5 ORE docked at ARCADIA FOUNDRIES"):
 		err = "English baseline wrong: %s | %s" % [en_header, en_ticker]
@@ -220,19 +225,19 @@ func test_language_action_hot_swaps_the_hud() -> String:
 		scene._refresh_readouts()
 		if Loc.current() != Loc.LOCALE_PSEUDO:
 			err = "action did not select the pseudo locale"
-		elif scene.header_label.text == en_header or scene.hint_label.text == en_hint or scene.sidebar_label.text == en_side or scene._board_text() == en_board:
+		elif scene.panel_text(scene.header_panel) == en_header or scene.panel_text(scene.ticket_panel) == en_hint or scene.panel_text(scene.sidebar_panel) == en_side or scene.panel_text(scene.market_modal) == en_board:
 			err = "a readout did not change on swap"
-		elif scene.ticker_labels[0].text == en_ticker:
+		elif _ticker0(scene) == en_ticker:
 			err = "a headline already on the ticker did not re-render on swap"
-		elif scene.header_label.text.contains("[[["):
-			err = "header translated twice: %s" % scene.header_label.text
+		elif scene.panel_text(scene.header_panel).contains("[[["):
+			err = "header translated twice: %s" % scene.panel_text(scene.header_panel)
 	if err == "":
 		lp.dispatch_action(M0Loop.ACT_LOCALE)
 		scene._refresh_readouts()
-		if scene.header_label.text != en_header or scene.hint_label.text != en_hint or scene.ticker_labels[0].text != en_ticker or scene.sidebar_label.text != en_side:
+		if scene.panel_text(scene.header_panel) != en_header or scene.panel_text(scene.ticket_panel) != en_hint or _ticker0(scene) != en_ticker or scene.panel_text(scene.sidebar_panel) != en_side:
 			err = "swapping back did not restore English"
 	var all_off: bool = true
-	for l in [scene.header_label, scene.hint_label, scene.map_label, scene.sidebar_label, scene.market_label, scene.resolution_label, scene.sleep_label] + scene.ticker_labels:
+	for l in scene.text_labels():
 		all_off = all_off and l.auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED
 	scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
