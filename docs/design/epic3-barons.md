@@ -188,7 +188,7 @@ Estimates use the house format; sizing follows the measured median for specced s
 
 | # | Task (one PR each) | Issue | Estimate |
 |---|---|---|---|
-| 0 | **Prerequisite, not in any Epic 3 issue:** travel loop in play: unlock Earth/Ceres books, depart/arrive via `Transit.get_route`, belt toll, `docked_at` changes. Confirm owner before starting. **Owner: Amos. Issue #111 (Epic 3 task 0: travel loop between stations); PR #PRNUM (feat(epic3): travel loop between stations).** | #111 (Epic 3 task 0: travel loop between stations) | ~20 min agent time · ~0.3% of the weekly limit |
+| 0 | **Prerequisite, not in any Epic 3 issue:** travel loop in play: unlock Earth/Ceres books, depart/arrive via `Transit.get_route`, belt toll, `docked_at` changes. Confirm owner before starting. **Owner: Amos. Issue #111 (Epic 3 task 0: travel loop between stations); PR #112 (feat(epic3): travel loop between stations).** | #111 (Epic 3 task 0: travel loop between stations) | ~20 min agent time · ~0.3% of the weekly limit |
 | 1 | `barons.json` + `Barons` loader/validator + `BaronState` `to_dict`/`from_dict`, `world` key in `RunSave` only when attached; hash-unchanged test with no barons. | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |
 | 2 | Market wiring: `maker_for`, `world_mods` + fixed fold order, `ask_price_bps`, `execute_as`, ladder `maker` tags, registry-backed `counterparty_name`; golden fold-order fixture. | #15 (Baron Framework design) | ~20 min agent time · ~0.3% of the weekly limit |
 | 3 | Privileges: docking toll on arrival, pipelines, exemption set, order-book tag strings. | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |
