@@ -33,6 +33,8 @@ var ticker_panel: Panel = null
 # Readouts and audio players, built in _ready (a scene instantiated outside the
 # tree, as the unit tests do, never creates them).
 var header_label: Label = null
+## Second header line (tabs + controls hint) in a smaller face so a translated hint still fits 1248 px.
+var hint_label: Label = null
 var sidebar_label: Label = null
 var ticker_clip: Control = null
 var ticker_labels: Array[Label] = []
@@ -46,7 +48,9 @@ var sleep_modal: Panel = null
 var sleep_label: Label = null
 ## How many times audio has been re-armed after a wake (read by tests).
 var audio_rearm_count: int = 0
-const SLEEP_BANNER_RECT: Rect2 = Rect2(300.0, 330.0, 680.0, 110.0)
+## Font size of the tabs + controls hint line (the stats line above it is 18).
+const HINT_FONT_SIZE: int = 14
+const SLEEP_BANNER_RECT: Rect2 = Rect2(300.0, 320.0, 680.0, 140.0)
 
 var market_modal: Panel = null
 var market_label: Label = null
@@ -73,8 +77,8 @@ const RESOLUTION_RECT: Rect2 = Rect2(340.0, 240.0, 600.0, 320.0)
 const SFX_POLYPHONY: int = 4
 const PRIORITY_VOICES: int = 2
 
-## Controls hint shown under the header readout.
-const CONTROLS_HINT: String = "LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed"
+## Controls hint shown under the header readout (translation key, see controls_hint()).
+const CONTROLS_HINT_KEY: String = "HUD_CONTROLS_HINT"
 
 var is_initialized: bool = false
 
@@ -92,7 +96,13 @@ func _init() -> void:
 	initialize_systems()
 
 
+## Controls hint shown under the header readout, in the current locale.
+func controls_hint() -> String:
+	return tr(CONTROLS_HINT_KEY)
+
+
 func _ready() -> void:
+	Loc.apply_env()
 	_resolve_child_nodes()
 	_setup_crt_pipeline()
 	if save_store == null and DisplayServer.get_name() != "headless":
@@ -500,6 +510,9 @@ func _make_label(parent: Control, rect: Rect2, size: int = 16) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", HUD_TEXT_COLOR)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Text arrives already translated via tr(); stop Label translating it a second
+	# time (which would pseudolocalize twice).
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	parent.add_child(l)
 	return l
 
@@ -507,9 +520,12 @@ func _make_label(parent: Control, rect: Rect2, size: int = 16) -> Label:
 func _build_readouts() -> void:
 	if hud_container == null or header_label != null:
 		return
-	header_label = _make_label(header_panel, Rect2(16, 6, 1248, 56), 18)
-	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 120), 16)
+	header_label = _make_label(header_panel, Rect2(16, 4, 1248, 28), 18)
+	hint_label = _make_label(header_panel, Rect2(16, 34, 1248, 26), HINT_FONT_SIZE)
+	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 168), 16)
 	sidebar_label = _make_label(sidebar_panel, Rect2(16, 8, 368, 656), 16)
+	# Translated lines can be wider than the panel: wrap instead of spilling out (#40).
+	sidebar_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ticker_clip = Control.new()
 	ticker_clip.position = Vector2(16, 6)
 	ticker_clip.size = Vector2(OrbitalHUD.TICKER_VIEW_WIDTH, 52)
@@ -530,7 +546,7 @@ func _build_readouts() -> void:
 	market_highlight.color = Color(0.2, 0.6, 0.4, 0.35)
 	market_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	market_modal.add_child(market_highlight)
-	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 18)
+	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 16)
 	resolution_modal = Panel.new()
 	var opaque := StyleBoxFlat.new()
 	opaque.bg_color = MODAL_BG_COLOR
@@ -567,7 +583,7 @@ func _draw_map() -> void:
 		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, Color(0.2, 0.5, 0.35), 1.0)
 		var col := Color(0.4, 1.0, 0.6) if st == hud.active_station else Color(0.3, 0.7, 0.5)
 		tactical_map_panel.draw_circle(pos, SolTacticalMap.STATION_NODE_RADIUS_PX, col)
-		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), StationMarket.station_name(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), Loc.station(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 
 
 func _refresh_readouts() -> void:
@@ -577,10 +593,17 @@ func _refresh_readouts() -> void:
 	var secs: int = int(h["ticks_remaining"]) / DoomsdayClock.DEFAULT_TICKS_PER_SECOND
 	var tabs: PackedStringArray = []
 	for i in M0Loop.TAB_NAMES.size():
-		tabs.append("[%s]" % M0Loop.TAB_NAMES[i] if i == int(loop.tab) else M0Loop.TAB_NAMES[i])
-	header_label.text = "AGORA   CR %s   DEBT %s   DOOMSDAY %d:%02d %s   SPEED %s\n%s     %s" % [
-		_fmt(int(h["cr"])), _fmt(int(h["total_debt"])), secs / 60, secs % 60, h["stage_name"], h["speed_label"], "  ".join(tabs), CONTROLS_HINT]
-	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else "SOL TACTICAL MAP   docked: %s" % StationMarket.station_name(controller.docked_at)
+		tabs.append("[%s]" % Loc.tab(i) if i == int(loop.tab) else Loc.tab(i))
+	var top: PackedStringArray = [
+		tr("HUD_TITLE"),
+		tr("HUD_CR") % _fmt(int(h["cr"])),
+		tr("HUD_DEBT") % _fmt(int(h["total_debt"])),
+		tr("HUD_DOOMSDAY") % [secs / 60, secs % 60, Loc.stage(str(h["stage_name"]))],
+		tr("HUD_SPEED") % h["speed_label"],
+		tr("HUD_LANG") % Loc.locale_label()]
+	header_label.text = "   ".join(top)
+	hint_label.text = "%s     %s" % ["  ".join(tabs), controls_hint()]
+	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at)
 	sidebar_label.text = _sidebar_text()
 	_refresh_ticker()
 	market_modal.visible = hud.is_trading_overlay_open() and loop.overlay_state == M0Loop.OVERLAY_NONE
@@ -593,7 +616,7 @@ func _refresh_readouts() -> void:
 	resolution_label.size = resolution_modal.size - Vector2(40, 32)
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
 	sleep_modal.visible = loop.sleep_pause_active and controller.sim_clock.paused
-	sleep_label.text = "%s\n\nPress Start to resume." % M0Loop.SLEEP_PAUSE_NOTICE if sleep_modal.visible else ""
+	sleep_label.text = "%s\n%s" % [tr("SLEEP_NOTICE"), tr("SLEEP_PRESS_START")] if sleep_modal.visible else ""
 	tactical_map_panel.queue_redraw()
 
 
@@ -620,43 +643,43 @@ func _sidebar_text() -> String:
 	var f: GamepadFocus = hud.gamepad_focus
 	var buying: bool = f.active_side == GamepadFocus.OrderSide.BUY
 	var out: PackedStringArray = []
-	out.append("%s  %s" % [StationMarket.station_name(hud.active_station).to_upper(), hud.active_commodity])
+	out.append("%s  %s" % [Loc.station(hud.active_station).to_upper(), Loc.commodity(hud.active_commodity)])
 	out.append("")
 	var asks: Array = ladder["asks"]
 	for i in range(asks.size() - 1, -1, -1):
-		out.append("%s ASK %6.1f  x%d" % [">" if buying and i == f.ladder_index else " ", asks[i]["price"], asks[i]["quantity"]])
-	out.append("---- spread %.1f ----" % float(ladder["spread"]))
+		out.append(tr("SIDE_ASK_ROW") % [">" if buying and i == f.ladder_index else " ", asks[i]["price"], asks[i]["quantity"]])
+	out.append(tr("SIDE_SPREAD") % float(ladder["spread"]))
 	var bids: Array = ladder["bids"]
 	for i in bids.size():
-		out.append("%s BID %6.1f  x%d" % [">" if not buying and i == f.ladder_index else " ", bids[i]["price"], bids[i]["quantity"]])
+		out.append(tr("SIDE_BID_ROW") % [">" if not buying and i == f.ladder_index else " ", bids[i]["price"], bids[i]["quantity"]])
 	out.append("")
-	out.append("ORDER  %s  qty %d" % ["BUY" if buying else "SELL", f.order_qty])
-	out.append("HELD   %d %s   CARGO %d/%d" % [hud.get_cargo_qty(hud.active_commodity), hud.active_commodity, controller.get_total_cargo(), controller.cargo_capacity])
+	out.append(tr("SIDE_ORDER") % [tr("ORDER_BUY") if buying else tr("ORDER_SELL"), f.order_qty])
+	out.append(tr("SIDE_HELD") % [hud.get_cargo_qty(hud.active_commodity), Loc.commodity(hud.active_commodity), controller.get_total_cargo(), controller.cargo_capacity])
 	var crisis_lines: Array = _crisis_sidebar_lines()
 	if not crisis_lines.is_empty():
 		out.append("")
 		out.append_array(PackedStringArray(crisis_lines))
 	if f.last_rejection_reason != "":
-		out.append("REJECTED: " + f.get_rejection_message())
+		out.append(tr("SIDE_REJECTED") % f.get_rejection_message())
 	elif not f.last_executed_order.is_empty():
 		var o: Dictionary = f.last_executed_order
 		var who: String = str(o.get("counterparty", ""))
-		out.append("FILLED %s %d @ %.1f%s%s" % [o["side"], o["qty"], o["price"], "  vs %s" % who if who != "" else "", "  fee %d" % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""])
+		out.append(tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""])
 	return "\n".join(out)
 
 
 func _board_text() -> String:
-	var out: PackedStringArray = ["%s QUOTES   counterparty %s" % [StationMarket.station_name(hud.active_station).to_upper(), StationMarket.MAKER_NAME], ""]
+	var out: PackedStringArray = [tr("BOARD_TITLE") % [Loc.station(hud.active_station).to_upper(), Loc.maker()], ""]
 	for c in Transit.COMMODITIES:
-		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", c]
+		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", Loc.commodity(c)]
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
 			var tag: String = loop.crisis_deck.tag_for(hud.active_station, c) if loop.crisis_deck != null else ""
-			out.append("%s BID %6.1f   ASK %6.1f%s" % [key_prefix, lad["best_bid"], lad["best_ask"], "   [%s]" % tag if tag != "" else ""])
+			out.append(tr("BOARD_ROW_LIVE") % [key_prefix, lad["best_bid"], lad["best_ask"], "   [%s]" % tag if tag != "" else ""])
 		else:
-			out.append("%s base %6.1f   (no live book)" % [key_prefix, Transit.BASE_PRICES[hud.active_station][c]])
+			out.append(tr("BOARD_ROW_BASE") % [key_prefix, Transit.BASE_PRICES[hud.active_station][c]])
 	out.append("")
-	out.append("R-STICK commodity   D-PAD up/down ladder, left/right qty   B back")
+	out.append(tr("BOARD_HINT"))
 	return "\n".join(out)
 
 
@@ -674,9 +697,9 @@ func _update_market_highlight() -> void:
 
 
 func _fleet_text() -> String:
-	var parts: PackedStringArray = ["FLEET   hulls: %d" % controller.ships.size()]
+	var parts: PackedStringArray = [tr("FLEET_HEADER") % controller.ships.size()]
 	for c in controller.cargo:
-		parts.append("  %s x%d" % [c, int(controller.cargo[c])])
+		parts.append(tr("FLEET_CARGO") % [Loc.commodity(c), int(controller.cargo[c])])
 	return "\n".join(parts)
 
 
@@ -685,7 +708,7 @@ func _resolution_text() -> String:
 		return _crisis_text()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
-		return "CHAPTER 11\n\nInsolvent: debt %s exceeds liquidation value %s.\nThe clock is halted.\n\nPress X to file and found a new corp." % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))]
+		return "%s\n\n%s\n%s\n\n%s" % [tr("CH11_TITLE"), tr("CH11_INSOLVENT") % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))], tr("CH11_HALTED"), tr("CH11_PRESS_X")]
 	if loop.collapse_phase == M0Loop.PHASE_PERKS:
 		return _perks_text()
 	return _summary_text()
@@ -695,13 +718,13 @@ func _crisis_text() -> String:
 	var c: Dictionary = loop.current_crisis()
 	if c.is_empty():
 		return ""
-	var tier_label: String = str(loop.crisis_deck.data.get("tiers", {}).get(str(c["tier"]), {}).get("label", c["tier"]))
-	var out: PackedStringArray = ["CRISIS   %s   %s" % [tier_label, str(c["name"]).to_upper()], "", str(c["text"]), ""]
-	out.append("DURATION  %d rounds (until round %d)" % [int(c["rounds"]), int(c["expires_round"])])
+	var tier_label: String = Loc.tier_label(str(c["tier"]), str(loop.crisis_deck.data.get("tiers", {}).get(str(c["tier"]), {}).get("label", c["tier"])))
+	var out: PackedStringArray = [tr("CRISIS_TITLE") % [tier_label, Loc.crisis_name(c).to_upper()], "", Loc.crisis_text(c), ""]
+	out.append(tr("CRISIS_DURATION") % [int(c["rounds"]), int(c["expires_round"])])
 	for line in CrisisDeck.describe(c):
 		out.append("  - " + str(line))
 	out.append("")
-	out.append("The clock is halted.   Press A to acknowledge.")
+	out.append(tr("CRISIS_ACK"))
 	return "\n".join(out)
 
 
@@ -711,7 +734,7 @@ func _crisis_sidebar_lines() -> Array:
 		return out
 	var round_num: int = controller.get_current_round()
 	for c in loop.crisis_deck.active:
-		out.append("CRISIS %s  %d rd left" % [str(c["name"]).to_upper(), maxi(0, int(c["expires_round"]) - round_num)])
+		out.append(tr("CRISIS_SIDEBAR") % [Loc.crisis_name(c).to_upper(), maxi(0, int(c["expires_round"]) - round_num)])
 		for line in CrisisDeck.describe(c, true):
 			out.append("  " + str(line))
 	return out
@@ -719,20 +742,23 @@ func _crisis_sidebar_lines() -> Array:
 
 func _summary_text() -> String:
 	var r: Dictionary = loop.run_summary()
-	return "SOVEREIGN DEFAULT   RUN OVER\n\nThe Doomsday Clock has run out.\n\nNET WORTH        %s CR\nPEAK NET WORTH   %s CR\nROUNDS SURVIVED  %d\nSEVERANCE BANKED +%d  (balance %d)\n\nPress A for Golden Parachutes." % [
-		_fmt(int(r["net_worth"])), _fmt(int(r["peak_net_worth"])), int(r["rounds_survived"]), int(r["severance_awarded"]), int(r["severance_balance"])]
+	return "%s\n\n%s\n\n%s\n%s\n%s\n%s\n\n%s" % [
+		tr("SUM_TITLE"), tr("SUM_CLOCK_OUT"),
+		tr("SUM_NET_WORTH") % _fmt(int(r["net_worth"])), tr("SUM_PEAK") % _fmt(int(r["peak_net_worth"])),
+		tr("SUM_ROUNDS") % int(r["rounds_survived"]), tr("SUM_SEVERANCE") % [int(r["severance_awarded"]), int(r["severance_balance"])],
+		tr("SUM_PRESS_A")]
 
 
 func _perks_text() -> String:
 	var rows: Array = loop.perk_rows()
-	var out: PackedStringArray = ["GOLDEN PARACHUTES   Severance %d" % controller.profile.severance_points, ""]
+	var out: PackedStringArray = [tr("PERKS_TITLE") % controller.profile.severance_points, ""]
 	for i in rows.size():
 		var row: Dictionary = rows[i]
-		var tag: String = "OWNED" if bool(row["owned"]) else ("%d" % int(row["cost"]) if bool(row["can_buy"]) else "%d  locked" % int(row["cost"]))
-		out.append("%s T%d  %s  [%s]  -  %s" % [">" if i == loop.perk_cursor else " ", int(row["tier"]), row["name"], row["branch"], tag])
-	out.append("%s START NEW RUN" % (">" if loop.perk_cursor >= rows.size() else " "))
+		var tag: String = tr("PERK_OWNED") if bool(row["owned"]) else ("%d" % int(row["cost"]) if bool(row["can_buy"]) else tr("PERK_LOCKED") % int(row["cost"]))
+		out.append(tr("PERK_ROW") % [">" if i == loop.perk_cursor else " ", int(row["tier"]), Loc.perk_name(row), Loc.perk_branch(str(row["branch"])), tag])
+	out.append("%s %s" % [">" if loop.perk_cursor >= rows.size() else " ", tr("PERK_START")])
 	out.append("")
-	out.append("D-pad up/down select   A buy perk / start run   B back")
+	out.append(tr("PERK_HINT"))
 	return "\n".join(out)
 
 

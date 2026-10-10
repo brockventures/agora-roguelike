@@ -78,3 +78,36 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | File Chapter 11 (X) | X | X |
 | Cycle speed 1x, 2x, 5x, pause (Y) | Y | R |
 | Pause / resume | Start | P |
+| Cycle language (en, pseudo; hot swap) | View / Back | L |
+
+## Localization (#40)
+
+All player-facing text comes from `res://localization/agora_strings.csv`
+(`keys,en`; Godot's CSV translation importer, registered in `project.godot`).
+Add a language by adding a column (`de`, `ja`, `zh_CN`), re-import, and add its
+code to `Loc.CHOICES`; there is no code change beyond that.
+
+- **Code:** `tr("HUD_SPEED") % value` in instance code, `Loc.t(...)` in `static`
+  funcs (where `tr()` is unavailable). Keys are stable names; `%s`/`%d`
+  placeholders live in the translated text, never in the key. Label text is set
+  already translated, so HUD labels have `auto_translate_mode = DISABLED`.
+- **Data files** (`crises.json`, `parachutes.json`, stations, commodities) keep
+  their English as the source of truth and fallback. Display text is looked up
+  through a key derived from the id: `CRISIS_<ID>_NAME`, `CRISIS_<ID>_HEADLINE`
+  (with `{rounds}`/`{commodity}`/`{station}`), `CRISIS_TIER_<TIER>`,
+  `PERK_<ID>_NAME`, `PERK_BRANCH_<BRANCH>`, `STATION_<ID>`, `COMMODITY_<CODE>`
+  (`Loc.data_text`). A test fails if a data entry has no key or the CSV's
+  English drifts from the data file. Sim state, saves and replays stay English.
+- **Ticker:** `OrbitalHUD.post_headline_tr(key, args, ...)` keeps key + args, so
+  lines already on the ticker re-render on a language swap.
+- **Language selector:** the `m0_locale` action (L / View) calls
+  `Loc.cycle_locale()`; `Loc.set_locale(code)` is the programmatic entry. The
+  readouts re-read `tr()` every frame, so the swap is visible on the next frame.
+- **Pseudo-localization:** `AGORA_PSEUDO=1 ./run_demo.sh` (or `AGORA_LOCALE=pseudo`,
+  or the language action) turns on Godot's pseudolocalization: accents, doubled
+  vowels, +30% length and `[brackets]` (`internationalization/pseudolocalization/*`).
+- **Guards (headless tests):** `test_localization.gd` (CSV, keys, data coverage,
+  hot swap), `test_i18n_audit.gd` (regex lint: no raw English literal reaches a
+  label, the ticker, a formatter list or `draw_string`; mark an exception with
+  `# i18n-ok`), `test_i18n_fit.gd` (every HUD label fits its container at
+  1280x800 in English and under pseudo-localization).

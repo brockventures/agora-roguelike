@@ -1,0 +1,147 @@
+keys,en
+HUD_TITLE,AGORA
+HUD_CR,CR %s
+HUD_DEBT,DEBT %s
+HUD_DOOMSDAY,DOOMSDAY %d:%02d %s
+HUD_SPEED,SPEED %s
+HUD_LANG,LANG %s
+HUD_PAUSED,PAUSED
+HUD_SPEED_FMT,%dx
+LANG_EN,EN
+LANG_PSEUDO,PS
+STAGE_NORMAL,NORMAL
+STAGE_UNSTABLE,UNSTABLE
+STAGE_CRITICAL,CRITICAL
+STAGE_IMMINENT,IMMINENT
+STAGE_COLLAPSED,COLLAPSED
+TAB_MAP,MAP
+TAB_MARKET,MARKET
+TAB_FLEET,FLEET
+HUD_CONTROLS_HINT,LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed  View lang
+HUD_MAP_DOCKED,SOL TACTICAL MAP   docked: %s
+FLEET_HEADER,FLEET   hulls: %d
+FLEET_CARGO,  %s x%d
+SIDE_ASK_ROW,%s ASK %6.1f  x%d
+SIDE_BID_ROW,%s BID %6.1f  x%d
+SIDE_SPREAD,---- spread %.1f ----
+SIDE_ORDER,ORDER  %s  qty %d
+ORDER_BUY,BUY
+ORDER_SELL,SELL
+SIDE_HELD,HELD   %d %s   CARGO %d/%d
+SIDE_REJECTED,REJECTED: %s
+SIDE_FILLED,FILLED %s %d @ %.1f%s%s
+SIDE_FILLED_VS,  vs %s
+SIDE_FILLED_FEE,  fee %d
+BOARD_TITLE,%s QUOTES   counterparty %s
+BOARD_ROW_LIVE,%s BID %6.1f   ASK %6.1f%s
+BOARD_ROW_BASE,%s base %6.1f   (no live book)
+BOARD_HINT,"R-STICK commodity   D-PAD ladder/qty   B back"
+CH11_TITLE,CHAPTER 11
+CH11_INSOLVENT,Insolvent: debt %s exceeds liquidation value %s.
+CH11_HALTED,The clock is halted.
+CH11_PRESS_X,Press X to file and found a new corp.
+CRISIS_TITLE,CRISIS   %s   %s
+CRISIS_DURATION,DURATION  %d rounds (until round %d)
+CRISIS_ACK,The clock is halted.   Press A to acknowledge.
+CRISIS_SIDEBAR,CRISIS %s  %d rd left
+CRISIS_FX_ALL_BOOKS,ALL BOOKS
+CRISIS_FX_BOOK,"%s: depth x%.2f, spread x%.2f%s"
+CRISIS_FX_PRICE,", price %+.0f%%"
+CRISIS_FX_PRICE_COMPACT, px %+.0f%%
+CRISIS_FX_MARGIN,Margin calls: %.2f%% of cargo value per round
+CRISIS_FX_CAP,Orders capped at %d units
+CRISIS_FX_FEE,Trade fee %.2f%%
+SUM_TITLE,SOVEREIGN DEFAULT   RUN OVER
+SUM_CLOCK_OUT,The Doomsday Clock has run out.
+SUM_NET_WORTH,NET WORTH        %s CR
+SUM_PEAK,PEAK NET WORTH   %s CR
+SUM_ROUNDS,ROUNDS SURVIVED  %d
+SUM_SEVERANCE,SEVERANCE BANKED +%d  (balance %d)
+SUM_PRESS_A,Press A for Golden Parachutes.
+PERKS_TITLE,GOLDEN PARACHUTES   Severance %d
+PERK_OWNED,OWNED
+PERK_LOCKED,%d  locked
+PERK_ROW,%s T%d  %s  [%s]  -  %s
+PERK_START,START NEW RUN
+PERK_HINT,D-pad up/down select   A buy perk / start run   B back
+SLEEP_NOTICE,PAUSED — resumed from sleep
+SLEEP_PRESS_START,Press Start to resume.
+CAT_MARKET,MARKET
+CAT_REGULATION,REGULATION
+CAT_TRANSIT,TRANSIT
+CAT_HAZARD,HAZARD
+CAT_PIRACY,PIRACY
+CAT_DEBT,DEBT
+CAT_INSOLVENCY,INSOLVENCY
+CAT_SECURITY,SECURITY
+CAT_COLLAPSE,COLLAPSE
+CAT_CRISIS,CRISIS
+TICKER_LINE,%s: %s
+HL_SEED_REGULATION,SOL SYSTEM COMMERCE COMMISSION: Doomsday debt enforcement protocol active.
+HL_SEED_MARKET,CERES MINING GUILD: Deep-core ore extractors reporting record yields at Station Alpha.
+HL_SEED_TRANSIT,ORBITAL CORRIDORS: Earth-Luna syzygy alignment open for low-burn bulk transit.
+HL_CRISIS_LIFTED,"%s has lifted, books restored"
+HL_ARRIVED,FLEET ARRIVAL: %d %s docked at %s from %s
+HL_DEPARTURE,FLEET DEPARTURE: %d %s on %s -> %s
+HL_DEPARTURE_ETA_ONE,"FLEET DEPARTURE: %d %s on %s -> %s, ETA %d round"
+HL_DEPARTURE_ETA_MANY,"FLEET DEPARTURE: %d %s on %s -> %s, ETA %d rounds"
+HL_HAZARD_DELAY_ONE,storm on the route: arrival %d round late
+HL_HAZARD_DELAY_MANY,storm on the route: arrival %d rounds late
+HL_HAZARD_LOSS,hull breach: %d units lost
+HL_HAZARD_PLAIN,"transit %s delayed %d, lost %d"
+HL_HAZARD_TAIL," (%s, transit %s)"
+HL_PIRACY_DEMAND,"ALERT: pirates demand %d CR ransom from %s, %s -> %s (%s)"
+HL_PIRACY_PAID,"%s paid %d CR ransom, cargo released"
+HL_PIRACY_SURRENDERED,%s surrendered %d %s to the raiders
+HL_PIRACY_ESCAPED,%s fought off the raiders and escaped
+HL_PIRACY_LOST,%s lost %d %s after a failed fight
+HL_FILL,FILL: %s %d %s @ %.1f at %s
+HL_MOVE_UP,MOVE: %s firms up %.1f%% to %.1f at %s
+HL_MOVE_DOWN,MOVE: %s eases down %.1f%% to %.1f at %s
+HL_REFINANCE,QUARTERLY REFINANCING: Central bank debt tranche rolled at current interest rate.
+HL_CH11_WARNING,"CHAPTER 11 WARNING: Insolvent (Shortfall: %d CR, Total Debt: %d CR)"
+HL_STAGE,SOL EMERGENCY LEVEL ESCALATION: Run stage advanced to %s
+HL_COLLAPSE,SOVEREIGN DEFAULT: Sol System asset seizure initiated. Run collapsed.
+HL_MARGIN_CALL,MARGIN CALL: %d CR drained from your account
+REJ_NOT_DOCKED,Not docked at %s
+REJ_THIS_STATION,this station
+REJ_INSUFFICIENT_CR,Not enough CR
+REJ_INSUFFICIENT_CARGO,Not enough cargo to sell
+REJ_CARGO_FULL,Cargo hold full
+REJ_NO_VOLUME,Not enough volume at that price
+REJ_AUDIT_CAP,Antitrust audit: orders capped at %d units
+REJ_NO_QUOTE,No quote at that level
+REJ_OFFLINE,Terminal offline
+MAKER_ARES_HEAVY,ARES HEAVY
+STATION_EARTH,Kennedy Elevator
+STATION_MARS,Arcadia Foundries
+COMMODITY_FRAG,FRAG
+COMMODITY_FUEL,FUEL
+COMMODITY_FOOD,FOOD
+COMMODITY_ORE,ORE
+COMMODITY_MACHINERY,MACHINERY
+CRISIS_TIER_EARLY,LOCALIZED
+CRISIS_TIER_MID,REGULATORY
+CRISIS_TIER_ENDGAME,SYSTEMIC
+CRISIS_LOCALIZED_SHORTAGE_NAME,Localized Shortage
+CRISIS_LOCALIZED_SHORTAGE_HEADLINE,"SHORTAGE: {commodity} supply at {station} has dried up, Ares Heavy book thin for {rounds} rounds"
+CRISIS_SUPPLY_CHAIN_SHORTAGE_NAME,Supply Chain Shortage
+CRISIS_SUPPLY_CHAIN_SHORTAGE_HEADLINE,"SHORTAGE: {commodity} convoys to {station} are stalled, book near empty for {rounds} rounds"
+CRISIS_ANTITRUST_AUDIT_NAME,Antitrust Audit
+CRISIS_ANTITRUST_AUDIT_HEADLINE,"REGULATION: Sol Commerce Commission opens an antitrust audit, trades capped and taxed for {rounds} rounds"
+CRISIS_SYSTEMIC_MARGIN_COLLAPSE_NAME,Systemic Margin Collapse
+CRISIS_SYSTEMIC_MARGIN_COLLAPSE_HEADLINE,"COLLAPSE: margin calls cascade across the book, spreads blown out for {rounds} rounds"
+CRISIS_EMERGENCY_ANTITRUST_SWEEP_NAME,Emergency Antitrust Sweep
+CRISIS_EMERGENCY_ANTITRUST_SWEEP_HEADLINE,"REGULATION: emergency antitrust sweep, trades capped and heavily taxed for {rounds} rounds"
+PERK_CORRUPT_REGULATOR_NAME,Corrupt Regulator
+PERK_DEFERRED_AUDIT_NAME,Deferred Audit
+PERK_SEED_CAPITAL_NAME,Seed Capital
+PERK_ASSET_PROTECTION_NAME,Asset Liquidation Recovery
+PERK_FUEL_HEDGE_NAME,Fuel Hedge
+PERK_BLACK_MARKET_CORRIDORS_NAME,Black-Market Corridors
+PERK_CORPORATE_SHIELDING_NAME,Corporate Shielding
+PERK_HOSTILE_BUYOUT_LINE_NAME,Hostile Buyout Line
+PERK_BRANCH_REGULATORY_CAPTURE,Regulatory Capture
+PERK_BRANCH_ASSET_LAUNDERING,Asset Laundering
+PERK_BRANCH_LOGISTICS_SMUGGLING,Logistics & Smuggling
+PERK_BRANCH_MONOPOLY_DRIVE,Monopoly Drive

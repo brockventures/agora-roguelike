@@ -321,7 +321,7 @@ func tag_for(station: String, commodity: String) -> String:
 		var s: String = str(c["station"])
 		var k: String = str(c["commodity"])
 		if (s == "*" or s == station.to_lower()) and (k == "*" or k == commodity.to_upper()):
-			names.append(str(c["name"]).to_upper())
+			names.append(Loc.crisis_name(c).to_upper())
 	return ", ".join(names)
 
 
@@ -330,14 +330,23 @@ static func describe(c: Dictionary, compact: bool = false) -> Array:
 	var fx: Dictionary = c.get("effects", {})
 	var lines: Array = []
 	if fx.has("depth_bps"):
-		var scope: String = "ALL BOOKS" if str(c.get("station", "")) == "*" else ("%s" % str(c.get("commodity", "")) if compact else "%s %s" % [StationMarket.station_name(str(c.get("station", ""))).to_upper(), str(c.get("commodity", ""))])
-		lines.append("%s: depth x%.2f, spread x%.2f%s" % [scope, float(fx["depth_bps"]) / 10000.0, float(fx.get("spread_bps", 10000)) / 10000.0, (" px %+.0f%%" if compact else ", price %+.0f%%") % (float(fx.get("price_bps", 0)) / 100.0) if int(fx.get("price_bps", 0)) != 0 else ""])
+		var scope: String
+		if str(c.get("station", "")) == "*":
+			scope = Loc.t("CRISIS_FX_ALL_BOOKS")
+		elif compact:
+			scope = Loc.commodity(str(c.get("commodity", "")))
+		else:
+			scope = "%s %s" % [Loc.station(str(c.get("station", ""))).to_upper(), Loc.commodity(str(c.get("commodity", "")))]
+		var price_part: String = ""
+		if int(fx.get("price_bps", 0)) != 0:
+			price_part = Loc.t("CRISIS_FX_PRICE_COMPACT" if compact else "CRISIS_FX_PRICE") % (float(fx.get("price_bps", 0)) / 100.0)
+		lines.append(Loc.t("CRISIS_FX_BOOK") % [scope, float(fx["depth_bps"]) / 10000.0, float(fx.get("spread_bps", 10000)) / 10000.0, price_part])
 	if int(fx.get("margin_call_bps", 0)) > 0:
-		lines.append("Margin calls: %.2f%% of cargo value per round" % (float(fx["margin_call_bps"]) / 100.0))
+		lines.append(Loc.t("CRISIS_FX_MARGIN") % (float(fx["margin_call_bps"]) / 100.0))
 	if int(fx.get("trade_cap_qty", 0)) > 0:
-		lines.append("Orders capped at %d units" % int(fx["trade_cap_qty"]))
+		lines.append(Loc.t("CRISIS_FX_CAP") % int(fx["trade_cap_qty"]))
 	if int(fx.get("fee_bps", 0)) > 0:
-		lines.append("Trade fee %.2f%%" % (float(fx["fee_bps"]) / 100.0))
+		lines.append(Loc.t("CRISIS_FX_FEE") % (float(fx["fee_bps"]) / 100.0))
 	return lines
 
 

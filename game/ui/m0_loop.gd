@@ -68,11 +68,13 @@ const ACT_CANCEL: String = "m0_cancel"
 const ACT_CHAPTER_11: String = "m0_chapter11"
 const ACT_SPEED: String = "m0_speed"
 const ACT_PAUSE: String = "m0_pause"
+## Cycles the UI language (hot swap, #40). Live in every state, overlays included.
+const ACT_LOCALE: String = "m0_locale"
 
 const ALL_ACTIONS: Array[String] = [
 	ACT_TAB_PREV, ACT_TAB_NEXT, ACT_STATION_PREV, ACT_STATION_NEXT,
 	ACT_COMMODITY_PREV, ACT_COMMODITY_NEXT, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
-	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE,
+	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE,
 ]
 
 ## Actions that stay live while a resolution overlay is up.
@@ -101,8 +103,7 @@ var controller: RunController = null
 var market: StationMarket = null
 var tab: Tab = Tab.MAP
 var overlay_state: String = OVERLAY_NONE
-## Banner shown while the sim is paused by a wake; cleared when the player resumes.
-const SLEEP_PAUSE_NOTICE: String = "PAUSED \u2014 resumed from sleep"
+## True while the sim is paused by a wake (banner text: key SLEEP_NOTICE); cleared when the player resumes.
 const FOCUS_ANCHOR_PAUSE: String = "pause"
 var sleep_pause_active: bool = false
 ## What controller input is anchored to after a wake: an overlay state or "pause".
@@ -252,7 +253,7 @@ func acknowledge_crisis() -> bool:
 
 func _on_margin_call(amount: int) -> void:
 	if hud != null:
-		hud.post_headline("MARGIN CALL: %d CR drained from your account" % amount, "CRISIS", "WARNING")
+		hud.post_headline_tr("HL_MARGIN_CALL", [amount], "CRISIS", "WARNING")
 
 ## Swaps in a restored StationMarket (loading a saved run) and rebinds the HUD to it.
 func set_market(m: StationMarket) -> void:
@@ -415,6 +416,11 @@ func handle_input(event: InputEvent) -> bool:
 func dispatch_action(action: String) -> bool:
 	if hud == null or not ALL_ACTIONS.has(action):
 		return false
+	if action == ACT_LOCALE:
+		Loc.cycle_locale()
+		_click()
+		action_handled.emit(action)
+		return true
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
 	if overlay_state == OVERLAY_CRISIS and action != ACT_CHAPTER_11:

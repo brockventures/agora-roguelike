@@ -14,6 +14,8 @@ const TEST_DIR := "res://tests"
 const PASS_SENTINEL := "ok"
 
 func _init() -> void:
+	# Existing tests assert English text: pin the locale whatever the host's is.
+	Loc.set_locale(Loc.LOCALE_EN)
 	var passed := 0
 	var failed := 0
 	for path in _find_tests(TEST_DIR):
