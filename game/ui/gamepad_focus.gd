@@ -311,9 +311,12 @@ func execute_focused_order() -> Dictionary:
 		rc.record_audit_trade(order_qty)
 
 	var counterparty: String = ""
+	var counterparty_id: String = ""
 	if use_book:
 		# Gates passed: consume the resting liquidity the sweep priced.
-		counterparty = str(mkt.execute(station, commodity, side_str, order_qty, px).get("counterparty", ""))
+		var fill: Dictionary = mkt.execute(station, commodity, side_str, order_qty, px)
+		counterparty = str(fill.get("counterparty", ""))
+		counterparty_id = str(fill.get("counterparty_id", ""))
 
 	var result: Dictionary = {
 		"ok": true,
@@ -323,6 +326,7 @@ func execute_focused_order() -> Dictionary:
 		"price": (float(total_cost) / float(order_qty)) if use_book else px,
 		"limit_price": px,
 		"counterparty": counterparty,
+		"counterparty_id": counterparty_id,
 		"qty": order_qty,
 		"total_cr": total_cost,
 		"fee": fee,

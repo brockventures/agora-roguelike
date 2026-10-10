@@ -226,6 +226,7 @@ static func initial_run_seed() -> int:
 ## Creates a fresh RunController and binds it to the HUD, loop and clock.
 func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 	var rc := RunController.new(_loaded_profile, p_seed)
+	rc.world = Barons.for_new_run()  # Epic 3: the sector barons make the books
 	bags = Bags.new("m0", null, p_seed)
 	initialize_systems(rc)
 	return rc
@@ -1075,11 +1076,11 @@ func _sidebar_text() -> String:
 	var asks: Array = ladder["asks"]
 	_ladder_shape = [asks.size(), (ladder["bids"] as Array).size()]
 	for i in range(asks.size() - 1, -1, -1):
-		out.append(tr("SIDE_ASK_ROW") % [">" if buying and i == f.ladder_index else " ", asks[i]["price"], asks[i]["quantity"]])
+		out.append(tr("SIDE_ASK_ROW") % [">" if buying and i == f.ladder_index else " ", asks[i]["price"], asks[i]["quantity"]] + _maker_tag(asks[i]))
 	out.append(tr("SIDE_SPREAD") % float(ladder["spread"]))
 	var bids: Array = ladder["bids"]
 	for i in bids.size():
-		out.append(tr("SIDE_BID_ROW") % [">" if not buying and i == f.ladder_index else " ", bids[i]["price"], bids[i]["quantity"]])
+		out.append(tr("SIDE_BID_ROW") % [">" if not buying and i == f.ladder_index else " ", bids[i]["price"], bids[i]["quantity"]] + _maker_tag(bids[i]))
 	out.append("")
 	out.append(tr("SIDE_ORDER") % [tr("ORDER_BUY") if buying else tr("ORDER_SELL"), f.order_qty])
 	out.append(tr("SIDE_HELD") % [hud.get_cargo_qty(hud.active_commodity), Loc.commodity(hud.active_commodity), controller.get_total_cargo(), controller.cargo_capacity])
@@ -1091,13 +1092,31 @@ func _sidebar_text() -> String:
 		out.append(tr("SIDE_REJECTED") % f.get_rejection_message())
 	elif not f.last_executed_order.is_empty():
 		var o: Dictionary = f.last_executed_order
-		var who: String = str(o.get("counterparty", ""))
+		var who: String = _maker_name(str(o.get("counterparty_id", ""))) if str(o.get("counterparty_id", "")) != "" else str(o.get("counterparty", ""))
 		out.append(tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""])
 	return "\n".join(out)
 
 
+## A book maker's display name, through Loc: the default Ares Heavy or a baron
+## from the attached world's registry.
+func _maker_name(id: String) -> String:
+	var english: String = ""
+	if loop.market.world != null:
+		english = str(loop.market.world.def(id).get("name", "")).to_upper()
+	return Loc.maker(id, english)
+
+
+## Ladder row suffix naming the level's maker (e.g. "  TITAN"). Only with a
+## world attached: without one every level is Ares Heavy's and the tag is noise.
+func _maker_tag(row: Dictionary) -> String:
+	var id: String = str(row.get("maker", ""))
+	if id == "" or loop.market.world == null:
+		return ""
+	return tr("SIDE_ROW_TAG") % Loc.maker_tag(id, _maker_name(id))
+
+
 func _board_text() -> String:
-	var out: PackedStringArray = [tr("BOARD_TITLE") % [Loc.station(hud.active_station).to_upper(), Loc.maker()], ""]
+	var out: PackedStringArray = [tr("BOARD_TITLE") % [Loc.station(hud.active_station).to_upper(), _maker_name(loop.market.maker_for(hud.active_station))], ""]
 	for c in Transit.COMMODITIES:
 		var key_prefix: String = "%s %-10s" % [">" if c == hud.active_commodity else " ", Loc.commodity(c)]
 		if loop.market.has_book(hud.active_station, c):

@@ -143,6 +143,7 @@ func bind_hud(p_hud: OrbitalHUD) -> void:
 	hud.market = market
 	_connect_all()
 	_attach_crisis_deck()
+	_attach_world()
 	_sync_overlay_from_controller()
 
 
@@ -219,6 +220,16 @@ func _attach_crisis_deck() -> void:
 	crisis_deck.changed.connect(_on_crisis_changed)
 	hud.bind_crisis_deck(crisis_deck)
 	market.set_crisis_mods(crisis_deck.market_mods())
+
+
+## Points the market at the controller's world (null = none, the M0 default of
+## Ares Heavy everywhere). Only a controller that already carries a world gets
+## baron-made books: a bare controller, as in Replay.Session, never does.
+func _attach_world() -> void:
+	if market == null or controller == null:
+		return
+	market.set_world(controller.world)
+	market.set_world_mods(controller.world.market_mods() if controller.world != null else [])
 
 
 func _on_crisis_changed() -> void:
@@ -663,6 +674,8 @@ func start_next_run() -> RunController:
 	if controller == null or hud == null:
 		return null
 	var rc: RunController = controller.next_run()
+	if controller.world != null:
+		rc.world = Barons.for_new_run()  # a new Sol: fresh barons
 	hud.bind_controller(rc)
 	market = StationMarket.new()
 	tab = Tab.MAP
@@ -716,6 +729,9 @@ func _on_collapsed() -> void:
 
 
 func _on_round_advanced(round_num: int) -> void:
+	# World first, then replenish (design doc 2.2); the crisis deck already ran.
+	if controller != null and controller.world != null:
+		market.set_world_mods(controller.world.market_mods())
 	market.replenish()
 	round_completed.emit(round_num)
 

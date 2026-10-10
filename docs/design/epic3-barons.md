@@ -171,7 +171,7 @@ Player actions that hurt a baron (levers a/b/c, bounties) raise that baron's `he
 
 - Fleets and barons are pure functions of `(run_seed, round, world state, player state)`. Replays record player inputs only (`replay.gd`); the AI re-derives identically, so no AI input is ever recorded.
 - All decisions use sorted ids and integer bps. Per-fleet draws use `hash32("rival-<id>-<run_seed>-<round>")` into a fresh `NativeDrawSource`, so there is no persistent stream that a skipped round could desync.
-- The world state is serialised under the `world` key, present only when attached; `state_hash` covers it via `canonical()`. New golden fixtures (`tests/golden/world/`) pin: mod fold order, a 40-round baron+rival run hash for two seeds, and a save-at-round-N/restore/continue hash equal to the uninterrupted one.
+- The world state is serialised under the `world` key, present only when attached; `state_hash` covers it via `canonical()`. New golden fixtures (the mod fold order lives in `game/tests/fixtures/world/fold_order.json`, not under `tests/golden/`, which `check_drift.py` reserves for referee-generated parity fixtures) pin: mod fold order, a 40-round baron+rival run hash for two seeds, and a save-at-round-N/restore/continue hash equal to the uninterrupted one.
 
 ## 7. Interactions with Epic 2 (#8, Epic 2) and the crisis deck
 
@@ -190,7 +190,7 @@ Estimates use the house format; sizing follows the measured median for specced s
 |---|---|---|---|
 | 0 | **Prerequisite, not in any Epic 3 issue:** travel loop in play: unlock Earth/Ceres books, depart/arrive via `Transit.get_route`, belt toll, `docked_at` changes. Confirm owner before starting. **Owner: Amos. Issue #111 (Epic 3 task 0: travel loop between stations); PR #112 (feat(epic3): travel loop between stations).** | #111 (Epic 3 task 0: travel loop between stations) | ~20 min agent time · ~0.3% of the weekly limit |
 | 1 | `barons.json` + `Barons` loader/validator + `BaronState` `to_dict`/`from_dict`, `world` key in `RunSave` only when attached; hash-unchanged test with no barons. **PR #113 (feat(epic3): baron data model, canonical market save order, map label spacing), with two PR #112 fixes.** | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |
-| 2 | Market wiring: `maker_for`, `world_mods` + fixed fold order, `ask_price_bps`, `execute_as`, ladder `maker` tags, registry-backed `counterparty_name`; golden fold-order fixture. | #15 (Baron Framework design) | ~20 min agent time · ~0.3% of the weekly limit |
+| 2 | Market wiring: `maker_for`, `world_mods` + fixed fold order, `ask_price_bps`, `execute_as`, ladder `maker` tags, registry-backed `counterparty_name`; golden fold-order fixture. **PR #PRNUM (feat(epic3): baron-made markets: maker per station, world mods fold order (part of #15)).** | #15 (Baron Framework design) | ~20 min agent time · ~0.3% of the weekly limit |
 | 3 | Privileges: docking toll on arrival, pipelines, exemption set, order-book tag strings. | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |
 | 4 | Ares Heavy: defense contracts, squeeze mod, debt penalty. | #16 (Baron Archetype AIs) | ~20 min agent time · ~0.3% of the weekly limit |
 | 5 | Titan Cryo-Hydro: hoard state machine, corner/release mods, FOOD decay link. | #16 (Baron Archetype AIs) | ~15 min agent time · ~0.2% of the weekly limit |

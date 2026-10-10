@@ -98,6 +98,7 @@ func _collect(scene: Node) -> Array:
 			add.call("sidebar[%s]" % tag, scene.sidebar_label)
 	rc.doomsday.stage = DoomsdayClock.Stage.NORMAL
 	_collect_travel(scene, add)
+	_collect_barons(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -143,6 +144,32 @@ func _collect(scene: Node) -> Array:
 	add.call("sleep banner", scene.sleep_label)
 	loop.sleep_pause_active = false
 	return rows
+
+
+## Baron-made books (Epic 3 task 2, part of #15): the board title and the ladder maker
+## tags at every station with a baron, and a fill that names one.
+func _collect_barons(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	loop.set_tab(M0Loop.Tab.MARKET)
+	for st in ["mars", "ceres", "earth"]:
+		loop.market.unlock_station(st)
+		scene.hud.set_station(st)
+		for c in Transit.COMMODITIES:
+			scene.hud.set_commodity(c)
+			scene.hud.gamepad_focus.last_executed_order = {"side": "BUY", "qty": 12, "price": 1234.5, "fee": 400, "counterparty": "", "counterparty_id": "titan_cryo_hydro"}
+			scene._refresh_readouts()
+			scene.market_label.text = scene._board_text()
+			add.call("baron board[%s %s]" % [st, c], scene.market_label)
+			add.call("baron sidebar[%s %s]" % [st, c], scene.sidebar_label)
+	scene.hud.gamepad_focus.last_executed_order = {}
+	rc.world = null
+	loop.market.set_world(null)
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
 
 
 ## The travel loop (#111): the route preview with a belt toll, a refused departure,
