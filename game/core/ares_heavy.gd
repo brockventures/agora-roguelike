@@ -228,6 +228,7 @@ static func _miss(w: Barons, id: String, c: Dictionary, rc: RunController, round
 	var penalty: int = value * int(_params(w, id).get("contract_penalty_bps", 0)) / 10000
 	var res: Dictionary = w.penalize(rc, penalty, "consequence")
 	s.scratch["missed"] = int(s.scratch.get("missed", 0)) + 1
+	Heat.raise(w, id, int(Heat.settings(w)["missed_contract"]))  # a missed contract is a grudge (task 11)
 	s.scratch.erase("contract")
 	s.scratch.erase("squeeze")
 	return {

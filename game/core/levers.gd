@@ -324,6 +324,7 @@ static func _corner_step(w: Barons, id: String, rc: RunController) -> Array:
 			"kind": "lever_corner", "baron": id, "commodity": c, "round": int(now[c]),
 			"from_stock": int(cc["from_stock"]), "cost": cost, "unpaid": cost - paid,
 		})
+		Heat.raise(w, id, int(Heat.settings(w)["corner_round"]))  # a corner round charged hurts it
 	for c in before:
 		if not now.has(c):
 			events.append({"kind": "lever_corner_end", "baron": id, "commodity": c})
@@ -382,6 +383,7 @@ static func _margin_step(w: Barons, id: String) -> Array:
 		"kind": "lever_margin", "baron": id, "commodities": pressed, "units": sold_units,
 		"proceeds": proceeds, "fee": fee, "deficiency": deficiency,
 	})
+	Heat.raise(w, id, int(Heat.settings(w)["margin_call"]))  # the player's selling caused the call
 	return events
 
 
@@ -403,6 +405,7 @@ static func _credit_maturity(w: Barons, id: String, round_num: int, rc: RunContr
 		Takeover.add_debt(w, id, due, PLAYER)
 		s.scratch.erase("credit")
 		events.append({"kind": "credit_default", "baron": id, "due": due})
+		Heat.raise(w, id, int(Heat.settings(w)["credit_default"]))
 	return events
 
 
@@ -447,6 +450,7 @@ static func open_credit(w: Barons, station: String, rc: RunController) -> Dictio
 	out["principal"] = principal
 	out["due"] = due
 	out["due_round"] = due_round
+	Heat.raise(w, id, int(Heat.settings(w)["credit_open"]))
 	out["events"] = [{"kind": "credit_open", "baron": id, "principal": principal, "due": due, "due_round": due_round, "rate_bps": int(cfg["rate_bps"])}]
 	return out
 

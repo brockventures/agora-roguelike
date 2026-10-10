@@ -9,6 +9,12 @@
     {"id": "high", "min_net_worth": 15000}
   ],
   "tiers": {
+    "baron": {
+      "label": "BARON",
+      "stages": [],
+      "p": 0.0,
+      "p_mult_bps": {"low": 10000, "mid": 10000, "high": 10000}
+    },
     "early": {
       "label": "LOCALIZED",
       "stages": ["NORMAL"],
@@ -87,6 +93,72 @@
       "weights": {"high": 3},
       "duration_rounds": [2, 3],
       "effects": {"trade_cap_qty": 10, "fee_base_bps": 100, "fee_bps_per_10k_net_worth": 40, "fee_max_bps": 800}
+    },
+    {
+      "id": "ares_retaliation",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "consequence",
+      "baron_archetype": "short_squeezer",
+      "name": "Ares Heavy Calls Its Markers",
+      "headline": "RETALIATION: Ares Heavy calls its markers on you, {station} book squeezed for {rounds} rounds",
+      "duration_rounds": [3, 4],
+      "effects": {"depth_bps": 5000, "price_bps": 2000, "spread_bps": 20000, "fine_bps": 1000}
+    },
+    {
+      "id": "titan_retaliation",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "consequence",
+      "baron_archetype": "hoarder",
+      "name": "Titan Cryo-Hydro Embargo",
+      "headline": "RETALIATION: Titan Cryo-Hydro embargoes you, {station} book thin and dear for {rounds} rounds",
+      "duration_rounds": [3, 4],
+      "effects": {"depth_bps": 4000, "price_bps": 2500, "spread_bps": 20000, "fine_bps": 800}
+    },
+    {
+      "id": "sol_retaliation",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "consequence",
+      "baron_archetype": "auctioneer",
+      "name": "Sol Central Audit",
+      "headline": "RETALIATION: Sol Central audits you, {station} book blown out for {rounds} rounds",
+      "duration_rounds": [3, 4],
+      "effects": {"depth_bps": 5000, "price_bps": 1500, "spread_bps": 25000, "fine_bps": 1000}
+    },
+    {
+      "id": "ares_opportunistic_squeeze",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "random",
+      "baron_archetype": "short_squeezer",
+      "name": "Ares Opportunistic Squeeze",
+      "headline": "SQUEEZE: Ares Heavy leans on the {station} book for {rounds} rounds",
+      "duration_rounds": [2, 3],
+      "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}
+    },
+    {
+      "id": "titan_opportunistic_hoard",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "random",
+      "baron_archetype": "hoarder",
+      "name": "Titan Opportunistic Hoard",
+      "headline": "HOARD: Titan Cryo-Hydro buys up the {station} book for {rounds} rounds",
+      "duration_rounds": [2, 3],
+      "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}
+    },
+    {
+      "id": "sol_opportunistic_levy",
+      "kind": "baron_event",
+      "tier": "baron",
+      "origin": "random",
+      "baron_archetype": "auctioneer",
+      "name": "Sol Central Levy",
+      "headline": "LEVY: Sol Central posts a surprise levy at {station} for {rounds} rounds",
+      "duration_rounds": [2, 3],
+      "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}
     }
   ]
 }

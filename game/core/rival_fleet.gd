@@ -17,6 +17,9 @@ var at: String = ""
 var route: Dictionary = {}
 ## The last fill, for the desk tag: {round, station, commodity, side, qty, price}. {} before any.
 var last: Dictionary = {}
+## A standing front-run (Epic 3 task 11): {station, commodity, depth_bps, until_round}. {}
+## when none, and then NOT saved, so a fleet that never front-runs hashes as before.
+var front: Dictionary = {}
 
 
 func _init(p_id: String = "") -> void:
@@ -42,7 +45,7 @@ func cargo_units() -> int:
 
 
 func to_dict() -> Dictionary:
-	return {
+	var d: Dictionary = {
 		"id": id,
 		"cr": cr,
 		"cargo": _int_map(cargo),
@@ -50,6 +53,9 @@ func to_dict() -> Dictionary:
 		"route": _int_or_str_map(route),
 		"last": _int_or_str_map(last),
 	}
+	if not front.is_empty():
+		d["front"] = _int_or_str_map(front)
+	return d
 
 
 static func from_dict(d: Dictionary) -> RivalFleet:
@@ -59,6 +65,7 @@ static func from_dict(d: Dictionary) -> RivalFleet:
 	f.at = str(d.get("at", ""))
 	f.route = _read_mixed_map(d.get("route", {}))
 	f.last = _read_mixed_map(d.get("last", {}))
+	f.front = _read_mixed_map(d.get("front", {}))
 	return f
 
 

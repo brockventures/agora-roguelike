@@ -583,6 +583,30 @@ func hire(sponsor: String, target: String, round_num: int, available_cr: int = 1
 	_privateers[cid] = contract
 	return {"v": 1, "kind": "privateer_hire_ok", "payload": contract}
 
+## The privateer contracts, deep-copied and keyed by contract id (the world saves these:
+## the desk has no to_dict of its own).
+func privateer_contracts() -> Dictionary:
+	return _privateers.duplicate(true)
+
+## Replaces the privateer contracts (a restored world). Numbers are re-read as ints.
+func load_privateer_contracts(rows: Dictionary) -> void:
+	_privateers = {}
+	for cid in rows:
+		var c = rows[cid]
+		if not (c is Dictionary):
+			continue
+		var out: Dictionary = {}
+		for k in c:
+			out[str(k)] = c[k] if c[k] is String else int(c[k])
+		_privateers[str(cid)] = out
+
+## Marks a contract traced (the sponsor was uncovered). Returns false for an unknown id.
+func mark_traced(contract_id: String) -> bool:
+	if not _privateers.has(contract_id):
+		return false
+	_privateers[contract_id]["traced"] = int(_privateers[contract_id].get("traced", 0)) + 1
+	return true
+
 ## Returns recent raids sorted descending by round.
 ## Matches agora/piracy.py:PiracyDesk.recent_raids.
 func recent_raids(since_round: int = 0, limit: int = 20) -> Array[Dictionary]:
