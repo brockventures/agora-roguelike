@@ -363,6 +363,45 @@ func _on_transit_arrived(info: Dictionary) -> void:
 	# The book, ladder and quotes follow the dock, whatever the player was browsing.
 	hud.set_station(dest)
 	hud.post_headline_tr("HL_SHIP_ARRIVED", [Loc.station_arg(dest), Loc.station_arg(str(info["origin"]))], "TRANSIT", "INFO")
+	var baron: String = str(info.get("toll_baron", ""))
+	if int(info.get("docking_toll", 0)) > 0:
+		var short: bool = int(info["docking_toll"]) < int(info.get("docking_toll_due", 0))
+		hud.post_headline_tr("HL_DOCKING_TOLL_SHORT" if short else "HL_DOCKING_TOLL", [Loc.maker_arg(baron), int(info["docking_toll"]), Loc.station_arg(dest)], "TRANSIT", "WARNING")
+	elif baron != "" and controller != null and controller.world != null and controller.world.is_insider(StationMarket.PLAYER_ID, baron) and controller.world.def(baron).get("privileges", {}).get("docking_toll_cr", 0) > 0:
+		hud.post_headline_tr("HL_DOCKING_EXEMPT", [Loc.maker_arg(baron), Loc.station_arg(dest)], "TRANSIT", "INFO")
+
+
+# --- Baron privileges (Epic 3 task 3): tag strings for the board and sidebar ---
+
+## Pipeline tag for one book as the player sees it: "PIPELINE +8% ASK" for an
+## outsider, "PIPELINE (YOURS)" once the baron is held, "" when the book has no
+## pipeline (or there is no world).
+func pipeline_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var p: Dictionary = controller.world.pipeline(station, commodity)
+	if p.is_empty():
+		return ""
+	if controller.world.is_insider(StationMarket.PLAYER_ID, str(p["baron"])):
+		return Loc.t("TAG_PIPELINE_YOURS")
+	var bps: int = int(p["outsider_ask_bps"])
+	return Loc.t("TAG_PIPELINE_ASK") % (str(bps / 100) if bps % 100 == 0 else String.num(float(bps) / 100.0))
+
+
+## Docking-toll line for a station ("" when it charges none or there is no world):
+## the toll an outsider pays, or EXEMPT for an insider.
+func toll_line(station: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var id: String = controller.world.baron_at(station)
+	if id == "":
+		return ""
+	var fee: int = int(controller.world.def(id).get("privileges", {}).get("docking_toll_cr", 0))
+	if fee <= 0:
+		return ""
+	if controller.world.is_insider(StationMarket.PLAYER_ID, id):
+		return Loc.t("TAG_TOLL_EXEMPT")
+	return Loc.t("TAG_TOLL") % fee
 
 
 # --- Clock ---

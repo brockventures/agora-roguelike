@@ -4,18 +4,20 @@ extends RefCounted
 ## crisis_mods in a fixed order (golden fixture tests/fixtures/world/fold_order.json),
 ## ask_price_bps moves only the ask ladder, execute_as takes any participant, the
 ## ladder rows carry a `maker` tag, and counterparty_name reads the world registry.
-## No archetype behaviour yet (tasks 4-6): the world emits no mods.
+## No archetype behaviour yet (tasks 4-6): the world emits only the pipelines (task 3).
 
 const FIXTURE := "res://tests/fixtures/world/fold_order.json"
 const TPR: int = 30
 const TMP_ROOT := "user://test_tmp_wiring"
 
 ## RunSave.state_hash of a baron-world run (see _world_run) for two seeds, measured
-## when this task landed. They pin the whole world path: makers per station, the
+## when this task landed, and re-pinned by Epic 3 task 3 (baron privileges): the supply
+## pipelines are ask-side world mods, so every world book is seeded differently from the
+## first frame. Not the arrival toll: this run teleports with dock_at and never arrives. They pin the whole world path: makers per station, the
 ## per-round world-mods step, the Ceres book unlocked mid-run. A change that moves
 ## them is a replay-contract change and must be deliberate.
-const WORLD_HASH_SEED_84 := "dc1683a2aed9953d647aeb0ade05a2d9e8b62dd1b5b48d0cdcd05477d48bc189"
-const WORLD_HASH_SEED_7 := "8a90ba05214b7132d6d5d6949b28dcd2de94c275346fa9af06a2c0b2e9237236"
+const WORLD_HASH_SEED_84 := "4b1464a8efc518458d138a930d7aa68ce54739157ea36a445061d5fe2520333a"
+const WORLD_HASH_SEED_7 := "3911b0ea99ec566004d6f0092b9fe69a98421d41634c3fadcf7b5a1c52a44625"
 
 
 func _json(d: Dictionary) -> Dictionary:
@@ -272,10 +274,13 @@ func test_ask_price_bps_moves_only_the_ask_ladder() -> String:
 	return "ok"
 
 
-func test_barons_emit_no_mods_yet() -> String:
-	# Privileges are task 3 and archetype behaviour tasks 4-6: until then the
-	# world re-emits nothing, so a baron-made book differs only by its maker.
-	return "ok" if Barons.new().market_mods().is_empty() else "the world emits mods before any task defines them"
+func test_barons_emit_only_pipeline_mods_so_far() -> String:
+	# Privileges (task 3) emit supply pipelines; archetype behaviour is tasks 4-6.
+	# Every mod the world emits today is an ask-side pipeline mod (tests/test_privileges.gd).
+	for m in Barons.new().market_mods():
+		if not m.has("ask_depth_bps") or m.has("depth_bps") or m.has("price_bps") or m.has("spread_bps"):
+			return "the world emits a mod that is not a pipeline: %s" % str(m)
+	return "ok"
 
 
 # --- wiring into a run ---

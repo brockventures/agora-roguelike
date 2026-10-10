@@ -125,6 +125,10 @@ static func commodity_arg(id: String, upper: bool = true) -> Dictionary:
 	return {"loc": "commodity", "id": id, "upper": upper}
 
 
+static func maker_arg(id: String, upper: bool = true) -> Dictionary:
+	return {"loc": "maker", "id": id, "upper": upper}
+
+
 static func key_arg(key: String) -> Dictionary:
 	return {"loc": "key", "id": key}
 
@@ -143,6 +147,8 @@ static func format(key: String, args: Array = []) -> String:
 					s = station(str(a["id"]))
 				"commodity":
 					s = commodity(str(a["id"]))
+				"maker":
+					s = maker(str(a["id"]), str(a["id"]).replace("_", " ").to_upper())
 				_:
 					s = TranslationServer.translate(str(a["id"]))
 			out.append(s.to_upper() if bool(a.get("upper", false)) else s)
