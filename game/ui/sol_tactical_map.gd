@@ -286,6 +286,30 @@ func get_player_transit(round_num: int = -1) -> Dictionary:
 		"end_pos": get_station_screen_pos(destination, round_num),
 	}
 
+## Rival fleets in flight for drawing (Epic 3 task 10): [{fleet, origin, destination,
+## progress (0..1), pos, start_pos, end_pos}] sorted by fleet id; [] with no world. Their
+## progress is time between the departure and arrival rounds, so it moves with the clock.
+func get_rival_transits(round_num: int = -1) -> Array:
+	var out: Array = []
+	if controller == null or controller.world == null:
+		return out
+	var now: float = float(controller.get_current_round()) + controller.get_round_progress()
+	for v in controller.world.rival_voyages():
+		var span: float = maxf(1.0, float(int(v["arrival_round"]) - int(v["depart_round"])))
+		var progress: float = clampf((now - float(int(v["depart_round"]))) / span, 0.0, 1.0)
+		var origin: String = str(v["origin"])
+		var destination: String = str(v["destination"])
+		out.append({
+			"fleet": str(v["fleet"]),
+			"origin": origin,
+			"destination": destination,
+			"progress": progress,
+			"pos": get_transit_vessel_screen_pos(origin, destination, progress, round_num),
+			"start_pos": get_station_screen_pos(origin, round_num),
+			"end_pos": get_station_screen_pos(destination, round_num),
+		})
+	return out
+
 ## Selects a station for camera focus or opening the trading overlay.
 func select_station(station_id: String) -> bool:
 	var s := station_id.to_lower().strip_edges()

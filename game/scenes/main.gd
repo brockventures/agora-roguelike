@@ -1082,7 +1082,10 @@ static func _ink_on(fill: Color) -> Color:
 func _maker_name(id: String) -> String:
 	var english: String = ""
 	if loop.market.world != null:
-		english = str(loop.market.world.def(id).get("name", "")).to_upper()
+		var d: Dictionary = loop.market.world.def(id)
+		if d.is_empty():
+			d = loop.market.world.rival_def(id)
+		english = str(d.get("name", "")).to_upper()
 	return Loc.maker(id, english)
 
 
@@ -1482,7 +1485,7 @@ func _card_notes() -> Array:
 		out.append({"kind": "line", "text": tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""], "color": HudTheme.INK})
 	var st: String = hud.active_station
 	var com: String = hud.active_commodity
-	for pair in [[loop.pipeline_tag(st, com), HudTheme.TEAL_DARK, HudTheme.BONE], [loop.squeeze_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.hoard_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.toll_line(st), HudTheme.SLATE, HudTheme.BONE], [_contract_sidebar_line(), HudTheme.OCHRE, HudTheme.INK]]:
+	for pair in [[loop.pipeline_tag(st, com), HudTheme.TEAL_DARK, HudTheme.BONE], [loop.squeeze_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.hoard_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.rival_tag(st, com), HudTheme.SLATE, HudTheme.BONE], [loop.toll_line(st), HudTheme.SLATE, HudTheme.BONE], [_contract_sidebar_line(), HudTheme.OCHRE, HudTheme.INK]]:
 		if str(pair[0]) != "":
 			out.append({"kind": "chip", "text": pair[0], "bg": pair[1], "fg": pair[2]})
 	var auction: Array = loop.auction_lines(st, com)
@@ -2345,6 +2348,13 @@ func _map_point(model: Vector2) -> Vector2:
 	return HudLayout.MAP_ORIGIN - HudLayout.MAP_RECT.position + Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y)
 
 
+## The station label boxes the last _map_label_offsets() placed: the ship and fleet tags
+## are placed around them.
+var _map_placed: Array = []
+## Where _draw_map reserved the player's YOU tag this frame.
+var _player_tag_pos: Vector2 = Vector2.ZERO
+
+
 func _map_center() -> Vector2:
 	return _map_point(SolTacticalMap.MAP_CENTER)
 
@@ -2397,6 +2407,7 @@ func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: i
 		if chosen.size == Vector2.ZERO:
 			chosen = Rect2(Vector2(discs[st]) + Vector2(out[st]) + Vector2(0.0, -ascent), Vector2(wd, height)).grow(1.0)
 		placed.append(chosen)
+	_map_placed = placed.duplicate()
 	return out
 
 
@@ -2454,7 +2465,67 @@ func _draw_map() -> void:
 		var text: String = str(texts[st])
 		tactical_map_panel.draw_string_outline(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
 		tactical_map_panel.draw_string(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK if st == docked or active else HudTheme.INK)
+	# Tags go where they clear every node and label: the player's YOU first, then the fleets.
+	var placed: Array = _map_placed.duplicate()
+	_player_tag_pos = _reserve_player_tag(round_num, font, discs, placed)
+	_draw_rival_fleets(round_num, font, discs, placed)
 	_draw_player_ship(round_num, font, discs)
+
+
+## A free spot for a small map tag of width `w` beside `hull`: the first of eight around
+## it that stays on the panel and clear of every node, station label and earlier tag.
+## Returns null when none is free (the hull is then drawn without its tag). Appends the
+## box it takes to `placed`.
+func _free_tag_pos(hull: Vector2, w: float, font: Font, fs: int, discs: Dictionary, placed: Array) -> Variant:
+	var ascent: float = font.get_ascent(fs)
+	var height: float = ascent + font.get_descent(fs)
+	var bounds := Rect2(Vector2(8.0, 8.0), tactical_map_panel.size - Vector2(16.0, 16.0 + HudLayout.TICKER_RECT.size.y))
+	var gap: float = 10.0
+	for off in [Vector2(-w * 0.5, -gap - 2.0), Vector2(-w * 0.5, gap + height), Vector2(gap, height * 0.35), Vector2(-gap - w, height * 0.35),
+			Vector2(gap, -gap), Vector2(-gap - w, -gap), Vector2(gap, gap + height), Vector2(-gap - w, gap + height)]:
+		var box := Rect2(hull + off + Vector2(0.0, -ascent), Vector2(w, height)).grow(1.0)
+		if _map_label_fits(box, "", discs, placed, bounds) and not _circle_hits(hull, 8.0, box):
+			placed.append(box)
+			return hull + off
+	return null
+
+
+## Reserves the player's YOU tag before the fleets pick theirs; the fallback is the old
+## fixed spot under the hull.
+func _reserve_player_tag(round_num: int, font: Font, discs: Dictionary, placed: Array) -> Vector2:
+	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
+	if voyage.is_empty():
+		return Vector2.ZERO
+	var ship: Vector2 = _map_point(Vector2(voyage["pos"]))
+	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var tag: String = tr("MAP_SHIP_TAG")
+	var spot = _free_tag_pos(ship, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
+	placed.append(Rect2(ship - Vector2(10.0, 10.0), Vector2(20.0, 20.0)))  # the hull itself
+	return Vector2(spot) if spot != null else ship + Vector2(-12.0, 28.0)
+
+
+## Rival fleets in flight (Epic 3 task 10): a thin dashed slate lane, a small bone hull
+## with an ink contour, and the fleet's short tag when the map has room for it. The
+## player's own ship is drawn after, so it stays on top where lanes cross.
+func _draw_rival_fleets(round_num: int, font: Font, discs: Dictionary, placed: Array) -> void:
+	if controller == null or controller.world == null:
+		return
+	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var fleets: Array = tactical_map.get_rival_transits(round_num)
+	for v in fleets:
+		tactical_map_panel.draw_dashed_line(_map_point(Vector2(v["start_pos"])), _map_point(Vector2(v["end_pos"])), HudTheme.SLATE, 2.0, 8.0, true)
+	for v in fleets:  # every hull first, so no tag lands on another fleet
+		var h: Vector2 = _map_point(Vector2(v["pos"]))
+		placed.append(Rect2(h - Vector2(7.0, 7.0), Vector2(14.0, 14.0)))
+	for v in fleets:
+		var hull: Vector2 = _map_point(Vector2(v["pos"]))
+		HudTheme.draw_flat_disc(tactical_map_panel, hull, 6.0, HudTheme.BONE, HudTheme.INK)
+		var id: String = str(v["fleet"])
+		var tag: String = Loc.maker_tag(id, str(controller.world.rival_def(id).get("name", "")).split(" ")[0].to_upper())
+		var spot = _free_tag_pos(hull, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
+		if spot != null:
+			tactical_map_panel.draw_string_outline(font, Vector2(spot), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
+			tactical_map_panel.draw_string(font, Vector2(spot), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.SLATE)
 
 
 ## The player's ship on its lane, drawn over the stations: a dashed ink lane
@@ -2474,7 +2545,7 @@ func _draw_player_ship(round_num: int, font: Font, discs: Dictionary) -> void:
 	HudTheme.draw_flat_disc(tactical_map_panel, ship, 9.0, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	var fs: int = scaled_size(MAP_FONT_SIZE)
 	var tag: String = tr("MAP_SHIP_TAG")
-	var tag_pos: Vector2 = ship + Vector2(-12.0, 28.0)
+	var tag_pos: Vector2 = _player_tag_pos
 	tactical_map_panel.draw_string_outline(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
 	tactical_map_panel.draw_string(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK)
 

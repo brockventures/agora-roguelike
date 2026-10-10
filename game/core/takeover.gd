@@ -13,8 +13,8 @@ extends RefCounted
 ##    min(treasury_shares, ceil(shortfall / px), auction_cap) shares at
 ##    px = max(1, max(NAV per share, auction_price_floor) x auction_discount_bps).
 ##    The offer is written at the round boundary and read during the next round; the
-##    player buys through Barons.buy_shares. Rival fleets do not exist yet:
-##    Barons.rival_bids() is the seam (it returns no bids today).
+##    player buys through Barons.buy_shares. Rival fleets bid through
+##    Barons.rival_bids() (Rivals.bids, Epic 3 task 10).
 ##  - Takeover. `threshold_shares` (501) in one hand takes the baron at once: the
 ##    taker becomes `holder`, absorbs the treasury and the debt (a claim the taker
 ##    itself held cancels), and the baron's archetype AI stops acting.
@@ -240,8 +240,8 @@ static func advance(w: Barons, id: String, round_num: int, rc: RunController) ->
 		s.scratch["distress"] = {"px": px, "qty": qty, "round": round_num}
 		if s.strain == 1:
 			events.append({"kind": "distress", "baron": id, "px": px, "qty": qty, "shortfall": shortfall, "cap": int(cfg["cap"])})
-		# Seam for Epic 3 task 10: rival fleets bid for the lot in sorted id order.
-		for bid in w.rival_bids(id, round_num, px, qty):
+		# Rival fleets (Epic 3 task 10) bid for the lot in sorted id order.
+		for bid in w.rival_bids(id, round_num, px, qty, rc):
 			events.append_array(w.sell_auction_shares(id, str(bid["buyer"]), int(bid["qty"]), rc))
 			if s.holder != "":
 				return events
@@ -386,7 +386,7 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 		s.treasury_cr = 0
 		ev["forced_ch11"] = not bool(pre["insolvent"]) and bool(rc.assess()["insolvent"])
 	else:
-		# A rival (Epic 3 task 10) has no ledger yet: the baron nets its own books.
+		# A rival fleet takes the baron: the baron nets its own books against the debt.
 		s.treasury_cr = maxi(0, s.treasury_cr - debt)
 		ev["debt"] = debt
 	s.holder = buyer

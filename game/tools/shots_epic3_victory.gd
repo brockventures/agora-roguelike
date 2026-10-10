@@ -28,6 +28,7 @@ func _fresh() -> void:
 	main.settings.set_text_scale(1.0)
 	main.start_new_run(84)
 	main.controller.cr = 50000
+	main.controller._track_peak(main.controller.assess())  # gameplay tracks the peak every sub-tick
 	main._refresh_readouts()
 
 
@@ -85,6 +86,9 @@ func _run() -> void:
 	for id in w.ids():
 		loop._post_baron_event(Takeover.take(w, id, Takeover.PLAYER, rc))  # STAGED
 	print("monopoly: ", w.monopoly_achieved(), " overlay ", loop.overlay_state, " ", loop.monopoly_summary())
+	# The staged takeovers moved CR directly, so do what gameplay does on the next sub-tick
+	# (RunController._interrupt_check): record the new net worth against the peak.
+	rc._track_peak(rc.assess())
 	main._refresh_readouts()
 	await _shot("monopoly-achieved")
 	print("continue: ", loop.dispatch_action(M0Loop.ACT_SUBMIT), " overlay ", loop.overlay_state)

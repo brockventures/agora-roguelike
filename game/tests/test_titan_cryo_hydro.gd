@@ -14,6 +14,7 @@ const TITAN: String = "titan_cryo_hydro"
 func _ctx(p_seed: int = 21) -> Dictionary:
 	var rc := RunController.new(null, p_seed, null, {}, TPR)
 	rc.world = Barons.for_new_run()
+	rc.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
 	lp.dock_at("ceres")

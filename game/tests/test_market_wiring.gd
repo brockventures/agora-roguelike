@@ -23,6 +23,10 @@ const TMP_ROOT := "user://test_tmp_wiring"
 ## budget, exactly as a crisis does. Proved by making Ares a no-op: both old pins
 ## (4b1464a8..., 3911b0ea...) matched again. _advance declines every offer
 ## (a decline leaves no state), so the move is the halts and nothing else.
+## Epic 3 task 10 (rival fleets) did NOT move these pins: _world_run takes the fleets out of
+## the world (rivals are off here), and a world with none saves no `rivals` key and trades
+## nothing, so it hashes exactly as before. The shipped world (fleets on) is pinned by
+## test_rival_fleets.gd instead.
 const WORLD_HASH_SEED_84 := "65d35e1895cf171203bccae83e812153d8509ad0d2fd5229814e440762738e48"
 const WORLD_HASH_SEED_7 := "30308d02bb390ff4028cd037eb181f93f7386d3e93d51a5772584e8af7894563"
 
@@ -353,6 +357,7 @@ func test_the_board_and_sidebar_name_the_baron() -> String:
 ## the dock, then run many rounds so the per-round world step fires.
 func _world_run(p_seed: int) -> Replay.Session:
 	var s := Replay.Session.new(p_seed, {}, Replay.DEFAULT_FRAME_DELTA, TPR, true)
+	s.controller.world.rivals.clear()  # rival fleets are pinned by test_rival_fleets.gd
 	s.dispatch(M0Loop.ACT_TAB_NEXT)
 	_advance(s, 40)
 	s.dispatch(M0Loop.ACT_RIGHT)
@@ -403,6 +408,7 @@ func test_save_load_then_continue_equals_the_uninterrupted_run() -> String:
 	for p_seed in [84, 7]:
 		var whole := _world_run(p_seed)
 		var split := Replay.Session.new(p_seed, {}, Replay.DEFAULT_FRAME_DELTA, TPR, true)
+		split.controller.world.rivals.clear()  # as _world_run
 		split.dispatch(M0Loop.ACT_TAB_NEXT)
 		_advance(split, 40)
 		split.dispatch(M0Loop.ACT_RIGHT)

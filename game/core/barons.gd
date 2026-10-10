@@ -38,6 +38,8 @@ const PARAM_KINDS: Dictionary = {
 var data: Dictionary = {}
 ## BaronState by baron id.
 var states: Dictionary = {}
+## RivalFleet by fleet id (Epic 3 task 10); empty when barons.json lists no `rivals`.
+var rivals: Dictionary = {}
 
 
 func _init(p_data: Dictionary = {}) -> void:
@@ -45,6 +47,11 @@ func _init(p_data: Dictionary = {}) -> void:
 	for def in data.get("barons", []):
 		var s: BaronState = BaronState.from_def(def)
 		states[s.id] = s
+	var rv = data.get("rivals", {})
+	if rv is Dictionary:
+		for fd in (rv as Dictionary).get("fleets", []):
+			var f: RivalFleet = RivalFleet.from_def(fd)
+			rivals[f.id] = f
 
 
 ## Parses the barons JSON; {} when missing or malformed.
@@ -70,7 +77,7 @@ static func for_new_run() -> Barons:
 ## Book mods the world emits this round (StationMarket.set_world_mods), in the
 ## fold order the market relies on: barons by sorted id, then rival fleets by
 ## sorted id. Today a baron emits its supply pipelines (Epic 3 task 3); archetype
-## behaviours (tasks 4-6) and rivals (task 10) add to this.
+## behaviours (tasks 4-6) add to this; rival fleets (task 10) emit no mods, they trade.
 func market_mods() -> Array:
 	var out: Array = []
 	for id in ids():
@@ -83,8 +90,8 @@ func market_mods() -> Array:
 ## `ask_depth_bps` more depth for everyone, and `ask_price_bps` of premium that
 ## only outsiders pay. The mods are the PLAYER's view of the book: the player is
 ## an insider only while they hold the baron, so taking it removes the premium
-## and keeps the depth. (Rival fleets share the same books; their own insider
-## prices arrive with Epic 3 task 10.)
+## and keeps the depth. (Rival fleets trade the same books as the player sees them;
+## insider prices for a fleet that holds a baron are not built.)
 func _mods_of(id: String) -> Array:
 	var out: Array = []
 	var d: Dictionary = def(id)
@@ -139,6 +146,53 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 	for id in ids():
 		events.append_array(Takeover.advance(self, id, round_num, rc))
 	return events
+
+
+# --- Rival fleets (Epic 3 task 10, design doc 6): see Rivals ---
+
+## Fleet ids in sorted order: the only order anything may iterate them in.
+func rival_ids() -> Array:
+	var out: Array = rivals.keys()
+	out.sort()
+	return out
+
+
+func rival(id: String) -> RivalFleet:
+	return rivals.get(id, null)
+
+
+## The barons.json entry for a fleet id, {} if unknown.
+func rival_def(id: String) -> Dictionary:
+	for d in data.get("rivals", {}).get("fleets", []):
+		if str(d.get("id", "")) == id:
+			return d
+	return {}
+
+
+## The once-a-round fleet step (after the books are replenished). See Rivals.advance.
+func advance_rivals(round_num: int, rc: RunController, market: StationMarket) -> Array:
+	return Rivals.advance(self, round_num, rc, market)
+
+
+## The player's departure, seen by idle fleets (decision 9.5). See Rivals.react.
+func react_to_departure(rc: RunController, market: StationMarket, info: Dictionary) -> Array:
+	return Rivals.react(self, rc, market, info)
+
+
+## The fills fleets made on a book this round: [{fleet, side, qty, price}].
+func rival_moves_on(station: String, commodity: String, round_num: int) -> Array:
+	return Rivals.moves_on(self, station, commodity, round_num)
+
+
+## Fleets in flight, sorted by id, as {fleet, origin, destination, depart_round,
+## arrival_round}.
+func rival_voyages() -> Array:
+	var out: Array = []
+	for id in rival_ids():
+		var f: RivalFleet = rivals[id]
+		if f.in_flight():
+			out.append({"fleet": id, "origin": str(f.route["origin"]), "destination": str(f.route["destination"]), "depart_round": int(f.route["depart_round"]), "arrival_round": int(f.route["arrival_round"])})
+	return out
 
 
 # --- The levers (Epic 3 task 8, design doc 5.2): see Levers ---
@@ -212,10 +266,10 @@ func buy_shares(rc: RunController, station: String, n: int) -> Dictionary:
 	return Takeover.buy(self, id, rc, n)
 
 
-## Seam for rival fleets (Epic 3 task 10): the bids {buyer, qty} for a distress lot,
-## in sorted buyer id order. No rival exists yet, so there are none.
-func rival_bids(_id: String, _round_num: int, _px: int, _qty: int) -> Array:
-	return []
+## The bids {buyer, qty} rival fleets make for a distress lot, in sorted fleet id order
+## (Rivals.bids). With no `rc` (no run seed to draw from) there are none.
+func rival_bids(id: String, round_num: int, px: int, qty: int, rc: RunController = null) -> Array:
+	return Rivals.bids(self, id, round_num, px, qty, rc)
 
 
 ## Sells `n` treasury shares of the standing offer to a buyer other than the player
@@ -521,7 +575,14 @@ func to_dict() -> Dictionary:
 	var out: Dictionary = {}
 	for id in ids():
 		out[id] = (states[id] as BaronState).to_dict()
-	return {"version": VERSION, "barons": out}
+	var d: Dictionary = {"version": VERSION, "barons": out}
+	# Fleets are saved only when the file lists any, so a world without `rivals` hashes as before.
+	if not rivals.is_empty():
+		var rv: Dictionary = {}
+		for id in rival_ids():
+			rv[id] = (rivals[id] as RivalFleet).to_dict()
+		d["rivals"] = rv
+	return d
 
 
 ## Rebuilds the world from to_dict() output (directly or via JSON). The data
@@ -536,6 +597,17 @@ static func from_dict(d: Dictionary, p_data: Dictionary = {}) -> Barons:
 				var s: BaronState = BaronState.from_dict(saved[id])
 				s.id = str(id)
 				w.states[id] = s
+	# A save with no `rivals` key is a world that had no fleets (a run saved before Epic 3
+	# task 10, or one without any): it stays that way, so it keeps hashing as it did.
+	var saved_rv = d.get("rivals", null)
+	if not (saved_rv is Dictionary):
+		w.rivals.clear()
+	else:
+		for id in w.rivals.keys():
+			if saved_rv.has(id) and saved_rv[id] is Dictionary:
+				var f: RivalFleet = RivalFleet.from_dict(saved_rv[id])
+				f.id = str(id)
+				w.rivals[id] = f
 	return w
 
 
@@ -575,6 +647,7 @@ static func validate(d: Dictionary) -> Array:
 		if take.has("reset_treasury_bps") and (not _is_int(take["reset_treasury_bps"]) or int(take["reset_treasury_bps"]) < 0 or int(take["reset_treasury_bps"]) > 10000):
 			errs.append("takeover.reset_treasury_bps must be 0..10000")
 	errs.append_array(_check_levers(d.get("levers", null)))
+	errs.append_array(_check_rivals(d.get("rivals", null), d.get("barons", []) if d.get("barons", []) is Array else []))
 	var heat = d.get("heat", null)
 	if not (heat is Dictionary):
 		errs.append("heat must be an object")
@@ -657,6 +730,58 @@ static func _check_levers(v: Variant) -> Array:
 				errs.append("levers.%s.%s must be a whole number >= 0" % [group, k])
 			elif k in ["spend_bps", "liquidate_bps", "pressure_max_bps", "accept_below_bps"] and int(v[group][k]) > 10000:
 				errs.append("levers.%s.%s must be at most 10000" % [group, k])
+	return errs
+
+
+## `rivals` is optional (no block = no fleets). When present: settings are whole numbers
+## >= 0 (the bps ones at most 10000) and `fleets` lists unique ids, each with a name, a
+## home station, a trait, a stance and starting CR.
+static func _check_rivals(v: Variant, barons: Array) -> Array:
+	var errs: Array = []
+	if v == null:
+		return errs
+	if not (v is Dictionary):
+		return ["rivals must be an object"]
+	for k in v:
+		if k == "fleets":
+			continue
+		if not Rivals.DEFAULTS.has(k):
+			errs.append("rivals.%s is not a rivals setting" % k)
+		elif not _is_int(v[k]) or int(v[k]) < 0:
+			errs.append("rivals.%s must be a whole number >= 0" % k)
+		elif str(k).ends_with("_bps") and int(v[k]) > 10000:
+			errs.append("rivals.%s must be at most 10000" % k)
+	var fleets = v.get("fleets", null)
+	if not (fleets is Array):
+		errs.append("rivals.fleets must be an array")
+		return errs
+	var taken: Dictionary = {"player": true}
+	for b in barons:
+		if b is Dictionary:
+			taken[str(b.get("id", ""))] = true
+	for i in (fleets as Array).size():
+		var f = fleets[i]
+		var where: String = "rivals.fleets[%d]" % i
+		if not (f is Dictionary):
+			errs.append("%s must be an object" % where)
+			continue
+		var id: String = str(f.get("id", ""))
+		if id.is_empty() or not _is_id(id):
+			errs.append("%s.id must be lowercase letters, digits and underscores" % where)
+		elif taken.has(id):
+			errs.append("%s: id '%s' is already used" % [where, id])
+		else:
+			taken[id] = true
+		if str(f.get("name", "")).is_empty():
+			errs.append("%s: name is required" % where)
+		if not Transit.STATIONS.has(str(f.get("home", ""))):
+			errs.append("%s: home is not a station" % where)
+		if not Rivals.TRAITS.has(str(f.get("trait", ""))):
+			errs.append("%s: trait must be one of %s" % [where, ", ".join(Rivals.TRAITS)])
+		if not Rivals.STANCES.has(str(f.get("stance", ""))):
+			errs.append("%s: stance must be one of %s" % [where, ", ".join(Rivals.STANCES)])
+		if not _is_int(f.get("cr", null)) or int(f["cr"]) < 0:
+			errs.append("%s: cr must be a whole number >= 0" % where)
 	return errs
 
 

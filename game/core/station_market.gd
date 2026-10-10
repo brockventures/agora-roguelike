@@ -356,6 +356,8 @@ func counterparty_name(participant_id: String) -> String:
 		return MAKER_NAME
 	if world != null:
 		var d: Dictionary = world.def(participant_id)
+		if d.is_empty():
+			d = world.rival_def(participant_id)  # a rival fleet that traded against the player's book
 		if not d.is_empty():
 			return str(d.get("name", "")).to_upper()
 	return ""

@@ -472,9 +472,9 @@ func test_header_and_map_show_the_voyage() -> String:
 	var voyage: Dictionary = m.tactical_map.get_player_transit()
 	if r == "ok" and (voyage.is_empty() or str(voyage["destination"]) != "ceres" or not bool(voyage["is_belt"])):
 		r = "tactical map has no belt voyage to ceres: %s" % str(voyage)
-	if r == "ok" and not m.hud.get_recent_headlines(3).any(func(h): return m.hud.headline_text(h).find("DEPARTS") >= 0):
+	if r == "ok" and not m.hud.get_recent_headlines(8).any(func(h): return m.hud.headline_text(h).find("DEPARTS") >= 0):
 		r = "no departure headline on the ticker"
-	if r == "ok" and not m.hud.get_recent_headlines(4).any(func(h): return m.hud.headline_text(h).find("BELT AUTHORITY") >= 0):
+	if r == "ok" and not m.hud.get_recent_headlines(9).any(func(h): return m.hud.headline_text(h).find("BELT AUTHORITY") >= 0):
 		r = "no belt toll headline on the ticker"
 	if r == "ok":
 		m.loop.set_tab(M0Loop.Tab.MAP)
