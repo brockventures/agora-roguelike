@@ -40,7 +40,7 @@ class Session extends RefCounted:
 		controller = RunController.new(profile, p_seed, null, {}, p_ticks_per_round)
 		hud = OrbitalHUD.new(controller)
 		loop = M0Loop.new(hud)
-		loop.lock_station(M0Loop.M0_STATION)
+		loop.dock_at(M0Loop.M0_STATION)
 		bags = Bags.new("m0", null, p_seed)
 
 	## One fixed frame. Returns sub-ticks executed.

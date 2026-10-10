@@ -26,7 +26,7 @@ Design proposal for #15 (Design Sector Baron Framework & Regional Monopoly Mecha
 
 - **Docking toll.** Only the belt toll (`BELT_TOLL_CR = 25`, `transit.gd:53`). The Python sim has station tariffs: `agora/lobbying.py:get_docking_tariff` and the arrival charge at `agora/referee.py:2147-2155`.
 - **Short positions, loans, equity, call auctions.** The player only holds cargo and CR. The Python sim has them in `agora/equity.py`, `agora/corporate.py`, `agora/circuit_breaker.py`.
-- **A Titan station**, and **play on any station but Mars** (travel is not wired into the M0 loop).
+- **A Titan station**, and ~~play on any station but Mars~~ (travel is wired into the M0 loop by task 0, #111 (Epic 3 task 0: travel loop between stations); Titan is still absent).
 - **Delivery contracts.** `MetaProfile.contracts` is an opaque meta list (`meta_profile.gd:13`), not an obligation. `agora/contracts.py` is the only source and was not ported.
 - **A fuel market or hazard/piracy rolls in play.** `Transit.calculate_fuel_burn`, `Hazards.roll` and `Piracy.roll_departure` have accessors on `RunController` (`fuel_discount_bps()` etc.) but I found no caller outside `core/` accessors and tests. `Parachutes.STATS` marks every stat `live`, yet `corrupt_regulator`'s `interest_bps` is the only perk with an effect a player can see in M0 (it changes doomsday interest). The brief's "perks waiting for loans, fuel market, corridors" matches this: the stats are wired, the surfaces that use them are not.
 
@@ -188,7 +188,7 @@ Estimates use the house format; sizing follows the measured median for specced s
 
 | # | Task (one PR each) | Issue | Estimate |
 |---|---|---|---|
-| 0 | **Prerequisite, not in any Epic 3 issue:** travel loop in play: unlock Earth/Ceres books, depart/arrive via `Transit.get_route`, belt toll, `docked_at` changes. Confirm owner before starting. | (none) | ~20 min agent time · ~0.3% of the weekly limit |
+| 0 | **Prerequisite, not in any Epic 3 issue:** travel loop in play: unlock Earth/Ceres books, depart/arrive via `Transit.get_route`, belt toll, `docked_at` changes. Confirm owner before starting. **Owner: Amos. Issue #111 (Epic 3 task 0: travel loop between stations); PR #112 (feat(epic3): travel loop between stations).** | #111 (Epic 3 task 0: travel loop between stations) | ~20 min agent time · ~0.3% of the weekly limit |
 | 1 | `barons.json` + `Barons` loader/validator + `BaronState` `to_dict`/`from_dict`, `world` key in `RunSave` only when attached; hash-unchanged test with no barons. | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |
 | 2 | Market wiring: `maker_for`, `world_mods` + fixed fold order, `ask_price_bps`, `execute_as`, ladder `maker` tags, registry-backed `counterparty_name`; golden fold-order fixture. | #15 (Baron Framework design) | ~20 min agent time · ~0.3% of the weekly limit |
 | 3 | Privileges: docking toll on arrival, pipelines, exemption set, order-book tag strings. | #15 (Baron Framework design) | ~15 min agent time · ~0.2% of the weekly limit |

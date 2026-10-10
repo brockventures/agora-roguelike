@@ -171,6 +171,27 @@ func get_transit_vessel_screen_pos(origin: String, destination: String, progress
 	var t := clampf(progress_ratio, 0.0, 1.0)
 	return start_pos.lerp(end_pos, t)
 
+## The player's own voyage for drawing: {} while docked, otherwise origin,
+## destination, progress (0..1), the ship's screen position on its lane, and
+## whether the lane crosses the belt (#111). round_num as in get_station_screen_pos.
+func get_player_transit(round_num: int = -1) -> Dictionary:
+	if controller == null or not controller.is_in_transit():
+		return {}
+	var info: Dictionary = controller.transit_info()
+	var origin: String = str(info["origin"])
+	var destination: String = str(info["destination"])
+	var progress: float = float(info["progress"])
+	return {
+		"origin": origin,
+		"destination": destination,
+		"progress": progress,
+		"eta_rounds": int(info["eta_rounds"]),
+		"is_belt": bool(info["is_belt"]),
+		"pos": get_transit_vessel_screen_pos(origin, destination, progress, round_num),
+		"start_pos": get_station_screen_pos(origin, round_num),
+		"end_pos": get_station_screen_pos(destination, round_num),
+	}
+
 ## Selects a station for camera focus or opening the trading overlay.
 func select_station(station_id: String) -> bool:
 	var s := station_id.to_lower().strip_edges()

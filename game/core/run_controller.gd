@@ -31,6 +31,10 @@ signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
 ## A systemic margin collapse drained CR from the player this round (#12).
 signal margin_call_applied(amount_cr: int)
+## The player's ship left the docked station (see depart()); info is transit_info().
+signal transit_departed(info: Dictionary)
+## The player's ship docked at its destination; docked_at already names it.
+signal transit_arrived(info: Dictionary)
 
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = 900
@@ -51,12 +55,116 @@ var cargo: Dictionary = {}
 var ships: Array = []
 var pending_bankruptcy: bool = false
 var ticks_per_round: int = DEFAULT_TICKS_PER_ROUND
+## The station the player is docked at; "" while in transit (no trading then).
 var docked_at: String = "earth"
+## The player's voyage, {} when docked: origin, destination, depart_tick,
+## arrive_tick (absolute SimClock ticks), rounds and toll (CR paid on departure).
+## Saved by to_dict() only while a voyage is under way, so a run that never
+## travels serialises, and hashes, exactly as it did before travel existed.
+var transit: Dictionary = {}
 var cargo_capacity: int = DEFAULT_CARGO_CAPACITY
 ## Procedural crisis deck (#12). Null until a loop attaches one (M0Loop does), so
 ## a bare controller never draws or pauses for crises. Not part of to_dict()
 ## here; the deck has its own to_dict()/from_dict() for the save layer.
 var crisis_deck: CrisisDeck = null
+
+# --- Travel (Epic 3 task 0, #111) ---
+
+func is_in_transit() -> bool:
+	return not transit.is_empty()
+
+## Whether the ship could leave for `destination` now. {ok, reason, rounds, ticks, toll}:
+## reason is one of RUN_OVER, IN_TRANSIT, SAME_STATION, NO_ROUTE, INSUFFICIENT_CR.
+## Belt routes cost Transit.calculate_toll CR, payable up front. Fuel burn is not
+## charged yet (Transit.calculate_fuel_burn has no caller in play).
+func can_depart(destination: String) -> Dictionary:
+	var dest: String = destination.to_lower().strip_edges()
+	var out: Dictionary = {"ok": false, "reason": "", "rounds": 0, "ticks": 0, "toll": 0}
+	if is_collapsed() or pending_bankruptcy:
+		out["reason"] = "RUN_OVER"
+	elif is_in_transit():
+		out["reason"] = "IN_TRANSIT"
+	elif dest == docked_at:
+		out["reason"] = "SAME_STATION"
+	elif not (dest in Transit.STATIONS) or Transit.get_route(docked_at, dest, get_current_round()) == null:
+		out["reason"] = "NO_ROUTE"
+	else:
+		var rounds: int = Transit.calculate_trip_rounds(docked_at, dest, get_current_round(), 0)
+		out["rounds"] = rounds
+		out["ticks"] = Transit.calculate_transit_ticks(rounds, ticks_per_round)
+		out["toll"] = Transit.calculate_toll(docked_at, dest)
+		if cr < int(out["toll"]):
+			out["reason"] = "INSUFFICIENT_CR"
+		else:
+			out["ok"] = true
+	return out
+
+## Leaves the docked station for `destination`. Returns can_depart()'s dictionary
+## (plus origin / destination when it worked); on failure nothing changes.
+func depart(destination: String) -> Dictionary:
+	var check: Dictionary = can_depart(destination)
+	if not bool(check["ok"]):
+		return check
+	var dest: String = destination.to_lower().strip_edges()
+	var now: int = sim_clock.total_ticks
+	cr -= int(check["toll"])
+	transit = {
+		"origin": docked_at,
+		"destination": dest,
+		"depart_tick": now,
+		"arrive_tick": now + int(check["ticks"]),
+		"rounds": int(check["rounds"]),
+		"toll": int(check["toll"]),
+	}
+	docked_at = ""
+	check["origin"] = str(transit["origin"])
+	check["destination"] = dest
+	transit_departed.emit(transit_info())
+	return check
+
+## Copy of the voyage plus live progress (0..1) and rounds left (rounded up), {} when docked.
+func transit_info() -> Dictionary:
+	if transit.is_empty():
+		return {}
+	var info: Dictionary = transit.duplicate()
+	var span: int = maxi(1, int(transit["arrive_tick"]) - int(transit["depart_tick"]))
+	var done: int = clampi(sim_clock.total_ticks - int(transit["depart_tick"]), 0, span)
+	info["progress"] = float(done) / float(span)
+	var left: int = maxi(0, int(transit["arrive_tick"]) - sim_clock.total_ticks)
+	info["ticks_left"] = left
+	info["eta_rounds"] = (left + ticks_per_round - 1) / ticks_per_round
+	info["is_belt"] = Transit.route_key(str(transit["origin"]), str(transit["destination"])) in Transit.BELT_ROUTES
+	return info
+
+func _arrive() -> void:
+	var info: Dictionary = transit_info()
+	docked_at = str(transit["destination"])
+	transit = {}
+	info["ticks_left"] = 0
+	info["eta_rounds"] = 0
+	info["progress"] = 1.0
+	transit_arrived.emit(info)
+
+## Loaded voyage, or {} when it is not a believable one (unknown stations, no
+## route, a span longer than any real trip, a corrupt tick pair).
+static func _sanitise_transit(raw, p_ticks_per_round: int) -> Dictionary:
+	if not (raw is Dictionary):
+		return {}
+	var o: String = str(raw.get("origin", "")).to_lower()
+	var d: String = str(raw.get("destination", "")).to_lower()
+	if not (o in Transit.STATIONS) or not (d in Transit.STATIONS) or o == d or not Transit.ROUTES.has(Transit.route_key(o, d)):
+		return {}
+	if not (raw.get("depart_tick") is int or raw.get("depart_tick") is float) or not (raw.get("arrive_tick") is int or raw.get("arrive_tick") is float):
+		return {}
+	var t0: int = int(raw["depart_tick"])
+	var t1: int = int(raw["arrive_tick"])
+	var max_span: int = 3 * p_ticks_per_round  # the longest route is 3 rounds
+	if t0 < 0 or t1 <= t0 or t1 - t0 > max_span:
+		return {}
+	return {
+		"origin": o, "destination": d, "depart_tick": t0, "arrive_tick": t1,
+		"rounds": maxi(1, int(raw.get("rounds", 1))), "toll": maxi(0, int(raw.get("toll", 0))),
+	}
 
 func get_total_cargo() -> int:
 	var total: int = 0
@@ -398,7 +506,7 @@ func get_round_progress() -> float:
 	return float(sim_clock.total_ticks % ticks_per_round) / float(ticks_per_round)
 
 func to_dict() -> Dictionary:
-	return {
+	var out: Dictionary = {
 		"sim_clock": sim_clock.to_dict(),
 		"doomsday": doomsday.to_dict(),
 		"profile": profile.to_dict(),
@@ -423,6 +531,9 @@ func to_dict() -> Dictionary:
 		"docked_at": docked_at,
 		"cargo_capacity": cargo_capacity,
 	}
+	if not transit.is_empty():
+		out["transit"] = transit.duplicate()
+	return out
 
 static func from_dict(d: Dictionary) -> RunController:
 	var rc := RunController.new()
@@ -454,7 +565,10 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.insolvent_ticks = maxi(0, int(d.get("insolvent_ticks", 0)))
 	rc.audit_units_traded = maxi(0, int(d.get("audit_units_traded", 0)))
 	rc.docked_at = str(d.get("docked_at", "earth")).to_lower()
-	if not (rc.docked_at in Transit.STATIONS):
+	rc.transit = _sanitise_transit(d.get("transit", {}), rc.ticks_per_round)
+	if not rc.transit.is_empty():
+		rc.docked_at = ""
+	elif not (rc.docked_at in Transit.STATIONS):
 		rc.docked_at = "earth"
 	rc.cargo_capacity = clampi(_int_or(d.get("cargo_capacity", DEFAULT_CARGO_CAPACITY), DEFAULT_CARGO_CAPACITY), 1, MAX_LOADED_CARGO_CAPACITY)
 	rc.cargo = _sanitise_cargo(d.get("cargo", {}), rc.cargo_capacity)
@@ -514,6 +628,8 @@ static func _sanitise_modifiers(raw) -> Dictionary:
 
 func _on_sub_ticked(total: int) -> void:
 	doomsday.step_ticks(1)
+	if not transit.is_empty() and total >= int(transit["arrive_tick"]):
+		_arrive()
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
 		var round_num: int = int(total / ticks_per_round)
 		audit_units_traded = 0

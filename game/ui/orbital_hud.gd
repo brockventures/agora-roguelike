@@ -171,8 +171,12 @@ func get_header_telemetry() -> Dictionary:
 	var round_num: int = 0
 	var progress: float = 0.0
 	var pending_bankrupt: bool = false
+	var docked: String = ""
+	var voyage: Dictionary = {}
 
 	if controller != null:
+		docked = controller.docked_at
+		voyage = controller.transit_info()
 		cr_val = controller.cr
 		if controller.doomsday != null:
 			var d: DoomsdayClock = controller.doomsday
@@ -201,7 +205,13 @@ func get_header_telemetry() -> Dictionary:
 		"speed_label": speed_label(is_paused, sim_speed),
 		"current_round": round_num,
 		"round_progress": progress,
-		"pending_bankruptcy": pending_bankrupt
+		"pending_bankruptcy": pending_bankrupt,
+		"docked_at": docked,
+		"in_transit": not voyage.is_empty(),
+		"transit_origin": str(voyage.get("origin", "")),
+		"transit_destination": str(voyage.get("destination", "")),
+		"transit_eta_rounds": int(voyage.get("eta_rounds", 0)),
+		"transit_progress": float(voyage.get("progress", 0.0)),
 	}
 
 # --- Sidebar & Order Book Ladder Telemetry ---

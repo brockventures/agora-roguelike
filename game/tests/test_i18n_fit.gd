@@ -97,6 +97,7 @@ func _collect(scene: Node) -> Array:
 			add.call("map[%s]" % tag, scene.map_label)
 			add.call("sidebar[%s]" % tag, scene.sidebar_label)
 	rc.doomsday.stage = DoomsdayClock.Stage.NORMAL
+	_collect_travel(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -142,6 +143,41 @@ func _collect(scene: Node) -> Array:
 	add.call("sleep banner", scene.sleep_label)
 	loop.sleep_pause_active = false
 	return rows
+
+
+## The travel loop (#111): the route preview with a belt toll, a refused departure,
+## then the header ETA, the in-transit map text, hint and rejection while under way.
+func _collect_travel(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	scene.hud.set_station("ceres")
+	loop.set_tab(M0Loop.Tab.MAP)
+	scene._refresh_readouts()
+	add.call("header[route]", scene.header_label)
+	add.call("tabs+hint[route]", scene.hint_label)
+	add.call("map[route]", scene.map_label)
+	for reason in ["INSUFFICIENT_CR", "SAME_STATION", "IN_TRANSIT", "NO_ROUTE", "OTHER"]:
+		loop.last_depart_reason = reason
+		scene._refresh_readouts()
+		add.call("map[refused %s]" % reason, scene.map_label)
+	loop.last_depart_reason = ""
+	rc.depart("ceres")
+	scene.hud.gamepad_focus.last_rejection_reason = "IN_TRANSIT"
+	scene.hud.gamepad_focus.last_rejection_payload = {"destination": "ceres"}
+	for tab in [M0Loop.Tab.MAP, M0Loop.Tab.MARKET, M0Loop.Tab.FLEET]:
+		loop.set_tab(tab)
+		scene._refresh_readouts()
+		var tag: String = "transit/tab%d" % int(tab)
+		add.call("header[%s]" % tag, scene.header_label)
+		add.call("tabs+hint[%s]" % tag, scene.hint_label)
+		add.call("map[%s]" % tag, scene.map_label)
+		add.call("sidebar[%s]" % tag, scene.sidebar_label)
+	rc.transit = {}
+	rc.docked_at = "mars"
+	scene.hud.set_station("mars")
+	scene.hud.gamepad_focus.last_rejection_reason = "AUDIT_TRADE_CAP"
+	scene.hud.gamepad_focus.last_rejection_payload = {"cap": 20}
+	loop.set_tab(M0Loop.Tab.MAP)
 
 
 ## All findings for the scene under the current locale.

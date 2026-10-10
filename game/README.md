@@ -69,10 +69,10 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | Action | Pad | Keyboard |
 |---|---|---|
 | Tab prev / next (Map, Market, Fleet) | LB / RB | Q / E |
-| Station prev / next (disabled in M0: the one tradable station is Mars) | LT / RT | 1 / 2 |
+| Station prev / next (selects the destination; trading only where docked) | LT / RT | 1 / 2 |
 | Commodity prev / next | Right stick left / right | 3 / 4 |
 | Focus ladder, BUY/SELL, quantity | D-pad or left stick | Arrows or WASD |
-| Submit order (A) | A | Space / Enter |
+| Submit order (A); on the Map tab, depart for the selected station | A | Space / Enter |
 | Cancel / back (B) | B | Esc / Backspace |
 | Run over: A summary → perks → new run; D-pad picks perks, A buys / starts | A, D-pad | Space, arrows |
 | File Chapter 11 (X) | X | X |
@@ -80,6 +80,23 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | Pause / resume | Start | P |
 | Settings screen (text size, colors, language, rebinding) | View / Back | F1 |
 | Cycle language (en, pseudo; hot swap), also a row in Settings | - | L |
+
+## Travel (Epic 3 task 0, #111)
+
+Every run still starts docked at Arcadia Foundries on Mars. On the Map tab, LT / RT
+pick a destination (the map text shows the route's rounds and any belt toll) and A
+departs. The voyage lives on `RunController.transit` (origin, destination, depart and
+arrive tick, rounds, toll); `docked_at` is `""` until the ship arrives, so no order
+can be placed in transit (`IN_TRANSIT` rejection). Time is
+`Transit.calculate_trip_rounds` x `ticks_per_round` (alignment windows apply); arrival
+is checked on the sim sub-tick, so it is deterministic and replayable. Routes that
+touch Ceres charge `Transit.calculate_toll` (25 CR) on departure. A station's books
+are seeded on first departure toward it (`StationMarket.unlock_station`) and refilled
+by the normal `replenish()` after that; a run that never travels seeds no extra books
+and keeps its save hash. The in-transit state is saved in the controller dict only
+while a voyage is under way (older saves load unchanged). While in transit the second
+header line shows "IN TRANSIT to X, ETA n rounds" and the map draws the ship on its
+lane. Not yet in play: fuel burn, hazards and piracy, perishable decay on belt routes.
 
 ## Accessibility (#37)
 

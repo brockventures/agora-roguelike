@@ -170,6 +170,19 @@ func execute_focused_order() -> Dictionary:
 	var commodity: String = hud.active_commodity
 	var rc: RunController = hud.controller
 
+	# 0. In-transit gate (#111): a ship between stations trades nowhere.
+	if rc != null and rc.is_in_transit():
+		last_rejection_reason = "IN_TRANSIT"
+		var rej_transit: Dictionary = {
+			"ok": false,
+			"reason": last_rejection_reason,
+			"destination": str(rc.transit.get("destination", "")),
+			"active_station": station,
+			"commodity": commodity
+		}
+		_note_rejection(rej_transit)
+		return rej_transit
+
 	# 1. Docked Station Gate (Marvin Review Catch):
 	# The player ship can only execute market trades at the station where it is currently docked.
 	# Cycling HUD station tabs allows browsing other stations' order books read-only, but prevents
@@ -407,6 +420,9 @@ static func rejection_message(reason: String, payload: Dictionary = {}) -> Strin
 		"NOT_DOCKED_AT_STATION":
 			var st: String = str(payload.get("active_station", ""))
 			return Loc.t("REJ_NOT_DOCKED") % (Loc.station(st) if st != "" else Loc.t("REJ_THIS_STATION"))
+		"IN_TRANSIT":
+			var dest: String = str(payload.get("destination", ""))
+			return Loc.t("REJ_IN_TRANSIT") % (Loc.station(dest) if dest != "" else Loc.t("REJ_THIS_STATION"))
 		"INSUFFICIENT_CR":
 			return Loc.t("REJ_INSUFFICIENT_CR")
 		"INSUFFICIENT_CARGO":

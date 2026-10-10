@@ -95,6 +95,10 @@ const PRIORITY_VOICES: int = 2
 
 ## Controls hint shown under the header readout (translation key, see controls_hint()).
 const CONTROLS_HINT_KEY: String = "HUD_CONTROLS_HINT"
+## The Map tab has no orders, so its hint offers A as depart instead (#111). Under
+## way no order can be placed, so the short transit hint replaces both.
+const CONTROLS_HINT_MAP_KEY: String = "HUD_CONTROLS_HINT_MAP"
+const CONTROLS_HINT_TRANSIT_KEY: String = "HUD_CONTROLS_HINT_TRANSIT"
 
 var is_initialized: bool = false
 
@@ -146,6 +150,11 @@ func _init() -> void:
 
 ## Controls hint shown under the header readout, in the current locale.
 func controls_hint() -> String:
+	if loop != null and controller != null:
+		if controller.is_in_transit():
+			return tr(CONTROLS_HINT_TRANSIT_KEY)
+		if loop.tab == M0Loop.Tab.MAP:
+			return tr(CONTROLS_HINT_MAP_KEY)
 	return tr(CONTROLS_HINT_KEY)
 
 
@@ -256,7 +265,7 @@ func continue_saved_run() -> bool:
 	if _loaded_profile != null:
 		rc.profile = _loaded_profile
 	bags = r["bags"]
-	initialize_systems(rc)
+	initialize_systems(rc, false)
 	loop.set_market(r["market"])
 	return true
 
@@ -318,7 +327,8 @@ func handle_suspend_notification(source: String) -> void:
 		loop.handle_wake(source)
 
 
-func initialize_systems(p_controller: RunController = null) -> void:
+## p_dock_start: a new run starts docked at Mars; a loaded one stays wherever it was saved.
+func initialize_systems(p_controller: RunController = null, p_dock_start: bool = true) -> void:
 	controller = p_controller
 	if hud == null:
 		hud = OrbitalHUD.new(controller)
@@ -337,8 +347,11 @@ func initialize_systems(p_controller: RunController = null) -> void:
 		loop = M0Loop.new(hud)
 	else:
 		loop.rebind_controller()
-	# M0 is one station: Mars (Arcadia Foundries). Dock there and disable station cycling.
-	loop.lock_station(M0Loop.M0_STATION)
+	# A new run starts docked at Mars (Arcadia Foundries); a loaded run keeps its dock or voyage.
+	if p_dock_start:
+		loop.dock_at(M0Loop.M0_STATION)
+	else:
+		loop.sync_hud_to_ship()
 	_bind_steam_hooks()
 	if not loop.woke_from_sleep.is_connected(_on_woke_from_sleep):
 		loop.woke_from_sleep.connect(_on_woke_from_sleep)
@@ -907,6 +920,30 @@ func _draw_map() -> void:
 		var text: String = Loc.station(st).to_upper()
 		tactical_map_panel.draw_string_outline(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
 		tactical_map_panel.draw_string(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK if active else HudTheme.INK)
+	_draw_player_ship(origin, round_num, font)
+
+
+## The player's ship on its lane, drawn over the stations: a dashed ink lane
+## (rust across the belt), a small ochre hull and a YOU tag. While docked, an
+## ochre ring marks the home station.
+func _draw_player_ship(origin: Vector2, round_num: int, font: Font) -> void:
+	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
+	if voyage.is_empty():
+		if controller != null and controller.docked_at != "":
+			var home: Vector2 = tactical_map.get_station_screen_pos(controller.docked_at, round_num) - origin
+			tactical_map_panel.draw_arc(home, SolTacticalMap.STATION_NODE_RADIUS_PX + 6.0, 0.0, TAU, 32, HudTheme.OCHRE_DARK, 3.0, true)
+		return
+	var a: Vector2 = Vector2(voyage["start_pos"]) - origin
+	var b: Vector2 = Vector2(voyage["end_pos"]) - origin
+	var lane: Color = HudTheme.RUST if bool(voyage["is_belt"]) else HudTheme.INK
+	tactical_map_panel.draw_dashed_line(a, b, lane, 3.0, 10.0, true)
+	var ship: Vector2 = Vector2(voyage["pos"]) - origin
+	HudTheme.draw_flat_disc(tactical_map_panel, ship, 9.0, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
+	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var tag: String = tr("MAP_SHIP_TAG")
+	var tag_pos: Vector2 = ship + Vector2(-12.0, 28.0)
+	tactical_map_panel.draw_string_outline(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
+	tactical_map_panel.draw_string(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK)
 
 
 func _refresh_readouts() -> void:
@@ -925,8 +962,14 @@ func _refresh_readouts() -> void:
 		tr("HUD_SPEED") % h["speed_label"],
 		tr("HUD_LANG") % Loc.locale_label()]
 	header_label.text = "   ".join(top)
-	hint_label.text = "%s     %s" % ["  ".join(tabs), controls_hint()]
-	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at)
+	# Under way, the second header line carries the voyage: line one has no room for it
+	# (it overflows the 1248 px label in the pseudo-localised audit), and with the ship
+	# between stations there is little to press anyway.
+	var tail: String = controls_hint()
+	if bool(h["in_transit"]):
+		tail = "%s     %s" % [tr("HUD_TRANSIT") % [Loc.station(str(h["transit_destination"])), _rounds_text(int(h["transit_eta_rounds"]))], tail]
+	hint_label.text = "%s     %s" % ["  ".join(tabs), tail]
+	map_label.text = _fleet_text() if loop.tab == M0Loop.Tab.FLEET else _map_text()
 	sidebar_label.text = _sidebar_text()
 	_update_sidebar_scroll()
 	_refresh_ticker()
@@ -1074,6 +1117,36 @@ func _update_market_highlight() -> void:
 		return
 	var lh: float = float(market_label.get_line_height() + market_label.get_theme_constant("line_spacing"))
 	HudTheme.place_focus_bar(market_highlight, Rect2(market_label.position + Vector2(-4.0, lh * float(market_row_line())), Vector2(market_label.size.x, lh)))
+
+
+## "1 round" / "N rounds".
+static func _rounds_text(n: int) -> String:
+	return Loc.t("ROUNDS_ONE") if n == 1 else Loc.t("ROUNDS_MANY") % n
+
+
+## Map panel text: where the ship is, and either the route the selection would
+## take (docked) or the voyage's ETA (in transit).
+func _map_text() -> String:
+	var out: PackedStringArray = []
+	if controller.is_in_transit():
+		var info: Dictionary = controller.transit_info()
+		out.append(tr("MAP_TRANSIT") % [Loc.station(str(info["origin"])), Loc.station(str(info["destination"]))])
+		out.append(tr("MAP_TRANSIT_ETA") % _rounds_text(int(info["eta_rounds"])))
+		return "\n".join(out)
+	out.append(tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at))
+	var plan: Dictionary = controller.can_depart(hud.active_station)
+	var dest_name: String = Loc.station(hud.active_station)
+	if str(plan["reason"]) == "SAME_STATION":
+		out.append(tr("MAP_PICK"))
+	elif int(plan["rounds"]) > 0:
+		if int(plan["toll"]) > 0:
+			out.append(tr("MAP_ROUTE_TOLL") % [dest_name, _rounds_text(int(plan["rounds"])), int(plan["toll"])])
+		else:
+			out.append(tr("MAP_ROUTE") % [dest_name, _rounds_text(int(plan["rounds"]))])
+	var refusal: String = loop.depart_message()
+	if refusal != "":
+		out.append(refusal)
+	return "\n".join(out)
 
 
 func _fleet_text() -> String:

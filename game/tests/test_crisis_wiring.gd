@@ -11,7 +11,7 @@ func _loop(p_seed: int = 9, p_ticks_per_round: int = 4) -> Dictionary:
 	var rc := RunController.new(null, p_seed, null, {}, p_ticks_per_round)
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
-	lp.lock_station("mars")
+	lp.dock_at("mars")
 	return {"rc": rc, "hud": hud, "loop": lp}
 
 
