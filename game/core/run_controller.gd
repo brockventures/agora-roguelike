@@ -505,6 +505,8 @@ func file_bankruptcy() -> Dictionary:
 	if world != null:
 		world.cancel_contracts()
 		world.cancel_auctions()  # so are its queued call-auction orders
+		# Takeover core (task 7): the failed corp's holdings revert to NPC control.
+		report["forfeited_barons"] = world.forfeit_holdings()
 	bankruptcy_filed.emit(report)
 	return report
 

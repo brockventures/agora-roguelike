@@ -23,6 +23,7 @@
 				"m0_speed"		"#Action_m0_speed"
 				"m0_pause"		"#Action_m0_pause"
 				"m0_locale"		"#Action_m0_locale"
+				"m0_shares"		"#Action_m0_shares"
 				"m0_settings"		"#Action_m0_settings"
 			}
 		}
@@ -48,6 +49,7 @@
 			"Action_m0_speed"		"Cycle speed"
 			"Action_m0_pause"		"Pause / resume"
 			"Action_m0_locale"		"Cycle language"
+			"Action_m0_shares"		"Buy distressed shares"
 			"Action_m0_settings"		"Settings"
 		}
 	}

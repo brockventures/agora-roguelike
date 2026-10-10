@@ -77,6 +77,7 @@ Defined as `m0_*` actions in `project.godot`, routed by `ui/m0_loop.gd`:
 | Run over: A summary → perks → new run; D-pad picks perks, A buys / starts | A, D-pad | Space, arrows |
 | File Chapter 11 (X) | X | X |
 | Cycle speed 1x, 2x, 5x, pause (Y) | Y | R |
+| Buy the lot of shares a distressed baron is auctioning at the docked station (Epic 3 task 7) | L3 (stick click) | F |
 | Pause / resume | Start | P |
 | Settings screen (text size, colors, language, rebinding) | View / Back | F1 |
 | Cycle language (en, pseudo; hot swap), also a row in Settings | - | L |

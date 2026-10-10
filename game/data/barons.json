@@ -2,7 +2,8 @@
   "version": 1,
   "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Data only until Epic 3 tasks 2+ read it (docs/design/epic3-barons.md).",
   "victory": {"barons_required": "all"},
-  "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6},
+  "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6,
+               "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600},
   "heat": {"decay_per_round": 1, "retaliation_at": 6},
   "consequence": {"random_max_loss_bps": 1500},
   "barons": [

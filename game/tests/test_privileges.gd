@@ -118,7 +118,8 @@ func test_a_held_baron_waives_the_toll_and_says_so() -> String:
 	rc.world.state("ares_heavy").holder = "player"
 	rc.depart("mars")
 	_fly(c["loop"], rc)
-	if rc.docked_at != "mars" or rc.cr != 1000:
+	# Rent (task 7) pays a held baron's holder each round of the flight, so CR may only rise.
+	if rc.docked_at != "mars" or rc.cr < 1000:
 		return "docked '%s' cr %d: the holder was charged" % [rc.docked_at, rc.cr]
 	if not _any(_texts(c["hud"]), "docking toll waived at ARCADIA FOUNDRIES"):
 		return "no GalNet waiver line"

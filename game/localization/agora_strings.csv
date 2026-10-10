@@ -147,6 +147,30 @@ SIDE_AUCTION_HIDDEN,"INDICATIVE HIDDEN  REF %d CR"
 SIDE_AUCTION_ORDER,"QUEUED %s %d @ %d"
 SIDE_AUCTION_ORDER_MISS,"QUEUED %s %d @ %d: MISSES"
 SIDE_AUCTION_HINT,"B WITHDRAWS"
+HL_DISTRESS,"%s is in distress: %d shares on offer at %d CR each, up to %d a round"
+HL_SHARES_BOUGHT,"You buy %d %s shares at %d CR each: %d of %d held"
+HL_SHARES_SOLD,"%s sells %d shares to %s at %d CR each"
+HL_SHARES_REFUSED,"Shares refused: %s"
+HL_TAKEOVER,"You take over %s: %d CR treasury absorbed, %d CR debt assumed"
+HL_TAKEOVER_FORCED,"%s: the debt you assumed sinks your corp, Chapter 11 follows"
+HL_TAKEOVER_OTHER,"%s is taken over by %s"
+HL_BANKRUPT_PLAYER,"%s is bankrupt: assets sold for %d CR against %d CR owed, you recover %d CR and take the company"
+HL_BANKRUPT_OTHER,"%s is bankrupt: assets sold for %d CR against %d CR owed, %s takes the company"
+HL_BANKRUPT_NONE,"%s is bankrupt: assets sold for %d CR against %d CR owed, reorganised under new management"
+HL_FORFEIT,"Chapter 11: %s reverts to its own management"
+SHARES_REASON_NO_OFFER,no shares on offer
+SHARES_REASON_NO_CR,not enough CR
+SHARES_REASON_WOULD_BANKRUPT,the purchase would leave you insolvent
+SHARES_REASON_HELD,already held
+TAG_HELD,HELD
+SIDE_HELD_RENT,RENT +%d CR A ROUND
+SIDE_HELD_BY,HELD BY %s
+SIDE_DISTRESS,DISTRESS: %d SHARES @ %d CR
+SIDE_DISTRESS_NONE,DISTRESS: NO SHARES LEFT
+SIDE_DISTRESS_SOLD,DISTRESS: LOT SOLD
+SIDE_INSOLVENT,INSOLVENT RD %d OF %d
+SIDE_SHARES_HELD,YOU HOLD %d OF %d SHARES
+SIDE_SHARES_HINT,F / L3 BUYS THE LOT
 HL_ARES_OFFER,"%s posts a defense contract: %d %s to %s within %d rounds, %d CR"
 HL_ARES_ACCEPTED,"%s: defense contract taken, %d %s due by round %d"
 HL_ARES_DECLINED,%s: defense contract declined
@@ -238,6 +262,7 @@ SET_ACT_CHAPTER11,File Chapter 11
 SET_ACT_SPEED,Cycle speed
 SET_ACT_PAUSE,Pause / resume
 SET_ACT_LOCALE,Cycle language
+SET_ACT_SHARES,Buy distressed shares
 HUD_CHIP_LANG,LANG
 HUD_CHIP_CREDITS,CREDITS
 HUD_CHIP_DEBT,DEBT
