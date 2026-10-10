@@ -350,6 +350,14 @@ func _post_baron_event(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_ARES_DELIVERED", [who, int(e["qty"]), com, int(e["paid"])], "MARKET", "INFO")
 		"squeeze":
 			hud.post_headline_tr("HL_ARES_SQUEEZE", [who, Loc.station_arg(str(e["station"])), com, int(e["price_bps"]) / 100], "CRISIS", "WARNING")
+		"hoard":
+			hud.post_headline_tr("HL_TITAN_HOARD", [who, com, Loc.station_arg(str(e["station"]))], "MARKET", "INFO")
+		"corner":
+			hud.post_headline_tr("HL_TITAN_CORNER", [who, com, Loc.station_arg(str(e["station"])), int(e["price_bps"]) / 100], "CRISIS", "WARNING")
+		"release":
+			hud.post_headline_tr("HL_TITAN_RELEASE", [who, com, Loc.station_arg(str(e["station"])), -int(e["price_bps"]) / 100], "MARKET", "INFO")
+		"spoil":
+			hud.post_headline_tr("HL_TITAN_SPOIL", [who, int(e["qty"]), com], "MARKET", "INFO")
 		"missed":
 			hud.post_headline_tr("HL_ARES_MISSED", [who, int(e["penalty"])], "DEBT", "CRITICAL")
 			if bool(e.get("forced_ch11", false)):
@@ -365,6 +373,24 @@ func squeeze_tag(station: String, commodity: String) -> String:
 	if q.is_empty():
 		return ""
 	return Loc.t("TAG_SQUEEZE") % (int(q["price_bps"]) / 100)
+
+
+## Hoard tag for one book as the player sees it ("TITAN HOARDING", "CORNER +25%",
+## "RELEASE -15%"), "" when it is not being hoarded or there is no world.
+func hoard_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var h: Dictionary = controller.world.hoard_on(station, commodity)
+	if h.is_empty():
+		return ""
+	match str(h["phase"]):
+		TitanCryoHydro.PHASE_HOARDING:
+			return Loc.t("TAG_HOARD")
+		TitanCryoHydro.PHASE_CORNERED:
+			return Loc.t("TAG_CORNER") % (int(h["price_bps"]) / 100)
+		TitanCryoHydro.PHASE_RELEASING:
+			return Loc.t("TAG_RELEASE") % (-int(h["price_bps"]) / 100)
+	return ""
 
 
 func _on_margin_call(amount: int) -> void:
@@ -886,7 +912,7 @@ func _on_round_advanced(round_num: int) -> void:
 	# advance_round decides the baron behaviours and writes them into world state;
 	# the mods are then re-emitted from that state, since replenish() reseeds every book.
 	if controller != null and controller.world != null:
-		for e in controller.world.advance_round(round_num, controller):
+		for e in controller.world.advance_round(round_num, controller, market):
 			_post_baron_event(e)
 		market.set_world_mods(controller.world.market_mods())
 	market.replenish()

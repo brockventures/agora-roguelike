@@ -151,6 +151,13 @@ TAG_PIPELINE_YOURS,PIPELINE (YOURS)
 TAG_TOLL,DOCKING TOLL %d CR
 TAG_TOLL_EXEMPT,DOCKING TOLL EXEMPT
 TAG_SQUEEZE,SQUEEZE +%d%%
+TAG_HOARD,HOARDED
+TAG_CORNER,CORNER +%d%%
+TAG_RELEASE,RELEASE -%d%%
+HL_TITAN_HOARD,"%s is buying up %s at %s: books thinning"
+HL_TITAN_CORNER,"%s has cornered %s at %s: price up %d%%, books thin"
+HL_TITAN_RELEASE,"%s releases its %s hoard at %s: price down %d%%, books flooding"
+HL_TITAN_SPOIL,"%s: %d units of hoarded %s spoiled in storage"
 HL_ARES_OFFER,"%s posts a defense contract: %d %s to %s within %d rounds, %d CR"
 HL_ARES_ACCEPTED,"%s: defense contract taken, %d %s due by round %d"
 HL_ARES_DECLINED,%s: defense contract declined

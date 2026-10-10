@@ -100,6 +100,7 @@ func _collect(scene: Node) -> Array:
 	_collect_travel(scene, add)
 	_collect_barons(scene, add)
 	_collect_ares(scene, add)
+	_collect_titan(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -207,6 +208,33 @@ func _collect_ares(scene: Node, add: Callable) -> void:
 	scene._refresh_readouts()
 
 
+## Titan Cryo-Hydro (Epic 3 task 5, part of #16): the Ceres board row and sidebar under
+## each hoard tag (HOARDED, CORNER, RELEASE). The headlines are checked in findings().
+func _collect_titan(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	loop.market.unlock_station("ceres")
+	var st: BaronState = rc.world.state("titan_cryo_hydro")
+	for phase in ["hoarding", "cornered", "releasing"]:
+		st.scratch["hoard"] = {"FUEL": {"phase": phase, "age": 2, "hold": 6, "rel": 0, "ask_depth_bps": 8000, "announced": true, "spoiled": 0}}
+		loop.market.set_world_mods(rc.world.market_mods())
+		scene.hud.set_station("ceres")
+		scene.hud.set_commodity("FUEL")
+		loop.set_tab(M0Loop.Tab.MARKET)
+		scene._refresh_readouts()
+		scene.market_label.text = scene._board_text()
+		add.call("market board[titan %s]" % phase, scene.market_label)
+		add.call("sidebar[titan %s]" % phase, scene.sidebar_label)
+	rc.world = null
+	loop.market.set_world(null)
+	loop.market.set_world_mods([])
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
 ## The travel loop (#111): the route preview with a belt toll, a refused departure,
 ## then the header ETA, the in-transit map text, hint and rejection while under way.
 func _collect_travel(scene: Node, add: Callable) -> void:
@@ -254,7 +282,16 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_ARES_OFFER", [Loc.maker_arg("ares_heavy"), 60, Loc.commodity_arg("MACHINERY"), Loc.station_arg("mars"), 6, 99999])]),
 		Loc.format("TICKER_LINE", [Loc.category("DEBT"), Loc.format("HL_ARES_MISSED", [Loc.maker_arg("ares_heavy"), 99999])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines:
+	var titan: Dictionary = Loc.maker_arg("titan_cryo_hydro")
+	var fuel: Dictionary = Loc.commodity_arg("FUEL")
+	var ceres: Dictionary = Loc.station_arg("ceres")
+	var titan_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TITAN_HOARD", [titan, fuel, ceres])]),
+		Loc.format("TICKER_LINE", [Loc.category("CRISIS"), Loc.format("HL_TITAN_CORNER", [titan, fuel, ceres, 99])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TITAN_RELEASE", [titan, fuel, ceres, 99])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TITAN_SPOIL", [titan, 999, Loc.commodity_arg("FOOD")])]),
+	]
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:

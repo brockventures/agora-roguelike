@@ -55,10 +55,18 @@
       },
       "params": {
         "float_commodities": ["FUEL", "FOOD"],
-        "hoard_trigger_depth_bps": 7000,
+        "hoard_trigger_depth_bps": 8500,
         "hoard_cap_qty": 40,
         "release_after_rounds": 6,
-        "corner_premium_bps": 2500
+        "corner_premium_bps": 2500,
+        "corner_inventory_qty": {"FUEL": 330, "FOOD": 300},
+        "corner_ask_depth_bps": 4000,
+        "release_ask_depth_bps": 20000,
+        "release_discount_bps": 1500,
+        "release_rounds": 2,
+        "release_sell_qty": 60,
+        "cooldown_rounds": 4,
+        "food_decay_bps": 500
       }
     },
     {

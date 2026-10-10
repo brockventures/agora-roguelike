@@ -1085,7 +1085,7 @@ func _sidebar_text() -> String:
 	out.append(tr("SIDE_ORDER") % [tr("ORDER_BUY") if buying else tr("ORDER_SELL"), f.order_qty])
 	out.append(tr("SIDE_HELD") % [hud.get_cargo_qty(hud.active_commodity), Loc.commodity(hud.active_commodity), controller.get_total_cargo(), controller.cargo_capacity])
 	var priv_lines: Array = []
-	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.squeeze_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station), _contract_sidebar_line()]:
+	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.squeeze_tag(hud.active_station, hud.active_commodity), loop.hoard_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station), _contract_sidebar_line()]:
 		if line != "":
 			priv_lines.append(line)
 	if not priv_lines.is_empty():
@@ -1128,9 +1128,11 @@ func _board_text() -> String:
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
 			var tag: String = loop.crisis_deck.tag_for(hud.active_station, c) if loop.crisis_deck != null else ""
-			# A squeezed book shows SQUEEZE in place of its pipeline tag (the row has no room
+			# A squeezed (or hoarded) book shows SQUEEZE (or its hoard tag) in place of its pipeline tag (the row has no room
 			# for both in the pseudo locale); the sidebar still lists the pipeline.
 			var pipe: String = loop.squeeze_tag(hud.active_station, c)
+			if pipe == "":
+				pipe = loop.hoard_tag(hud.active_station, c)
 			if pipe == "":
 				pipe = loop.pipeline_tag(hud.active_station, c)
 			if pipe != "":

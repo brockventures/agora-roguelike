@@ -212,6 +212,30 @@ func _mods_for(station: String, commodity: String) -> Dictionary:
 	return {"depth_bps": depth, "spread_bps": spread, "price_bps": price, "ask_price_bps": ask_price, "ask_depth_bps": depth * ask_depth / 10000}
 
 
+## Total ask quantity a freshly seeded book carries at a folded ask-depth factor
+## (the integer ladder seed_book builds: 12 + 7 x level units, scaled and floored
+## per level). Titan Cryo-Hydro (Epic 3 task 5) sizes its hoard in these units.
+static func ask_qty_at(ask_depth_bps: int) -> int:
+	var total: int = 0
+	for i in DEPTH_LEVELS:
+		total += maxi(1, (12 + (i + 1) * 7) * ask_depth_bps / 10000)
+	return total
+
+
+## The ask quantity still resting on a book as bps of what the current mods seed
+## (10000 = untouched; below it the round's trading has eaten into the ask).
+## -1 when there is no such book.
+func ask_depth_ratio_bps(station: String, commodity: String) -> int:
+	var book: OrderBook = get_book(station, commodity)
+	if book == null:
+		return -1
+	var nominal: int = StationMarket.ask_qty_at(int(_mods_for(station.to_lower(), commodity.to_upper())["ask_depth_bps"]))
+	var left: int = 0
+	for o: Order in book.asks:
+		left += o.remaining_qty()
+	return left * 10000 / maxi(1, nominal)
+
+
 ## Refills every book to full depth (called once per round).
 func replenish() -> void:
 	_reseed_all()
