@@ -646,6 +646,9 @@ func test_at_the_threshold_the_baron_queues_then_the_event_lands_next_round() ->
 	var fine: int = int(inst["effects"]["fine_cr"])
 	if fine <= 0 or _principal(c["rc"]) != principal0 + fine:
 		return "the fine %d did not reach the debt (%d -> %d)" % [fine, principal0, _principal(c["rc"])]
+	var lines: Array = CrisisDeck.describe(inst)
+	if lines.any(func(l): return str(l).contains("*")) or not lines.any(func(l): return str(l).begins_with("Fine: ")):
+		return "modal lines %s" % str(lines)
 	_boundary(c, 3)
 	if not _kinds(_boundary(c, 4)).filter(func(k): return k == "retaliation").is_empty():
 		return "it re-fired with no heat"

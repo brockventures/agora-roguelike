@@ -100,7 +100,7 @@
       "tier": "baron",
       "origin": "consequence",
       "baron_archetype": "short_squeezer",
-      "name": "Ares Heavy Calls Its Markers",
+      "name": "Ares Markers",
       "headline": "RETALIATION: Ares Heavy calls its markers on you, {station} book squeezed for {rounds} rounds",
       "duration_rounds": [3, 4],
       "effects": {"depth_bps": 5000, "price_bps": 2000, "spread_bps": 20000, "fine_bps": 1000}
@@ -111,7 +111,7 @@
       "tier": "baron",
       "origin": "consequence",
       "baron_archetype": "hoarder",
-      "name": "Titan Cryo-Hydro Embargo",
+      "name": "Titan Embargo",
       "headline": "RETALIATION: Titan Cryo-Hydro embargoes you, {station} book thin and dear for {rounds} rounds",
       "duration_rounds": [3, 4],
       "effects": {"depth_bps": 4000, "price_bps": 2500, "spread_bps": 20000, "fine_bps": 800}
@@ -122,7 +122,7 @@
       "tier": "baron",
       "origin": "consequence",
       "baron_archetype": "auctioneer",
-      "name": "Sol Central Audit",
+      "name": "Sol Audit",
       "headline": "RETALIATION: Sol Central audits you, {station} book blown out for {rounds} rounds",
       "duration_rounds": [3, 4],
       "effects": {"depth_bps": 5000, "price_bps": 1500, "spread_bps": 25000, "fine_bps": 1000}
@@ -133,7 +133,7 @@
       "tier": "baron",
       "origin": "random",
       "baron_archetype": "short_squeezer",
-      "name": "Ares Opportunistic Squeeze",
+      "name": "Ares Squeeze",
       "headline": "SQUEEZE: Ares Heavy leans on the {station} book for {rounds} rounds",
       "duration_rounds": [2, 3],
       "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}
@@ -144,7 +144,7 @@
       "tier": "baron",
       "origin": "random",
       "baron_archetype": "hoarder",
-      "name": "Titan Opportunistic Hoard",
+      "name": "Titan Hoard",
       "headline": "HOARD: Titan Cryo-Hydro buys up the {station} book for {rounds} rounds",
       "duration_rounds": [2, 3],
       "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}
@@ -155,7 +155,7 @@
       "tier": "baron",
       "origin": "random",
       "baron_archetype": "auctioneer",
-      "name": "Sol Central Levy",
+      "name": "Sol Levy",
       "headline": "LEVY: Sol Central posts a surprise levy at {station} for {rounds} rounds",
       "duration_rounds": [2, 3],
       "effects": {"depth_bps": 6000, "price_bps": 1500, "spread_bps": 15000, "fine_bps": 1500}

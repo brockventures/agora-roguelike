@@ -395,6 +395,8 @@ static func describe(c: Dictionary, compact: bool = false) -> Array:
 		var scope: String
 		if str(c.get("station", "")) == "*":
 			scope = Loc.t("CRISIS_FX_ALL_BOOKS")
+		elif str(c.get("commodity", "")) == "*":
+			scope = Loc.station(str(c.get("station", ""))).to_upper() if compact else "%s %s" % [Loc.station(str(c.get("station", ""))).to_upper(), Loc.t("CRISIS_FX_ALL_GOODS")]
 		elif compact:
 			scope = Loc.commodity(str(c.get("commodity", "")))
 		else:
