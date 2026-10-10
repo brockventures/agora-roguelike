@@ -216,12 +216,45 @@ func test_apply_stat_integer_math() -> String:
 
 func test_award_severance_formula() -> String:
 	var p := MetaProfile.new()
-	var award := Parachutes.award_severance(p, 2, 100000)
-	var want: int = 2 * Parachutes.SEVERANCE_PER_FILING + 100000 * Parachutes.SEVERANCE_NET_WORTH_BPS / 10000
+	var award := Parachutes.award_severance(p, 2, 100000, 0, 4)
+	var want: int = 2 * Parachutes.SEVERANCE_PER_FILING + 100000 * Parachutes.SEVERANCE_NET_WORTH_BPS / 10000 + 4 * Parachutes.SEVERANCE_PER_ROUND
 	if award != want or p.severance_points != want:
 		return "award %d points %d want %d" % [award, p.severance_points, want]
-	if Parachutes.award_severance(p, -4, -9) != 0 or p.severance_points != want:
+	if Parachutes.award_severance(p, -4, -9, 0, -2) != 0 or p.severance_points != want:
 		return "negative inputs must award zero"
+	return "ok"
+
+func test_severance_idle_run_vs_active_trader() -> String:
+	# D1 acceptance: a run that only presses X earns less than one cheap perk (cost 100),
+	# and a 20k-net-worth trader earns well above an idle run.
+	var p_idle := MetaProfile.new()
+	# Idle run: starting fresh stake 10,000 CR peak, 0 rounds survived before collapse.
+	var idle_award := Parachutes.award_severance(p_idle, 1, 10000, 0, 0)
+	if idle_award >= 100:
+		return "idle run earned %d points, must be less than 100 (cheapest perk)" % idle_award
+
+	var p_active := MetaProfile.new()
+	# Active 20k trader: 20,000 CR peak net worth, survived 8 rounds.
+	var active_award := Parachutes.award_severance(p_active, 1, 20000, 0, 8)
+	if active_award < 140:
+		return "active trader earned %d, expected >= 140" % active_award
+	if active_award <= idle_award * 2:
+		return "active trader (%d) should earn well above idle run (%d)" % [active_award, idle_award]
+	return "ok"
+
+func test_dead_perks_roadmap_descriptions() -> String:
+	# D2 acceptance: keep corrupt_regulator, fuel_hedge, black_market_corridors in M0.
+	# Add a perk-status note to each one's description naming the follow-up roadmap system.
+	var t := _shipped()
+	for id in ["corrupt_regulator", "fuel_hedge", "black_market_corridors"]:
+		if not t.has_perk(id):
+			return "missing perk %s" % id
+		var perk: Dictionary = t.perks[id]
+		var desc: String = str(perk.get("description", ""))
+		if desc.is_empty():
+			return "perk %s missing description" % id
+		if not ("roadmap" in desc.to_lower() or "lands" in desc.to_lower()):
+			return "perk %s description missing roadmap note: %s" % [id, desc]
 	return "ok"
 
 # --- profile ---

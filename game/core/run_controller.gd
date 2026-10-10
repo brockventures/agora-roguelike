@@ -205,6 +205,8 @@ var _doomsday_base: Dictionary = {}
 ## peak_net_worth: highest (liquidation value - total debt) seen, in CR.
 ## Reset for each new corp.
 var peak_net_worth: int = 0
+## Absolute sim tick when the current corporation started (for per-corp rounds survived).
+var _corp_start_tick: int = 0
 ## corp_number: 1-based index of the current corp. _banked_corp is the corp whose
 ## Severance is already banked (once-only guard, per corp).
 var corp_number: int = 1
@@ -391,7 +393,9 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 	# Breaking a baron = holding it as the corp ends. Counted here, before a filing's
 	# forfeit reverts the holdings, once per corp (the _banked_corp guard above).
 	barons_broken_award = world.held_by(Takeover.PLAYER).size() if world != null else 0
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award)
+	var corp_ticks: int = maxi(0, sim_clock.total_ticks - _corp_start_tick)
+	var rounds: int = int(corp_ticks / ticks_per_round) if ticks_per_round > 0 else 0
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds)
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
@@ -514,6 +518,7 @@ func file_bankruptcy() -> Dictionary:
 	_bank_corp("bankruptcy", lost, 1, corp_seed(corp_number + 1))
 	# Found the new corp in place.
 	corp_number += 1
+	_corp_start_tick = sim_clock.total_ticks
 	insolvent_ticks = 0
 	if not _modifiers_explicit:
 		apply_modifiers(_derive_modifiers(profile))
