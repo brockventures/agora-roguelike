@@ -51,6 +51,10 @@ static func restore(data: Dictionary) -> Dictionary:
 	var wd = data.get("world", null)
 	if wd is Dictionary:
 		rc.world = Barons.from_dict(wd)
+		# Like crisis_mods: the saved books are already made by their barons, so
+		# wire the world in without reseeding.
+		mkt.world = rc.world
+		mkt.world_mods = rc.world.market_mods()
 	return {
 		"ok": true,
 		"error": "",

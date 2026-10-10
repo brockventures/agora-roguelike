@@ -31,13 +31,20 @@ class Session extends RefCounted:
 	var inputs: Array = []
 	var recording: bool = false
 	var _start_profile: Dictionary = {}
+	## True when the run was started with the sector barons attached (what a new
+	## game does). Off by default: a plain session has no world and hashes as it
+	## did before Epic 3. Recorded as `world` only when set.
+	var with_world: bool = false
 
-	func _init(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND) -> void:
+	func _init(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false) -> void:
 		seed = p_seed
+		with_world = p_world
 		frame_delta = p_frame_delta
 		_start_profile = p_profile.duplicate(true)
 		var profile := MetaProfile.from_dict(p_profile)
 		controller = RunController.new(profile, p_seed, null, {}, p_ticks_per_round)
+		if p_world:
+			controller.world = Barons.for_new_run()
 		hud = OrbitalHUD.new(controller)
 		loop = M0Loop.new(hud)
 		loop.dock_at(M0Loop.M0_STATION)
@@ -62,7 +69,7 @@ class Session extends RefCounted:
 		return RunSave.state_hash(controller, loop.market, bags)
 
 	func to_recording() -> Dictionary:
-		return {
+		var rec: Dictionary = {
 			"seed": seed,
 			"profile": _start_profile.duplicate(true),
 			"frame_delta": frame_delta,
@@ -73,10 +80,13 @@ class Session extends RefCounted:
 			"final_tick": controller.sim_clock.total_ticks,
 			"state_hash": state_hash(),
 		}
+		if with_world:
+			rec["world"] = true
+		return rec
 
 
-static func start_recording(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND) -> Session:
-	var s := Session.new(p_seed, p_profile, p_frame_delta, p_ticks_per_round)
+static func start_recording(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false) -> Session:
+	var s := Session.new(p_seed, p_profile, p_frame_delta, p_ticks_per_round, p_world)
 	s.recording = true
 	return s
 
@@ -97,7 +107,8 @@ static func replay(rec: Dictionary) -> Dictionary:
 	var profile = rec.get("profile", {})
 	var s := Session.new(int(rec["seed"]), profile if profile is Dictionary else {},
 		_frame_delta_of(rec),
-		int(rec.get("ticks_per_round", RunController.DEFAULT_TICKS_PER_ROUND)))
+		int(rec.get("ticks_per_round", RunController.DEFAULT_TICKS_PER_ROUND)),
+		bool(rec.get("world", false)))
 	var total_frames: int = int(rec["frames"])
 	var idx: int = 0
 	for entry in rec["inputs"]:

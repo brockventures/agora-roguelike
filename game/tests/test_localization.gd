@@ -96,7 +96,7 @@ func test_every_csv_key_is_reachable() -> String:
 	var corpus: String = ""
 	for path in script_paths():
 		corpus += FileAccess.get_file_as_string(path)
-	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "LANG_", "SET_ACT_", "SET_PALETTE_"]
+	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_"]
 	var dead: Array = []
 	for k in rows:
 		var fam := false
@@ -136,6 +136,11 @@ func test_data_files_have_derived_keys_and_english_matches() -> String:
 	for c in Transit.COMMODITIES:
 		want.call("COMMODITY_" + Loc.slug(c), c)
 	want.call("MAKER_" + Loc.slug(StationMarket.MAKER_ID), StationMarket.MAKER_NAME)
+	# Epic 3: every baron in barons.json has a maker name (its name, upper-cased) and a short ladder tag.
+	for bd in Barons.load_data().get("barons", []):
+		want.call("MAKER_" + Loc.slug(str(bd["id"])), str(bd["name"]).to_upper())
+		if not rows.has("MAKERTAG_" + Loc.slug(str(bd["id"]))):
+			problems.append("missing MAKERTAG_" + Loc.slug(str(bd["id"])))
 	for i in M0Loop.TAB_NAMES.size():
 		want.call("TAB_" + Loc.slug(M0Loop.TAB_NAMES[i]), M0Loop.TAB_NAMES[i])
 	for s in ["NORMAL", "UNSTABLE", "CRITICAL", "IMMINENT", "COLLAPSED"]:

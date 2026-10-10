@@ -63,8 +63,16 @@ static func commodity(id: String) -> String:
 	return data_text("COMMODITY_" + slug(id), id)
 
 
-static func maker() -> String:
-	return data_text("MAKER_" + slug(StationMarket.MAKER_ID), StationMarket.MAKER_NAME)
+## A book maker's display name: the default Ares Heavy, or any baron by id.
+## `fallback` is the data file's English (the baron's name, upper-cased).
+static func maker(id: String = StationMarket.MAKER_ID, fallback: String = "") -> String:
+	var english: String = StationMarket.MAKER_NAME if id == StationMarket.MAKER_ID else fallback
+	return data_text("MAKER_" + slug(id), english)
+
+
+## The short ladder tag for a maker ("ARES", "TITAN", "SOL").
+static func maker_tag(id: String, fallback: String = "") -> String:
+	return data_text("MAKERTAG_" + slug(id), fallback if fallback != "" else maker(id))
 
 
 static func stage(stage_name: String) -> String:

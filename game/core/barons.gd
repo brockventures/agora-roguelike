@@ -55,6 +55,29 @@ static func load_data(path: String = DEFAULT_PATH) -> Dictionary:
 	return parsed
 
 
+## A world for a new run: the shipped barons.json, or null when it is missing or
+## invalid (the run then plays as it always did, with no world attached).
+static func for_new_run() -> Barons:
+	if not Barons.validate(Barons.load_data()).is_empty():
+		return null
+	return Barons.new()
+
+
+## Book mods the world emits this round (StationMarket.set_world_mods), in the
+## fold order the market relies on: barons by sorted id, then rival fleets by
+## sorted id. Epic 3 task 2 only wires the plumbing: nothing emits a mod yet
+## (privileges are task 3, archetype behaviours tasks 4-6, rivals task 10).
+func market_mods() -> Array:
+	var out: Array = []
+	for id in ids():
+		out.append_array(_mods_of(id))
+	return out
+
+
+func _mods_of(_id: String) -> Array:
+	return []
+
+
 ## Baron ids in sorted order: the only order anything may iterate them in.
 func ids() -> Array:
 	var out: Array = states.keys()
