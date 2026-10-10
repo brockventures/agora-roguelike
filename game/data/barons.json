@@ -6,6 +6,21 @@
                "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600},
   "heat": {"decay_per_round": 1, "retaliation_at": 6},
   "consequence": {"random_max_loss_bps": 1500},
+  "rivals": {
+    "capacity": 60,
+    "decide_chance_bps": 3500,
+    "react_chance_bps": 8000,
+    "min_profit_cr": 60,
+    "cautious_margin_bps": 1500,
+    "bid_after_strain": 2,
+    "bid_chance_bps": 5000,
+    "bid_cr_share_bps": 5000,
+    "fleets": [
+      {"id": "kessler_freight", "name": "Kessler Freight", "home": "earth", "cr": 24000, "trait": "front_runner", "stance": "bold"},
+      {"id": "blackwater_lines", "name": "Blackwater Lines", "home": "mars", "cr": 20000, "trait": "privateer_sponsor", "stance": "cautious"},
+      {"id": "ember_haulage", "name": "Ember Haulage", "home": "mars", "cr": 16000, "trait": "hauler", "stance": "bold"}
+    ]
+  },
   "levers": {
     "corner": {"hold_qty": 60, "cover_qty": 100, "squeeze_bps": 5000, "ask_depth_bps": 4000},
     "margin": {"maintenance_bps": 10500, "pressure_per_unit_bps": 40, "pressure_max_bps": 6000, "liquidate_bps": 3000,

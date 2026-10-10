@@ -9,6 +9,7 @@ const FRAME: float = 1.0 / 60.0 + 0.0001
 func _main() -> MainScene:
 	var m: MainScene = MainScript.new()
 	m.start_new_run(5)
+	m.controller.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
 	return m
 
 

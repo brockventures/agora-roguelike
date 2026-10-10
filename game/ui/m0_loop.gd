@@ -398,6 +398,9 @@ func acknowledge_monopoly() -> bool:
 func _post_baron_headline(e: Dictionary) -> void:
 	if hud == null:
 		return
+	if str(e.get("kind", "")).begins_with("rival_"):
+		_post_rival_headline(e)
+		return
 	var who: Dictionary = Loc.maker_arg(str(e.get("baron", "")))
 	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
 	match str(e.get("kind", "")):
@@ -449,20 +452,20 @@ func _post_baron_headline(e: Dictionary) -> void:
 			elif str(e.get("buyer", "")) == Takeover.PLAYER:
 				hud.post_headline_tr("HL_SHARES_BOUGHT", [int(e["qty"]), who, int(e["px"]), int(e["held"]), int(e["threshold"])], "MARKET", "INFO")
 			else:
-				hud.post_headline_tr("HL_SHARES_SOLD", [who, int(e["qty"]), str(e.get("buyer", "")).to_upper(), int(e["px"])], "MARKET", "INFO")
+				hud.post_headline_tr("HL_SHARES_SOLD", [who, int(e["qty"]), Loc.maker_arg(str(e.get("buyer", ""))), int(e["px"])], "MARKET", "INFO")
 		"takeover":
 			if str(e.get("holder", "")) == Takeover.PLAYER:
 				hud.post_headline_tr("HL_TAKEOVER", [who, int(e["treasury"]), int(e["debt"])], "INSOLVENCY", "CRITICAL")
 				if bool(e.get("forced_ch11", false)):
 					hud.post_headline_tr("HL_TAKEOVER_FORCED", [who], "INSOLVENCY", "CRITICAL")
 			else:
-				hud.post_headline_tr("HL_TAKEOVER_OTHER", [who, str(e.get("holder", "")).to_upper()], "INSOLVENCY", "WARNING")
+				hud.post_headline_tr("HL_TAKEOVER_OTHER", [who, Loc.maker_arg(str(e.get("holder", "")))], "INSOLVENCY", "WARNING")
 		"bankrupt":
 			var holder: String = str(e.get("holder", ""))
 			if holder == Takeover.PLAYER:
 				hud.post_headline_tr("HL_BANKRUPT_PLAYER", [who, int(e["liquidation"]), int(e["owed"]), int(e["recovered"])], "INSOLVENCY", "CRITICAL")
 			elif holder != "":
-				hud.post_headline_tr("HL_BANKRUPT_OTHER", [who, int(e["liquidation"]), int(e["owed"]), holder.to_upper()], "INSOLVENCY", "CRITICAL")
+				hud.post_headline_tr("HL_BANKRUPT_OTHER", [who, int(e["liquidation"]), int(e["owed"]), Loc.maker_arg(holder)], "INSOLVENCY", "CRITICAL")
 			else:
 				hud.post_headline_tr("HL_BANKRUPT_NONE", [who, int(e["liquidation"]), int(e["owed"])], "INSOLVENCY", "CRITICAL")
 		"forfeit":
@@ -471,6 +474,41 @@ func _post_baron_headline(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_ARES_MISSED", [who, int(e["penalty"])], "DEBT", "CRITICAL")
 			if bool(e.get("forced_ch11", false)):
 				hud.post_headline_tr("HL_ARES_RETALIATION", [who], "INSOLVENCY", "CRITICAL")
+
+
+## GalNet lines for the rival fleets (Epic 3 task 10). A sailing that answers the
+## player's departure always posts, as one line that leads with what the fleet saw. A
+## spontaneous sailing or sale posts only where the player is docked, so the ticker is not
+## buried by trades the player cannot act on; the map shows every fleet in flight.
+func _post_rival_headline(e: Dictionary) -> void:
+	var fleet: Dictionary = Loc.maker_arg(str(e.get("fleet", "")))
+	var station: Dictionary = Loc.station_arg(str(e.get("station", "")))
+	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
+	var here: bool = controller != null and controller.docked_at == str(e.get("station", ""))
+	match str(e.get("kind", "")):
+		"rival_depart":
+			var dest: Dictionary = Loc.station_arg(str(e["destination"]))
+			if bool(e.get("reaction", false)):
+				hud.post_headline_tr("HL_RIVAL_REACT", [fleet, Loc.station_arg(str(e.get("watched", ""))), int(e["qty"]), com, dest], "MARKET", "WARNING")
+			elif here:
+				hud.post_headline_tr("HL_RIVAL_DEPART", [fleet, int(e["qty"]), com, station, dest], "MARKET", "INFO")
+		"rival_trade":
+			if here:
+				hud.post_headline_tr("HL_RIVAL_SELL", [fleet, int(e["qty"]), com, station, int(e["price"])], "MARKET", "INFO")
+
+
+## Rival tag for one book ("KESSLER BOUGHT 40", "EMBER SOLD 52"): the first fleet that
+## traded it this round; "" when none did or there is no world.
+func rival_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var moves: Array = controller.world.rival_moves_on(station, commodity, controller.get_current_round())
+	if moves.is_empty():
+		return ""
+	var m: Dictionary = moves[0]
+	var def: Dictionary = controller.world.rival_def(str(m["fleet"]))
+	var tag: String = Loc.maker_tag(str(m["fleet"]), str(def.get("name", "")).split(" ")[0].to_upper())
+	return Loc.t("TAG_RIVAL_BOUGHT" if str(m["side"]) == "BUY" else "TAG_RIVAL_SOLD") % [tag, int(m["qty"])]
 
 
 ## Squeeze tag for one book as the player sees it ("SHORT SQUEEZE +20%"), "" when
@@ -825,6 +863,11 @@ func _on_transit_departed(info: Dictionary) -> void:
 	# Unlock the destination's books now, so its ladder is live while the player browses it.
 	if market != null:
 		market.unlock_station(str(info["destination"]))
+	# Idle rival fleets see the departure (decision 9.5): the world moves them now, their
+	# GalNet lines are posted after the player's own departure line below.
+	var rival_events: Array = []
+	if controller != null and controller.world != null and market != null:
+		rival_events = controller.world.react_to_departure(controller, market, info)
 	if hud == null:
 		return
 	var origin: Dictionary = Loc.station_arg(str(info["origin"]))
@@ -836,6 +879,8 @@ func _on_transit_departed(info: Dictionary) -> void:
 		hud.post_headline_tr("HL_SHIP_DEPART_MANY", [origin, dest, rounds], "TRANSIT", "INFO")
 	if int(info["toll"]) > 0:
 		hud.post_headline_tr("HL_BELT_TOLL", [int(info["toll"]), origin, dest], "TRANSIT", "WARNING")
+	for e in rival_events:
+		_post_baron_event(e)
 
 
 func _on_transit_arrived(info: Dictionary) -> void:
@@ -1295,6 +1340,11 @@ func _on_round_advanced(round_num: int) -> void:
 			_post_baron_event(e)
 		market.set_world_mods(controller.world.market_mods())
 	market.replenish()
+	# Rival fleets trade the fresh books (Epic 3 task 10), so their dent stays on the
+	# ladder for the round.
+	if controller != null and controller.world != null:
+		for e in controller.world.advance_rivals(round_num, controller, market):
+			_post_baron_event(e)
 	_raise_contract_if_pending()
 	round_completed.emit(round_num)
 

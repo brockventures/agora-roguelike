@@ -138,6 +138,7 @@ func _collect(scene: Node) -> Array:
 	_collect_sol(scene, add)
 	_collect_takeover(scene, add)
 	_collect_levers(scene, add)
+	_collect_rivals(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -441,6 +442,33 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 	loop.set_tab(M0Loop.Tab.MAP)
 
 
+## Rival fleets (Epic 3 task 10, part of #18): the desk-notes chip a fleet's fill leaves on
+## the book, for every fleet and both sides, on a book with a pipeline tag and a squeeze
+## already (the busiest rows). Headlines: findings().
+func _collect_rivals(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	rc.docked_at = "mars"
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("ORE")
+	loop.set_tab(M0Loop.Tab.MARKET)
+	for id in rc.world.rival_ids():
+		for side in ["BUY", "SELL"]:
+			rc.world.rival(id).last = {"round": rc.get_current_round(), "station": "mars", "commodity": "ORE", "side": side, "qty": 99999, "price": 99}
+			scene._refresh_readouts()
+			add.call("market board[rival %s %s]" % [id, side], scene.wordmark_label)
+			add.call("sidebar[rival %s %s]" % [id, side], scene.wordmark_label)
+		rc.world.rival(id).last = {}
+	rc.world = null
+	loop.market.set_world(null)
+	loop.market.set_world_mods([])
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
 ## All findings for the scene under the current locale.
 func findings(scene: Node) -> Array:
 	var out: Array = []
@@ -498,7 +526,13 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_TENDER_BOUGHT", [99999, ares, 99999, 99999, 99999])]),
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SHARES_REFUSED", [Loc.key_arg("SHARES_REASON_LOCKED")])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + lever_lines:
+	var kess: Dictionary = Loc.maker_arg("blackwater_lines")
+	var rival_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_REACT", [kess, Loc.station_arg("earth"), 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("mars")])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_DEPART", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), Loc.station_arg("mars")])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_SELL", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), 99999])]),
+	]
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + lever_lines + rival_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:

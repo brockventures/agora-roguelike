@@ -17,6 +17,7 @@ const SOL: String = "sol_central"
 func _ctx(p_seed: int = 21, cr: int = 100000) -> Dictionary:
 	var rc := RunController.new(null, p_seed, null, {}, TPR)
 	rc.world = Barons.for_new_run()
+	rc.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
 	rc.cr = cr
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
@@ -739,6 +740,7 @@ func _play(s: Replay.Session, frames: int, stop: Callable = Callable()) -> int:
 
 func _session(p_seed: int) -> Replay.Session:
 	var s := Replay.Session.new(p_seed, {}, Replay.DEFAULT_FRAME_DELTA, TPR, true)
+	s.controller.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
 	s.controller.cr = 100000
 	s.loop.dock_at("mars")
 	return s
