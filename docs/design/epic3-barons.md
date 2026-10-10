@@ -2,7 +2,7 @@
 
 Design proposal for #15 (Design Sector Baron Framework & Regional Monopoly Mechanics), part of #14 (Epic 3: Planetary Sector Barons & Rival Syndicate AI). It feeds #16 (Implement Baron Archetype AIs), #17 (Implement Hostile Takeover & Baron Insolvency Settlement) and #18 (Implement Autonomous Roving Syndicate Competitor Fleets), and is input to #19 (Epic 3 Review Gate).
 
-**Status: proposal, not decided.** Ryan signs off the design calls. Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `beef638`) from what this doc invents (**Proposed**). Nothing here is game code. "Python sim" means `agora/*.py` in `brockventures/market-sandbox` (read at `30a301f`); this repo's `agora/` matches it except `server.py`.
+**Status: decided 2026-10-09** (section 9). Ryan signed off the design calls. Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `beef638`) from what this doc invents (**Proposed**). Nothing here is game code. "Python sim" means `agora/*.py` in `brockventures/market-sandbox` (read at `30a301f`); this repo's `agora/` matches it except `server.py`.
 
 ## 1. What exists today (Grounded)
 
@@ -52,7 +52,7 @@ These come from section 1 and are the places an Epic 3 implementation would othe
 {
   "version": 1,
   "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds.",
-  "victory": {"barons_required": 2, "hold_rounds": 3},
+  "victory": {"barons_required": "all"},
   "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100,
                "auction_discount_bps": 7000, "bankrupt_rounds": 6},
   "heat": {"decay_per_round": 1, "retaliation_at": 6},
@@ -151,7 +151,7 @@ The baron has `float_shares` (1000), most of them in its own treasury. The playe
 
 ### 5.4 The win condition this gives a run
 
-M0 has no victory; the run ends on collapse only. Proposed `victory`: hold `barons_required` anchors (default 2 of 3) simultaneously for `hold_rounds` (3). On win the clock pauses, `run_won` fires, Severance gets a victory bonus (`SEVERANCE_PER_BARON`, placeholder 300 each), and the summary screen shows a win state. The 40-round limit and the discount cap make "all three" very unlikely, which is why the default is two (Question 1).
+**Decided (Ryan, #lounge 2026-10-09 23:02 PT): the original design stands.** Victory means taking over **every** competing baron and station, as agreed when Epic 3 was filed (#14, Epic 3: Sector Barons; #32, the Sol System Rescue climax). Owning everything is phase 1. The run is won by spending the monopoly on the Sol System Rescue Project before the doomsday clock hits zero (#32). `victory` in `barons.json` becomes `{"barons_required": "all"}` with no hold timer; the rescue project's win check belongs to #32. The earlier 2-of-3 proposal is withdrawn. Run length (40 rounds at 1x) is a tuning concern for later, per Ryan's M0 direction (#34): build toward the final design.
 
 ## 6. Rival fleets (for #18, Rival Syndicate Fleets)
 
@@ -204,10 +204,10 @@ Estimates use the house format; sizing follows the measured median for specced s
 
 Order: 0 -> 1 -> 2 -> 3, then 4/5/6 in any order, then 7 -> 8 -> 9, then 10 -> 11, with 12 last. Tasks 4-6 and 10 can run in parallel worktrees once 2 lands. #19 (Epic 3 Review Gate) is not planned here: it is the review step after 12. Balance numbers in `barons.json` are placeholders; task 12 includes a headless 40-round bot run so tuning has a number to move. `balance-band.yml` filters on `agora/**.py`, so Godot-only PRs do not trigger it.
 
-## 9. Design questions for Ryan
+## 9. Decisions (Ryan, #lounge 2026-10-09 23:02 PT)
 
-1. **What counts as victory, given a run is only 40 rounds at 1x?** (a) Hold 2 of 3 barons for 3 rounds, run ends in a win with a Severance bonus. (b) Hold all 3. (c) No hard victory: a "baron-breaker" tier on the summary screen only. Recommendation: (a), with `barons_required` and `hold_rounds` in `barons.json` so tuning is a data change.
-2. **How is a baron "taken"?** (a) Share float ported from the Python sim: 1000 shares, 501 to take, distress auction at a 30% discount up to 100 a round, no share order book (shares move only by auction and tender). (b) An abstract 0-10000 grip meter that the three levers push, no shares at all. Recommendation: (a). It is a faithful port of tested logic and costs one extra HUD row; (b) is cheaper but invents balance from scratch.
-3. **Where does Titan Cryo-Hydro live?** (a) Anchor it at Ceres, the existing belt hub (FUEL 24.5, FOOD 27.5). (b) Add a new Titan station with routes, orbital data and base prices. Recommendation: (a). A new station is a content task that blocks #16 (Baron Archetype AIs) on routes and art; revisit after the first playtest.
-4. **May a player-caused (consequence) baron retaliation force Chapter 11, and may a random baron event?** (a) Consequence may, random may not (random events clamp short of insolvency). (b) Neither may; barons only ever thin books or cap trades. (c) Both may, since Chapter 11 is not a run end. Recommendation: (a), matching your random-vs-consequence rule, with the clamp as a single guard in the crisis deck.
-5. **Can rival fleets react to a player's departure, or only to what has already arrived?** (a) React to departures (the tactical map is documented as projecting "fleet transit positions", `game/ui/sol_tactical_map.gd:6`), with a GalNet headline so the player can see it coming. (b) React only to arrivals, so front-running can never beat the player to a destination. Recommendation: (a). Without it, "front-running" has nothing to front-run, since the player has no resting orders; the headline is the telegraph that keeps it fair.
+1. **Victory:** take over every baron and station, then the Sol System Rescue Project (#32) wins the run. See 5.4. The 2-of-3 options are withdrawn.
+2. **Taking a baron:** (a), the share float ported from the Python sim (1000 shares, 501 to take).
+3. **Titan Cryo-Hydro's home:** Ryan asked what it is. It is the third baron, the commodity hoarder, named in #14 and #16 (Baron Archetype AIs) when Epic 3 was filed on 2026-10-02. No Titan station exists, so it anchors at **Ceres** for now (option (a)) unless Ryan says otherwise.
+4. **Barons forcing Chapter 11:** (a). Ryan wants the rivalry felt: a baron's retaliation may force Chapter 11 when the player's own choices exposed them (a squeezed short, a missed defense contract, high heat). A random baron event never forces it alone.
+5. **Rival fleets react to departures:** (a), with a GalNet headline first.
