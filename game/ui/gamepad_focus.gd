@@ -194,10 +194,11 @@ func execute_focused_order() -> Dictionary:
 		_note_rejection(rej_px)
 		return rej_px
 
-	# Antitrust audit (#12): per-order unit cap while one is active.
-	if rc != null and rc.trade_cap_qty() > 0 and order_qty > rc.trade_cap_qty():
+	# Antitrust audit (#12): unit cap per round while one is active. Cumulative
+	# over the round (D5), so several small orders cannot add up past the cap.
+	if rc != null and rc.trade_cap_qty() > 0 and order_qty > rc.audit_units_remaining():
 		last_rejection_reason = "AUDIT_TRADE_CAP"
-		var rej_audit: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty, "cap": rc.trade_cap_qty()}
+		var rej_audit: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty, "cap": rc.trade_cap_qty(), "remaining": rc.audit_units_remaining()}
 		_note_rejection(rej_audit)
 		return rej_audit
 
@@ -292,6 +293,9 @@ func execute_focused_order() -> Dictionary:
 			## Deduct cargo and credit CR
 			rc.cargo[commodity] = current_cargo - order_qty
 			rc.cr += maxi(0, total_cost - fee)
+
+	if rc != null:
+		rc.record_audit_trade(order_qty)
 
 	var counterparty: String = ""
 	if use_book:

@@ -224,7 +224,7 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 	if p_draw_source != null:
 		draw_source = p_draw_source
 	else:
-		draw_source = NativeDrawSource.new(hash("piracy-%d" % p_seed))
+		draw_source = NativeDrawSource.new(StableHash.hash32("piracy-%d" % p_seed))
 
 	if p_bags != null:
 		bags = p_bags
@@ -245,7 +245,7 @@ func is_enabled() -> bool:
 func reset(new_seed: int) -> void:
 	seed_val = new_seed
 	if draw_source is NativeDrawSource:
-		draw_source = NativeDrawSource.new(hash("piracy-%d" % new_seed))
+		draw_source = NativeDrawSource.new(StableHash.hash32("piracy-%d" % new_seed))
 	if bags != null:
 		bags.reset(new_seed)
 
@@ -258,7 +258,7 @@ func hot_station(round_num: int, override_station: String = "") -> String:
 		var st = draw_source.choice(Transit.STATIONS)
 		return str(st) if st != null else "earth"
 	var key := "piracy-hot-%d-%d" % [seed_val, round_num / HOT_EVERY]
-	var rng := NativeDrawSource.new(hash(key))
+	var rng := NativeDrawSource.new(StableHash.hash32(key))
 	var st = rng.choice(Transit.STATIONS)
 	return str(st) if st != null else "earth"
 

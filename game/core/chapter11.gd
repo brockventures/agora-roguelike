@@ -133,7 +133,7 @@ static func file(snapshot: Dictionary, profile: MetaProfile, run_seed: int, hair
 ## Deterministic seed for the next run: depends only on the old seed and how many
 ## bankruptcies the profile had filed before this one. Non-negative 31-bit.
 static func next_seed_for(run_seed: int, bankruptcies_before: int) -> int:
-	return hash("ch11-%d-%d" % [run_seed, bankruptcies_before]) & 0x7FFFFFFF
+	return StableHash.hash32("ch11-%d-%d" % [run_seed, bankruptcies_before]) & 0x7FFFFFFF
 
 static func _debt_fields(doomsday) -> Dictionary:
 	var out := {"principal": 0, "accrued_interest": 0, "accrued_burn": 0}

@@ -164,7 +164,7 @@ func _roll(round_num: int, stage: int, net_worth: int) -> Dictionary:
 	var pool: Array = eligible(tier, band)
 	if pool.is_empty():
 		return {}
-	var rng := NativeDrawSource.new(hash("crisis-pick-%d-%d" % [seed_val, round_num]))
+	var rng := NativeDrawSource.new(StableHash.hash32("crisis-pick-%d-%d" % [seed_val, round_num]))
 	var total: float = 0.0
 	for def in pool:
 		total += _weight(def, band)

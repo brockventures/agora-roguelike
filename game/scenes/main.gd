@@ -53,8 +53,12 @@ var _voice_order: Array[int] = []
 var _voice_priority: Array[bool] = []
 var _voice_counter: int = 0
 
-## Starting seed for the run MainScene creates when none was bound.
+## Fixed seed for tests and replays: start_new_run() with no argument uses it, so
+## headless callers stay deterministic. A real new game does NOT: _ready() asks
+## initial_run_seed() instead (D10).
 const DEFAULT_RUN_SEED: int = 84
+## Environment override for the first run's seed (reproducible manual play).
+const RUN_SEED_ENV: String = "AGORA_RUN_SEED"
 ## Chapter 11 resolution modal; the collapse screens use the larger market modal rect.
 const RESOLUTION_RECT: Rect2 = Rect2(340.0, 240.0, 600.0, 320.0)
 ## Voices for routine UI feedback. PRIORITY_VOICES more are reserved for alarms and
@@ -89,7 +93,7 @@ func _ready() -> void:
 	if controller == null:
 		# Resume the autosaved run when there is a usable one, else start fresh.
 		if not continue_saved_run():
-			start_new_run(DEFAULT_RUN_SEED)
+			start_new_run(initial_run_seed())
 	_build_readouts()
 	_setup_audio()
 	_refresh_readouts()
@@ -115,6 +119,18 @@ func _input(event: InputEvent) -> void:
 ## Routes an InputEvent to the game loop (m0_* InputMap actions). True if consumed.
 func handle_input(event: InputEvent) -> bool:
 	return loop != null and loop.handle_input(event)
+
+
+## Seed for a brand-new game's first run: AGORA_RUN_SEED when set to an integer,
+## otherwise a real random source (RandomNumberGenerator.randomize()), so every
+## new game gets a different Sol instead of always DEFAULT_RUN_SEED (D10).
+static func initial_run_seed() -> int:
+	var env: String = OS.get_environment(RUN_SEED_ENV)
+	if env.is_valid_int():
+		return int(env)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	return rng.randi() & 0x7FFFFFFF
 
 
 ## Creates a fresh RunController and binds it to the HUD, loop and clock.
@@ -150,6 +166,11 @@ func continue_saved_run() -> bool:
 		push_warning("run save ignored: %s" % str(r["error"]))
 		return false
 	var rc: RunController = r["controller"]
+	# profile.json is written whenever the profile changes (perk buys, filings),
+	# the run slot's embedded copy only at round autosaves, so after a crash the
+	# file is the newer one: it wins, and the run is re-pointed at it (D3).
+	if _loaded_profile != null:
+		rc.profile = _loaded_profile
 	bags = r["bags"]
 	initialize_systems(rc)
 	loop.set_market(r["market"])
@@ -185,9 +206,11 @@ func _on_round_completed(_round_num: int) -> void:
 
 
 ## Perks are bought while the run is over; persist the profile as soon as it changes.
+## The run slot embeds a profile copy too, so refresh it in the same step (D3):
+## a crash before the next round autosave must not leave a stale embedded profile.
 func _on_action_handled(_action: String) -> void:
 	if controller != null and controller.profile.to_dict() != _saved_profile_dict:
-		_save_profile()
+		save_all()
 
 
 func _notification(what: int) -> void:
