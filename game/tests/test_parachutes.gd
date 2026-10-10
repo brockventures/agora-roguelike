@@ -347,9 +347,10 @@ func test_disabled_perk_cannot_be_bought_and_adds_nothing() -> String:
 	p.add_unlock("off")  # even a forced unlock contributes nothing
 	if not t.modifiers(p).is_empty():
 		return "disabled perk leaked a modifier"
+	# hostile_buyout_line was disabled until Epic 3 task 8 gave it an effect (see test_levers).
 	var shipped := _shipped()
 	if bool(shipped.can_buy(_profile(10000), "hostile_buyout_line")["ok"]):
-		return "hostile_buyout_line must be disabled"
+		return "hostile_buyout_line must still need one of its tier-2 prerequisites"
 	return "ok"
 
 func test_requires_any_is_or_and_validated() -> String:

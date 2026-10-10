@@ -1,11 +1,18 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Data only until Epic 3 tasks 2+ read it (docs/design/epic3-barons.md).",
+  "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Read by Epic 3 tasks 2-8 (docs/design/epic3-barons.md).",
   "victory": {"barons_required": "all"},
   "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6,
                "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600},
   "heat": {"decay_per_round": 1, "retaliation_at": 6},
   "consequence": {"random_max_loss_bps": 1500},
+  "levers": {
+    "corner": {"hold_qty": 60, "cover_qty": 100, "squeeze_bps": 5000, "ask_depth_bps": 4000},
+    "margin": {"maintenance_bps": 10500, "pressure_per_unit_bps": 40, "pressure_max_bps": 6000, "liquidate_bps": 3000,
+               "crash_bps": 1500, "crash_rounds": 2, "fee_bps": 1000},
+    "credit": {"line_cr": 10000, "rate_bps": 2000, "term_rounds": 5, "spend_bps": 7500, "accept_below_bps": 7000},
+    "tender": {"cap": 50, "premium_bps": 15000}
+  },
   "barons": [
     {
       "id": "ares_heavy",

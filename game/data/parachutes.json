@@ -130,8 +130,13 @@
         "asset_protection",
         "black_market_corridors"
       ],
-      "effects": [],
-      "enabled": false
+      "effects": [
+        {
+          "stat": "takeover_threshold_shares",
+          "op": "add",
+          "value": -50
+        }
+      ]
     }
   ]
 }

@@ -1499,6 +1499,13 @@ func _card_notes() -> Array:
 			out.append({"kind": "chip", "text": takeover[i], "bg": HudTheme.TEAL_DARK if takeover_held else HudTheme.RUST_DARK, "fg": HudTheme.BONE})
 		else:
 			out.append({"kind": "line", "text": takeover[i], "color": HudTheme.INK})
+	# The player's levers on the baron anchoring this station (task 8).
+	for n in loop.lever_notes(st):
+		if str(n["kind"]) == "chip":
+			var bg: Color = HudTheme.OCHRE if str(n["tone"]) == "credit" else (HudTheme.TEAL_DARK if str(n["tone"]) == "tender" else HudTheme.RUST_DARK)
+			out.append({"kind": "chip", "text": n["text"], "bg": bg, "fg": HudTheme.INK if str(n["tone"]) == "credit" else HudTheme.BONE})
+		else:
+			out.append({"kind": "line", "text": n["text"], "color": HudTheme.INK})
 	# Crises beyond the one on the art card.
 	var active: Array = _active_crises()
 	var round_num: int = controller.get_current_round()
@@ -1675,6 +1682,8 @@ func _refresh_board() -> void:
 			var pipe: String = loop.squeeze_tag(st, c)
 			if pipe == "":
 				pipe = loop.hoard_tag(st, c)
+			if pipe == "":
+				pipe = loop.lever_tag(st, c)
 			if pipe == "":
 				pipe = loop.auction_tag(st, c)
 			if pipe == "":

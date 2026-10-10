@@ -24,6 +24,7 @@
 				"m0_pause"		"#Action_m0_pause"
 				"m0_locale"		"#Action_m0_locale"
 				"m0_shares"		"#Action_m0_shares"
+				"m0_credit"		"#Action_m0_credit"
 				"m0_settings"		"#Action_m0_settings"
 			}
 		}
@@ -50,6 +51,7 @@
 			"Action_m0_pause"		"Pause / resume"
 			"Action_m0_locale"		"Cycle language"
 			"Action_m0_shares"		"Buy distressed shares"
+			"Action_m0_credit"		"Extend credit line"
 			"Action_m0_settings"		"Settings"
 		}
 	}
