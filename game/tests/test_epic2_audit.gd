@@ -300,3 +300,17 @@ func test_pr71_ticks_remaining_is_capped_at_total() -> String:
 	if back.ticks_remaining != 36000:
 		return "ticks_remaining %d not capped at total 36000" % back.ticks_remaining
 	return "ok"
+
+
+func test_tribute_never_exceeds_total_ticks() -> String:
+	var clock := DoomsdayClock.new()
+	clock.ticks_remaining = clock.total_ticks - 100
+	var added: int = clock.apply_tribute(1000000)
+	if added != 100:
+		return "tribute added %d, expected 100 (headroom)" % added
+	if clock.ticks_remaining != clock.total_ticks:
+		return "ticks_remaining %d above total %d" % [clock.ticks_remaining, clock.total_ticks]
+	var restored: DoomsdayClock = DoomsdayClock.from_dict(clock.to_dict())
+	if restored.ticks_remaining != clock.ticks_remaining:
+		return "save/load changed ticks_remaining"
+	return "ok"

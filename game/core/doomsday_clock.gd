@@ -369,7 +369,12 @@ func apply_tribute(amount_cr: int, ticks_per_credit: int = 3) -> int:
 	if amount_cr <= 0 or stage == Stage.COLLAPSED:
 		return 0
 
-	var ticks_added := amount_cr * ticks_per_credit
+	# Tribute restores the clock but never past its full length, so the
+	# in-play value always matches what from_dict() accepts on reload.
+	var headroom: int = maxi(0, total_ticks - ticks_remaining)
+	var ticks_added: int = mini(amount_cr * ticks_per_credit, headroom)
+	if ticks_added <= 0:
+		return 0
 	ticks_remaining += ticks_added
 	total_ticks_added_by_tributes += ticks_added
 
