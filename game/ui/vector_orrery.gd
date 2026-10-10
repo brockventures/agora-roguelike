@@ -54,7 +54,9 @@ var sweep_speed_rad_per_sec: float = DEFAULT_SWEEP_SPEED_RAD_PER_SEC
 var sweep_cycle_count: int = 0
 
 var current_preset: String = PRESET_GREEN_P31
-var crt_enabled: bool = true
+## Off by default since #105 (HUD re-skin to the Scavengers Reign style): the CRT filter is an
+## optional extra, not the look. The shader and presets stay for anyone who turns it on.
+var crt_enabled: bool = false
 
 ## Tracking blip illumination levels [0.0..1.0] and decay
 var blip_illuminations: Dictionary = {}

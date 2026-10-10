@@ -13,8 +13,8 @@ func test_init_defaults() -> String:
 		return "Default radar_range_px mismatch: %f" % orrery.radar_range_px
 	if orrery.sweep_angle_rad != 0.0:
 		return "Initial sweep_angle_rad should be 0.0"
-	if not orrery.crt_enabled:
-		return "CRT shader should be enabled by default"
+	if orrery.crt_enabled:
+		return "CRT filter should be off by default (#105)"
 
 	var snap: Dictionary = orrery.to_dict()
 	if snap["current_preset"] != "GREEN_P31":

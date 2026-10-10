@@ -40,8 +40,10 @@ var ticker_clip: Control = null
 var ticker_labels: Array[Label] = []
 var map_label: Label = null
 ## Shared readable palette: every HUD label and every opaque modal body uses these.
-const HUD_TEXT_COLOR := Color(0.55, 1.0, 0.7)
-const MODAL_BG_COLOR := Color(0.02, 0.06, 0.04, 0.97)
+const HUD_TEXT_COLOR := HudTheme.BONE
+const MODAL_BG_COLOR := Color(0.1725, 0.2078, 0.2314, 1.0)
+## Text on the light paper panels (map, sidebar).
+const PAPER_TEXT_COLOR := HudTheme.INK
 
 ## "PAUSED - resumed from sleep" banner, shown while a wake-pause is active.
 var sleep_modal: Panel = null
@@ -685,6 +687,14 @@ func _update_ladder_swatches() -> void:
 	while _ladder_swatches.size() < rows:
 		var r := ColorRect.new()
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Ink contour: a slightly larger ink rect drawn behind the colour strip.
+		var ink := ColorRect.new()
+		ink.color = HudTheme.INK
+		ink.show_behind_parent = true
+		ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ink.position = Vector2(-2, -2)
+		ink.size = Vector2(13, 12)
+		r.add_child(ink)
 		sidebar_clip.add_child(r)
 		_ladder_swatches.append(r)
 	var lh: float = _line_height(sidebar_label)
@@ -697,7 +707,7 @@ func _update_ladder_swatches() -> void:
 		# Layout: title, blank, asks, spread, bids.
 		var line: int = 2 + i if is_ask else 3 + i
 		r.color = Palette.ask_color() if is_ask else Palette.bid_color()
-		r.position = Vector2(3.0, sidebar_label.position.y + lh * float(line) + 3.0)
+		r.position = Vector2(5.0, sidebar_label.position.y + lh * float(line) + 3.0)
 		r.size = Vector2(9.0, maxf(4.0, lh - 6.0))
 
 
@@ -723,7 +733,9 @@ func _build_readouts() -> void:
 		return
 	header_label = _make_label(header_panel, Rect2(16, 4, 1248, 28), 18)
 	hint_label = _make_label(header_panel, Rect2(16, 34, 1248, 26), HINT_FONT_SIZE)
+	hint_label.add_theme_color_override("font_color", HudTheme.BONE_DIM)
 	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 168), 16)
+	map_label.add_theme_color_override("font_color", PAPER_TEXT_COLOR)
 	sidebar_clip = Control.new()
 	sidebar_clip.position = Vector2(0, 8)
 	sidebar_clip.size = SIDEBAR_VIEW
@@ -731,6 +743,7 @@ func _build_readouts() -> void:
 	sidebar_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sidebar_panel.add_child(sidebar_clip)
 	sidebar_label = _make_label(sidebar_clip, Rect2(16, 0, 368, 656), 16)
+	sidebar_label.add_theme_color_override("font_color", PAPER_TEXT_COLOR)
 	sidebar_label.set_meta(SCROLLS_META, false)
 	# Translated lines can be wider than the panel: wrap instead of spilling out (#40).
 	sidebar_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -751,21 +764,24 @@ func _build_readouts() -> void:
 	market_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size
 	hud_container.add_child(market_modal)
 	market_highlight = ColorRect.new()
-	market_highlight.color = Color(0.2, 0.6, 0.4, 0.35)
+	market_highlight.color = Color(HudTheme.OCHRE, 0.5)
 	market_highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	market_modal.add_child(market_highlight)
 	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 16)
 	resolution_modal = Panel.new()
 	var opaque := StyleBoxFlat.new()
 	opaque.bg_color = MODAL_BG_COLOR
-	opaque.border_color = Color(0.3, 0.8, 0.5)
-	opaque.set_border_width_all(2)
+	opaque.border_color = HudTheme.INK
+	opaque.set_border_width_all(HudTheme.OUTLINE_PANEL)
+	opaque.shadow_color = HudTheme.INK
+	opaque.shadow_size = 1
+	opaque.shadow_offset = HudTheme.SHADOW_OFFSET + Vector2(1, 1)
 	resolution_modal.add_theme_stylebox_override("panel", opaque)
 	resolution_modal.position = RESOLUTION_RECT.position
 	resolution_modal.size = RESOLUTION_RECT.size
 	hud_container.add_child(resolution_modal)
 	resolution_label = _make_label(resolution_modal, Rect2(20, 16, 560, 288), 20)
-	# Body text keeps the shared HUD phosphor green (_make_label). A red override here
+	# Body text keeps the shared HUD bone colour (_make_label). A red override here
 	# was unreadable on the dark panel once the CRT aberration split its channels.
 	resolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sleep_modal = Panel.new()
@@ -793,14 +809,26 @@ func _draw_map() -> void:
 	var origin: Vector2 = OrbitalHUD.TACTICAL_MAP_RECT.position
 	var round_num: int = controller.get_current_round() if controller != null else 0
 	var center: Vector2 = SolTacticalMap.MAP_CENTER - origin
-	# The panel clips to its own rect; the projection is sized to fit it.
-	tactical_map_panel.draw_circle(center, SolTacticalMap.SOL_NODE_RADIUS_PX, Color(1.0, 0.85, 0.3))
-	for st in tactical_map.get_stations():
+	# The panel clips to its own rect; the projection is sized to fit it. Flat ligne claire:
+	# ink orbit rings, then flat filled nodes with ink contours and a hard shadow cut.
+	var stations: Array = tactical_map.get_stations()
+	for st in stations:
 		var pos: Vector2 = tactical_map.get_station_screen_pos(st, round_num) - origin
-		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, Color(0.2, 0.5, 0.35), 1.0)
-		var col := Color(0.4, 1.0, 0.6) if st == hud.active_station else Color(0.3, 0.7, 0.5)
-		tactical_map_panel.draw_circle(pos, SolTacticalMap.STATION_NODE_RADIUS_PX, col)
-		tactical_map_panel.draw_string(ThemeDB.fallback_font, pos + SolTacticalMap.get_label_offset(st), Loc.station(st).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, scaled_size(MAP_FONT_SIZE), col)
+		var ring_active: bool = st == hud.active_station
+		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, HudTheme.RUST if ring_active else HudTheme.INK, HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0), true)
+	HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
+	var font: Font = ThemeDB.fallback_font
+	for st in stations:
+		var pos: Vector2 = tactical_map.get_station_screen_pos(st, round_num) - origin
+		var active: bool = st == hud.active_station
+		var fill: Color = HudTheme.RUST if active else HudTheme.TEAL
+		var cut: Color = HudTheme.RUST_DARK if active else HudTheme.TEAL_DARK
+		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, fill, cut)
+		var fs: int = scaled_size(MAP_FONT_SIZE)
+		var label_pos: Vector2 = pos + SolTacticalMap.get_label_offset(st)
+		var text: String = Loc.station(st).to_upper()
+		tactical_map_panel.draw_string_outline(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
+		tactical_map_panel.draw_string(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK if active else HudTheme.INK)
 
 
 func _refresh_readouts() -> void:

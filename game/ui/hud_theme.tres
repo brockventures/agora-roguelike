@@ -1,0 +1,46 @@
+[gd_resource type="Theme" load_steps=6 format=3]
+
+[sub_resource type="StyleBoxFlat" id="plate"]
+bg_color = Color(0.1725, 0.2078, 0.2314, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
+[sub_resource type="StyleBoxFlat" id="map"]
+bg_color = Color(0.8510, 0.8039, 0.6902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
+[sub_resource type="StyleBoxFlat" id="side"]
+bg_color = Color(0.8039, 0.7490, 0.6235, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
+[sub_resource type="StyleBoxFlat" id="base"]
+bg_color = Color(0.1725, 0.2078, 0.2314, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.1098, 0.1020, 0.0902, 1)
+
+[resource]
+default_font_size = 16
+Label/colors/font_color = Color(0.9020, 0.8627, 0.7647, 1)
+Panel/styles/panel = SubResource("base")
+HeaderPanel/base_type = &"Panel"
+HeaderPanel/styles/panel = SubResource("plate")
+TickerPanel/base_type = &"Panel"
+TickerPanel/styles/panel = SubResource("plate")
+MapPanel/base_type = &"Panel"
+MapPanel/styles/panel = SubResource("map")
+SidebarPanel/base_type = &"Panel"
+SidebarPanel/styles/panel = SubResource("side")
