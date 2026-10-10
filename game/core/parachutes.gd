@@ -61,7 +61,7 @@ const STATS: Dictionary = {
 ## Flat per-filing grant is dropped to 0 so idle runs pressing X cannot afford perks.
 const SEVERANCE_PER_FILING: int = 0
 const SEVERANCE_NET_WORTH_BPS: int = 50   # 0.5% of peak net worth
-const SEVERANCE_PER_ROUND: int = 5        # 5 points per round survived
+const SEVERANCE_PER_ROUND: int = 1        # 1 point per round survived
 ## Epic 3 task 9: banked per baron the corp holds when it ends (placeholder; Ryan may overrule).
 const SEVERANCE_PER_BARON: int = 400
 

@@ -241,10 +241,13 @@ func set_pad_glyph(host: Control, button: String, caption: String, color: Color 
 	b.size = Vector2(d, dh)
 	var cw: float = text_width(c, caption) if caption != "" else 0.0
 	var ch: float = line_height(c)
+	var host_h: float = maxf(dh, ch)
+	disc.position = Vector2(0.0, (host_h - dh) * 0.5)
+	b.position = Vector2(0.0, (host_h - dh) * 0.5)
 	c.visible = caption != ""
-	c.position = Vector2(d + 6.0, (dh - ch) * 0.5)
+	c.position = Vector2(d + 6.0, (host_h - ch) * 0.5)
 	c.size = Vector2(cw + 2.0, ch)
-	host.size = Vector2(d + (6.0 + cw + 2.0 if caption != "" else 0.0), maxf(dh, ch))
+	host.size = Vector2(d + (6.0 + cw + 2.0 if caption != "" else 0.0), host_h)
 
 
 ## Tag: a small ink-outlined chip (category labels, baron tags, side tags). The text is

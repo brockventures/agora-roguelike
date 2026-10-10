@@ -2261,6 +2261,7 @@ func _summary_model() -> Dictionary:
 	# The severance calculation: per filing, the peak-net-worth share, per broken baron, total.
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_FILINGS") % [int(r["severance_filings"]), Parachutes.SEVERANCE_PER_FILING], "value": tr("SUM_SEV_VALUE") % int(r["severance_filings_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_PEAK") % ("%.1f" % (float(Parachutes.SEVERANCE_NET_WORTH_BPS) / 100.0)), "value": tr("SUM_SEV_VALUE") % int(r["severance_peak_pts"])})
+	rows.append({"kind": "kv", "key": tr("SUM_SEV_ROUNDS") % [int(r.get("severance_rounds", 0)), Parachutes.SEVERANCE_PER_ROUND], "value": tr("SUM_SEV_VALUE") % int(r.get("severance_rounds_pts", 0))})
 	var broken_ids: Array = r["broken_ids"]
 	for id in broken_ids:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARON") % [_maker_name(str(id)), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % Parachutes.SEVERANCE_PER_BARON})

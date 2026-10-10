@@ -214,6 +214,8 @@ var _banked_corp: int = 0
 var severance_award: int = 0
 ## Barons this corp held when it was banked (Epic 3 task 9); saved only when non-zero.
 var barons_broken_award: int = 0
+## rounds_survived_award: rounds survived by this corp when it ended, for Severance (#97).
+var rounds_survived_award: int = 0
 ## Transient: the monopoly signal fired for this corp (derived from holders, not saved).
 var _monopoly_signalled: bool = false
 ## Why the run ended ("collapse", "bankruptcy", "manual") and what carries over;
@@ -394,8 +396,8 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 	# forfeit reverts the holdings, once per corp (the _banked_corp guard above).
 	barons_broken_award = world.held_by(Takeover.PLAYER).size() if world != null else 0
 	var corp_ticks: int = maxi(0, sim_clock.total_ticks - _corp_start_tick)
-	var rounds: int = int(corp_ticks / ticks_per_round) if ticks_per_round > 0 else 0
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds)
+	rounds_survived_award = int(corp_ticks / ticks_per_round) if ticks_per_round > 0 else 0
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award)
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
@@ -588,10 +590,14 @@ func to_dict() -> Dictionary:
 		"docked_at": docked_at,
 		"cargo_capacity": cargo_capacity,
 	}
+	if _corp_start_tick > 0:
+		out["corp_start_tick"] = _corp_start_tick
 	if not transit.is_empty():
 		out["transit"] = transit.duplicate()
 	if barons_broken_award > 0:
 		out["barons_broken_award"] = barons_broken_award
+	if rounds_survived_award > 0:
+		out["rounds_survived_award"] = rounds_survived_award
 	return out
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -618,6 +624,8 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc._banked_corp = maxi(0, int(d.get("banked_corp", 0)))
 	rc.severance_award = maxi(0, int(d.get("severance_award", 0)))
 	rc.barons_broken_award = maxi(0, int(d.get("barons_broken_award", 0)))
+	rc.rounds_survived_award = maxi(0, int(d.get("rounds_survived_award", 0)))
+	rc._corp_start_tick = maxi(0, int(d.get("corp_start_tick", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))
 	var co = d.get("carry_over", {})
 	rc.carry_over = co.duplicate(true) if co is Dictionary else {}

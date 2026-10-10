@@ -16,7 +16,7 @@
           "value": -50
         }
       ],
-      "description": "Reduces debt interest by 50 bps. [M0 Roadmap: effect wired when loans and interest system lands (#98)]"
+      "description": "Reduces debt interest by 50 bps. [M0 Roadmap: effect wired when loans and interest system lands (#137)]"
     },
     {
       "id": "deferred_audit",
@@ -84,7 +84,7 @@
           "value": 1000
         }
       ],
-      "description": "Reduces travel fuel burn by 1,000 bps (10%). [M0 Roadmap: effect wired when fuel market system lands (#99)]"
+      "description": "Reduces travel fuel burn by 1,000 bps (10%). [M0 Roadmap: effect wired when fuel market system lands (#138)]"
     },
     {
       "id": "black_market_corridors",
@@ -102,7 +102,7 @@
           "value": 8000
         }
       ],
-      "description": "Multiplies piracy encounter odds by 0.8 (20% reduction). [M0 Roadmap: effect wired when hazard and piracy corridors system lands (#100)]"
+      "description": "Multiplies piracy encounter odds by 0.8 (20% reduction). [M0 Roadmap: effect wired when hazard and piracy corridors system lands (#139)]"
     },
     {
       "id": "corporate_shielding",
