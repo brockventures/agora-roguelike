@@ -75,11 +75,13 @@ const ACT_SPEED: String = "m0_speed"
 const ACT_PAUSE: String = "m0_pause"
 ## Cycles the UI language (hot swap, #40). Live in every state, overlays included.
 const ACT_LOCALE: String = "m0_locale"
+## Buys the lot of shares the docked baron is auctioning in distress (Epic 3 task 7).
+const ACT_SHARES: String = "m0_shares"
 
 const ALL_ACTIONS: Array[String] = [
 	ACT_TAB_PREV, ACT_TAB_NEXT, ACT_STATION_PREV, ACT_STATION_NEXT,
 	ACT_COMMODITY_PREV, ACT_COMMODITY_NEXT, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
-	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE,
+	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE, ACT_SHARES,
 ]
 
 ## Actions that stay live while a resolution overlay is up.
@@ -371,6 +373,30 @@ func _post_baron_event(e: Dictionary) -> void:
 				hud.post_headline_tr("HL_SOL_NOCROSS", [who, com, int(e["qty"])], "MARKET", "WARNING")
 			else:
 				hud.post_headline_tr("HL_SOL_LAPSE", [who, int(e["qty"]), com, int(e["price"])], "MARKET", "WARNING")
+		"distress":
+			hud.post_headline_tr("HL_DISTRESS", [who, int(e["qty"]), int(e["px"]), int(e["cap"])], "INSOLVENCY", "WARNING")
+		"shares":
+			if str(e.get("buyer", "")) == Takeover.PLAYER:
+				hud.post_headline_tr("HL_SHARES_BOUGHT", [int(e["qty"]), who, int(e["px"]), int(e["held"]), int(e["threshold"])], "MARKET", "INFO")
+			else:
+				hud.post_headline_tr("HL_SHARES_SOLD", [who, int(e["qty"]), str(e.get("buyer", "")).to_upper(), int(e["px"])], "MARKET", "INFO")
+		"takeover":
+			if str(e.get("holder", "")) == Takeover.PLAYER:
+				hud.post_headline_tr("HL_TAKEOVER", [who, int(e["treasury"]), int(e["debt"])], "INSOLVENCY", "CRITICAL")
+				if bool(e.get("forced_ch11", false)):
+					hud.post_headline_tr("HL_TAKEOVER_FORCED", [who], "INSOLVENCY", "CRITICAL")
+			else:
+				hud.post_headline_tr("HL_TAKEOVER_OTHER", [who, str(e.get("holder", "")).to_upper()], "INSOLVENCY", "WARNING")
+		"bankrupt":
+			var holder: String = str(e.get("holder", ""))
+			if holder == Takeover.PLAYER:
+				hud.post_headline_tr("HL_BANKRUPT_PLAYER", [who, int(e["liquidation"]), int(e["owed"]), int(e["recovered"])], "INSOLVENCY", "CRITICAL")
+			elif holder != "":
+				hud.post_headline_tr("HL_BANKRUPT_OTHER", [who, int(e["liquidation"]), int(e["owed"]), holder.to_upper()], "INSOLVENCY", "CRITICAL")
+			else:
+				hud.post_headline_tr("HL_BANKRUPT_NONE", [who, int(e["liquidation"]), int(e["owed"])], "INSOLVENCY", "CRITICAL")
+		"forfeit":
+			hud.post_headline_tr("HL_FORFEIT", [who], "INSOLVENCY", "WARNING")
 		"missed":
 			hud.post_headline_tr("HL_ARES_MISSED", [who, int(e["penalty"])], "DEBT", "CRITICAL")
 			if bool(e.get("forced_ch11", false)):
@@ -444,6 +470,82 @@ func withdraw_auction_orders() -> int:
 		var id: String = controller.world.baron_at(controller.docked_at)
 		hud.post_headline_tr("HL_SOL_WITHDRAWN", [Loc.maker_arg(id), n], "MARKET", "INFO")
 	return n
+
+
+# --- Takeover (Epic 3 task 7): the distress auction and held barons ---
+
+## Why the last share buy was refused ("" when it worked); see buy_shares().
+var last_shares_reason: String = ""
+
+
+## ACT_SHARES: buy the whole standing lot of the baron anchoring the docked
+## station (as much of it as the CR allow). A takeover at the threshold happens
+## inside the buy. Returns true when shares changed hands.
+func buy_shares() -> bool:
+	if controller == null or controller.world == null or controller.docked_at == "":
+		return false
+	var o: Dictionary = controller.world.distress_at(controller.docked_at)
+	if o.is_empty():
+		return false  # no lot on offer here: the key does nothing
+	var res: Dictionary = controller.world.buy_shares(controller, controller.docked_at, int(o["qty"]))
+	last_shares_reason = "" if bool(res["ok"]) else str(res["reason"])
+	if not bool(res["ok"]):
+		if hud != null:
+			hud.post_headline_tr("HL_SHARES_REFUSED", [Loc.key_arg(Takeover.reason_key(last_shares_reason))], "MARKET", "WARNING")
+			if hud.tactile_audio != null:
+				hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
+		return false
+	_refresh_world_mods()  # a taken baron's pipeline premium is gone; its repricing posts first
+	for e in res["events"]:
+		_post_baron_event(e)
+	if hud != null and hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
+	return true
+
+
+## "distress", "held" or "" for the baron anchoring `station`: what the sidebar leads with.
+func takeover_state(station: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var id: String = controller.world.baron_at(station)
+	var s: BaronState = controller.world.state(id) if id != "" else null
+	if s == null:
+		return ""
+	if s.holder != "":
+		return "held"
+	return "distress" if s.strain > 0 or not controller.world.distress_at(station).is_empty() else ""
+
+
+## Sidebar rows for the baron anchoring `station`; the first is the chip.
+## Distress: the lot on offer, how long it has been insolvent, what the player
+## holds. Held: who holds it, and the rent. Empty for a healthy baron.
+func takeover_lines(station: String) -> Array:
+	var out: Array = []
+	var st: String = takeover_state(station)
+	if st == "":
+		return out
+	var w: Barons = controller.world
+	var id: String = w.baron_at(station)
+	var s: BaronState = w.state(id)
+	var t: Dictionary = Takeover.settings(w)
+	if st == "held":
+		if s.holder == Takeover.PLAYER:
+			out.append(Loc.t("TAG_HELD"))
+			out.append(Loc.t("SIDE_HELD_RENT") % w.rent_of(id))
+		else:
+			out.append(Loc.t("SIDE_HELD_BY") % s.holder.to_upper())
+		return out
+	var o: Dictionary = w.distress_at(station)
+	if o.is_empty():
+		# This round's lot is sold (the next round lists another), or the treasury has none left.
+		out.append(Loc.t("SIDE_DISTRESS_SOLD" if s.treasury_shares > 0 else "SIDE_DISTRESS_NONE"))
+	else:
+		out.append(Loc.t("SIDE_DISTRESS") % [int(o["qty"]), int(o["px"])])
+	out.append(Loc.t("SIDE_INSOLVENT") % [s.strain, int(t["bankrupt_rounds"])])
+	out.append(Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), int(t["threshold"])])
+	if not o.is_empty() and controller.docked_at == station.to_lower():
+		out.append(Loc.t("SIDE_SHARES_HINT"))
+	return out
 
 
 ## Hoard tag for one book as the player sees it ("TITAN HOARDING", "CORNER +25%",
@@ -791,6 +893,8 @@ func dispatch_action(action: String) -> bool:
 			handled = _cancel()
 		ACT_CHAPTER_11:
 			handled = not file_chapter_11().is_empty()
+		ACT_SHARES:
+			handled = buy_shares()
 		ACT_SPEED:
 			cycle_speed()
 			handled = controller != null
@@ -965,8 +1069,10 @@ func _on_bankruptcy_pending(_assessment: Dictionary) -> void:
 	_set_overlay(OVERLAY_CHAPTER_11)
 
 
-func _on_bankruptcy_filed(_report: Dictionary) -> void:
+func _on_bankruptcy_filed(report: Dictionary) -> void:
 	_set_overlay(OVERLAY_NONE)
+	for e in report.get("forfeited_barons", []):
+		_post_baron_event(e)  # held barons revert to their own management
 	# The controller leaves the clock paused for the caller; the new corp starts at 1x.
 	controller.sim_clock.set_speed(1)
 	controller.sim_clock.resume()

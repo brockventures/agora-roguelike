@@ -1491,6 +1491,14 @@ func _card_notes() -> Array:
 			out.append({"kind": "chip", "text": auction[i], "bg": HudTheme.OCHRE, "fg": HudTheme.INK})
 		else:
 			out.append({"kind": "line", "text": auction[i], "color": HudTheme.INK})
+	# The baron anchoring this station in distress (shares on offer) or held (task 7).
+	var takeover: Array = loop.takeover_lines(st)
+	var takeover_held: bool = loop.takeover_state(st) == "held"
+	for i in takeover.size():
+		if i == 0:
+			out.append({"kind": "chip", "text": takeover[i], "bg": HudTheme.TEAL_DARK if takeover_held else HudTheme.RUST_DARK, "fg": HudTheme.BONE})
+		else:
+			out.append({"kind": "line", "text": takeover[i], "color": HudTheme.INK})
 	# Crises beyond the one on the art card.
 	var active: Array = _active_crises()
 	var round_num: int = controller.get_current_round()

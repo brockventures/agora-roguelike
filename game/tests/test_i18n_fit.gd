@@ -136,6 +136,7 @@ func _collect(scene: Node) -> Array:
 	_collect_ares(scene, add)
 	_collect_titan(scene, add)
 	_collect_sol(scene, add)
+	_collect_takeover(scene, add)
 	# Market board (resolution modal closed).
 	loop.set_tab(M0Loop.Tab.MARKET)
 	scene._refresh_readouts()
@@ -314,6 +315,47 @@ func _collect_sol(scene: Node, add: Callable) -> void:
 	scene._refresh_readouts()
 
 
+## Takeover core (Epic 3 task 7, part of #17): the Mars board and sidebar while Ares Heavy
+## is in distress (a lot on offer, a part-held stake, the lot sold out), then once held and
+## once held by a rival, with the F / L3 hint and the rent row. Headlines: findings().
+func _collect_takeover(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	var st: BaronState = rc.world.state("ares_heavy")
+	rc.docked_at = "mars"
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("ORE")
+	loop.set_tab(M0Loop.Tab.MARKET)
+	for state in ["lot", "stake", "lot sold", "sold out", "held", "rival"]:
+		match state:
+			"lot":
+				rc.world.add_debt("ares_heavy", 200000)
+				st.strain = 3
+				st.scratch["distress"] = {"px": 7, "qty": 100, "round": 3}
+			"stake":
+				st.shares["player"] = 300
+			"lot sold":
+				st.scratch.erase("distress")
+			"sold out":
+				st.treasury_shares = 0
+			"held":
+				st.holder = "player"
+			"rival":
+				st.holder = "rival_fleet_one"
+		loop.market.set_world_mods(rc.world.market_mods())
+		scene._refresh_readouts()
+		add.call("market board[takeover %s]" % state, scene.wordmark_label)
+		add.call("sidebar[takeover %s]" % state, scene.wordmark_label)
+	rc.world = null
+	loop.market.set_world(null)
+	loop.market.set_world_mods([])
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
 ## The travel loop (#111): the route preview with a belt toll, a refused departure,
 ## then the header ETA, the in-transit map text, hint and rejection while under way.
 func _collect_travel(scene: Node, add: Callable) -> void:
@@ -380,7 +422,21 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_NOCROSS", [sol, frag, 99999])]),
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SOL_WITHDRAWN", [sol, 99999])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines:
+	var ares: Dictionary = Loc.maker_arg("ares_heavy")
+	var take_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_DISTRESS", [ares, 99999, 99999, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SHARES_BOUGHT", [99999, ares, 99999, 99999, 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SHARES_SOLD", [ares, 99999, "RIVAL_FLEET_ONE", 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_SHARES_REFUSED", [Loc.key_arg("SHARES_REASON_WOULD_BANKRUPT")])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_TAKEOVER", [ares, 999999, 999999])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_TAKEOVER_FORCED", [ares])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_TAKEOVER_OTHER", [ares, "RIVAL_FLEET_ONE"])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_BANKRUPT_PLAYER", [ares, 999999, 999999, 999999])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_BANKRUPT_OTHER", [ares, 999999, 999999, "RIVAL_FLEET_ONE"])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_BANKRUPT_NONE", [ares, 999999, 999999])]),
+		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_FORFEIT", [ares])]),
+	]
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:
@@ -428,3 +484,27 @@ func test_sol_central_rows_fit_at_every_text_scale() -> String:
 			scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
 	return "ok" if bad.is_empty() else "Sol Central rows overflow: %s" % str(bad)
+
+
+## The takeover rows at every text scale, English and pseudo-localization.
+func test_takeover_rows_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rows: Array = []
+			_seen = {}
+			var add := func(name: String, _label: Label) -> void:
+				_snap(scene, name, rows)
+			_collect_takeover(scene, add)
+			if rows.size() < 10:
+				bad.append("%s %.2fx: collected %d rows" % [locale, scale, rows.size()])
+			for row in rows:
+				for f in (row[5] if row.size() > 5 else overflow_of(row[0], row[1], row[2], row[3], row[4])):
+					bad.append("%s %.2fx: %s" % [locale, scale, f])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if bad.is_empty() else "takeover rows overflow: %s" % str(bad)

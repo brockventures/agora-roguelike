@@ -125,7 +125,80 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 				events.append_array(TitanCryoHydro.advance(self, id, round_num, rc, market))
 			"auctioneer":
 				events.append_array(SolCentral.advance(self, id, round_num, rc, market))
+	# Takeover core (task 7): insolvency, the distress auction, bankruptcy and the
+	# rent a held baron pays. After the archetypes, barons by sorted id; a baron
+	# that is solvent and not held writes nothing.
+	for id in ids():
+		events.append_array(Takeover.advance(self, id, round_num, rc))
 	return events
+
+
+# --- Takeover and insolvency (Epic 3 task 7, design doc 5): see Takeover ---
+
+## Chapter11.assess on a baron's balance sheet.
+func assess_baron(id: String) -> Dictionary:
+	return Takeover.assess(self, id)
+
+
+## The distress offer standing at `station` as {baron, px, qty, round}, {} when the
+## anchoring baron is not selling shares.
+func distress_at(station: String) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {}
+	var o: Dictionary = Takeover.offer(self, id)
+	if not o.is_empty():
+		o["baron"] = id
+	return o
+
+
+## The player buys up to `n` shares of the distress offer at `station`'s baron.
+## {ok, reason, n, cost, held, events}; see Takeover.buy for the refusals.
+func buy_shares(rc: RunController, station: String, n: int) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {"ok": false, "reason": "NO_OFFER", "n": 0, "cost": 0, "held": 0, "events": []}
+	return Takeover.buy(self, id, rc, n)
+
+
+## Seam for rival fleets (Epic 3 task 10): the bids {buyer, qty} for a distress lot,
+## in sorted buyer id order. No rival exists yet, so there are none.
+func rival_bids(_id: String, _round_num: int, _px: int, _qty: int) -> Array:
+	return []
+
+
+## Sells `n` treasury shares of the standing offer to a buyer other than the player
+## (the stand-in a rival fleet will use). Capped at the lot; events as buy().
+func sell_auction_shares(id: String, buyer: String, n: int, rc: RunController = null) -> Array:
+	var o: Dictionary = Takeover.offer(self, id)
+	if o.is_empty() or n <= 0 or buyer == "" or buyer == Takeover.PLAYER:
+		return []
+	return Takeover._transfer(self, id, buyer, mini(n, int(o["qty"])), int(o["px"]), rc)
+
+
+## Adds debt to a baron, attributed to `creditor` ("" = the system). The door the
+## levers (task 8) will use; nothing in play raises a baron's debt before them.
+func add_debt(id: String, amount: int, creditor: String = "") -> void:
+	Takeover.add_debt(self, id, amount, creditor)
+
+
+## Ids of the barons `holder` holds, sorted.
+func held_by(holder: String) -> Array:
+	var out: Array = []
+	for id in ids():
+		if (states[id] as BaronState).holder == holder:
+			out.append(id)
+	return out
+
+
+## Rent a baron pays its holder each round.
+func rent_of(id: String) -> int:
+	return Takeover.rent(self, id)
+
+
+## A Chapter 11 filing: the failed corp's holdings revert (see Takeover.forfeit).
+func forfeit_holdings() -> Array:
+	return Takeover.forfeit(self)
 
 
 # --- Sol Central (Epic 3 task 6, design doc 4.3): the call auction ---
@@ -429,6 +502,11 @@ static func validate(d: Dictionary) -> Array:
 				errs.append("takeover.threshold_shares must be a strict majority of float_shares")
 		if _is_int(take.get("auction_discount_bps", null)) and int(take["auction_discount_bps"]) > 10000:
 			errs.append("takeover.auction_discount_bps must be at most 10000")
+		for k in ["auction_price_floor", "rent_units", "rent_spread_bps"]:
+			if take.has(k) and (not _is_int(take[k]) or int(take[k]) < 0):
+				errs.append("takeover.%s must be a whole number >= 0" % k)
+		if take.has("reset_treasury_bps") and (not _is_int(take["reset_treasury_bps"]) or int(take["reset_treasury_bps"]) < 0 or int(take["reset_treasury_bps"]) > 10000):
+			errs.append("takeover.reset_treasury_bps must be 0..10000")
 	var heat = d.get("heat", null)
 	if not (heat is Dictionary):
 		errs.append("heat must be an object")
