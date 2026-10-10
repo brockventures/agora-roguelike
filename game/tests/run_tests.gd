@@ -43,6 +43,9 @@ func _init() -> void:
 				print("FAIL  %s: %s" % [label, why])
 				failed += 1
 	print("%d passed, %d failed" % [passed, failed])
+	# The shared Steam service (and any SaveStore it attached) must not outlive the run,
+	# or the engine reports leaked instances at exit and run.sh fails the run.
+	SteamService.set_shared(null)
 	quit(1 if failed > 0 else 0)
 
 func _find_tests(dir_path: String) -> Array:

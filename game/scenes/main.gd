@@ -116,6 +116,8 @@ var save_store: SaveStore = null
 ## The marble bags backing bad-luck protection; saved and restored with the run.
 var bags: Bags = null
 var _loaded_profile: MetaProfile = null
+## Steam achievement/stat hooks (#27); a no-op layer when Steam is absent.
+var steam_hooks: SteamHooks = null
 var _saved_profile_dict: Dictionary = {}
 
 
@@ -210,6 +212,8 @@ func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 ## persisted MetaProfile so the next new run starts with its perks.
 func enable_persistence(store: SaveStore) -> void:
 	save_store = store
+	store.cloud = SteamService.shared()
+	SteamService.shared().attach_store(store)
 	_load_settings()
 	_loaded_profile = store.load_profile()
 	if _loaded_profile != null:
@@ -318,6 +322,7 @@ func initialize_systems(p_controller: RunController = null) -> void:
 		loop.rebind_controller()
 	# M0 is one station: Mars (Arcadia Foundries). Dock there and disable station cycling.
 	loop.lock_station(M0Loop.M0_STATION)
+	_bind_steam_hooks()
 	if not loop.woke_from_sleep.is_connected(_on_woke_from_sleep):
 		loop.woke_from_sleep.connect(_on_woke_from_sleep)
 	if not loop.run_restarted.is_connected(_on_run_restarted):
@@ -328,10 +333,17 @@ func initialize_systems(p_controller: RunController = null) -> void:
 ## The collapse flow replaced the run: follow the loop's new controller.
 func _on_run_restarted(rc: RunController) -> void:
 	controller = rc
+	_bind_steam_hooks()
 	bags = Bags.new("m0", null, rc.run_seed)
 	tactical_map = hud.tactical_map
 	trading_overlay = hud.trading_overlay
 	vector_orrery = hud.vector_orrery
+
+
+func _bind_steam_hooks() -> void:
+	if steam_hooks == null:
+		steam_hooks = SteamHooks.new()
+	steam_hooks.bind(controller)
 
 
 func _resolve_child_nodes() -> void:

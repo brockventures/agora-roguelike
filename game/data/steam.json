@@ -1,0 +1,4 @@
+{
+	"app_id": 480,
+	"todo": "480 is Spacewar, Valve's public dev test app. Replace with the real App ID once Steamworks onboarding (#30, Steamworks onboarding, a human step under Mike's account) is done. Overridable per run with the AGORA_STEAM_APP_ID environment variable. Keep steam/game_actions_<appid>.vdf in step."
+}

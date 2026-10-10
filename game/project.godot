@@ -7,6 +7,10 @@ config/features=PackedStringArray("4.7")
 run/main_scene="res://scenes/main.tscn"
 run/max_fps=60
 
+[autoload]
+
+SteamHub="*res://core/steam_hub.gd"
+
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=800

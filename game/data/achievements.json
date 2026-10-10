@@ -1,0 +1,19 @@
+{
+	"stats": [
+		{"id": "peak_net_worth", "type": "int", "display": "Peak net worth (CR)"},
+		{"id": "crises_survived", "type": "int", "display": "Crises survived"},
+		{"id": "bankruptcies_filed", "type": "int", "display": "Chapter 11 filings"},
+		{"id": "runs_completed", "type": "int", "display": "Corps completed"}
+	],
+	"achievements": [
+		{"id": "FIRST_CHAPTER_11", "name": "Creditors Beware", "desc": "File Chapter 11 for the first time.", "hook": "bankruptcy_filed"},
+		{"id": "WITNESS_COLLAPSE", "name": "Last Lights Out", "desc": "Survive until the doomsday clock collapses.", "hook": "run_collapsed"},
+		{"id": "SERIAL_FILER", "name": "Serial Filer", "desc": "File Chapter 11 five times.", "stat": "bankruptcies_filed", "threshold": 5},
+		{"id": "NET_WORTH_25K", "name": "Small Cap", "desc": "Reach a net worth of 25,000 CR.", "stat": "peak_net_worth", "threshold": 25000},
+		{"id": "NET_WORTH_100K", "name": "Mid Cap", "desc": "Reach a net worth of 100,000 CR.", "stat": "peak_net_worth", "threshold": 100000},
+		{"id": "NET_WORTH_1M", "name": "Megacorp", "desc": "Reach a net worth of 1,000,000 CR.", "stat": "peak_net_worth", "threshold": 1000000},
+		{"id": "CRISIS_FIRST", "name": "Weathered", "desc": "Survive your first crisis.", "stat": "crises_survived", "threshold": 1},
+		{"id": "CRISIS_10", "name": "Battle Scarred", "desc": "Survive 10 crises.", "stat": "crises_survived", "threshold": 10},
+		{"id": "CRISIS_25", "name": "Unsinkable", "desc": "Survive 25 crises.", "stat": "crises_survived", "threshold": 25}
+	]
+}
