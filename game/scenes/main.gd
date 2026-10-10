@@ -909,15 +909,19 @@ func _draw_map() -> void:
 		tactical_map_panel.draw_arc(center, pos.distance_to(center), 0.0, TAU, 96, HudTheme.RUST if ring_active else HudTheme.INK, HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0), true)
 	HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	var font: Font = ThemeDB.fallback_font
+	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var label_texts: Dictionary = {}
+	for st in stations:
+		label_texts[st] = Loc.station(st).to_upper()
+	var label_offsets: Dictionary = tactical_map.get_label_offsets(round_num, fs, label_texts)
 	for st in stations:
 		var pos: Vector2 = tactical_map.get_station_screen_pos(st, round_num) - origin
 		var active: bool = st == hud.active_station
 		var fill: Color = HudTheme.RUST if active else HudTheme.TEAL
 		var cut: Color = HudTheme.RUST_DARK if active else HudTheme.TEAL_DARK
 		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, fill, cut)
-		var fs: int = scaled_size(MAP_FONT_SIZE)
-		var label_pos: Vector2 = pos + SolTacticalMap.get_label_offset(st)
-		var text: String = Loc.station(st).to_upper()
+		var label_pos: Vector2 = pos + Vector2(label_offsets[st])
+		var text: String = str(label_texts[st])
 		tactical_map_panel.draw_string_outline(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
 		tactical_map_panel.draw_string(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK if active else HudTheme.INK)
 	_draw_player_ship(origin, round_num, font)

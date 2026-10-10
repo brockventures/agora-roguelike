@@ -264,3 +264,59 @@ func test_station_labels_do_not_overprint_at_round_zero() -> String:
 				if rects[a].intersects(node):
 					return "label %s covers the %s node at round 0" % [a, b]
 	return "ok"
+
+
+## Label boxes the way main.gd draws them: baseline origin at node + offset.
+func _label_boxes(m: SolTacticalMap, r: int, fs: int) -> Dictionary:
+	var font: Font = ThemeDB.fallback_font
+	var offs: Dictionary = m.get_label_offsets(r, fs)
+	var boxes: Dictionary = {}
+	for st in Transit.STATIONS:
+		var text: String = StationMarket.station_name(st).to_upper()
+		var sz: Vector2 = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		boxes[st] = Rect2(m.get_station_screen_pos(st, r) + Vector2(offs[st]) + Vector2(0.0, -font.get_ascent(fs)), Vector2(sz.x, font.get_ascent(fs) + font.get_descent(fs)))
+	return boxes
+
+
+func _circle_rect(c: Vector2, rad: float, rect: Rect2) -> bool:
+	var n := Vector2(clampf(c.x, rect.position.x, rect.end.x), clampf(c.y, rect.position.y, rect.end.y))
+	return n.distance_to(c) < rad
+
+
+func test_labels_avoid_bodies_and_each_other_every_round() -> String:
+	var m := SolTacticalMap.new()
+	for fs in [14, 18]:
+		for r in 48:
+			var boxes: Dictionary = _label_boxes(m, r, fs)
+			for a in Transit.STATIONS:
+				if not SolTacticalMap.PANEL_RECT.encloses(boxes[a]):
+					return "label %s leaves the panel at round %d (size %d): %s" % [a, r, fs, str(boxes[a])]
+				if _circle_rect(SolTacticalMap.MAP_CENTER, SolTacticalMap.SOL_NODE_RADIUS_PX, boxes[a]):
+					return "label %s covers the Sun at round %d (size %d)" % [a, r, fs]
+				for b in Transit.STATIONS:
+					if _circle_rect(m.get_station_screen_pos(b, r), SolTacticalMap.STATION_NODE_RADIUS_PX, boxes[a]):
+						return "label %s covers the %s disc at round %d (size %d)" % [a, b, r, fs]
+					if a < b and boxes[a].intersects(boxes[b]):
+						return "labels %s and %s overprint at round %d (size %d)" % [a, b, r, fs]
+	return "ok"
+
+
+func test_earth_label_clears_luna_at_round_one() -> String:
+	# Regression: at round 1 Luna sits straight above Earth and its disc covered
+	# "KENNEDY ELEVATOR", which the fixed offset put one row above Earth.
+	var m := SolTacticalMap.new()
+	var box: Rect2 = _label_boxes(m, 1, 14)["earth"]
+	if _circle_rect(m.get_station_screen_pos("luna", 1), SolTacticalMap.STATION_NODE_RADIUS_PX, box):
+		return "Earth's label still sits under Luna at round 1: %s" % str(box)
+	return "ok"
+
+
+func test_label_offsets_are_deterministic_and_keep_the_round_zero_layout() -> String:
+	var m := SolTacticalMap.new()
+	if m.get_label_offsets(5, 14) != SolTacticalMap.new().get_label_offsets(5, 14):
+		return "same round gave different offsets"
+	var zero: Dictionary = m.get_label_offsets(0, 14)
+	for st in Transit.STATIONS:
+		if zero[st] != SolTacticalMap.get_label_offset(st):
+			return "round 0 moved %s's label off its designed spot: %s" % [st, str(zero[st])]
+	return "ok"

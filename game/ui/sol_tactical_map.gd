@@ -29,6 +29,13 @@ const AU_SCALE_PX: float = 112.0
 const STATION_NODE_RADIUS_PX: float = 14.0
 const SOL_NODE_RADIUS_PX: float = 24.0
 
+## Label placement (get_label_offsets): spots tried in order after the preferred
+## one, and the clear margin kept around every label box and node.
+const LABEL_SPOTS: Array[String] = ["right", "left", "above", "below", "above_right", "below_right", "above_left", "below_left"]
+## Extra label rows tried above and below (one text row apiece) once the first ring of spots is full.
+const LABEL_EXTRA_ROWS: int = 5
+const LABEL_PAD_PX: float = 1.0
+
 ## Minimum screen separation for Luna to prevent visual overlap and hit-test ambiguity with Earth.
 const LUNA_SCREEN_SEPARATION_PX: float = 32.0
 
@@ -113,6 +120,93 @@ static func get_label_offset(station_id: String) -> Vector2:
 			return Vector2(-8.0, -46.0)
 		_:
 			return Vector2(18.0, 5.0)
+
+## Where each station's label goes this round: {station_id: offset from its node}.
+## get_label_offset() is the preferred spot (right at round 0), but Luna circles
+## Earth every four rounds and the bodies move, so a fixed offset ends up under a
+## disc (Luna's covered "KENNEDY ELEVATOR" at round 1). Stations are placed in
+## Transit.STATIONS order; each takes the first spot in LABEL_SPOTS order whose
+## box touches no station disc, no Sol disc, no earlier label, and stays inside
+## the panel, so the result is deterministic. If every spot is taken it keeps the
+## preferred one. `texts` maps station id to its drawn text (default: the
+## upper-cased station name); `font_size` is the size it is drawn at.
+func get_label_offsets(round_num: int = -1, font_size: int = 14, texts: Dictionary = {}) -> Dictionary:
+	var font: Font = ThemeDB.fallback_font
+	var ascent: float = font.get_ascent(font_size)
+	var height: float = ascent + font.get_descent(font_size)
+	var discs: Dictionary = {}
+	for st in Transit.STATIONS:
+		discs[st] = get_station_screen_pos(st, round_num)
+	var placed: Array = []
+	var out: Dictionary = {}
+	for st in Transit.STATIONS:
+		var text: String = str(texts.get(st, StationMarket.station_name(st).to_upper()))
+		var size: Vector2 = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var spots: Array = [get_label_offset(st)]
+		for row in LABEL_EXTRA_ROWS + 1:
+			for spot in LABEL_SPOTS:
+				if row > 0 and (spot == "right" or spot == "left"):
+					continue
+				spots.append(_spot_offset(spot, size.x, row, height + 2.0 * LABEL_PAD_PX))
+		out[st] = spots[0]
+		var box := Rect2()
+		for off in spots:
+			var b := Rect2(discs[st] + off + Vector2(0.0, -ascent), Vector2(size.x, height)).grow(LABEL_PAD_PX)
+			if _label_fits(b, st, discs, placed):
+				out[st] = off
+				box = b
+				break
+		if box.size == Vector2.ZERO:
+			box = Rect2(discs[st] + out[st] + Vector2(0.0, -ascent), Vector2(size.x, height)).grow(LABEL_PAD_PX)
+		placed.append(box)
+	return out
+
+
+## Offset of a label origin (its baseline's left end) for a named spot around a node.
+static func _spot_offset(spot: String, width: float, row: int = 0, row_step: float = 0.0) -> Vector2:
+	var near: float = STATION_NODE_RADIUS_PX + 4.0
+	var lift: float = float(row) * row_step
+	match spot:
+		"right":
+			return Vector2(near, 5.0)
+		"left":
+			return Vector2(-near - width, 5.0)
+		"above":
+			return Vector2(-width * 0.5, -near - 6.0 - lift)
+		"below":
+			return Vector2(-width * 0.5, near + 16.0 + lift)
+		"above_right":
+			return Vector2(near - 4.0, -near - lift)
+		"below_right":
+			return Vector2(near - 4.0, near + 14.0 + lift)
+		"above_left":
+			return Vector2(-near + 4.0 - width, -near - lift)
+		_:
+			return Vector2(-near + 4.0 - width, near + 14.0 + lift)
+
+
+## True when a label box touches no station disc but its own, no Sol disc, no
+## already placed label, and lies inside the panel.
+func _label_fits(box: Rect2, own: String, discs: Dictionary, placed: Array) -> bool:
+	if not PANEL_RECT.encloses(box):
+		return false
+	for st in discs:
+		var r: float = STATION_NODE_RADIUS_PX + LABEL_PAD_PX
+		if st == own:
+			r = STATION_NODE_RADIUS_PX
+		if _circle_hits_rect(discs[st], r, box):
+			return false
+	if _circle_hits_rect(MAP_CENTER, SOL_NODE_RADIUS_PX + LABEL_PAD_PX, box):
+		return false
+	for other in placed:
+		if box.intersects(other):
+			return false
+	return true
+
+
+static func _circle_hits_rect(center: Vector2, radius: float, rect: Rect2) -> bool:
+	var nearest := Vector2(clampf(center.x, rect.position.x, rect.end.x), clampf(center.y, rect.position.y, rect.end.y))
+	return nearest.distance_squared_to(center) < radius * radius
 
 ## Returns orbital radius in screen pixels for drawing concentric orbital track rings.
 func get_orbit_radius_px(station_id: String) -> float:

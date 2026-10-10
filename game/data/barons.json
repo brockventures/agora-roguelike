@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Data only until Epic 3 tasks 2+ read it (docs/design/epic3-barons.md).",
+  "victory": {"barons_required": "all"},
+  "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6},
+  "heat": {"decay_per_round": 1, "retaliation_at": 6},
+  "barons": [
+    {
+      "id": "ares_heavy",
+      "name": "Ares Heavy",
+      "archetype": "short_squeezer",
+      "anchor": "mars",
+      "treasury_cr": 60000,
+      "treasury_shares": 600,
+      "upkeep_cr_per_round": 400,
+      "inventory": {"ORE": 300, "MACHINERY": 200},
+      "margin_debt_cr": 9000,
+      "privileges": {
+        "docking_toll_cr": 15,
+        "toll_exempt": ["ares_heavy"],
+        "pipelines": [
+          {"commodity": "ORE", "depth_bps": 16000, "outsider_ask_bps": 800},
+          {"commodity": "MACHINERY", "depth_bps": 14000, "outsider_ask_bps": 800}
+        ]
+      },
+      "params": {
+        "squeeze_window_rounds": 3,
+        "squeeze_price_bps_max": 5000,
+        "squeeze_depth_bps": 3000,
+        "contract_every_rounds": 8,
+        "contract_qty": [30, 60],
+        "contract_bid_bps": 1500,
+        "contract_penalty_bps": 2000
+      }
+    },
+    {
+      "id": "titan_cryo_hydro",
+      "name": "Titan Cryo-Hydro",
+      "archetype": "hoarder",
+      "anchor": "ceres",
+      "treasury_cr": 45000,
+      "treasury_shares": 600,
+      "upkeep_cr_per_round": 300,
+      "inventory": {"FUEL": 250, "FOOD": 200},
+      "margin_debt_cr": 6000,
+      "privileges": {
+        "docking_toll_cr": 10,
+        "toll_exempt": ["titan_cryo_hydro"],
+        "pipelines": [
+          {"commodity": "FUEL", "depth_bps": 15000, "outsider_ask_bps": 700},
+          {"commodity": "FOOD", "depth_bps": 15000, "outsider_ask_bps": 700}
+        ]
+      },
+      "params": {
+        "float_commodities": ["FUEL", "FOOD"],
+        "hoard_trigger_depth_bps": 7000,
+        "hoard_cap_qty": 40,
+        "release_after_rounds": 6,
+        "corner_premium_bps": 2500
+      }
+    },
+    {
+      "id": "sol_central",
+      "name": "Sol Central",
+      "archetype": "auctioneer",
+      "anchor": "earth",
+      "treasury_cr": 50000,
+      "treasury_shares": 600,
+      "upkeep_cr_per_round": 350,
+      "inventory": {"FRAG": 400, "FOOD": 150},
+      "margin_debt_cr": 5000,
+      "privileges": {
+        "docking_toll_cr": 12,
+        "toll_exempt": ["sol_central"],
+        "pipelines": [
+          {"commodity": "FRAG", "depth_bps": 14000, "outsider_ask_bps": 600},
+          {"commodity": "FOOD", "depth_bps": 12000, "outsider_ask_bps": 600}
+        ]
+      },
+      "params": {
+        "auction_every_rounds": 5,
+        "rig_bps_max": 300,
+        "indicative_leak": "full"
+      }
+    }
+  ]
+}
