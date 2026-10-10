@@ -177,7 +177,7 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 	if p_draw_source != null:
 		draw_source = p_draw_source
 	else:
-		draw_source = NativeDrawSource.new(hash("hazards-%d" % p_seed))
+		draw_source = NativeDrawSource.new(StableHash.hash32("hazards-%d" % p_seed))
 
 	if p_bags != null:
 		bags = p_bags
@@ -190,7 +190,7 @@ func _init(p_odds: Variant = null, p_draw_source: DrawSource = null, p_bags: Bag
 func reset(new_seed: int) -> void:
 	seed_val = new_seed
 	if draw_source is NativeDrawSource:
-		draw_source = NativeDrawSource.new(hash("hazards-%d" % new_seed))
+		draw_source = NativeDrawSource.new(StableHash.hash32("hazards-%d" % new_seed))
 	if bags != null:
 		bags.reset(new_seed)
 

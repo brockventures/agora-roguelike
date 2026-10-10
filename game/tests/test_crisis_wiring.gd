@@ -135,6 +135,7 @@ func test_market_changes_then_reverts_through_the_loop() -> String:
 	if lp.crisis_deck.tag_for("mars", key) == "":
 		return "board tag missing"
 	lp.dispatch_action(M0Loop.ACT_SUBMIT)
+	lp.crisis_deck.data["grace_rounds"] = 1000000  # no re-roll once it expires (seed-independent)
 	for i in 400:
 		lp.advance(FRAME)
 		if lp.crisis_deck.active.is_empty():
