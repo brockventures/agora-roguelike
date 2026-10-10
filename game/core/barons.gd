@@ -242,6 +242,22 @@ func held_by(holder: String) -> Array:
 	return out
 
 
+## How many barons the player must hold for the monopoly: barons.json
+## `victory.barons_required`, "all" meaning every baron in the file.
+func barons_required() -> int:
+	var req = data.get("victory", {}).get("barons_required", "all")
+	if req is String:
+		return ids().size()
+	return clampi(int(req), 1, maxi(1, ids().size()))
+
+
+## Epic 3 phase 1 of the win (design doc 5.4): the player holds every baron (and so
+## every station they anchor). Derived from the holders, never stored, so it adds
+## nothing to saves or hashes. The run win itself (the Sol System Rescue) is #32.
+func monopoly_achieved() -> bool:
+	return not ids().is_empty() and held_by(Takeover.PLAYER).size() >= barons_required()
+
+
 ## Rent a baron pays its holder each round.
 func rent_of(id: String) -> int:
 	return Takeover.rent(self, id)

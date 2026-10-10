@@ -1989,6 +1989,8 @@ func _resolution_model() -> Dictionary:
 		return _crisis_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
 		return _contract_model()
+	if loop.overlay_state == M0Loop.OVERLAY_MONOPOLY:
+		return _monopoly_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return {"eyebrow": tr("CH11_EYEBROW"), "title": tr("CH11_TITLE"), "band": "alert", "wide": false,
@@ -2036,14 +2038,33 @@ func _contract_model() -> Dictionary:
 
 func _summary_model() -> Dictionary:
 	var r: Dictionary = loop.run_summary()
+	var rows: Array = [
+		{"kind": "kv", "key": tr("SUM_CAUSE"), "value": _cause_text(str(r["reason"]))},
+		{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
+		{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
+		{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds_survived"]))}]
+	if int(r["barons_broken"]) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_BARONS"), "value": tr("SUM_BARONS_VALUE") % [int(r["barons_broken"]), int(r["barons_severance"])]})
+	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
 	return {"eyebrow": tr("SUM_EYEBROW"), "title": tr("SUM_TITLE"), "band": "alert", "wide": true,
+		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
+
+
+## The monopoly summary state (Epic 3 task 9, design doc 5.4): every baron held. The
+## Sol System Rescue that turns this into the run win is #32, so A only continues.
+func _monopoly_model() -> Dictionary:
+	var r: Dictionary = loop.monopoly_summary()
+	return {"eyebrow": tr("MONO_EYEBROW"), "title": tr("MONO_TITLE"), "band": "teal", "wide": true,
 		"rows": [
-			{"kind": "kv", "key": tr("SUM_CAUSE"), "value": _cause_text(str(r["reason"]))},
+			{"kind": "text", "text": tr("MONO_BODY")},
+			{"kind": "kv", "key": tr("MONO_HELD"), "value": tr("MONO_HELD_VALUE") % [int(r["barons_held"]), int(r["barons_total"])]},
 			{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
 			{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
-			{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds_survived"]))},
-			{"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]}],
-		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
+			{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds"]))},
+			{"kind": "kv", "key": tr("MONO_SEVERANCE"), "value": tr("MONO_SEVERANCE_VALUE") % int(r["severance_pending"])},
+			{"kind": "muted", "text": tr("MONO_NEXT")},
+			{"kind": "muted", "text": tr("HUD_CLOCK_HALTED")}],
+		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
 
 
 func _perks_model() -> Dictionary:

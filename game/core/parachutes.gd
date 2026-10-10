@@ -60,6 +60,8 @@ const STATS: Dictionary = {
 ## points = filings * SEVERANCE_PER_FILING + peak_net_worth * SEVERANCE_NET_WORTH_BPS / 10000
 const SEVERANCE_PER_FILING: int = 100
 const SEVERANCE_NET_WORTH_BPS: int = 50   # 0.5% of peak net worth
+## Epic 3 task 9: banked per baron the corp holds when it ends (placeholder; Ryan may overrule).
+const SEVERANCE_PER_BARON: int = 150
 
 var perks: Dictionary = {}          # id -> perk Dictionary (first occurrence wins)
 var _duplicate_ids: Array[String] = []
@@ -291,7 +293,11 @@ static func apply_stat(mods: Dictionary, stat: String, base: int) -> int:
 
 ## Bank Severance points for a finished run into the profile; returns the award.
 ## Negative inputs count as zero.
-static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int) -> int:
-	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS
+## `barons_broken` adds SEVERANCE_PER_BARON each and is counted on the profile; it
+## never enters peak_net_worth.
+static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0) -> int:
+	var broken: int = maxi(0, barons_broken)
+	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON
 	profile.severance_points += award
+	profile.barons_broken += broken
 	return award
