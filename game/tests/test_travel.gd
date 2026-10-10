@@ -272,6 +272,23 @@ func test_cargo_carries_across() -> String:
 	return "ok"
 
 
+# --- Replay ---
+
+func test_a_recording_that_travels_replays_to_the_same_hash() -> String:
+	var s := Replay.start_recording(77, {}, Replay.DEFAULT_FRAME_DELTA, 30)
+	s.advance_frames(10)
+	s.dispatch(M0Loop.ACT_STATION_NEXT)  # mars -> ceres
+	s.dispatch(M0Loop.ACT_SUBMIT)  # A on the Map tab departs
+	s.advance_frames(3 * 30 + 20)
+	if s.controller.docked_at != "ceres":
+		return "the recorded session never docked at ceres ('%s')" % s.controller.docked_at
+	var rec: Dictionary = _json(s.to_recording())
+	var res: Dictionary = Replay.replay(rec)
+	if not bool(res["ok"]):
+		return "replay of a voyage failed: %s" % str(res)
+	return "ok"
+
+
 # --- Save / load ---
 
 func test_transit_survives_a_json_save_round_trip() -> String:
