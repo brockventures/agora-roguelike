@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes ag-pop{0%{transform:scale(.86)}50%{transform:scale(1.06)}100%{transform:scale(1)}}@keyframes ag-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}</style></helmet>
+<div style="display:inline-flex;align-items:stretch;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;font-family:'Archivo',sans-serif;font-variant-numeric:tabular-nums;animation:{{ anim }}">
+  <div style="background:{{ bg }};color:{{ fg }};padding:6px 10px;font-size:12px;font-weight:800;letter-spacing:.12em;display:flex;align-items:center;border-right:3px solid #1c1a17">{{ kindLabel }}</div>
+  <div style="background:#e6dcc3;color:#1c1a17;padding:6px 12px;font-size:15px;font-weight:700;display:flex;align-items:center">{{ text }}</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:420,&quot;height&quot;:44},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;filled&quot;,&quot;rejected&quot;,&quot;info&quot;],&quot;default&quot;:&quot;filled&quot;,&quot;tsType&quot;:&quot;'filled'|'rejected'|'info'&quot;},&quot;text&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;BUY 5 ORE @ 18.0 vs ARES HEAVY&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const k = this.props.kind ?? 'filled';
+    const m = { filled: ['FILLED', '#c99a2e', '#1c1a17', 'ag-pop 250ms steps(3,end) both'], rejected: ['REJECTED', '#a8431f', '#e6dcc3', 'ag-shake 250ms steps(4,end) both'], info: ['NOTICE', '#2f6f6a', '#e6dcc3', 'ag-pop 250ms steps(3,end) both'] }[k];
+    return { kindLabel: m[0], bg: m[1], fg: m[2], anim: m[3], text: this.props.text ?? 'BUY 5 ORE @ 18.0 vs ARES HEAVY' };
+  }
+}
+</script>
+</body>
+</html>

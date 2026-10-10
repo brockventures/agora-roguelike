@@ -19,8 +19,9 @@ const BID_GLYPH: String = "+"
 const ASK_GLYPH: String = "-"
 
 const _COLORS: Dictionary = {
-	# Default: the HUD's oxidized teal for bids, rust red for asks (#105).
-	DEFAULT: {"bid": Color(0.13, 0.50, 0.54), "ask": Color(0.78, 0.30, 0.14)},
+	# Default: the HUD's oxidized teal for bids, rust red for asks (#105). Hex values are
+	# the design system's tokens/colors.css --ag-bid / --ag-ask.
+	DEFAULT: {"bid": Color("1a6b75"), "ask": Color("c74d24")},
 	# Okabe-Ito sky blue 56B4E9 and orange E69F00.
 	DEUTERANOPIA: {"bid": Color("56B4E9"), "ask": Color("E69F00")},
 	# Okabe-Ito sky blue 56B4E9 and yellow F0E442 (red is dark to a protanope).

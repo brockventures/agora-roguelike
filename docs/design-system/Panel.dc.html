@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;background:{{ bg }};color:{{ fg }};border:4px solid #1c1a17;box-shadow:{{ shadow }};font-family:'Archivo',sans-serif;box-sizing:border-box;width:100%;height:100%;min-width:0">
+  <sc-if value="{{ hasHeader }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ headPad }};background:{{ headBg }};color:{{ headFg }};border-bottom:{{ headRule }} solid #1c1a17">
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <sc-if value="{{ hasEyebrow }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;letter-spacing:.14em">{{ eyebrow }}</span></sc-if>
+        <span style="font-size:{{ titleSize }};font-weight:800;font-stretch:72%;line-height:1.05">{{ title }}</span>
+      </div>
+      <span style="font-size:12px;font-weight:800;letter-spacing:.1em;white-space:nowrap">{{ meta }}</span>
+    </div>
+  </sc-if>
+  <div style="flex:1;min-height:0;padding:{{ bodyPad }};display:flex;flex-direction:column;gap:8px">{{ children }}</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:400,&quot;height&quot;:240},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ORDER TICKET&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;eyebrow&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;meta&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;plate&quot;,&quot;paper&quot;,&quot;paperDeep&quot;,&quot;bone&quot;],&quot;default&quot;:&quot;paper&quot;,&quot;tsType&quot;:&quot;'plate'|'paper'|'paperDeep'|'bone'&quot;},&quot;band&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;elevation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;flat&quot;,&quot;lift&quot;,&quot;modal&quot;],&quot;default&quot;:&quot;flat&quot;,&quot;tsType&quot;:&quot;'flat'|'lift'|'modal'&quot;},&quot;padding&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;8px 12px&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;children&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;ReactNode&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const tone = this.props.tone ?? 'paper';
+    const tones = { plate: ['#2c353b', '#e6dcc3'], paper: ['#d9cdb0', '#1c1a17'], paperDeep: ['#cdbf9f', '#1c1a17'], bone: ['#e6dcc3', '#1c1a17'] };
+    const t = tones[tone] || tones.paper;
+    const band = !!this.props.band;
+    const elev = this.props.elevation ?? 'flat';
+    return {
+      bg: t[0], fg: t[1], title: this.props.title ?? '', eyebrow: this.props.eyebrow ?? '', meta: this.props.meta ?? '',
+      hasHeader: !!this.props.title, hasEyebrow: !!this.props.eyebrow,
+      headBg: band ? 'linear-gradient(135deg,#a8431f 0 86%,#7a2e14 86% 100%)' : 'transparent', headFg: band ? '#e6dcc3' : t[1],
+      headRule: band ? '4px' : '2px', headPad: band ? '8px 16px' : '6px 12px', titleSize: band ? '24px' : '18px',
+      shadow: elev === 'lift' ? '6px 6px 0 #1c1a17' : (elev === 'modal' ? '8px 8px 0 #000' : 'none'),
+      bodyPad: this.props.padding ?? '8px 12px', children: this.props.children
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#d9cdb0}a{color:#7a2e14}a:hover{color:#1c1a17}
+@keyframes ag-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes ag-pop{0%{transform:scale(.9)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes ag-flash{0%,49%{background-color:#a8431f}50%,100%{background-color:#7a2e14}}
+@keyframes ag-ring{to{stroke-dashoffset:-28}}
+@keyframes ag-boil{0%{transform:translate(0,0)}33%{transform:translate(.5px,-.5px)}66%{transform:translate(-.5px,.5px)}100%{transform:translate(0,0)}}</style>
+</helmet>
+<div style="font-family:'Archivo',sans-serif;color:#1c1a17;background:#d9cdb0;min-height:100vh;font-variant-numeric:tabular-nums">
+  <nav style="background:#2c353b;border-bottom:4px solid #1c1a17;display:flex;align-items:stretch;flex-wrap:wrap;color:#e6dcc3">
+    <a href="Landing.dc.html" style="padding:14px 24px;border-right:3px solid #1c1a17;font-size:24px;font-weight:800;font-stretch:70%;letter-spacing:.06em;color:#c99a2e;text-decoration:none">AGORA</a>
+    <div style="display:flex;align-items:center;gap:4px;padding:0 12px;font-size:14px;font-weight:700;letter-spacing:.08em;flex-wrap:wrap">
+      <a href="Web Terminal.dc.html" style="color:#1c1a17;background:#d9cdb0;border:3px solid #1c1a17;text-decoration:none;padding:6px 12px">TERMINAL</a>
+      <a href="Web Orrery.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">ORRERY</a>
+      <a href="Web Docs.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">GUIDE</a>
+      <a href="Web Patch Notes.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">PATCH NOTES</a>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:stretch">
+      <div style="display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">ROUND</span><span style="font-size:20px;font-weight:800;font-stretch:85%">{{ round }}</span></div>
+      <div style="display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">SEQ</span><span style="font-size:20px;font-weight:800;font-stretch:85%">{{ seq }}</span></div>
+      <button onClick="{{ toggleLive }}" style="font-family:inherit;cursor:pointer;border:0;border-left:3px solid #1c1a17;background:{{ liveBg }};color:{{ liveFg }};padding:6px 18px;display:flex;flex-direction:column;justify-content:center;text-align:left"><span style="font-size:12px;font-weight:700;letter-spacing:.12em">FEED</span><span style="font-size:18px;font-weight:800;font-stretch:85%">{{ liveTxt }}</span></button>
+    </div>
+  </nav>
+
+  <div style="background:#1c1a17;color:#e6dcc3;border-bottom:4px solid #1c1a17;display:flex;align-items:stretch;overflow:hidden">
+    <div style="flex:none;background:linear-gradient(135deg,#a8431f 0 82%,#7a2e14 82% 100%);border-right:3px solid #1c1a17;padding:10px 16px;font-size:13px;font-weight:800;letter-spacing:.12em;display:flex;align-items:center">GALNET WIRE</div>
+    <div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap;animation:{{ wipeAnim }}">
+      <span style="font-size:12px;font-weight:800;letter-spacing:.1em;color:#b8ad94">RND {{ news.round }} · {{ news.where }}</span>
+      <span style="background:{{ news.impBg }};color:{{ news.impFg }};border:2px solid #e6dcc3;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">{{ news.impact }}</span>
+      <span style="font-size:15px;font-weight:700">{{ news.headline }}</span>
+      <span style="font-size:13px;font-weight:700;color:#c99a2e">{{ news.drift }}</span>
+    </div>
+    <button onClick="{{ nextNews }}" style="flex:none;font-family:inherit;cursor:pointer;background:#2c353b;color:#e6dcc3;border:0;border-left:3px solid #000;padding:0 16px;font-size:13px;font-weight:800;letter-spacing:.08em">NEXT ▸</button>
+  </div>
+
+  <div style="max-width:1320px;margin:0 auto;padding:24px 24px 96px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:800;letter-spacing:.14em;color:#7a2e14">INSTITUTIONAL REQUISITION TERMINAL</span><h1 style="margin:0;font-size:clamp(36px,5vw,56px);font-weight:800;font-stretch:65%;line-height:.95">Sol exchange floor</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ ribbon }}" as="c" hint-placeholder-count="2">
+          <div style="background:#e6dcc3;border:3px solid #1c1a17;display:flex;align-items:stretch"><span style="background:#1c1a17;color:#e6dcc3;padding:4px 10px;font-size:13px;font-weight:800;letter-spacing:.08em;display:flex;align-items:center">{{ c.sym }}</span><span style="padding:4px 10px;font-size:16px;font-weight:800">{{ c.last }} CR</span><span style="padding:4px 10px;font-size:13px;font-weight:800;background:{{ c.bg }};color:{{ c.fg }};border-left:2px solid #1c1a17;display:flex;align-items:center">{{ c.delta }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px">
+      <sc-for list="{{ stations }}" as="s" hint-placeholder-count="4">
+        <button onClick="{{ s.select }}" style="font-family:inherit;text-align:left;cursor:pointer;background:{{ s.bg }};color:#1c1a17;border:4px solid #1c1a17;box-shadow:{{ s.sh }};padding:12px 14px;display:flex;flex-direction:column;gap:6px;transform:{{ s.tf }};transition:transform 83ms steps(1,end),box-shadow 83ms steps(1,end)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%"><span style="font-size:20px;font-weight:800;font-stretch:75%">{{ s.title }}</span><span style="background:{{ s.stBg }};color:{{ s.stFg }};border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">{{ s.status }}</span></div>
+          <span style="font-size:13px;font-weight:600">{{ s.sub }}</span>
+          <span style="font-size:14px;font-weight:800">{{ s.quote }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column">
+      <div style="display:flex;align-items:flex-end;gap:2px;flex-wrap:wrap;padding-left:8px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.select }}" style="font-family:inherit;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:3px solid #1c1a17;border-bottom:{{ t.bb }};padding:8px 16px;font-size:14px;font-weight:800;letter-spacing:.08em;margin-bottom:-4px;position:relative;z-index:{{ t.z }}">{{ t.name }}</button>
+        </sc-for>
+      </div>
+      <div style="background:#e6dcc3;border:4px solid #1c1a17;box-shadow:6px 6px 0 #1c1a17;padding:20px;display:flex;flex-direction:column;gap:32px">
+
+        <sc-if value="{{ show.standings }}" hint-placeholder-val="{{ true }}">
+          <section data-screen-label="Standings" style="display:flex;flex-direction:column;gap:14px;animation:{{ paneAnim }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:26px;font-weight:800;font-stretch:72%">Standings · fiduciary audit</span><span style="font-size:13px;font-weight:700">Marked at last trade · round {{ round }}</span></div>
+            <div style="overflow-x:auto;border:3px solid #1c1a17">
+              <div style="min-width:760px;display:flex;flex-direction:column">
+                <div style="display:grid;grid-template-columns:48px minmax(200px,2fr) minmax(160px,1.6fr) 100px 80px 70px 100px;gap:12px;padding:8px 12px;background:#1c1a17;color:#e6dcc3;font-size:12px;font-weight:800;letter-spacing:.1em"><span>#</span><span>SYNDICATE</span><span>NET WORTH</span><span style="text-align:right">LIQUID</span><span style="text-align:right">FRAG</span><span style="text-align:right">FUEL</span><span style="text-align:right">P&amp;L</span></div>
+                <sc-for list="{{ board }}" as="b" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:48px minmax(200px,2fr) minmax(160px,1.6fr) 100px 80px 70px 100px;gap:12px;align-items:center;padding:10px 12px;border-top:2px solid #1c1a17;background:{{ b.bg }}">
+                    <span style="font-size:26px;font-weight:800;font-stretch:70%">{{ b.rank }}</span>
+                    <div style="display:flex;flex-direction:column"><span style="font-size:17px;font-weight:800;font-stretch:80%">{{ b.syn }}</span><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#7a2e14">{{ b.agent }}</span></div>
+                    <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:18px;font-weight:800">{{ b.nw }} CR</span><div style="height:10px;border:2px solid #1c1a17;background:#d9cdb0"><div style="height:100%;width:{{ b.pct }}%;background:#2f6f6a;transition:width 250ms steps(3,end)"></div></div></div>
+                    <span style="text-align:right;font-size:15px;font-weight:700">{{ b.liquid }}</span>
+                    <span style="text-align:right;font-size:15px;font-weight:700">{{ b.frags }}</span>
+                    <span style="text-align:right;font-size:15px;font-weight:700;color:{{ b.fuelC }}">{{ b.fuel }}</span>
+                    <span style="justify-self:end;background:{{ b.pBg }};color:{{ b.pFg }};border:2px solid #1c1a17;font-size:13px;font-weight:800;padding:1px 6px">{{ b.pnl }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ show.radar }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Radar" style="display:flex;flex-direction:column;gap:14px;animation:{{ paneAnim }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:26px;font-weight:800;font-stretch:72%">Orbital radar · transit</span><a href="Web Orrery.dc.html" style="font-size:14px;font-weight:800;letter-spacing:.06em">OPEN FULL ORRERY →</a></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+              <div style="background:#d9cdb0;border:4px solid #1c1a17;aspect-ratio:4/3;position:relative;overflow:hidden">
+                <svg viewBox="-260 -195 520 390" width="100%" height="100%" style="position:absolute;inset:0">
+                  <g fill="none" stroke="#1c1a17" stroke-width="2"><circle r="80"></circle><circle r="130"></circle></g>
+                  <circle r="185" fill="none" stroke="#1c1a17" stroke-width="2" stroke-dasharray="2 6"></circle>
+                  <sc-for list="{{ radar.lanes }}" as="l" hint-placeholder-count="3"><path d="{{ l.d }}" fill="none" stroke="{{ l.c }}" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" style="animation:ag-ring 333ms steps(4,end) infinite"></path></sc-for>
+                  <circle cx="3" cy="3" r="20" fill="#1c1a17"></circle><circle r="20" fill="#1c1a17"></circle><circle r="17" fill="#c99a2e"></circle><path d="M15.07 -7.86 A17 17 0 0 1 -7.86 15.07 Z" fill="#9a6f1c"></path>
+                  <sc-for list="{{ radar.nodes }}" as="n" hint-placeholder-count="4"><g transform="translate({{ n.x }} {{ n.y }})"><circle r="{{ n.ring }}" fill="none" stroke="#c99a2e" stroke-width="3" stroke-dasharray="6 5"></circle><circle cx="3" cy="3" r="12" fill="#1c1a17"></circle><circle r="12" fill="#1c1a17"></circle><circle r="10" fill="{{ n.fill }}"></circle><path d="M8.86 -4.62 A10 10 0 0 1 -4.62 8.86 Z" fill="{{ n.dark }}"></path></g></sc-for>
+                  <sc-for list="{{ radar.ships }}" as="sh" hint-placeholder-count="3"><g transform="translate({{ sh.x }} {{ sh.y }}) rotate(45)"><rect x="-7" y="-7" width="14" height="14" fill="#1c1a17"></rect><rect x="-5" y="-5" width="10" height="10" fill="{{ sh.c }}"></rect></g></sc-for>
+                  <sc-for list="{{ radar.beacons }}" as="bc" hint-placeholder-count="2"><g transform="translate({{ bc.x }} {{ bc.y }})"><path d="M0 -11 L10 7 L-10 7 Z" fill="#1c1a17" transform="translate(2 2)"></path><path d="M0 -11 L10 7 L-10 7 Z" fill="#a8431f" stroke="#1c1a17" stroke-width="2"></path></g></sc-for>
+                </svg>
+                <sc-for list="{{ radar.nodes }}" as="n" hint-placeholder-count="4"><div style="position:absolute;left:{{ n.lx }}%;top:{{ n.ly }}%;transform:{{ n.ltf }};font-size:12px;font-weight:800;letter-spacing:.08em;white-space:nowrap;pointer-events:none;text-shadow:2px 0 0 #d9cdb0,-2px 0 0 #d9cdb0,0 2px 0 #d9cdb0,0 -2px 0 #d9cdb0">{{ n.label }}</div></sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.12em">ALIGNMENT WINDOWS</span>
+                <sc-for list="{{ windows }}" as="w" hint-placeholder-count="2">
+                  <div style="background:{{ w.bg }};color:{{ w.fg }};border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;padding:10px 14px;display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:16px;font-weight:800;font-stretch:80%">{{ w.name }}</span><span style="font-size:13px;font-weight:600">{{ w.desc }}</span></div><div style="flex:none;display:flex;flex-direction:column;text-align:right"><span style="font-size:20px;font-weight:800">{{ w.fuel }}</span><span style="font-size:12px;font-weight:800;letter-spacing:.08em">{{ w.when }}</span></div></div>
+                </sc-for>
+                <span style="font-size:12px;font-weight:800;letter-spacing:.12em;margin-top:8px">MANIFEST · IN FLIGHT</span>
+                <div style="border:3px solid #1c1a17;display:flex;flex-direction:column">
+                  <sc-for list="{{ manifest }}" as="m" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 12px;border-bottom:2px solid #1c1a17">
+                      <span style="font-size:15px;font-weight:800">{{ m.agent }} · {{ m.route }}</span><span style="font-size:13px;font-weight:800;text-align:right">ETA {{ m.eta }}</span>
+                      <span style="font-size:13px;font-weight:600">{{ m.cargo }}</span><span style="font-size:13px;font-weight:700;color:#7a2e14;text-align:right">{{ m.decay }}</span>
+                      <div style="grid-column:1 / -1;height:8px;border:2px solid #1c1a17;background:#d9cdb0"><div style="height:100%;width:{{ m.pct }}%;background:#c99a2e"></div></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:12px;font-weight:800;letter-spacing:.12em">ARBITRAGE MATRIX · FRAG · NET OF FUEL</span>
+              <div style="overflow-x:auto;border:3px solid #1c1a17"><div style="min-width:560px;display:grid;grid-template-columns:120px repeat(4,minmax(0,1fr))">
+                <span style="background:#1c1a17;color:#e6dcc3;padding:8px 10px;font-size:12px;font-weight:800;letter-spacing:.1em">BUY ↓ SELL →</span>
+                <sc-for list="{{ arbHead }}" as="h" hint-placeholder-count="4"><span style="background:#1c1a17;color:#e6dcc3;padding:8px 10px;font-size:12px;font-weight:800;letter-spacing:.1em;text-align:right">{{ h }}</span></sc-for>
+                <sc-for list="{{ arb }}" as="c" hint-placeholder-count="20"><span style="padding:8px 10px;border-top:2px solid #1c1a17;font-size:{{ c.fs }};font-weight:800;text-align:{{ c.al }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.v }}</span></sc-for>
+              </div></div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ show.market }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Market" style="display:flex;flex-direction:column;gap:14px;animation:{{ paneAnim }}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="font-size:26px;font-weight:800;font-stretch:72%">Market floor · {{ bookTitle }}</span>
+              <div style="display:flex;gap:6px">
+                <sc-for list="{{ instBtns }}" as="ib" hint-placeholder-count="2"><button onClick="{{ ib.select }}" style="font-family:inherit;cursor:{{ ib.cur }};background:{{ ib.bg }};color:{{ ib.fg }};border:3px solid #1c1a17;padding:4px 12px;font-size:13px;font-weight:800;letter-spacing:.08em;opacity:{{ ib.op }}">{{ ib.name }}</button></sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ halted }}" hint-placeholder-val="{{ false }}">
+              <div style="border:3px solid #1c1a17;color:#e6dcc3;padding:10px 14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;animation:ag-flash 1s steps(1,end) infinite"><span style="font-size:16px;font-weight:800;letter-spacing:.06em">HALTED · VOLATILITY RECESS</span><span style="font-size:14px;font-weight:700">{{ haltReason }} · reopens by auction in {{ haltRounds }} rounds</span></div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px;align-items:start">
+              <div style="background:#cdbf9f;border:4px solid #1c1a17;padding:10px;display:flex;flex-direction:column;gap:2px">
+                <div style="display:grid;grid-template-columns:62px 56px minmax(60px,1fr) 48px minmax(0,84px);gap:8px;padding:0 9px 6px;font-size:12px;font-weight:800;letter-spacing:.1em"><span>SIDE</span><span style="text-align:right">PRICE</span><span>DEPTH</span><span style="text-align:right">QTY</span><span>DESK</span></div>
+                <sc-for list="{{ asks }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.pick }}" style="cursor:pointer;display:grid;grid-template-columns:62px 56px minmax(60px,1fr) 48px minmax(0,84px);gap:8px;align-items:center;height:32px;padding:0 6px;box-sizing:border-box;border:3px solid {{ r.bd }};background:{{ r.bg }};box-shadow:{{ r.sh }}"><span style="background:{{ askC }};border:2px solid #1c1a17;font-size:12px;font-weight:800;text-align:center;line-height:18px">− ASK</span><span style="text-align:right;font-size:16px;font-weight:800">{{ r.p }}</span><div style="height:10px;border:2px solid #1c1a17;background:#d9cdb0"><div style="height:100%;width:{{ r.depth }}%;background:{{ askC }};transition:width 250ms steps(3,end)"></div></div><span style="text-align:right;font-size:15px;font-weight:700">{{ r.q }}</span><span style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.who }}</span></div>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:8px;height:24px;font-size:12px;font-weight:800;letter-spacing:.12em"><div style="flex:1;height:2px;background:#1c1a17"></div>SPREAD {{ spread }}<div style="flex:1;height:2px;background:#1c1a17"></div></div>
+                <sc-for list="{{ bids }}" as="r" hint-placeholder-count="5">
+                  <div onClick="{{ r.pick }}" style="cursor:pointer;display:grid;grid-template-columns:62px 56px minmax(60px,1fr) 48px minmax(0,84px);gap:8px;align-items:center;height:32px;padding:0 6px;box-sizing:border-box;border:3px solid {{ r.bd }};background:{{ r.bg }};box-shadow:{{ r.sh }}"><span style="background:{{ bidC }};color:{{ bidInk }};border:2px solid #1c1a17;font-size:12px;font-weight:800;text-align:center;line-height:18px">+ BID</span><span style="text-align:right;font-size:16px;font-weight:800">{{ r.p }}</span><div style="height:10px;border:2px solid #1c1a17;background:#d9cdb0"><div style="height:100%;width:{{ r.depth }}%;background:{{ bidC }};transition:width 250ms steps(3,end)"></div></div><span style="text-align:right;font-size:15px;font-weight:700">{{ r.q }}</span><span style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.who }}</span></div>
+                </sc-for>
+                <div style="margin-top:10px;padding:10px 8px 4px;border-top:2px solid #1c1a17;display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:.1em"><span>LULD BAND</span><span>REF {{ luld.ref }}</span></div>
+                  <div style="position:relative;height:18px;border:2px solid #1c1a17;background:#d9cdb0"><div style="position:absolute;top:0;bottom:0;left:{{ luld.lastPct }}%;width:4px;margin-left:-2px;background:#1c1a17"></div><div style="position:absolute;top:0;bottom:0;left:50%;width:2px;background:#7a2e14"></div></div>
+                  <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>LIMIT DOWN {{ luld.lo }}</span><span>LAST {{ luld.last }}</span><span>LIMIT UP {{ luld.hi }}</span></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="background:#2c353b;color:#e6dcc3;border:4px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;display:flex;flex-direction:column">
+                  <div style="background:linear-gradient(135deg,#c99a2e 0 86%,#9a6f1c 86% 100%);color:#1c1a17;border-bottom:4px solid #1c1a17;padding:8px 16px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:20px;font-weight:800;font-stretch:75%">QUICK ORDER</span><span style="font-size:12px;font-weight:800;letter-spacing:.1em">{{ bookTitle }}</span></div>
+                  <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;border:3px solid #1c1a17;font-size:15px;font-weight:800;letter-spacing:.08em;text-align:center">
+                      <button onClick="{{ setBuy }}" style="font-family:inherit;cursor:pointer;border:0;padding:10px;background:{{ buyBg }};color:{{ buyFg }};font-size:15px;font-weight:800;letter-spacing:.08em">+ BUY · ALLOCATE</button>
+                      <button onClick="{{ setSell }}" style="font-family:inherit;cursor:pointer;border:0;border-left:3px solid #1c1a17;padding:10px;background:{{ sellBg }};color:{{ sellFg }};font-size:15px;font-weight:800;letter-spacing:.08em">− SELL · DIVEST</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">QUANTITY</span><div style="display:flex;border:3px solid #1c1a17;background:#e6dcc3;color:#1c1a17"><button onClick="{{ qtyDown }}" style="font-family:inherit;cursor:pointer;border:0;background:transparent;padding:6px 12px;font-size:18px;font-weight:800">−</button><span style="flex:1;text-align:center;border-left:2px solid #1c1a17;border-right:2px solid #1c1a17;padding:6px;font-size:18px;font-weight:800">{{ qty }}</span><button onClick="{{ qtyUp }}" style="font-family:inherit;cursor:pointer;border:0;background:transparent;padding:6px 12px;font-size:18px;font-weight:800">+</button></div></div>
+                      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">LIMIT · CLICK A ROW</span><span style="border:3px solid #1c1a17;background:#1c1a17;padding:6px 10px;font-size:18px;font-weight:800">{{ limit }} CR</span></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">NOTIONAL</span><span style="font-size:22px;font-weight:800">{{ notional }} CR</span></div>
+                      <button onClick="{{ submit }}" style="font-family:inherit;cursor:pointer;background:#c99a2e;color:#1c1a17;border:4px solid #1c1a17;box-shadow:4px 4px 0 #000;padding:10px 20px;font-size:15px;font-weight:800;letter-spacing:.1em" style-active="transform:translate(4px,4px);box-shadow:none">SUBMIT ORDER</button></div>
+                    <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:stretch;border:3px solid #1c1a17;box-shadow:4px 4px 0 #000;animation:{{ toastAnim }}"><span style="background:{{ toastBg }};color:{{ toastFg }};padding:6px 10px;font-size:12px;font-weight:800;letter-spacing:.12em;border-right:3px solid #1c1a17;display:flex;align-items:center">{{ toastKind }}</span><span style="background:#e6dcc3;color:#1c1a17;padding:6px 12px;font-size:14px;font-weight:700">{{ toastText }}</span></div></sc-if>
+                  </div>
+                </div>
+                <div style="border:4px solid #1c1a17;background:#e6dcc3;display:flex;flex-direction:column">
+                  <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#1c1a17;color:#e6dcc3;font-size:12px;font-weight:800;letter-spacing:.12em"><span>TRADE TAPE</span><span>TICKS {{ tapeCount }}</span></div>
+                  <sc-for list="{{ tape }}" as="t" hint-placeholder-count="5">
+                    <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 70px 56px;gap:2px 10px;align-items:baseline;padding:7px 12px;border-top:2px solid #1c1a17;font-size:13px;font-weight:700;background:{{ t.bg }};animation:{{ t.anim }}"><span>{{ t.time }}</span><span style="font-weight:800">{{ t.st }} · {{ t.inst }}</span><span style="text-align:right;font-weight:800">{{ t.price }}</span><span style="text-align:right">×{{ t.qty }}</span><span style="grid-column:2 / -1;font-size:12px;font-weight:800;letter-spacing:.06em;color:#7a2e14">{{ t.who }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ show.corp }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Corporate" style="display:flex;flex-direction:column;gap:14px;animation:{{ paneAnim }}">
+            <span style="font-size:26px;font-weight:800;font-stretch:72%">Corporate warfare · equities &amp; borrow desk</span>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px">
+              <sc-for list="{{ equities }}" as="e" hint-placeholder-count="4">
+                <div style="background:#e6dcc3;border:4px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;display:flex;flex-direction:column">
+                  <div style="background:{{ e.band }};color:{{ e.bandFg }};border-bottom:3px solid #1c1a17;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:22px;font-weight:800;font-stretch:70%">${{ e.t }}</span><span style="font-size:12px;font-weight:800;letter-spacing:.1em">{{ e.status }}</span></div>
+                  <div style="padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+                    <span style="grid-column:1 / -1;font-size:13px;font-weight:700">{{ e.issuer }}</span>
+                    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">SHARE</span><span style="font-size:20px;font-weight:800">{{ e.price }}</span></div>
+                    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">MKT CAP</span><span style="font-size:20px;font-weight:800">{{ e.cap }}</span></div>
+                    <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:.1em"><span>SHORT INTEREST</span><span>{{ e.si }}%</span></div><div style="height:10px;border:2px solid #1c1a17;background:#d9cdb0"><div style="height:100%;width:{{ e.si }}%;background:{{ e.siC }}"></div></div></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px">
+              <div style="background:#2c353b;color:#e6dcc3;border:4px solid #1c1a17;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:20px;font-weight:800;font-stretch:75%">Borrow desk</span>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;border-top:2px solid #1c1a17;padding-top:10px">
+                  <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">LOAN-108</span><span style="font-size:16px;font-weight:800">25 × $BAL</span></div>
+                  <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">ZERO ← AMOS</span><span style="font-size:16px;font-weight:800">12.5% fee</span></div>
+                  <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#b8ad94">COLLATERAL</span><span style="font-size:16px;font-weight:800">2,200 CR</span></div>
+                </div>
+              </div>
+              <div style="background:#2c353b;color:#e6dcc3;border:4px solid #1c1a17;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:20px;font-weight:800;font-stretch:75%">Salvage · RFQ-042</span><span style="background:#a8431f;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">BCN-094 · 3 RND</span></div>
+                <span style="font-size:14px;line-height:1.45">Marvin dead-stick in the Kirkwood Gap. Needs 80 FUEL, escrow up to 4,500 CR.</span>
+                <div style="display:flex;justify-content:space-between;border-top:2px solid #1c1a17;padding-top:8px;font-size:14px;font-weight:700"><span>Best quote · Zero</span><span>80 FUEL · 5,200 CR · ETA 1</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:12px;font-weight:800;letter-spacing:.12em">CIRCUIT BREAKERS · LULD</span>
+              <div style="border:3px solid #1c1a17;display:flex;flex-direction:column">
+                <sc-for list="{{ bands }}" as="b" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:110px 70px repeat(3,minmax(0,1fr)) 100px;gap:10px;align-items:center;padding:8px 12px;border-bottom:2px solid #1c1a17;font-size:14px;font-weight:700"><span style="font-weight:800">{{ b.st }}</span><span>{{ b.inst }}</span><span>↓ {{ b.lo }}</span><span>REF {{ b.ref }}</span><span>↑ {{ b.hi }}</span><span style="justify-self:end;background:{{ b.bg }};color:{{ b.fg }};border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">{{ b.status }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;deuteranopia&quot;,&quot;protanopia&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'standings', station: 'ceres', inst: 'FRAG', live: false, round: 42, seq: 4824, news: 0, side: 'buy', qty: 10, limit: null, toastN: 0, toast: null, tape: null, books: null, paneN: 0, wipeN: 0, playPane: true, playWipe: true, nw: null };
+  componentDidMount() { this._iv = setInterval(() => this.tick(), 1500); this._nv = setInterval(() => this.state.live && this.nextNews(), 7000); }
+  componentWillUnmount() { clearInterval(this._iv); clearInterval(this._nv); clearTimeout(this._t1); clearTimeout(this._t2); }
+  data() {
+    return {
+      board: [['zero', 'Apex Vector Arbitrage', 38450, 18450, 1250, 320, 34.2], ['amos', 'Atlantean Paperclip Manufacturing', 31200, 14200, 980, 450, 18.5], ['aerial', 'Zenith Drift Overwatch', 24800, 12800, 750, 280, 6.1], ['marvin', 'Ballistic Liquidation Co.', 16500, 5500, 1100, 0, -12.4]],
+      prices: { ceres: { FRAG: [145, 152, 148], FUEL: [58, 64, 60] }, mars: { FRAG: [120, 126, 122.5], FUEL: [44, 48, 46] }, luna: { FRAG: [102, 106, 104], FUEL: [33, 36, 34.5] }, earth: { FRAG: [95, 99, 97], FUEL: [26, 28.5, 27] } },
+      books: {
+        ceres_FRAG: { b: [[145, 180, 'zero'], [144, 320, 'aerial'], [142.5, 450, 'amos'], [140, 600, 'market_maker'], [138, 850, 'market_maker']], a: [[152, 150, 'marvin'], [153.5, 280, 'amos'], [155, 420, 'aerial'], [158, 650, 'market_maker'], [162, 900, 'market_maker']] },
+        ceres_FUEL: { b: [[58, 200, 'zero'], [56, 350, 'aerial']], a: [[64, 120, 'amos'], [68, 240, 'market_maker']] },
+        mars_FRAG: { b: [[120, 250, 'amos'], [118, 400, 'zero']], a: [[126, 200, 'aerial'], [128.5, 380, 'marvin']] },
+        luna_FRAG: { b: [[102, 300, 'aerial'], [100, 500, 'market_maker']], a: [[106, 280, 'amos'], [108, 450, 'zero']] },
+        earth_FUEL: { b: [[26, 500, 'zero'], [25, 750, 'market_maker']], a: [[28.5, 420, 'amos'], [30, 600, 'market_maker']] }
+      },
+      bands: [['ceres', 'FRAG', 148, 175, 125, 'normal'], ['ceres', 'FUEL', 60, 72, 48, 'halted'], ['mars', 'FRAG', 122.5, 145, 102, 'normal'], ['luna', 'FRAG', 104, 122, 88, 'normal'], ['earth', 'FUEL', 27, 32, 22, 'normal']],
+      tape: [[4819, 'ceres', 'FRAG', 148, 75, 'zero', 'marvin', '17:54:12'], [4818, 'ceres', 'FUEL', 60, 120, 'aerial', 'amos', '17:53:48'], [4817, 'mars', 'FRAG', 122.5, 110, 'amos', 'aerial', '17:52:30'], [4816, 'earth', 'FUEL', 27, 200, 'zero', 'market_maker', '17:51:15'], [4815, 'luna', 'FRAG', 104, 90, 'marvin', 'amos', '17:49:50']],
+      news: [[42, 'CERES · FUEL', 'HIGH', 'Ceres Fuel Depot Pipe Rupture Sparks Supply Crunch', 0.22], [40, 'CERES · FRAG', 'MEDIUM', 'Ballistic Liquidation Skiff Drops SOS Beacon in Kirkwood Gap', -0.08], [38, 'MARS · ROUTE', 'FAVORABLE', 'Mars-Ceres Hohmann Syzygy Corridor Opens', 0.05], [35, 'LUNA · EQUITY', 'NEUTRAL', 'Atlantean Paperclip Manufacturing Opens Bilateral Stock Loan Desk', 0]]
+    };
+  }
+  pulse(k) { this.setState({ [k]: false }); setTimeout(() => this.setState({ [k]: true }), 30); }
+  nextNews() { this.setState(s => ({ news: s.news + 1 })); this.pulse('playWipe'); }
+  tick() {
+    if (!this.state.live) return;
+    const D = this.data();
+    const books = this.state.books || D.books;
+    const nb = {};
+    Object.keys(books).forEach(k => { nb[k] = { b: books[k].b.map(r => [r[0], Math.max(20, r[1] + Math.round((Math.random() - .5) * 80)), r[2]]), a: books[k].a.map(r => [r[0], Math.max(20, r[1] + Math.round((Math.random() - .5) * 80)), r[2]]) }; });
+    const ks = Object.keys(nb), k = ks[Math.floor(Math.random() * ks.length)], [st, inst] = k.split('_');
+    const agents = ['zero', 'amos', 'aerial', 'marvin', 'market_maker'];
+    const p = nb[k].b[0][0] + Math.round(Math.random() * (nb[k].a[0][0] - nb[k].b[0][0]) * 2) / 2;
+    const now = new Date(), t = now.toTimeString().slice(0, 8);
+    const tape = [[this.state.seq + 1, st, inst, p, 20 + Math.round(Math.random() * 150), agents[Math.floor(Math.random() * 4)], agents[Math.floor(Math.random() * 5)], t, true], ...(this.state.tape || D.tape).map(r => r.slice(0, 8))].slice(0, 8);
+    const nw = (this.state.nw || D.board.map(b => b[2])).map(v => Math.round(v + (Math.random() - .5) * 600));
+    this.setState(s => ({ books: nb, tape, seq: s.seq + 1, nw }));
+  }
+  setTab(t) { if (t === this.state.tab) return; this.setState({ tab: t }); this.pulse('playPane'); }
+  setStation(st) {
+    const books = this.data().books;
+    const inst = books[`${st}_${this.state.inst}`] ? this.state.inst : (books[`${st}_FRAG`] ? 'FRAG' : 'FUEL');
+    this.setState({ station: st, inst, limit: null });
+  }
+  submit() {
+    const s = this.state, D = this.data();
+    const key = `${s.station}_${s.inst}`;
+    const halted = D.bands.some(b => `${b[0]}_${b[1]}` === key && b[5] === 'halted');
+    const book = (s.books || D.books)[key];
+    const lim = s.limit ?? (s.side === 'buy' ? book.a[0][0] : book.b[0][0]);
+    if (halted) return this.setState(x => ({ toast: ['REJECTED', `${s.station.toUpperCase()} ${s.inst} is halted (LULD)`], toastN: x.toastN + 1 }), () => this.pulse('playToast'));
+    const crosses = s.side === 'buy' ? lim >= book.a[0][0] : lim <= book.b[0][0];
+    const t = new Date().toTimeString().slice(0, 8);
+    if (!crosses) return this.setState(x => ({ toast: ['RESTING', `${s.side.toUpperCase()} ${s.qty} ${s.inst} @ ${lim.toFixed(1)} placed on book`], toastN: x.toastN + 1 }), () => this.pulse('playToast'));
+    const tape = [[s.seq + 1, s.station, s.inst, lim, s.qty, s.side === 'buy' ? 'you' : 'counterparty', s.side === 'buy' ? 'counterparty' : 'you', t, true], ...(s.tape || D.tape).map(r => r.slice(0, 8))].slice(0, 8);
+    this.setState(x => ({ tape, seq: x.seq + 1, toast: ['FILLED', `${s.side === 'buy' ? 'BUY' : 'SELL'} ${s.qty} ${s.inst} @ ${lim.toFixed(1)} at ${s.station.toUpperCase()}`], toastN: x.toastN + 1 }), () => this.pulse('playToast'));
+  }
+  renderVals() {
+    const s = this.state, D = this.data();
+    const pal = { default: ['#1a6b75', '#c74d24', '#e6dcc3'], deuteranopia: ['#56B4E9', '#E69F00', '#1c1a17'], protanopia: ['#56B4E9', '#F0E442', '#1c1a17'] }[this.props.palette ?? 'default'] || ['#1a6b75', '#c74d24', '#e6dcc3'];
+    const fmt = n => Number(n).toLocaleString('en-US');
+    const f1 = n => Number(n).toFixed(1);
+    const books = s.books || D.books;
+    const nws = s.nw || D.board.map(b => b[2]);
+    const rows = D.board.map((b, i) => ({ b, nw: nws[i] })).sort((x, y) => y.nw - x.nw);
+    const maxNw = Math.max(...nws);
+    const board = rows.map((r, i) => { const b = r.b, up = b[6] >= 0; return { rank: i + 1, syn: b[1], agent: b[0].toUpperCase(), nw: fmt(r.nw), pct: Math.round(r.nw / maxNw * 100), liquid: fmt(b[3]), frags: fmt(b[4]), fuel: b[5], fuelC: b[5] === 0 ? '#a8431f' : '#1c1a17', pnl: `${up ? '+' : '−'}${Math.abs(b[6])}% ${up ? 'UP' : 'DOWN'}`, pBg: up ? pal[0] : pal[1], pFg: up ? pal[2] : '#1c1a17', bg: i === 0 ? '#d9cdb0' : 'transparent' }; });
+    const SN = { ceres: ['CERES · PIAZZI', 'Fuel depot & ore extraction hub'], mars: ['MARS · ARCADIA', 'Orbital shipyards & heavy foundries'], luna: ['LUNA · SHACKLETON', 'He-3 collectors & volatiles'], earth: ['EARTH · LEO', 'Planetary defense & salvage depot'] };
+    const stations = Object.keys(SN).map(k => {
+      const on = k === s.station, halts = D.bands.filter(b => b[0] === k && b[5] === 'halted').length, pr = D.prices[k];
+      return { title: SN[k][0], sub: SN[k][1], status: halts ? `${halts} HALT` : 'NOMINAL', stBg: halts ? '#a8431f' : '#2f6f6a', stFg: '#e6dcc3', quote: `FRAG ${f1(pr.FRAG[2])} · FUEL ${f1(pr.FUEL[2])}`,
+        bg: on ? '#c99a2e' : '#e6dcc3', sh: on ? '6px 6px 0 #1c1a17' : '3px 3px 0 #1c1a17', tf: on ? 'translate(-2px,-2px)' : 'none', select: () => this.setStation(k) };
+    });
+    const pr = D.prices[s.station];
+    const ribbon = ['FRAG', 'FUEL'].map(c => { const ch = ((pr[c][2] - (pr[c][0] + pr[c][1]) / 2) / pr[c][2] * 100); const up = ch >= 0; return { sym: c, last: f1(pr[c][2]), delta: `${up ? '+' : '−'}${Math.abs(ch).toFixed(1)}%`, bg: up ? pal[0] : pal[1], fg: up ? pal[2] : '#1c1a17' }; });
+    const TABS = [['standings', 'STANDINGS'], ['radar', 'RADAR'], ['market', 'MARKET'], ['corp', 'CORPORATE'], ['all', 'ALL']];
+    const tabs = TABS.map(([k, n]) => { const on = k === s.tab; return { name: n, bg: on ? '#e6dcc3' : '#cdbf9f', fg: '#1c1a17', bb: on ? '3px solid #e6dcc3' : '3px solid #1c1a17', z: on ? 2 : 1, select: () => this.setTab(k) }; });
+    const all = s.tab === 'all';
+    const show = { standings: all || s.tab === 'standings', radar: all || s.tab === 'radar', market: all || s.tab === 'market', corp: all || s.tab === 'corp' };
+    const P = { earth: [80, -2.4], mars: [130, -0.6], ceres: [185, 0.9], luna: null };
+    const pos = k => { if (k === 'luna') { const e = pos('earth'); return { x: e.x + 22, y: e.y - 14 }; } const [r, a] = P[k]; return { x: Math.round(r * Math.cos(a)), y: Math.round(r * Math.sin(a) * 0.95) }; };
+    const fills = { earth: ['#2f6f6a', '#1f4f4b'], luna: ['#b8ad94', '#9a8f78'], mars: ['#a8431f', '#7a2e14'], ceres: ['#2f6f6a', '#1f4f4b'] };
+    const nodes = ['earth', 'luna', 'mars', 'ceres'].map(k => { const p = pos(k); const side = { earth: [0, -1], luna: [1, -1], mars: [1, -1], ceres: [1, 0] }[k]; const off = (k === s.station ? 22 : 16) + 4; const ox = p.x + side[0] * off, oy = p.y + side[1] * off; return { ...p, fill: fills[k][0], dark: fills[k][1], ring: k === s.station ? 18 : 0, label: k.toUpperCase(), lx: (ox + 260) / 520 * 100, ly: (oy + 195) / 390 * 100, ltf: side[0] < 0 ? 'translate(-100%,-50%)' : side[0] > 0 ? (side[1] < 0 ? 'translate(0,-100%)' : 'translate(0,-50%)') : 'translate(-50%,-100%)' }; });
+    const transits = [['zero', 'earth', 'ceres', 40, 43, 'FUEL', 400, 40], ['amos', 'luna', 'mars', 41, 42, 'FRAG', 250, 0], ['aerial', 'mars', 'ceres', 40, 44, 'FRAG', 180, 0]];
+    const lanes = [], ships = [];
+    transits.forEach((t, i) => {
+      const a = pos(t[1]), b = pos(t[2]), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mn = Math.hypot(mx, my);
+      let cx, cy;
+      if (mn < 60) { const dx = b.x - a.x, dy = b.y - a.y, dn = Math.hypot(dx, dy) || 1; cx = mx - dy / dn * 140; cy = my + dx / dn * 140; }
+      else { cx = mx + mx / mn * 60; cy = my + my / mn * 60; }
+      lanes.push({ d: `M${a.x} ${a.y} Q ${Math.round(cx)} ${Math.round(cy)} ${b.x} ${b.y}`, c: '#1c1a17' });
+      const u = Math.min(1, Math.max(0, (s.round - t[3]) / (t[4] - t[3]))), v = 1 - u;
+      ships.push({ x: Math.round(v * v * a.x + 2 * v * u * cx + u * u * b.x), y: Math.round(v * v * a.y + 2 * v * u * cy + u * u * b.y), c: ['#c99a2e', '#e6dcc3', '#2f6f6a'][i] });
+    });
+    const ce = pos('ceres'), ea = pos('earth');
+    const beacons = [{ x: Math.round((ce.x + ea.x) / 2), y: Math.round((ce.y + ea.y) / 2 + 40) }, { x: ce.x + 26, y: ce.y + 18 }];
+    const manifest = transits.map(t => ({ agent: t[0].toUpperCase(), route: `${t[1].toUpperCase()} → ${t[2].toUpperCase()}`, eta: t[4] <= s.round ? 'ARRIVING' : `R${t[4]}`, cargo: `${t[6]} ${t[5]}`, decay: t[7] ? `−${t[7]} projected decay` : 'non-perishable', pct: Math.round(Math.min(1, (s.round - t[3]) / (t[4] - t[3])) * 100) }));
+    const windows = [{ name: 'MARS-CERES SYZYGY RUSH', desc: 'Arcadia Planitia ↔ Ceres Anchorage alignment.', fuel: '−33% FUEL', when: 'OPEN · 4 RND LEFT', bg: '#c99a2e', fg: '#1c1a17' }, { name: 'EARTH-MARS HOHMANN WINDOW', desc: 'Inner-system corridor alignment.', fuel: '−25% FUEL', when: 'OPENS IN 8 RND', bg: '#e6dcc3', fg: '#1c1a17' }];
+    const ST = ['earth', 'luna', 'mars', 'ceres'], fuelCost = { earth: { luna: 4, mars: 12, ceres: 22 }, luna: { mars: 10, ceres: 20 }, mars: { ceres: 9 } };
+    const fc = (a, b) => (fuelCost[a] && fuelCost[a][b]) || (fuelCost[b] && fuelCost[b][a]) || 0;
+    const arb = [];
+    ST.forEach(a => { arb.push({ v: a.toUpperCase(), fs: '12px', al: 'left', bg: '#1c1a17', fg: '#e6dcc3' }); ST.forEach(b => { if (a === b) return arb.push({ v: '—', fs: '15px', al: 'right', bg: '#d9cdb0', fg: '#1c1a17' }); const net = D.prices[b].FRAG[0] - D.prices[a].FRAG[1] - fc(a, b); const good = net > 0; arb.push({ v: `${good ? '+' : '−'}${Math.abs(net).toFixed(1)}`, fs: '15px', al: 'right', bg: good ? pal[0] : 'transparent', fg: good ? pal[2] : '#1c1a17' }); }); });
+    const key = `${s.station}_${s.inst}`, book = books[key];
+    const maxQ = Math.max(...book.a.map(r => r[1]), ...book.b.map(r => r[1]));
+    const lim = s.limit;
+    const mk = (r, side) => { const f = lim === r[0]; return { p: f1(r[0]), q: fmt(r[1]), who: r[2].replace('_', ' ').toUpperCase(), depth: Math.round(r[1] / maxQ * 100), bg: f ? '#c99a2e' : 'transparent', bd: f ? '#1c1a17' : 'transparent', sh: f ? '4px 4px 0 #1c1a17' : 'none', pick: () => this.setState({ limit: r[0], side: side === 'a' ? 'buy' : 'sell' }) }; };
+    const asks = [...book.a].reverse().map(r => mk(r, 'a')), bids = book.b.map(r => mk(r, 'b'));
+    const band = D.bands.find(b => `${b[0]}_${b[1]}` === key);
+    const last = D.prices[s.station][s.inst][2];
+    const luld = band ? { ref: f1(band[2]), lo: f1(band[4]), hi: f1(band[3]), last: f1(last), lastPct: Math.round((last - band[4]) / (band[3] - band[4]) * 100) } : { ref: f1(last), lo: f1(last * .9), hi: f1(last * 1.1), last: f1(last), lastPct: 50 };
+    const halted = !!(band && band[5] === 'halted');
+    const instBtns = ['FRAG', 'FUEL'].map(i => { const has = !!books[`${s.station}_${i}`], on = i === s.inst; return { name: i, bg: on ? '#1c1a17' : '#e6dcc3', fg: on ? '#e6dcc3' : '#1c1a17', op: has ? 1 : .45, cur: has ? 'pointer' : 'not-allowed', select: () => has && this.setState({ inst: i, limit: null }) }; });
+    const effLim = lim ?? (s.side === 'buy' ? book.a[0][0] : book.b[0][0]);
+    const tapeRows = (s.tape || D.tape).map((t, i) => ({ time: t[7], st: t[1].toUpperCase(), inst: t[2], price: f1(t[3]), qty: t[4], who: `${t[5]} ← ${t[6]}`.replace(/_/g, ' ').toUpperCase(), bg: t[8] && i === 0 ? '#d9cdb0' : 'transparent', anim: t[8] && i === 0 && s.playPane ? 'ag-wipe 250ms steps(3,end) both' : 'none' }));
+    const n = D.news[s.news % D.news.length];
+    const impC = { HIGH: ['#a8431f', '#e6dcc3'], MEDIUM: ['#c99a2e', '#1c1a17'], FAVORABLE: ['#2f6f6a', '#e6dcc3'], NEUTRAL: ['#e6dcc3', '#1c1a17'] }[n[2]];
+    const tk = s.toast ? s.toast[0] : 'FILLED';
+    const tC = { FILLED: ['#c99a2e', '#1c1a17', 'ag-pop 250ms steps(3,end) both'], REJECTED: ['#a8431f', '#e6dcc3', 'ag-pop 250ms steps(3,end) both'], RESTING: ['#2f6f6a', '#e6dcc3', 'ag-pop 250ms steps(3,end) both'] }[tk];
+    const eq = [['APEX', 'Zero · Apex Vector Arbitrage', 126, 12600, 14, 'ACTIVE'], ['SOLV', 'Amos · Atlantean Paperclip Mfg.', 105, 10500, 8, 'ACTIVE'], ['ZNTH', 'Aerial · Zenith Drift Overwatch', 84, 8400, 11, 'ACTIVE'], ['BAL', 'Marvin · Ballistic Liquidation Co.', 61, 6100, 42, 'DISTRESSED']];
+    const equities = eq.map(e => { const bad = e[5] === 'DISTRESSED'; return { t: e[0], issuer: e[1], price: `${f1(e[2])} CR`, cap: fmt(e[3]), si: e[4], siC: e[4] > 30 ? '#a8431f' : '#c99a2e', status: e[5], band: bad ? 'linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%)' : 'linear-gradient(135deg,#2f6f6a 0 85%,#1f4f4b 85% 100%)', bandFg: '#e6dcc3' }; });
+    const bands = D.bands.map(b => { const h = b[5] === 'halted'; return { st: b[0].toUpperCase(), inst: b[1], lo: f1(b[4]), ref: f1(b[2]), hi: f1(b[3]), status: h ? 'HALTED' : 'NORMAL', bg: h ? '#a8431f' : '#e6dcc3', fg: h ? '#e6dcc3' : '#1c1a17' }; });
+    return {
+      round: s.round, seq: s.seq, liveTxt: s.live ? '● LIVE' : 'SIM · R42', liveBg: s.live ? '#c99a2e' : '#2c353b', liveFg: s.live ? '#1c1a17' : '#e6dcc3', toggleLive: () => this.setState(x => ({ live: !x.live })),
+      news: { round: n[0], where: n[1], impact: `${n[2]} IMPACT`, impBg: impC[0], impFg: impC[1], headline: n[3], drift: n[4] ? `${n[4] > 0 ? '+' : '−'}${Math.abs(n[4] * 100)}% DRIFT BIAS` : 'NO DRIFT' }, nextNews: () => this.nextNews(),
+      wipeAnim: s.playWipe ? 'ag-wipe 250ms steps(3,end) both' : 'none', paneAnim: s.playPane ? 'ag-wipe 250ms steps(3,end) both' : 'none',
+      ribbon, stations, tabs, show, board,
+      radar: { nodes, lanes, ships, beacons }, manifest, windows, arbHead: ST.map(x => x.toUpperCase()), arb,
+      bookTitle: `${s.station.toUpperCase()} · ${s.inst}`, instBtns, asks, bids, spread: f1(book.a[0][0] - book.b[0][0]), luld, halted, haltReason: 'Limit Up breach (+24% drift spike)', haltRounds: 2,
+      bidC: pal[0], askC: pal[1], bidInk: pal[2],
+      buyBg: s.side === 'buy' ? pal[0] : '#1c1a17', buyFg: s.side === 'buy' ? pal[2] : '#b8ad94', sellBg: s.side === 'sell' ? pal[1] : '#1c1a17', sellFg: s.side === 'sell' ? '#1c1a17' : '#b8ad94',
+      setBuy: () => this.setState({ side: 'buy', limit: null }), setSell: () => this.setState({ side: 'sell', limit: null }),
+      qty: s.qty, qtyUp: () => this.setState(x => ({ qty: x.qty + 10 })), qtyDown: () => this.setState(x => ({ qty: Math.max(10, x.qty - 10) })),
+      limit: f1(effLim), notional: fmt(Math.round(effLim * s.qty)), submit: () => this.submit(),
+      toastOn: !!s.toast, toastKind: tk, toastText: s.toast ? s.toast[1] : '', toastBg: tC[0], toastFg: tC[1], toastAnim: s.playToast === false ? 'none' : tC[2],
+      tape: tapeRows, tapeCount: s.seq - 4800, equities, bands
+    };
+  }
+}
+</script>
+</body>
+</html>

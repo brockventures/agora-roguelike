@@ -22,13 +22,57 @@ const RUST_DARK := Color("7a2e14")
 const RUST_LIGHT := Color("e8946e")
 const TEAL := Color("2f6f6a")
 const TEAL_DARK := Color("1f4f4b")
+const VOID := Color("000000")
 
-## Ink contour widths in px.
+## Ink contour widths in px (tokens/form.css: --ag-line-panel, -control, -rule). Nothing thinner than 2.
 const OUTLINE_PANEL: int = 4
 const OUTLINE_NODE: float = 3.0
+const OUTLINE_CONTROL: int = 3
 const OUTLINE_RING: float = 2.0
+const OUTLINE_RULE: int = 2
 ## Offset of the solid shadow shapes, px (down and right, never blurred).
 const SHADOW_OFFSET: Vector2 = Vector2(4.0, 4.0)
+## Focus = a 3 px ochre ring plus the ink drop shadow (--ag-focus-ring).
+const FOCUS_RING_WIDTH: int = 3
+const FOCUS_RING_COLOR := OCHRE
+const FOCUS_DROP_COLOR := INK
+## Space scale, px, 4 px base (--ag-space-1 .. 7); panel gutter is 8, padding 12 to 16.
+const SPACE_1: int = 4
+const SPACE_2: int = 8
+const SPACE_3: int = 12
+const SPACE_4: int = 16
+const SPACE_5: int = 24
+const SPACE_6: int = 32
+const SPACE_7: int = 48
+const SPACE_SCALE: Array[int] = [SPACE_1, SPACE_2, SPACE_3, SPACE_4, SPACE_5, SPACE_6, SPACE_7]
+const GUTTER: int = 8
+## Frames are square; only nodes and pad glyphs are round.
+const RADIUS_FRAME: int = 0
+
+## Type roles (tokens/typography.css): Archivo variable font, one family; the width axis
+## carries the hierarchy. Each role is {size px, wght, wdth}; READOUT also turns on
+## tabular figures and LABEL is tracked +12%. 12 px is the floor at 100% and the three
+## text scales (100/115/130%) only scale up.
+const FONT_PATH: String = "res://assets/fonts/Archivo-VF.ttf"
+const ROLE_DISPLAY: String = "display"
+const ROLE_TITLE: String = "title"
+const ROLE_READOUT: String = "readout"
+const ROLE_BODY: String = "body"
+const ROLE_HINT: String = "hint"
+const ROLE_LABEL: String = "label"
+const TYPE_ROLES: Dictionary = {
+	ROLE_DISPLAY: {"size": 40, "wght": 800, "wdth": 70},
+	ROLE_TITLE: {"size": 24, "wght": 800, "wdth": 75},
+	ROLE_READOUT: {"size": 20, "wght": 700, "wdth": 85, "tnum": true},
+	ROLE_BODY: {"size": 16, "wght": 500, "wdth": 100},
+	ROLE_HINT: {"size": 14, "wght": 600, "wdth": 100},
+	ROLE_LABEL: {"size": 12, "wght": 700, "wdth": 100, "track": 0.12},
+}
+## OpenType tags as the ints FontVariation dictionaries are keyed by.
+const TAG_WGHT: int = 2003265652
+const TAG_WDTH: int = 2003072104
+const TAG_TNUM: int = 1953396077
+const MIN_WDTH: int = 62
 
 ## Panel variations in hud_theme.tres: the plate styles every screen draws from.
 const PANEL_VARIATIONS: Array[String] = ["HeaderPanel", "MapPanel", "SidebarPanel", "TickerPanel", "HeaderPanelPaused", "ModalPanel", "AlertPanel", "BannerPanel", "FocusFrameRust", "FocusFrameOchre"]
@@ -47,6 +91,32 @@ static func ticker_color(severity: String) -> Color:
 
 
 static var _cached: Theme = null
+static var _fonts: Dictionary = {}
+
+
+## The Archivo FontVariation of a type role. `wdth` > 0 overrides the role's width axis
+## (the fit fix: narrow 85 to 70 before wrapping, never shrink below 12 px).
+static func role_font(role: String, wdth: int = 0) -> FontVariation:
+	var key: String = "%s/%d" % [role, wdth]
+	if _fonts.has(key):
+		return _fonts[key]
+	var spec: Dictionary = TYPE_ROLES[role]
+	var fv := FontVariation.new()
+	fv.base_font = load(FONT_PATH) as Font
+	var axes: Dictionary = {TAG_WGHT: int(spec["wght"]), TAG_WDTH: maxi(MIN_WDTH, wdth if wdth > 0 else int(spec["wdth"]))}
+	fv.variation_opentype = axes
+	# Archivo's word space is tight at the HUD sizes; one px keeps words apart (all roles).
+	fv.spacing_space = 1
+	if bool(spec.get("tnum", false)):
+		fv.opentype_features = {TAG_TNUM: 1}
+	if spec.has("track"):
+		fv.spacing_glyph = int(round(float(spec["track"]) * float(spec["size"])))
+	_fonts[key] = fv
+	return fv
+
+
+static func role_size(role: String) -> int:
+	return int(TYPE_ROLES[role]["size"])
 
 
 static func load_theme() -> Theme:

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1c1a17}a{color:#c99a2e}a:hover{color:#e6dcc3}</style>
+</helmet>
+<div data-screen-label="HUD current (M0)" style="position:relative;width:1280px;height:800px;background:#1c1a17;overflow:hidden;font-family:'Open Sans',sans-serif;font-weight:600;color:#e6dcc3;white-space:pre">
+  <div style="position:absolute;left:0;top:0;width:1280px;height:64px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17">
+    <div style="position:absolute;left:16px;top:4px;height:28px;font-size:18px;line-height:28px;color:#e6dcc3">AGORA   CR 5,000   DEBT 3,750   DOOMSDAY 7:29 UNSTABLE   SPEED PAUSED   LANG EN</div>
+    <div style="position:absolute;left:16px;top:34px;height:26px;font-size:14px;line-height:22px;color:#b8ad94">{{ tabsText }}     LB/RB tab  R-stick commodity  D-pad ladder/qty  A buy/sell  B back  X Ch.11  Y speed  View settings</div>
+  </div>
+  <div style="position:absolute;left:0;top:64px;width:880px;height:672px;background:#d9cdb0;box-shadow:inset 0 0 0 4px #1c1a17;overflow:hidden">
+    <svg width="880" height="672" viewBox="0 0 880 672" style="position:absolute;left:0;top:0">
+      <g fill="none" stroke="#1c1a17" stroke-width="2">
+        <circle cx="440" cy="336" r="310.5"></circle>
+        <circle cx="440" cy="336" r="112.5"></circle>
+        <circle cx="440" cy="336" r="99"></circle>
+      </g>
+      <circle cx="440" cy="336" r="171" fill="none" stroke="#a8431f" stroke-width="3"></circle>
+      <g transform="translate(440 336)">
+        <circle cx="4" cy="4" r="27" fill="#1c1a17"></circle><circle r="27" fill="#1c1a17"></circle><circle r="24" fill="#c99a2e"></circle>
+        <path d="M21.28 -11.10 A24 24 0 0 1 -11.10 21.28 Z" fill="#9a6f1c"></path>
+      </g>
+      <g transform="translate(520 36)">
+        <circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle>
+        <path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path>
+      </g>
+      <g transform="translate(292 250)">
+        <circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#a8431f"></circle>
+        <path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#7a2e14"></path>
+      </g>
+      <g transform="translate(464 432)">
+        <circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle>
+        <path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path>
+      </g>
+      <g transform="translate(497 433)">
+        <circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle>
+        <path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path>
+      </g>
+      <g font-family="Open Sans, sans-serif" font-weight="600" font-size="14" stroke="#d9cdb0" stroke-width="6" stroke-linejoin="round" paint-order="stroke">
+        <text x="538" y="41" fill="#1c1a17">CERES</text>
+        <text x="284" y="204" fill="#7a2e14">ARCADIA FOUNDRIES</text>
+        <text x="472" y="408" fill="#1c1a17">KENNEDY ELEVATOR</text>
+        <text x="456" y="466" fill="#1c1a17">LUNA</text>
+      </g>
+    </svg>
+    <div style="position:absolute;left:16px;top:8px;font-size:16px;line-height:24px;color:#1c1a17">SOL TACTICAL MAP   docked: Arcadia Foundries</div>
+  </div>
+  <div style="position:absolute;left:880px;top:64px;width:400px;height:672px;background:#cdbf9f;box-shadow:inset 0 0 0 4px #1c1a17;overflow:hidden">
+    <div style="position:absolute;left:0;top:6px;width:400px;height:656px;overflow:hidden;font-size:16px;line-height:26px;color:#1c1a17">
+      <sc-for list="{{ ladder }}" as="r" hint-placeholder-count="13">
+        <div style="position:absolute;left:3px;top:{{ r.inkTop }}px;width:13px;height:12px;background:#1c1a17;display:{{ r.swDisplay }}"></div>
+        <div style="position:absolute;left:5px;top:{{ r.swTop }}px;width:9px;height:20px;background:{{ r.sw }};display:{{ r.swDisplay }}"></div>
+        <div style="position:absolute;left:16px;top:{{ r.top }}px;height:26px">{{ r.text }}</div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;top:736px;width:1280px;height:64px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17">
+    <div style="position:absolute;left:16px;top:6px;width:1248px;height:52px;overflow:hidden;font-size:16px;line-height:24px">
+      <div>REGULATION: SOL SYSTEM COMMERCE COMMISSION: Doomsday debt enforcement protocol active.</div>
+      <div>MARKET: CERES MINING GUILD: Deep-core ore extractors reporting record yields at Station Alpha.</div>
+    </div>
+  </div>
+  <sc-if value="{{ showMarket }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:24px;top:96px;width:832px;height:608px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17">
+      <div style="position:absolute;left:16px;top:{{ boardHiTop }}px;width:792px;height:26px;background:rgba(201,154,46,.5)"></div>
+      <div style="position:absolute;left:20px;top:16px;width:792px;font-size:16px;line-height:26px">
+        <sc-for list="{{ board }}" as="b" hint-placeholder-count="9"><div style="height:26px">{{ b }}</div></sc-for>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showCh11 }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:340px;top:240px;width:600px;height:320px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17,5px 5px 0 1px #1c1a17">
+      <div style="position:absolute;left:20px;top:16px;width:560px;font-size:20px;line-height:30px;white-space:pre-wrap">CHAPTER 11
+
+Insolvent: debt 3,750 exceeds liquidation value 1,980.
+The clock is halted.
+
+Press X to file and found a new corp.</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showSummary }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:24px;top:96px;width:832px;height:608px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17,5px 5px 0 1px #1c1a17">
+      <div style="position:absolute;left:20px;top:16px;width:792px;font-size:20px;line-height:30px;white-space:pre-wrap">SOVEREIGN DEFAULT   RUN OVER
+
+The Doomsday Clock has run out.
+
+NET WORTH        6,420 CR
+PEAK NET WORTH   8,115 CR
+ROUNDS SURVIVED  14
+SEVERANCE BANKED +3  (balance 7)
+
+Press A for Golden Parachutes.</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showSleep }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:300px;top:320px;width:680px;height:140px;background:#2c353b;box-shadow:inset 0 0 0 4px #1c1a17,5px 5px 0 1px #1c1a17">
+      <div style="position:absolute;left:20px;top:12px;width:640px;font-size:22px;line-height:32px;white-space:pre-wrap">PAUSED — resumed from sleep
+Press Start to resume.</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:800},&quot;overlay&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;market&quot;,&quot;chapter11&quot;,&quot;summary&quot;,&quot;sleep&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;ladderIndex&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:0,&quot;max&quot;:4,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const ov = this.props.overlay ?? 'none';
+    const tab = ov === 'market' ? 1 : 0;
+    const tabs = ['MAP', 'MARKET', 'FLEET'].map((t, i) => i === tab ? `[${t}]` : t).join('  ');
+    const asks = [[22, 47], [21, 40], [20, 33], [19, 26], [18, 19]];
+    const bids = [[16, 23], [15, 31], [14, 39], [13, 47], [12, 55]];
+    const cur = this.props.ladderIndex ?? 0;
+    const p = n => n.toFixed(1).padStart(6, ' ');
+    const lines = [{ t: 'ARCADIA FOUNDRIES  ORE' }, { t: '' }];
+    asks.forEach((a, k) => { const i = asks.length - 1 - k; lines.push({ t: `${i === cur ? '>' : ' '} - ASK ${p(a[0])}  x${a[1]}`, sw: '#c74d24' }); });
+    lines.push({ t: '---- spread 2.0 ----' });
+    bids.forEach(b => lines.push({ t: `  + BID ${p(b[0])}  x${b[1]}`, sw: '#1a6b75' }));
+    lines.push({ t: '' }, { t: 'ORDER  BUY  qty 1' }, { t: 'HELD   0 ORE   CARGO 0/100' });
+    const ladder = lines.map((l, i) => ({ text: l.t, top: i * 26, swTop: i * 26 + 3, inkTop: i * 26 + 1, sw: l.sw || 'transparent', swDisplay: l.sw ? 'block' : 'none' }));
+    const pad = s => s.padEnd(10, ' ');
+    const rows = [['FRAG', null, 9.5], ['FUEL', null, 31.0], ['FOOD', null, 12.5], ['ORE', [16, 18]], ['MACHINERY', null, 64.0]];
+    const board = ['ARCADIA FOUNDRIES QUOTES   counterparty ARES HEAVY', ''];
+    rows.forEach(r => {
+      const k = `${r[0] === 'ORE' ? '>' : ' '} ${pad(r[0])}`;
+      board.push(r[1] ? `${k} + BID ${p(r[1][0])}   - ASK ${p(r[1][1])}` : `${k} base ${p(r[2])}   (no live book)`);
+    });
+    board.push('', 'R-STICK commodity   D-PAD ladder/qty   B back');
+    return {
+      tabsText: tabs, ladder, board, boardHiTop: 16 + 26 * 5,
+      showMarket: ov === 'market', showCh11: ov === 'chapter11', showSummary: ov === 'summary', showSleep: ov === 'sleep'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#1c1a17}a{color:#c99a2e}a:hover{color:#e6dcc3}
+@keyframes ag-ring{to{stroke-dashoffset:-28}}
+@keyframes ag-smear{0%{transform:translateX(100%)}25%{transform:translateX(-4%) scaleX(1.06)}50%{transform:translateX(1%)}75%,100%{transform:translateX(0)}}</style>
+</helmet>
+<div style="font-family:'Archivo',sans-serif;color:#e6dcc3;background:#1c1a17;min-height:100vh;display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+  <nav style="background:#2c353b;border-bottom:4px solid #1c1a17;display:flex;align-items:stretch;flex-wrap:wrap">
+    <a href="Landing.dc.html" style="padding:14px 24px;border-right:3px solid #1c1a17;font-size:24px;font-weight:800;font-stretch:70%;letter-spacing:.06em;color:#c99a2e;text-decoration:none">AGORA</a>
+    <div style="display:flex;align-items:center;gap:4px;padding:0 12px;font-size:14px;font-weight:700;letter-spacing:.08em;flex-wrap:wrap">
+      <a href="Web Terminal.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">TERMINAL</a>
+      <a href="Web Orrery.dc.html" style="color:#1c1a17;background:#d9cdb0;border:3px solid #1c1a17;text-decoration:none;padding:6px 12px">ORRERY</a>
+      <a href="Web Docs.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">GUIDE</a>
+      <a href="Web Patch Notes.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">PATCH NOTES</a>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:stretch">
+      <div style="display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">ROUND</span><span style="font-size:20px;font-weight:800;font-stretch:85%">{{ roundTxt }}</span></div>
+      <div style="display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">WINDOWS</span><span style="font-size:20px;font-weight:800;font-stretch:85%">1 OPEN</span></div>
+      <div style="display:flex;flex-direction:column;justify-content:center;padding:6px 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">TRACKING</span><span style="font-size:20px;font-weight:800;font-stretch:85%">{{ trackTxt }}</span></div>
+    </div>
+  </nav>
+
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:#2c353b;border-bottom:4px solid #1c1a17">
+    <div style="display:flex;border:3px solid #000">
+      <sc-for list="{{ viewBtns }}" as="v" hint-placeholder-count="2"><button onClick="{{ v.set }}" style="font-family:inherit;cursor:pointer;border:0;padding:6px 14px;font-size:13px;font-weight:800;letter-spacing:.08em;background:{{ v.bg }};color:{{ v.fg }}">{{ v.label }}</button></sc-for>
+    </div>
+    <button onClick="{{ togglePlay }}" style="font-family:inherit;cursor:pointer;background:{{ playBg }};color:{{ playFg }};border:3px solid #000;box-shadow:3px 3px 0 #000;padding:6px 14px;font-size:13px;font-weight:800;letter-spacing:.08em" style-active="transform:translate(3px,3px);box-shadow:none">{{ playTxt }}</button>
+    <div style="display:flex;border:3px solid #000">
+      <sc-for list="{{ speedBtns }}" as="v" hint-placeholder-count="3"><button onClick="{{ v.set }}" style="font-family:inherit;cursor:pointer;border:0;padding:6px 10px;font-size:13px;font-weight:800;background:{{ v.bg }};color:{{ v.fg }}">{{ v.label }}</button></sc-for>
+    </div>
+    <sc-if value="{{ is3d }}" hint-placeholder-val="{{ false }}">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.1em">TILT <input type="range" min="0" max="80" value="{{ pitch }}" onChange="{{ setPitch }}" style="accent-color:#c99a2e;width:120px"></input></label>
+      <span style="font-size:12px;font-weight:700;color:#b8ad94">Drag the map to orbit</span>
+    </sc-if>
+    <div style="flex:1"></div>
+    <span style="font-size:12px;font-weight:800;letter-spacing:.1em;color:#b8ad94">LAYERS</span>
+    <sc-for list="{{ layers }}" as="l" hint-placeholder-count="7"><button onClick="{{ l.toggle }}" style="font-family:inherit;cursor:pointer;background:{{ l.bg }};color:{{ l.fg }};border:2px solid #000;padding:3px 8px;font-size:12px;font-weight:800;letter-spacing:.08em">{{ l.mark }} {{ l.name }}</button></sc-for>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0;position:relative;overflow:hidden">
+    <div style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:16px;background:#1c1a17">
+      <div onMouseDown="{{ dragStart }}" onMouseMove="{{ dragMove }}" onMouseUp="{{ dragEnd }}" onMouseLeave="{{ dragEnd }}" style="position:relative;width:min(100%, calc((100vh - 200px) * 4 / 3));aspect-ratio:4/3;background:#d9cdb0;border:4px solid #000;box-shadow:8px 8px 0 #000;cursor:{{ cursor }};user-select:none;overflow:hidden">
+        <svg viewBox="-400 -300 800 600" width="100%" height="100%" style="position:absolute;inset:0;display:block">
+          <sc-if value="{{ on.grid }}" hint-placeholder-val="{{ true }}"><g fill="none" stroke="#cdbf9f" stroke-width="2"><sc-for list="{{ gridRings }}" as="g" hint-placeholder-count="5"><ellipse rx="{{ g.rx }}" ry="{{ g.ry }}"></ellipse></sc-for><sc-for list="{{ gridSpokes }}" as="g" hint-placeholder-count="6"><line x1="{{ g.x1 }}" y1="{{ g.y1 }}" x2="{{ g.x2 }}" y2="{{ g.y2 }}"></line></sc-for></g></sc-if>
+          <sc-if value="{{ on.belt }}" hint-placeholder-val="{{ true }}"><g fill="#9a8f78"><sc-for list="{{ belt }}" as="b" hint-placeholder-count="40"><rect x="{{ b.x }}" y="{{ b.y }}" width="4" height="4"></rect></sc-for></g></sc-if>
+          <sc-if value="{{ on.orbits }}" hint-placeholder-val="{{ true }}"><g fill="none" stroke="#1c1a17" stroke-width="2"><sc-for list="{{ orbits }}" as="o" hint-placeholder-count="3"><ellipse rx="{{ o.rx }}" ry="{{ o.ry }}" stroke="{{ o.c }}" stroke-width="{{ o.w }}"></ellipse></sc-for></g></sc-if>
+          <sc-if value="{{ on.corridors }}" hint-placeholder-val="{{ true }}"><path d="{{ corridor }}" fill="none" stroke="#c99a2e" stroke-width="14" stroke-linecap="round" opacity="1"></path><path d="{{ corridor }}" fill="none" stroke="#1c1a17" stroke-width="2" stroke-dasharray="10 8" style="animation:ag-ring 333ms steps(4,end) infinite"></path></sc-if>
+          <sc-if value="{{ on.fleets }}" hint-placeholder-val="{{ true }}"><sc-for list="{{ lanes }}" as="l" hint-placeholder-count="3"><path d="{{ l.d }}" fill="none" stroke="#1c1a17" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round"></path></sc-for></sc-if>
+          <sc-for list="{{ drops }}" as="d" hint-placeholder-count="4"><line x1="{{ d.x }}" y1="{{ d.y1 }}" x2="{{ d.x }}" y2="{{ d.y2 }}" stroke="#1c1a17" stroke-width="2" stroke-dasharray="3 4"></line><ellipse cx="{{ d.x }}" cy="{{ d.y2 }}" rx="6" ry="{{ d.fry }}" fill="none" stroke="#1c1a17" stroke-width="2"></ellipse></sc-for>
+          <sc-for list="{{ bodies }}" as="n" hint-placeholder-count="5">
+            <g transform="translate({{ n.x }} {{ n.y }}) scale({{ n.s }})" onClick="{{ n.pick }}" style="cursor:pointer">
+              <sc-if value="{{ n.sel }}" hint-placeholder-val="{{ false }}"><circle r="{{ n.ringR }}" fill="none" stroke="#c99a2e" stroke-width="4" stroke-dasharray="8 6" style="animation:ag-ring 333ms steps(4,end) infinite"></circle></sc-if>
+              <circle cx="4" cy="4" r="{{ n.ro }}" fill="#1c1a17"></circle><circle r="{{ n.ro }}" fill="#1c1a17"></circle><circle r="{{ n.r }}" fill="{{ n.fill }}"></circle><path d="{{ n.cut }}" fill="{{ n.dark }}"></path>
+            </g>
+          </sc-for>
+          <sc-if value="{{ on.fleets }}" hint-placeholder-val="{{ true }}"><sc-for list="{{ ships }}" as="sh" hint-placeholder-count="3"><g transform="translate({{ sh.x }} {{ sh.y }}) rotate(45)" onClick="{{ sh.pick }}" style="cursor:pointer"><rect x="-8" y="-8" width="16" height="16" fill="#1c1a17" transform="translate(3 3)"></rect><rect x="-8" y="-8" width="16" height="16" fill="#1c1a17"></rect><rect x="-6" y="-6" width="12" height="12" fill="{{ sh.c }}"></rect></g></sc-for></sc-if>
+          <sc-if value="{{ on.beacons }}" hint-placeholder-val="{{ true }}"><sc-for list="{{ beacons }}" as="bc" hint-placeholder-count="2"><g transform="translate({{ bc.x }} {{ bc.y }})" onClick="{{ bc.pick }}" style="cursor:pointer"><path d="M0 -13 L12 9 L-12 9 Z" fill="#1c1a17" transform="translate(3 3)"></path><path d="M0 -13 L12 9 L-12 9 Z" fill="#a8431f" stroke="#1c1a17" stroke-width="3"></path><rect x="-1.5" y="-5" width="3" height="7" fill="#e6dcc3"></rect><rect x="-1.5" y="4" width="3" height="3" fill="#e6dcc3"></rect></g></sc-for></sc-if>
+        </svg>
+        <sc-if value="{{ on.labels }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ labels }}" as="l" hint-placeholder-count="6"><div style="position:absolute;left:{{ l.x }}%;top:{{ l.y }}%;transform:translate(-50%,-100%);margin-top:{{ l.dy }}px;font-size:12px;font-weight:800;letter-spacing:.08em;color:{{ l.c }};white-space:nowrap;pointer-events:none;text-shadow:2px 0 0 #d9cdb0,-2px 0 0 #d9cdb0,0 2px 0 #d9cdb0,0 -2px 0 #d9cdb0,2px 2px 0 #d9cdb0,-2px -2px 0 #d9cdb0">{{ l.t }}</div></sc-for>
+        </sc-if>
+        <div style="position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;gap:4px;background:#e6dcc3;color:#1c1a17;border:3px solid #1c1a17;padding:8px 10px;font-size:12px;font-weight:700">
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:12px;height:12px;background:#c99a2e;border:2px solid #1c1a17;transform:rotate(45deg)"></span>Hauler in transit</div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid #a8431f"></span>Distress beacon</div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:22px;height:8px;background:#c99a2e;border:2px solid #1c1a17"></span>Open alignment window</div>
+        </div>
+      </div>
+    </div>
+    <sc-if value="{{ inspOpen }}" hint-placeholder-val="{{ false }}">
+      <aside style="width:340px;max-width:100%;flex:none;background:#2c353b;border-left:4px solid #000;display:flex;flex-direction:column;animation:ag-smear 333ms steps(4,end) both;overflow-y:auto">
+        <div style="background:{{ insp.band }};color:{{ insp.bandFg }};border-bottom:4px solid #1c1a17;padding:10px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:800;letter-spacing:.14em">{{ insp.kind }}</span><span style="font-size:28px;font-weight:800;font-stretch:68%;line-height:1">{{ insp.title }}</span></div>
+          <button onClick="{{ closeInsp }}" style="font-family:inherit;cursor:pointer;background:#e6dcc3;color:#1c1a17;border:3px solid #1c1a17;width:32px;height:32px;font-size:16px;font-weight:800;flex:none">✕</button>
+        </div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:14px;line-height:1.5;color:#e6dcc3">{{ insp.sub }}</span>
+          <sc-for list="{{ insp.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;justify-content:space-between;gap:12px;border-top:2px solid #1c1a17;padding-top:8px"><span style="font-size:12px;font-weight:800;letter-spacing:.1em;color:#b8ad94">{{ r.k }}</span><span style="font-size:15px;font-weight:800;text-align:right">{{ r.v }}</span></div>
+          </sc-for>
+          <a href="Web Terminal.dc.html" style="align-self:flex-start;margin-top:6px;background:#c99a2e;color:#1c1a17;border:3px solid #1c1a17;box-shadow:3px 3px 0 #000;padding:6px 12px;font-size:13px;font-weight:800;letter-spacing:.08em;text-decoration:none">OPEN IN TERMINAL →</a>
+        </div>
+      </aside>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;2d&quot;,&quot;3d&quot;],&quot;default&quot;:&quot;2d&quot;,&quot;tsType&quot;:&quot;'2d'|'3d'&quot;}}">
+class Component extends DCLogic {
+  state = { view: this.props.view ?? '2d', yaw: -0.5, pitch: 55, t: 0, playing: true, speed: 1, sel: 'mars', drag: null, on: { grid: true, belt: true, orbits: true, corridors: true, fleets: true, beacons: true, labels: true } };
+  componentDidMount() {
+    this._iv = setInterval(() => { if (this.state.playing && !this.state.drag) this.setState(s => ({ t: s.t + s.speed })); }, 83);
+    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    this._belt = Array.from({ length: 70 }, () => ({ r: 196 + rnd() * 40, a: rnd() * Math.PI * 2, z: (rnd() - .5) * 14 }));
+    this.forceUpdate();
+  }
+  componentWillUnmount() { clearInterval(this._iv); }
+  renderVals() {
+    const s = this.state, is3d = s.view === '3d';
+    const yaw = is3d ? s.yaw : 0, ph = is3d ? s.pitch * Math.PI / 180 : 0;
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(ph), sp = Math.sin(ph);
+    const P = (x, y, z) => { const xr = x * cy - y * sy, yr = x * sy + y * cy; return { x: Math.round(xr), y: Math.round(yr * cp - (z || 0) * sp), g: Math.round(yr * cp), d: yr * sp, s: is3d ? 1 + yr * sp / 900 : 1 }; };
+    const round = 42 + s.t / 120;
+    const B = {
+      sun: { r: 0, w: 0, a0: 0, inc: 0, size: 26, fill: '#c99a2e', dark: '#9a6f1c', label: 'SOL', c: '#1c1a17' },
+      earth: { r: 105, w: 0.006, a0: -2.3, inc: 0, size: 14, fill: '#2f6f6a', dark: '#1f4f4b', label: 'EARTH · LEO', c: '#1c1a17' },
+      mars: { r: 160, w: 0.0035, a0: -0.7, inc: 0.03, size: 12, fill: '#a8431f', dark: '#7a2e14', label: 'MARS · ARCADIA', c: '#7a2e14' },
+      ceres: { r: 255, w: 0.002, a0: 0.8, inc: 0.18, size: 10, fill: '#2f6f6a', dark: '#1f4f4b', label: 'CERES · PIAZZI', c: '#1c1a17' }
+    };
+    const pos3 = (k) => { const b = B[k], a = b.a0 + s.t * b.w; return { x: b.r * Math.cos(a), y: b.r * Math.sin(a), z: b.r * Math.sin(b.inc) * Math.sin(a) }; };
+    const e3 = pos3('earth'), la = s.t * 0.05;
+    const W = { sun: { x: 0, y: 0, z: 0 }, earth: e3, mars: pos3('mars'), ceres: pos3('ceres'), luna: { x: e3.x + 26 * Math.cos(la), y: e3.y + 26 * Math.sin(la), z: 0 } };
+    B.luna = { size: 6, fill: '#b8ad94', dark: '#9a8f78', label: 'LUNA · SHACKLETON', c: '#1c1a17' };
+    const cut = (r) => { const a = r * 0.887, b = r * 0.462; return `M${a.toFixed(2)} ${(-b).toFixed(2)} A${r} ${r} 0 0 1 ${(-b).toFixed(2)} ${a.toFixed(2)} Z`; };
+    const scr = {}; Object.keys(W).forEach(k => { scr[k] = P(W[k].x, W[k].y, W[k].z); });
+    const bodies = Object.keys(W).map(k => ({ k, p: scr[k] })).sort((a, b) => a.p.d - b.p.d).map(({ k, p }) => {
+      const b = B[k]; return { x: p.x, y: p.y, s: p.s.toFixed(3), r: b.size, ro: b.size + 3, ringR: b.size + 12, fill: b.fill, dark: b.dark, cut: cut(b.size), sel: s.sel === k, pick: () => this.setState({ sel: k }) };
+    });
+    const drops = is3d ? ['mars', 'ceres'].filter(k => Math.abs(W[k].z) > 4).map(k => ({ x: scr[k].x, y1: scr[k].y, y2: scr[k].g, fry: Math.max(1, Math.round(6 * cp)) })) : [];
+    const orbits = [['earth', 105, '#1c1a17', 2], ['mars', 160, '#a8431f', 3], ['ceres', 255, '#1c1a17', 2]].map(o => ({ rx: o[1], ry: Math.round(o[1] * (is3d ? cp : 1)), c: o[2], w: o[3] }));
+    const gridRings = [60, 140, 220, 300, 380].map(r => ({ rx: r, ry: Math.round(r * (is3d ? cp : 1)) }));
+    const gridSpokes = [0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 6, p1 = P(380 * Math.cos(a), 380 * Math.sin(a), 0), p2 = P(-380 * Math.cos(a), -380 * Math.sin(a), 0); return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y }; });
+    const belt = (this._belt || []).map(b => { const a = b.a + s.t * 0.0024, p = P(b.r * Math.cos(a), b.r * Math.sin(a), b.z); return { x: p.x - 2, y: p.y - 2 }; });
+    const arc = (A, Bp, lift) => { const mx = (A.x + Bp.x) / 2, my = (A.y + Bp.y) / 2, n = Math.hypot(mx, my) || 1; return { cx: Math.round(mx + mx / n * lift), cy: Math.round(my + my / n * lift) }; };
+    const transits = [['zero', 'earth', 'ceres', 40, 43, 'FUEL 400', '#c99a2e'], ['amos', 'luna', 'mars', 41, 42.8, 'FRAG 250', '#e6dcc3'], ['aerial', 'mars', 'ceres', 40, 44, 'FRAG 180', '#2f6f6a']];
+    const lanes = [], ships = [], shipLabels = [];
+    transits.forEach(t => {
+      const A = scr[t[1]], Bp = scr[t[2]], c = arc(A, Bp, 40);
+      lanes.push({ d: `M${A.x} ${A.y} Q ${c.cx} ${c.cy} ${Bp.x} ${Bp.y}` });
+      const u = Math.min(1, Math.max(0, (round - t[3]) / (t[4] - t[3]))), v = 1 - u;
+      const x = Math.round(v * v * A.x + 2 * v * u * c.cx + u * u * Bp.x), y = Math.round(v * v * A.y + 2 * v * u * c.cy + u * u * Bp.y);
+      ships.push({ x, y, c: t[6], pick: () => this.setState({ sel: 'ship:' + t[0] }) });
+      shipLabels.push({ x, y, t: `${t[0].toUpperCase()} · ${t[5]}`, c: '#1c1a17', dy: -14 });
+    });
+    const M = scr.mars, C = scr.ceres, cc = arc(M, C, 30);
+    const corridor = `M${M.x} ${M.y} Q ${cc.cx} ${cc.cy} ${C.x} ${C.y}`;
+    const mid = (a, b, o) => ({ x: Math.round((a.x + b.x) / 2 + o), y: Math.round((a.y + b.y) / 2 + o) });
+    const bpos = [mid(scr.ceres, scr.earth, 30), { x: scr.ceres.x + 30, y: scr.ceres.y + 22 }];
+    const beacons = bpos.map((p, i) => ({ ...p, pick: () => this.setState({ sel: i ? 'bcn:WRK-104' : 'bcn:BCN-094' }) }));
+    const pct = p => ({ x: (p.x + 400) / 8, y: (p.y + 300) / 6 });
+    const labels = Object.keys(W).map(k => { const p = pct(scr[k]); return { x: p.x, y: p.y, t: B[k].label, c: B[k].c, dy: -(B[k].size + 8) }; })
+      .concat(this.state.on.fleets ? shipLabels.map(l => ({ ...pct(l), t: l.t, c: l.c, dy: l.dy })) : []);
+    const prices = { ceres: ['145.0 / 152.0', '58.0 / 64.0', 'Marvin', 'FUEL HALTED · 2 RND'], mars: ['120.0 / 126.0', '44.0 / 48.0', 'Aerial', 'NOMINAL'], luna: ['102.0 / 106.0', '33.0 / 36.0', 'Amos', 'NOMINAL'], earth: ['95.0 / 99.0', '26.0 / 28.5', 'Zero', 'NOMINAL'] };
+    const subs = { ceres: 'Fuel depot and ore extraction hub in the Main Belt.', mars: 'Orbital shipyards and heavy foundries over Arcadia Planitia.', luna: 'He-3 collectors and volatiles facility at Shackleton.', earth: 'Planetary defense and salvage depot in low Earth orbit.' };
+    let insp = null;
+    const sel = s.sel;
+    if (sel && prices[sel]) { const p = prices[sel], halt = p[3] !== 'NOMINAL'; insp = { kind: 'STATION', title: B[sel].label, sub: subs[sel], band: halt ? 'linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%)' : 'linear-gradient(135deg,#2f6f6a 0 85%,#1f4f4b 85% 100%)', bandFg: '#e6dcc3', rows: [{ k: 'FRAG BID / ASK', v: p[0] }, { k: 'FUEL BID / ASK', v: p[1] }, { k: 'DOCKED', v: p[2] }, { k: 'STATUS', v: p[3] }] }; }
+    else if (sel === 'sun') insp = { kind: 'STAR', title: 'SOL', sub: 'Heliocentric reference. Orbits are not to scale; periods are compressed so a round passes in ~10 s at 1×.', band: 'linear-gradient(135deg,#c99a2e 0 85%,#9a6f1c 85% 100%)', bandFg: '#1c1a17', rows: [{ k: 'FRAME', v: 'J2000 ecliptic' }, { k: 'ROUND', v: round.toFixed(1) }] };
+    else if (sel && sel.startsWith('ship:')) { const t = transits.find(x => 'ship:' + x[0] === sel); const u = Math.min(1, Math.max(0, (round - t[3]) / (t[4] - t[3]))); insp = { kind: 'HAULER IN TRANSIT', title: t[0].toUpperCase(), sub: `${t[1].toUpperCase()} → ${t[2].toUpperCase()}`, band: 'linear-gradient(135deg,#c99a2e 0 85%,#9a6f1c 85% 100%)', bandFg: '#1c1a17', rows: [{ k: 'CARGO', v: t[5] }, { k: 'PROGRESS', v: `${Math.round(u * 100)}%` }, { k: 'ARRIVAL', v: `ROUND ${Math.ceil(t[4])}` }, { k: 'DECAY', v: t[0] === 'zero' ? '−40 projected' : 'non-perishable' }] }; }
+    else if (sel && sel.startsWith('bcn:')) { const b = sel === 'bcn:BCN-094'; insp = { kind: 'DISTRESS BEACON', title: sel.slice(4), sub: b ? 'Reaction mass depletion, dead stick in the Kirkwood Gap.' : 'Unmanned Atlas debris barge drifting unpowered.', band: 'linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%)', bandFg: '#e6dcc3', rows: b ? [{ k: 'VESSEL', v: 'Marvin' }, { k: 'BOUNTY', v: 'FRAG 320 · SCRAP 85' }, { k: 'RFQ-042', v: 'Zero · 5,200 CR · ETA 1' }] : [{ k: 'VESSEL', v: 'NPC derelict' }, { k: 'BOUNTY', v: 'FRAG 550' }] }; }
+    const tog = (k) => () => this.setState(x => ({ on: { ...x.on, [k]: !x.on[k] } }));
+    const layers = ['orbits', 'belt', 'fleets', 'corridors', 'beacons', 'grid', 'labels'].map(k => ({ name: k.toUpperCase(), mark: s.on[k] ? '■' : '□', bg: s.on[k] ? '#e6dcc3' : '#1c1a17', fg: s.on[k] ? '#1c1a17' : '#b8ad94', toggle: tog(k) }));
+    const btn = (on) => ({ bg: on ? '#c99a2e' : '#1c1a17', fg: on ? '#1c1a17' : '#e6dcc3' });
+    return {
+      roundTxt: round.toFixed(1), trackTxt: sel ? (sel.includes(':') ? sel.split(':')[1].toUpperCase() : sel.toUpperCase()) : 'FREE CAM',
+      viewBtns: [['2d', '2D · TOP'], ['3d', '3D · TILT']].map(([k, l]) => ({ label: l, ...btn(s.view === k), set: () => this.setState({ view: k }) })),
+      speedBtns: [1, 4, 12].map(v => ({ label: v + '×', ...btn(s.speed === v), set: () => this.setState({ speed: v }) })),
+      playTxt: s.playing ? '❚❚ PAUSE' : '▶ PLAY', playBg: s.playing ? '#e6dcc3' : '#c99a2e', playFg: '#1c1a17', togglePlay: () => this.setState(x => ({ playing: !x.playing })),
+      is3d, pitch: s.pitch, setPitch: (e) => this.setState({ pitch: Number(e.target.value) }),
+      layers, on: s.on, gridRings, gridSpokes, belt, orbits, corridor, lanes, drops, bodies, ships, beacons, labels,
+      cursor: is3d ? (s.drag ? 'grabbing' : 'grab') : 'default',
+      dragStart: (e) => is3d && this.setState({ drag: { x: e.clientX, y: e.clientY, yaw: s.yaw, pitch: s.pitch } }),
+      dragMove: (e) => { const d = this.state.drag; if (!d) return; this.setState({ yaw: d.yaw + (e.clientX - d.x) * 0.01, pitch: Math.max(0, Math.min(80, d.pitch - (e.clientY - d.y) * 0.3)) }); },
+      dragEnd: () => this.state.drag && this.setState({ drag: null }),
+      inspOpen: !!insp, insp: insp || { rows: [] }, closeInsp: () => this.setState({ sel: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

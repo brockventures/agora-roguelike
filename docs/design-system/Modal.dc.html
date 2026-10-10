@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes ag-drop{0%{transform:translateY(-28px);box-shadow:0 0 0 #000}60%{transform:translateY(3px);box-shadow:0 0 0 #000}100%{transform:translateY(0);box-shadow:8px 8px 0 #000}}</style></helmet>
+<div style="width:100%;background:#2c353b;border:4px solid #1c1a17;box-shadow:8px 8px 0 #000;display:flex;flex-direction:column;color:#e6dcc3;font-family:'Archivo',sans-serif;box-sizing:border-box;animation:ag-drop 333ms steps(4,end) both">
+  <div style="background:{{ band }};color:{{ bandFg }};border-bottom:4px solid #1c1a17;padding:12px 24px;display:flex;flex-direction:column">
+    <span style="font-size:12px;font-weight:700;letter-spacing:.14em">{{ eyebrow }}</span>
+    <span style="font-size:{{ titleSize }};font-weight:800;font-stretch:68%;line-height:1">{{ title }}</span>
+  </div>
+  <div style="padding:20px 24px;display:flex;flex-direction:column;gap:10px;font-size:17px;line-height:1.45">{{ children }}</div>
+  <div style="border-top:2px solid #1c1a17;padding:12px 24px;display:flex;gap:20px;justify-content:flex-end;font-size:14px;font-weight:600">
+    <sc-for list="{{ actions }}" as="a" hint-placeholder-count="1">
+      <div onClick="{{ a.run }}" style="cursor:pointer;display:flex;align-items:center;gap:6px" style-active="transform:translate(2px,2px)"><div style="width:22px;height:22px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{ a.button }}</div>{{ a.label }}</div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:320},&quot;eyebrow&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;INSOLVENCY&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;CHAPTER 11&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;alert&quot;,&quot;focus&quot;,&quot;neutral&quot;],&quot;default&quot;:&quot;alert&quot;,&quot;tsType&quot;:&quot;'alert'|'focus'|'neutral'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;md&quot;,&quot;lg&quot;],&quot;default&quot;:&quot;md&quot;,&quot;tsType&quot;:&quot;'md'|'lg'&quot;},&quot;actions&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{button: string; label: string}[]&quot;},&quot;onAction&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(i: number) =&gt; void&quot;},&quot;children&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;ReactNode&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const tone = this.props.tone ?? 'alert';
+    const bands = { alert: ['linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%)', '#e6dcc3'], focus: ['linear-gradient(135deg,#c99a2e 0 85%,#9a6f1c 85% 100%)', '#1c1a17'], neutral: ['linear-gradient(135deg,#2f6f6a 0 85%,#1f4f4b 85% 100%)', '#e6dcc3'] };
+    const b = bands[tone] || bands.alert;
+    const acts = this.props.actions ?? [{ button: 'X', label: 'File and found a new corp' }];
+    return {
+      band: b[0], bandFg: b[1], eyebrow: this.props.eyebrow ?? 'INSOLVENCY', title: this.props.title ?? 'CHAPTER 11',
+      titleSize: (this.props.size ?? 'md') === 'lg' ? '56px' : '40px', children: this.props.children,
+      actions: acts.map((a, i) => ({ ...a, run: () => this.props.onAction && this.props.onAction(i) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="background:#2c353b;border:4px solid #1c1a17;padding:12px 16px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;width:100%;height:100%;font-family:'Archivo',sans-serif;color:#e6dcc3;font-variant-numeric:tabular-nums">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:18px;font-weight:800;font-stretch:75%">ORDER TICKET</span><span style="font-size:12px;font-weight:700;color:#b8ad94;letter-spacing:.1em">{{ where }}</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;border:3px solid #1c1a17;font-size:15px;font-weight:800;letter-spacing:.06em;text-align:center">
+    <div onClick="{{ pickBuy }}" style="cursor:pointer;padding:8px 4px;background:{{ buyBg }};color:{{ buyFg }};box-shadow:{{ buySh }};transition:background-color 83ms steps(1,end)">BUY @ {{ ask }}</div>
+    <div onClick="{{ pickSell }}" style="cursor:pointer;padding:8px 4px;background:{{ sellBg }};color:{{ sellFg }};box-shadow:{{ sellSh }};transition:background-color 83ms steps(1,end)">SELL @ {{ bid }}</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px">
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;color:#b8ad94;letter-spacing:.1em">QTY</span><div style="display:flex;align-items:center;gap:8px;font-size:24px;font-weight:800"><span onClick="{{ dec }}" style="cursor:pointer;padding:0 4px" style-active="transform:translateX(-3px)">◂</span><span style="min-width:28px;text-align:center">{{ qty }}</span><span onClick="{{ inc }}" style="cursor:pointer;padding:0 4px" style-active="transform:translateX(3px)">▸</span></div></div>
+    <div style="display:flex;flex-direction:column;text-align:right"><span style="font-size:12px;font-weight:700;color:#b8ad94;letter-spacing:.1em">TOTAL · CARGO</span><span style="font-size:20px;font-weight:800">{{ total }} CR · {{ cargo }}</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:400,&quot;height&quot;:200},&quot;where&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ARCADIA FOUNDRIES&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;ask&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:18,&quot;tsType&quot;:&quot;number&quot;},&quot;bid&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16,&quot;tsType&quot;:&quot;number&quot;},&quot;qty&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;cargo&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;0/100&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;side&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;buy&quot;,&quot;sell&quot;],&quot;default&quot;:&quot;buy&quot;,&quot;tsType&quot;:&quot;'buy'|'sell'&quot;},&quot;onSide&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(s: 'buy'|'sell') =&gt; void&quot;},&quot;onQty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(q: number) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { side: null, qty: null };
+  renderVals() {
+    const side = this.props.side ?? this.state.side ?? 'buy';
+    const qty = this.state.qty ?? this.props.qty ?? 1;
+    const ask = Number(this.props.ask ?? 18), bid = Number(this.props.bid ?? 16);
+    const buy = side === 'buy';
+    const on = ['#c99a2e', '#1c1a17', 'inset 0 0 0 2px #1c1a17'], off = ['#1c1a17', '#b8ad94', 'none'];
+    const set = (s) => { this.setState({ side: s }); this.props.onSide && this.props.onSide(s); };
+    const setQ = (q) => { q = Math.max(1, q); this.setState({ qty: q }); this.props.onQty && this.props.onQty(q); };
+    return {
+      where: this.props.where ?? 'ARCADIA FOUNDRIES', ask: ask.toFixed(1), bid: bid.toFixed(1), qty,
+      total: Math.round((buy ? ask : bid) * qty), cargo: this.props.cargo ?? '0/100',
+      buyBg: buy ? on[0] : off[0], buyFg: buy ? on[1] : off[1], buySh: buy ? on[2] : off[2],
+      sellBg: buy ? off[0] : on[0], sellFg: buy ? off[1] : on[1], sellSh: buy ? off[2] : on[2],
+      pickBuy: () => set('buy'), pickSell: () => set('sell'), inc: () => setQ(qty + 1), dec: () => setQ(qty - 1)
+    };
+  }
+}
+</script>
+</body>
+</html>

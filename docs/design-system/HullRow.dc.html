@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div onClick="{{ onClick }}" style="display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;cursor:pointer;font-family:'Archivo',sans-serif;font-variant-numeric:tabular-nums;color:#1c1a17;background:{{ bg }};border:3px solid {{ bd }};box-shadow:{{ sh }};transition:background-color 83ms steps(1,end),box-shadow 83ms steps(1,end)">
+  <span style="font-size:14px;font-weight:800">{{ marker }}</span>
+  <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:800;font-stretch:80%">{{ name }} <span style="font-size:13px;font-weight:600;font-stretch:100%">· {{ hullClass }}</span></span><span style="font-size:12px;font-weight:800;letter-spacing:.08em;color:{{ stC }}">{{ status }}</span></div>
+  <span style="font-size:15px;font-weight:700">{{ cargo }}</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:420,&quot;height&quot;:60},&quot;hull&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;HULL 1&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;hullClass&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Bulk hauler&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;status&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;DOCKED · MARS&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;cargo&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;40/60&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;docked&quot;,&quot;transit&quot;,&quot;risk&quot;],&quot;default&quot;:&quot;docked&quot;,&quot;tsType&quot;:&quot;'docked'|'transit'|'risk'&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onSelect&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const f = !!this.props.focused;
+    const st = this.props.state ?? 'docked';
+    return {
+      name: this.props.hull ?? 'HULL 1', hullClass: this.props.hullClass ?? 'Bulk hauler', status: this.props.status ?? 'DOCKED · MARS', cargo: this.props.cargo ?? '40/60',
+      stC: { docked: '#1f4f4b', transit: '#9a6f1c', risk: '#7a2e14' }[st] || '#1f4f4b',
+      marker: f ? '▸' : '', bg: f ? '#c99a2e' : 'transparent', bd: f ? '#1c1a17' : 'transparent', sh: f ? '4px 4px 0 #1c1a17' : 'none',
+      onClick: () => this.props.onSelect && this.props.onSelect()
+    };
+  }
+}
+</script>
+</body>
+</html>

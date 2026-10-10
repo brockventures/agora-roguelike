@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;align-items:flex-end;gap:2px;height:100%;font-family:'Archivo',sans-serif">
+  <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 10px">LB</div>
+  <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+    <div onClick="{{ t.select }}" style="cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:3px solid {{ t.bd }};border-bottom:none;padding:8px 14px 10px;font-size:14px;font-weight:{{ t.w }};letter-spacing:.08em;margin-bottom:-4px;transition:background-color 83ms steps(1,end),transform 167ms steps(2,end);transform:{{ t.tf }}">{{ t.name }}</div>
+  </sc-for>
+  <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 10px">RB</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:360,&quot;height&quot;:64},&quot;tabs&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[&quot;MAP&quot;,&quot;MARKET&quot;,&quot;FLEET&quot;],&quot;tsType&quot;:&quot;string[]&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:0,&quot;max&quot;:2,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(i: number) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { local: null };
+  renderVals() {
+    const names = this.props.tabs ?? ['MAP', 'MARKET', 'FLEET'];
+    const active = this.props.active ?? this.state.local ?? 0;
+    return {
+      tabs: names.map((n, i) => {
+        const on = i === active;
+        return { name: n, bg: on ? '#d9cdb0' : 'transparent', fg: on ? '#1c1a17' : '#e6dcc3', bd: on ? '#1c1a17' : 'transparent', w: on ? 800 : 700, tf: on ? 'translateY(0)' : 'translateY(2px)',
+          select: () => { this.setState({ local: i }); this.props.onChange && this.props.onChange(i); } };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

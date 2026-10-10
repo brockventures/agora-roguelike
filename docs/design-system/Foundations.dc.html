@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#1c1a17}a{color:#c99a2e}a:hover{color:#e6dcc3}
+@keyframes ag-boil{0%{transform:translate(0,0)}33%{transform:translate(.6px,-.6px)}66%{transform:translate(-.6px,.6px)}100%{transform:translate(0,0)}}</style>
+</helmet>
+<div style="background:#1c1a17;color:#e6dcc3;font-family:'Archivo',sans-serif;min-height:100vh;padding:40px 32px 96px;box-sizing:border-box">
+<div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:48px">
+  <header style="display:flex;flex-direction:column;gap:16px;border-bottom:4px solid #e6dcc3;padding-bottom:24px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#c99a2e">AGORA DESIGN SYSTEM · v1 · HEAVY CEL</div>
+    <div style="font-size:60px;font-weight:800;font-stretch:70%;line-height:.95">Foundations</div>
+    <div style="font-size:17px;color:#b8ad94;max-width:780px;line-height:1.5;text-wrap:pretty">Ink contours, flat shadow cuts, mineral and rust ground, animated on twos. The Sol map is the root screen; everything else is drawn over it. Tokens map 1:1 to <span style="color:#e6dcc3">hud_theme.gd</span> and <span style="color:#e6dcc3">palette.gd</span>; CSS mirrors live in <span style="color:#e6dcc3">tokens/</span>.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px">
+      <a href="Components.dc.html" style="text-decoration:none;color:#1c1a17;background:#c99a2e;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:2px" style-hover="transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000"><span style="font-size:12px;font-weight:800;letter-spacing:.12em">02</span><span style="font-size:22px;font-weight:800;font-stretch:75%">Components →</span><span style="font-size:13px;font-weight:600">19 live components</span></a>
+      <a href="Motion.dc.html" style="text-decoration:none;color:#1c1a17;background:#e6dcc3;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:2px" style-hover="transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000"><span style="font-size:12px;font-weight:800;letter-spacing:.12em">03</span><span style="font-size:22px;font-weight:800;font-stretch:75%">Motion →</span><span style="font-size:13px;font-weight:600">On twos, 13 moves</span></a>
+      <a href="HUD Demo.dc.html" style="text-decoration:none;color:#1c1a17;background:#e6dcc3;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:2px" style-hover="transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000"><span style="font-size:12px;font-weight:800;letter-spacing:.12em">04</span><span style="font-size:22px;font-weight:800;font-stretch:75%">Playable HUD →</span><span style="font-size:13px;font-weight:600">Keyboard as gamepad</span></a>
+      <a href="#screens" style="text-decoration:none;color:#1c1a17;background:#e6dcc3;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:2px" style-hover="transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000"><span style="font-size:12px;font-weight:800;letter-spacing:.12em">05</span><span style="font-size:22px;font-weight:800;font-stretch:75%">Screens →</span><span style="font-size:13px;font-weight:600">HUD, market, fleet, web</span></a>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">01 Principles</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+      <div style="border-left:0;background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:800;font-stretch:75%">Ink first</span><span style="font-size:14px;color:#b8ad94;line-height:1.5">Every shape has a contour. If it has no ink line, it's background.</span></div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:800;font-stretch:75%">Flat light, hard cuts</span><span style="font-size:14px;color:#b8ad94;line-height:1.5">One light from upper left. Shade is a solid _DARK chord, lower right. No gradients, no blur.</span></div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:800;font-stretch:75%">Map is home</span><span style="font-size:14px;color:#b8ad94;line-height:1.5">Panels sit over the live Sol map; never hide it completely except for run-ending modals.</span></div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:800;font-stretch:75%">Words carry meaning</span><span style="font-size:14px;color:#b8ad94;line-height:1.5">Color reinforces, never decides: + BID, − ASK, FILLED, REJECTED.</span></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">02 Color</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:16px">
+      <sc-for list="{{ swatches }}" as="s" hint-placeholder-count="7">
+        <div style="border:4px solid #000;box-shadow:4px 4px 0 #000;display:flex;flex-direction:column;background:#e6dcc3;color:#1c1a17">
+          <div style="height:88px;display:grid;grid-template-columns:2fr 1fr;border-bottom:3px solid #1c1a17"><div style="background:{{ s.base }};display:flex;align-items:flex-end;padding:8px;color:{{ s.ink }};font-size:13px;font-weight:800">{{ s.name }}</div><div style="background:{{ s.dark }};display:flex;align-items:flex-end;padding:8px;color:{{ s.darkInk }};font-size:12px;font-weight:700">{{ s.darkName }}</div></div>
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">{{ s.hex }}</span><span style="font-size:13px;font-weight:500;line-height:1.4">{{ s.role }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#2c353b;border:4px solid #000;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#b8ad94;margin-right:6px">MEANING PALETTE</span>
+        <sc-for list="{{ palBtns }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.set }}" style="font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.06em;background:{{ b.bg }};color:{{ b.fg }};border:3px solid #000;padding:4px 10px;cursor:pointer">{{ b.label }}</button></sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px">
+        <div style="background:{{ bidC }};color:{{ bidInk }};border:3px solid #1c1a17;padding:12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:22px;font-weight:800">+ BID</span><span style="font-size:13px;font-weight:700">{{ bidC }} · {{ bidInk }} text</span></div>
+        <div style="background:{{ askC }};color:#1c1a17;border:3px solid #1c1a17;padding:12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:22px;font-weight:800">− ASK</span><span style="font-size:13px;font-weight:700">{{ askC }} · ink text</span></div>
+        <div style="background:#cdbf9f;color:#1c1a17;border:3px solid #1c1a17;padding:12px;font-size:14px;line-height:1.45;font-weight:600">The glyph and word appear in every palette. Players switch in Settings → Accessibility.</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+      <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:8px"><span style="font-size:16px;font-weight:800">Text pairings that pass 4.5:1</span>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700">
+          <div style="display:flex;gap:8px;align-items:center"><span style="background:#2c353b;color:#e6dcc3;padding:2px 8px;border:2px solid #1c1a17">BONE on SLATE</span><span style="font-weight:500">9.6:1 · HUD default</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="background:#d9cdb0;color:#1c1a17;padding:2px 8px;border:2px solid #1c1a17">INK on PAPER</span><span style="font-weight:500">12.4:1 · map, panels</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="background:#c99a2e;color:#1c1a17;padding:2px 8px;border:2px solid #1c1a17">INK on OCHRE</span><span style="font-weight:500">7.1:1 · focus</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="background:#a8431f;color:#e6dcc3;padding:2px 8px;border:2px solid #1c1a17">BONE on RUST</span><span style="font-weight:500">4.9:1 · bands, 12px+ bold</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="background:#2c353b;color:#b8ad94;padding:2px 8px;border:2px solid #1c1a17">BONE_DIM on SLATE</span><span style="font-weight:500">5.6:1 · labels only</span></div>
+        </div>
+      </div>
+      <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:8px"><span style="font-size:16px;font-weight:800">Rules</span>
+        <div style="font-size:14px;line-height:1.55;display:flex;flex-direction:column;gap:4px">
+          <span>• One ochre focus per screen. Ochre is never decoration.</span>
+          <span>• Rust = alert or the panel you're acting in. Max one rust band per screen.</span>
+          <span>• Teal = stations and calm states. Bid uses its own deeper teal (#1a6b75).</span>
+          <span>• No tints or alphas on text. The scrim (ink 55%) is the only transparency.</span>
+          <span>• Art may use the full mineral range; UI chrome uses only these 14 values.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">03 Type</div>
+    <div style="font-size:15px;color:#b8ad94;line-height:1.5;max-width:820px">Archivo, one family. The width axis does the hierarchy: condensed for titles and readouts, normal width for prose. Tabular figures on every number that changes. Industrial alternates (Barlow Condensed, Saira, Big Shoulders) are compared in <a href="HUD v2.dc.html">HUD v2</a>.</div>
+    <div style="background:#2c353b;border:4px solid #000;padding:12px 16px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px;align-items:center"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#b8ad94;margin-right:4px">TEXT SIZE</span>
+        <sc-for list="{{ scaleBtns }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.set }}" style="font-family:inherit;font-size:13px;font-weight:800;background:{{ b.bg }};color:{{ b.fg }};border:3px solid #000;padding:4px 10px;cursor:pointer">{{ b.label }}</button></sc-for>
+      </div>
+      <button onClick="{{ togglePseudo }}" style="font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.06em;background:{{ pseudoBg }};color:{{ pseudoFg }};border:3px solid #000;padding:4px 10px;cursor:pointer">PSEUDO-LOC +30% · {{ pseudoState }}</button>
+    </div>
+    <div style="background:#d9cdb0;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;display:flex;flex-direction:column">
+      <sc-for list="{{ typeRows }}" as="t" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:minmax(110px,150px) minmax(0,1fr) minmax(120px,210px);align-items:baseline;gap:16px;padding:14px 20px;border-bottom:2px solid #1c1a17">
+          <span style="font-size:12px;font-weight:800;letter-spacing:.1em">{{ t.name }} · {{ t.px }}px</span>
+          <span style="font-size:{{ t.px }}px;font-weight:{{ t.w }};font-stretch:{{ t.wd }}%;letter-spacing:{{ t.ls }};line-height:1.15;font-variant-numeric:tabular-nums;overflow-wrap:anywhere">{{ t.sample }}</span>
+          <span style="font-size:12px;font-weight:600;line-height:1.4">{{ t.spec }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:14px;color:#b8ad94;line-height:1.5">Floor is 12px at 100% and scales up with the setting. If a label overflows under pseudo-loc, narrow the width axis (85 → 70) before wrapping; wrap before truncating; never shrink below the floor.</div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">04 Line, shadow, space, focus</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:20px">
+      <div style="display:flex;flex-direction:column;gap:10px"><div style="height:120px;background:#d9cdb0;border:4px solid #000;display:flex;align-items:center;justify-content:space-around;padding:0 12px"><div style="width:56px;height:56px;background:#e6dcc3;border:4px solid #1c1a17"></div><div style="width:56px;height:56px;background:#e6dcc3;border:3px solid #1c1a17;border-radius:50%"></div><div style="width:56px;height:56px;border:2px solid #1c1a17;border-radius:50%"></div></div><span style="font-size:15px;font-weight:800">Outline 4 · 3 · 2</span><span style="font-size:13px;color:#b8ad94;line-height:1.45">Panel · node and control · orbit ring and rule. Nothing thinner than 2.</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px"><div style="height:120px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:space-around"><div style="width:60px;height:44px;background:#e6dcc3;border:3px solid #1c1a17;box-shadow:4px 4px 0 #000"></div><div style="width:60px;height:44px;background:#e6dcc3;border:3px solid #1c1a17;box-shadow:8px 8px 0 #000"></div><div style="width:60px;height:44px;background:#e6dcc3;border:3px solid #1c1a17;transform:translate(4px,4px)"></div></div><span style="font-size:15px;font-weight:800">Shadow 4 · 8 · 0</span><span style="font-size:13px;color:#b8ad94;line-height:1.45">Rest · lifted/modal · pressed. Solid ink, offset down-right, never blurred.</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px"><div style="height:120px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="width:150px;height:60px;background:linear-gradient(135deg,#a8431f 0 78%,#7a2e14 78% 100%);border:3px solid #1c1a17"></div></div><span style="font-size:15px;font-weight:800">Shadow cut</span><span style="font-size:13px;color:#b8ad94;line-height:1.45">135° hard chord in the _DARK pair, lower right. Bands, alert chips, discs. Custom draw in Godot (draw_colored_polygon).</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px"><div style="height:120px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="padding:10px 18px;background:#c99a2e;color:#1c1a17;border:3px solid #1c1a17;box-shadow:0 0 0 3px #e6dcc3,7px 7px 0 3px #000;font-weight:800;font-size:15px;letter-spacing:.1em;animation:ag-boil 250ms steps(3,end) infinite">FOCUSED</div></div><span style="font-size:15px;font-weight:800">Gamepad focus</span><span style="font-size:13px;color:#b8ad94;line-height:1.45">Ochre fill + 3px bone ring + ink drop + line boil. Visible on paper, slate and map. Exactly one per screen.</span></div>
+    </div>
+    <div style="background:#2c353b;border:4px solid #000;padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#b8ad94">SPACE SCALE · 4px BASE</span>
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <sc-for list="{{ space }}" as="sp" hint-placeholder-count="7"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:{{ sp }}px;height:{{ sp }}px;background:#e6dcc3;border:2px solid #000"></div><span style="font-size:12px;font-weight:800">{{ sp }}</span></div></sc-for>
+      </div>
+      <span style="font-size:13px;color:#b8ad94;line-height:1.45">Panel gutter 8 (two ink lines meeting). Panel padding 12–16. Hit targets ≥ 44px tall wherever a cursor or touch can reach (Deck touchscreen).</span>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">05 Layout · 1280×800</div>
+    <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px;align-items:start">
+      <div style="aspect-ratio:16/10;background:#1c1a17;border:4px solid #000;position:relative;font-size:12px;font-weight:800;letter-spacing:.08em">
+        <div style="position:absolute;left:0;top:0;right:0;height:8%;background:#2c353b;border-bottom:3px solid #1c1a17;display:flex;align-items:center;padding:0 10px">HEADER · 64</div>
+        <div style="position:absolute;left:0;top:8%;right:0;height:57%;background:#d9cdb0;color:#1c1a17;display:flex;align-items:center;justify-content:center">SOL MAP · always live</div>
+        <div style="position:absolute;left:1%;top:66%;width:33.5%;bottom:1%;background:#cdbf9f;color:#1c1a17;border:3px solid #1c1a17;padding:6px;box-sizing:border-box">BOOK 440</div>
+        <div style="position:absolute;left:35.2%;top:66%;width:30.5%;bottom:1%;background:#2c353b;border:3px solid #1c1a17;padding:6px;box-sizing:border-box">TICKET 400</div>
+        <div style="position:absolute;left:66.4%;top:66%;right:1%;bottom:1%;background:#e6dcc3;color:#1c1a17;border:3px solid #1c1a17;padding:6px;box-sizing:border-box">CARD 4:3</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;color:#e6dcc3">
+        <span><b>Header 64</b> · wordmark, paper tabs (LB/RB), stacked stat chips. Doomsday chip always rightmost.</span>
+        <span><b>Map 456</b> · the root. Ticker sits on the map's bottom edge, not in its own bar.</span>
+        <span><b>Command strip 280</b> · 3 panels on an 8px gutter. MARKET grows the strip upward; the map becomes a band, never disappears.</span>
+        <span><b>Modals</b> · 600 wide, centered over a 55% ink scrim, header stays visible.</span>
+        <span style="color:#b8ad94">Safe area: 16px from every edge for text; the Deck bezel crops nothing, but TV mode can.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">06 Art direction</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+      <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;display:flex;flex-direction:column"><div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:repeating-linear-gradient(135deg,#cdbf9f 0 8px,#d9cdb0 8px 16px);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px">card art · 4:3</div><div style="padding:12px;font-size:14px;line-height:1.5"><b>Do:</b> heavy ligne-claire contour, 2–3 flat value steps, mineral/rust palette, one figure or object, readable at 200px wide.</div></div>
+      <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;display:flex;flex-direction:column"><div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:#a8431f;display:flex;align-items:center;justify-content:center;color:#e6dcc3;font-size:32px;font-weight:800">✕</div><div style="padding:12px;font-size:14px;line-height:1.5"><b>Don't:</b> text, numbers, signage, logos, signatures or watermarks inside art. No airbrush, bloom, lens flare or soft gradients.</div></div>
+      <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;display:flex;flex-direction:column"><div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:#d9cdb0;display:flex;align-items:center;justify-content:center"><svg width="120" height="80" viewBox="0 0 120 80"><circle cx="34" cy="40" r="22" fill="#1c1a17"></circle><circle cx="30" cy="36" r="22" fill="#1c1a17"></circle><circle cx="30" cy="36" r="19" fill="#2f6f6a"></circle><path d="M46.8 27.2 A19 19 0 0 1 21.2 52.8 Z" fill="#1f4f4b"></path><path d="M60 40 L110 40" stroke="#1c1a17" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"></path></svg></div><div style="padding:12px;font-size:14px;line-height:1.5"><b>Where art lives:</b> map nodes, lane markers, card viewports, landing hero. Never a static full-screen backdrop behind the HUD.</div></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">07 Voice & copy</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.55"><span style="font-size:16px;font-weight:800">Tone: corporate ledger, end of the world</span><span>Dry, bureaucratic, precise. The comedy is in the deadpan: "Chapter 11", "Golden Parachutes", "Sovereign Default".</span><span style="color:#b8ad94">Fictional corps only (Ares Heavy, Ceres Mining Guild). No real brands.</span></div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.5"><span style="font-size:16px;font-weight:800">Patterns</span>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 12px"><span style="color:#b8ad94;font-weight:700">LABELS</span><span>CAPS, 1–2 words</span><span style="color:#b8ad94;font-weight:700">TOASTS</span><span>Verb-first: "BUY 5 ORE @ 18.0"</span><span style="color:#b8ad94;font-weight:700">ERRORS</span><span>State the cause: "Cargo hold full"</span><span style="color:#b8ad94;font-weight:700">PROMPTS</span><span>Glyph + verb: "A Buy"</span><span style="color:#b8ad94;font-weight:700">NUMBERS</span><span>1,000 sep · 1 decimal · CR suffix</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">08 Accessibility checklist</div>
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:10px 24px">
+      <sc-for list="{{ checks }}" as="c" hint-placeholder-count="8">
+        <div onClick="{{ c.toggle }}" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px;line-height:1.45"><div style="flex:none;width:20px;height:20px;border:3px solid #1c1a17;background:{{ c.bg }};color:#1c1a17;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1">{{ c.mark }}</div><span style="font-weight:600">{{ c.text }}</span></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">09 Godot mapping</div>
+    <div style="background:#2c353b;border:4px solid #000;display:flex;flex-direction:column;font-size:14px;font-variant-numeric:tabular-nums">
+      <sc-for list="{{ godot }}" as="g" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:16px;padding:10px 16px;border-bottom:2px solid #1c1a17"><span style="font-weight:800">{{ g.k }}</span><span style="color:#b8ad94;overflow-wrap:anywhere">{{ g.v }}</span></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="screens" style="display:flex;flex-direction:column;gap:20px">
+    <div style="font-size:32px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">10 Screens</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px">
+      <sc-for list="{{ screens }}" as="s" hint-placeholder-count="8">
+        <a href="{{ s.href }}" style="text-decoration:none;color:#e6dcc3;background:#2c353b;border:4px solid #000;padding:12px 14px;display:flex;flex-direction:column;gap:2px" style-hover="background:#3a454c"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#c99a2e">{{ s.tag }}</span><span style="font-size:18px;font-weight:800;font-stretch:80%">{{ s.name }}</span><span style="font-size:13px;color:#b8ad94">{{ s.note }}</span></a>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { palette: 'default', scale: 1, pseudo: false, checks: {} };
+  renderVals() {
+    const s = this.state;
+    const pals = { default: ['#1a6b75', '#c74d24', '#e6dcc3'], deuteranopia: ['#56B4E9', '#E69F00', '#1c1a17'], protanopia: ['#56B4E9', '#F0E442', '#1c1a17'] };
+    const p = pals[s.palette];
+    const swatches = [
+      ['INK', '#1c1a17', 'SLATE', '#2c353b', 'Contours, shadows, text on light. Slate: HUD chrome.', '#e6dcc3', '#e6dcc3'],
+      ['BONE', '#e6dcc3', 'DIM', '#b8ad94', 'Text on dark, card stock. Dim: labels only.', '#1c1a17', '#1c1a17'],
+      ['PAPER', '#d9cdb0', 'DEEP', '#cdbf9f', 'Map ground and panels. Deep: market panels.', '#1c1a17', '#1c1a17'],
+      ['OCHRE', '#c99a2e', 'DARK', '#9a6f1c', 'Focus, primary action, Sol. One per screen.', '#1c1a17', '#1c1a17'],
+      ['RUST', '#a8431f', 'DARK', '#7a2e14', 'Alerts, Doomsday, active panel band.', '#e6dcc3', '#e6dcc3'],
+      ['TEAL', '#2f6f6a', 'DARK', '#1f4f4b', 'Stations, docked, calm states.', '#e6dcc3', '#e6dcc3']
+    ].map(x => ({ name: x[0], base: x[1], darkName: x[2], dark: x[3], hex: `${x[1]} · ${x[3]}`, role: x[4], ink: x[5], darkInk: x[6] }));
+    const palBtns = [['default', 'DEFAULT'], ['deuteranopia', 'DEUTERANOPIA'], ['protanopia', 'PROTANOPIA']].map(([k, l]) => ({ label: l, set: () => this.setState({ palette: k }), bg: s.palette === k ? '#c99a2e' : '#1c1a17', fg: s.palette === k ? '#1c1a17' : '#e6dcc3' }));
+    const scaleBtns = [[1, '100%'], [1.15, '115%'], [1.3, '130%']].map(([k, l]) => ({ label: l, set: () => this.setState({ scale: k }), bg: s.scale === k ? '#c99a2e' : '#1c1a17', fg: s.scale === k ? '#1c1a17' : '#e6dcc3' }));
+    const ps = (t) => s.pseudo ? '[' + t.replace(/[AEIOUaeiou]/g, m => m + m.toLowerCase()).replace(/ /g, '  ') + ' ~~]' : t;
+    const typeRows = [
+      ['DISPLAY', 40, 800, 70, '.01em', 'SOVEREIGN DEFAULT', '800 · wdth 70 · modal titles'],
+      ['TITLE', 24, 800, 75, '0', 'ARCADIA FOUNDRIES · ORE', '800 · wdth 75 · panel titles'],
+      ['READOUT', 20, 800, 85, '0', 'CR 5,000 · 18.0 × 19', '800 · wdth 85 · tnum · chips, ladder'],
+      ['BODY', 16, 500, 100, '0', 'Deep-core ore extractors report record yields.', '500 · wdth 100 · ticker, modals'],
+      ['HINT', 14, 600, 100, '0', 'A Buy   B Back   X Chapter 11', '600 · control prompts'],
+      ['LABEL', 12, 800, 100, '.12em', 'DOOMSDAY · CARGO · SPREAD', '800 · +12% track · the floor']
+    ].map(r => ({ name: r[0], px: Math.round(r[1] * s.scale), w: r[2], wd: s.pseudo && r[3] > 70 ? r[3] - 12 : r[3], ls: r[4], sample: ps(r[5]), spec: r[6] }));
+    const checkList = ['Text ≥ 12px at 100%, 115%, 130%', 'Every focus state: ochre + ring + boil', 'Bid/ask carry + / − and a word', 'Deuteranopia and protanopia palettes swap', 'Layout survives +30% pseudo-loc', 'Body text ≥ 4.5:1, titles ≥ 3:1', 'Reduced motion: no boil, shake, impact', 'Flashes under 3 per second', 'Every action reachable by gamepad', 'No information only in sound or rumble'];
+    const checks = checkList.map((t, i) => { const on = s.checks[i] !== false; return { text: t, bg: on ? '#c99a2e' : '#e6dcc3', mark: on ? '✓' : '', toggle: () => this.setState(x => ({ checks: { ...x.checks, [i]: !(x.checks[i] !== false) } })) }; });
+    const godot = [
+      ['Colors', 'HudTheme.INK … TEAL_DARK (hud_theme.gd) · palette.gd for bid/ask'],
+      ['Panel', 'StyleBoxFlat · border 4 · corner 0 · shadow_size 0 + custom offset draw (4,4)'],
+      ['Shadow cut', 'Control._draw → draw_colored_polygon on lower-right chord, *_DARK'],
+      ['Focus', 'theme "focus" StyleBox: OCHRE bg, 3px BONE expand_margin, boil via Timer @ 83ms'],
+      ['Type', 'FontVariation(Archivo) · variation_opentype {wdth: 70|75|85|100} · tnum feature'],
+      ['Text scale', 'Theme default_font_size × {1, 1.15, 1.3}; minimum 12 enforced in HudTheme'],
+      ['Motion', 'AnimationPlayer discrete @ 12 fps · Tweens quantized floor(t·12)/12'],
+      ['Strings', 'agora_strings.csv · all art text-free, Godot renders every label']
+    ].map(x => ({ k: x[0], v: x[1] }));
+    const screens = [
+      ['HUD v2.dc.html', 'IN-GAME · CHOSEN', 'HUD 3a · command deck', 'Map + strip + modal'],
+      ['HUD Demo.dc.html', 'IN-GAME · PLAYABLE', 'HUD demo', 'Keyboard as gamepad'],
+      ['HUD Market.dc.html', 'IN-GAME', 'Market tab', 'Strip expands, map band'],
+      ['HUD Fleet.dc.html', 'IN-GAME', 'Fleet tab', 'Map-driven dispatch'],
+      ['HUD Summary.dc.html', 'IN-GAME', 'Run summary', 'Sovereign Default'],
+      ['HUD Current.dc.html', 'REFERENCE', 'Current HUD (M0)', 'Recreated from main'],
+      ['Landing.dc.html', 'WEB', 'Landing', 'Game landing page'],
+      ['Web Terminal.dc.html', 'WEB', 'Requisition terminal', 'Standings, radar, market, corporate'],
+      ['Web Orrery.dc.html', 'WEB', 'Orrery 2D / 3D', 'Live Sol map, inspector'],
+      ['Web Docs.dc.html', 'WEB', 'Documentation', 'Guide & API reference'],
+      ['Web Patch Notes.dc.html', 'WEB', 'Patch notes', 'Release log'],
+      ['AGORA Design System.dc.html', 'ARCHIVE', 'v0 explorations', 'Variants before picks']
+    ].map(x => ({ href: x[0], tag: x[1], name: x[2], note: x[3] }));
+    return {
+      swatches, palBtns, bidC: p[0], askC: p[1], bidInk: p[2], scaleBtns, typeRows,
+      pseudoState: s.pseudo ? 'ON' : 'OFF', pseudoBg: s.pseudo ? '#c99a2e' : '#1c1a17', pseudoFg: s.pseudo ? '#1c1a17' : '#e6dcc3',
+      togglePseudo: () => this.setState(x => ({ pseudo: !x.pseudo })),
+      space: [4, 8, 12, 16, 24, 32, 48], checks, godot, screens
+    };
+  }
+}
+</script>
+</body>
+</html>

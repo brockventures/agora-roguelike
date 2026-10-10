@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes ag-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}</style></helmet>
+<div style="display:flex;gap:10px;align-items:center;min-width:0;font-family:'Archivo',sans-serif;font-size:{{ fs }};font-weight:500;color:{{ fg }};white-space:nowrap;overflow:hidden;animation:{{ anim }}">
+  <span style="flex:none;background:{{ tagBg }};color:{{ tagFg }};border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px;line-height:16px">{{ category }}</span>
+  <span style="overflow:hidden;text-overflow:ellipsis">{{ text }}</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:640,&quot;height&quot;:30},&quot;category&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;MARKET&quot;,&quot;REGULATION&quot;,&quot;TRANSIT&quot;,&quot;PIRACY&quot;,&quot;HAZARD&quot;,&quot;CRISIS&quot;,&quot;DEBT&quot;,&quot;FILL&quot;],&quot;default&quot;:&quot;MARKET&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;text&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Ceres Mining Guild: deep-core ore extractors report record yields.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;plate&quot;,&quot;paper&quot;],&quot;default&quot;:&quot;plate&quot;,&quot;tsType&quot;:&quot;'plate'|'paper'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;md&quot;,&quot;sm&quot;],&quot;default&quot;:&quot;md&quot;,&quot;tsType&quot;:&quot;'md'|'sm'&quot;},&quot;fresh&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const cat = (this.props.category ?? 'MARKET').toUpperCase();
+    const tone = { MARKET: ['#2f6f6a', '#e6dcc3'], REGULATION: ['#c99a2e', '#1c1a17'], TRANSIT: ['#e6dcc3', '#1c1a17'], PIRACY: ['#a8431f', '#e6dcc3'], HAZARD: ['#a8431f', '#e6dcc3'], CRISIS: ['#a8431f', '#e6dcc3'], DEBT: ['#1c1a17', '#e6dcc3'], FILL: ['#c99a2e', '#1c1a17'] }[cat] || ['#e6dcc3', '#1c1a17'];
+    const onPaper = (this.props.surface ?? 'plate') === 'paper';
+    return { category: cat, text: this.props.text ?? 'Ceres Mining Guild: deep-core ore extractors report record yields.', tagBg: tone[0], tagFg: tone[1], fg: onPaper ? '#1c1a17' : '#e6dcc3', fs: (this.props.size ?? 'md') === 'sm' ? '14px' : '16px', anim: this.props.fresh ? 'ag-wipe 250ms steps(3,end) both' : 'none' };
+  }
+}
+</script>
+</body>
+</html>

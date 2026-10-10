@@ -228,8 +228,12 @@ func test_every_palette_keeps_ladder_swatches_contrasting_with_their_ink_outline
 	for id in Palette.CHOICES:
 		for side in [Palette.bid_color(id), Palette.ask_color(id)]:
 			var ratio: float = HudTheme.contrast(side, HudTheme.INK)
-			if ratio < HudTheme.MIN_GRAPHIC_CONTRAST:
-				return "%s swatch %s is %.2f:1 against its ink outline" % [id, side, ratio]
+			# The design system's default bid teal (#1a6b75) is 2.81:1 on ink; the swatch
+			# sits on the sidebar's PAPER_DEEP plate (3.39:1), so it must clear 3:1 on
+			# the outline or on that ground.
+			var on_ground: float = HudTheme.contrast(side, HudTheme.PAPER_DEEP)
+			if maxf(ratio, on_ground) < HudTheme.MIN_GRAPHIC_CONTRAST:
+				return "%s swatch %s is %.2f:1 against ink and %.2f:1 against the sidebar plate" % [id, side, ratio, on_ground]
 	return "ok"
 
 
@@ -355,4 +359,86 @@ func test_crt_label_is_localized_in_the_string_table() -> String:
 	for key in ["SET_CRT", "SET_ON", "SET_OFF"]:
 		if not csv.contains("\n%s," % key):
 			return "%s missing from agora_strings.csv" % key
+	return "ok"
+
+
+# --- Design system foundations (docs/design-system, part of #73 Epic 6: Visual Identity) ---
+
+const TOKENS_DIR := "res://../docs/design-system/tokens/"
+
+
+func _css_vars(file: String) -> Dictionary:
+	var out: Dictionary = {}
+	var f := FileAccess.open(TOKENS_DIR + file, FileAccess.READ)
+	if f == null:
+		return out
+	var re := RegEx.create_from_string("--(ag-[a-z0-9-]+)\\s*:\\s*([^;]+);")
+	for m in re.search_all(f.get_as_text()):
+		if not out.has(m.get_string(1)):  # first definition wins; palette overrides come later
+			out[m.get_string(1)] = m.get_string(2).strip_edges()
+	return out
+
+
+func test_palette_constants_match_the_design_system_tokens() -> String:
+	var css := _css_vars("colors.css")
+	if css.size() < 20:
+		return "tokens/colors.css not read (%d vars)" % css.size()
+	var pairs := {"ag-ink": HudTheme.INK, "ag-slate": HudTheme.SLATE, "ag-bone": HudTheme.BONE, "ag-bone-dim": HudTheme.BONE_DIM, "ag-paper": HudTheme.PAPER, "ag-paper-deep": HudTheme.PAPER_DEEP, "ag-ochre": HudTheme.OCHRE, "ag-ochre-dark": HudTheme.OCHRE_DARK, "ag-rust": HudTheme.RUST, "ag-rust-dark": HudTheme.RUST_DARK, "ag-teal": HudTheme.TEAL, "ag-teal-dark": HudTheme.TEAL_DARK, "ag-void": HudTheme.VOID}
+	for k in pairs:
+		if not Color(css[k]).is_equal_approx(pairs[k]):
+			return "%s: tokens %s, HudTheme %s" % [k, css[k], pairs[k].to_html(false)]
+	if not Palette.bid_color(Palette.DEFAULT).is_equal_approx(Color(css["ag-bid"])) or not Palette.ask_color(Palette.DEFAULT).is_equal_approx(Color(css["ag-ask"])):
+		return "default bid/ask differ from tokens %s / %s" % [css["ag-bid"], css["ag-ask"]]
+	var pal := RegEx.create_from_string("data-palette=\"(\\w+)\"\\] \\{ --ag-bid: (#\\w+); --ag-ask: (#\\w+);")
+	var f := FileAccess.open(TOKENS_DIR + "colors.css", FileAccess.READ)
+	var seen: int = 0
+	for m in pal.search_all(f.get_as_text()):
+		seen += 1
+		if not Palette.bid_color(m.get_string(1)).is_equal_approx(Color(m.get_string(2))) or not Palette.ask_color(m.get_string(1)).is_equal_approx(Color(m.get_string(3))):
+			return "%s bid/ask differ from tokens" % m.get_string(1)
+	return "ok" if seen == 2 else "expected deuteranopia and protanopia rows, saw %d" % seen
+
+
+func test_line_shadow_focus_and_space_tokens_match_the_design_system() -> String:
+	var css := _css_vars("form.css")
+	if css.is_empty():
+		return "tokens/form.css not read"
+	if css["ag-line-panel"] != "%dpx" % HudTheme.OUTLINE_PANEL or css["ag-line-control"] != "%dpx" % HudTheme.OUTLINE_CONTROL or css["ag-line-rule"] != "%dpx" % HudTheme.OUTLINE_RULE:
+		return "line widths differ from tokens"
+	if css["ag-shadow-offset"] != "%dpx" % int(HudTheme.SHADOW_OFFSET.x) or HudTheme.SHADOW_OFFSET.x != HudTheme.SHADOW_OFFSET.y:
+		return "shadow offset differs from tokens"
+	for i in HudTheme.SPACE_SCALE.size():
+		if css["ag-space-%d" % (i + 1)] != "%dpx" % HudTheme.SPACE_SCALE[i]:
+			return "ag-space-%d differs" % (i + 1)
+	if HudTheme.OUTLINE_NODE != float(HudTheme.OUTLINE_CONTROL) or HudTheme.OUTLINE_RING != float(HudTheme.OUTLINE_RULE) or HudTheme.RADIUS_FRAME != 0:
+		return "node/ring/radius constants disagree"
+	return "ok"
+
+
+func test_type_roles_match_spec_and_the_theme_default_is_archivo_body() -> String:
+	var want := {"display": [40, 800, 70], "title": [24, 800, 75], "readout": [20, 700, 85], "body": [16, 500, 100], "hint": [14, 600, 100], "label": [12, 700, 100]}
+	var theme: Theme = HudTheme.load_theme()
+	for role in want:
+		if HudTheme.role_size(role) != want[role][0]:
+			return "%s size %d" % [role, HudTheme.role_size(role)]
+		var fv := HudTheme.role_font(role)
+		if int(fv.variation_opentype[HudTheme.TAG_WGHT]) != want[role][1] or int(fv.variation_opentype[HudTheme.TAG_WDTH]) != want[role][2]:
+			return "%s axes %s" % [role, str(fv.variation_opentype)]
+		# The .tres Label variations carry the same roles.
+		var tv: String = "Label" + role.capitalize()
+		var tfv := theme.get_font("font", tv) as FontVariation
+		if tfv == null or tfv.variation_opentype != fv.variation_opentype or theme.get_font_size("font_size", tv) != want[role][0]:
+			return "%s differs from the .tres role" % tv
+	if HudTheme.role_font("readout").opentype_features.get(HudTheme.TAG_TNUM, 0) != 1:
+		return "READOUT lacks tabular figures"
+	if HudTheme.role_font("label").spacing_glyph < 1:
+		return "LABEL is not tracked"
+	var dflt := theme.default_font as FontVariation
+	if dflt == null or dflt.variation_opentype != HudTheme.role_font("body").variation_opentype or dflt.base_font.resource_path != HudTheme.FONT_PATH:
+		return "theme default font is not Archivo BODY"
+	if HudTheme.role_font("readout", 70).variation_opentype[HudTheme.TAG_WDTH] != 70:
+		return "width override ignored"
+	for role in want:
+		if HudTheme.role_size(role) < AccessibilitySettings.MIN_FONT_SIZE:
+			return "%s is under the 12 px floor" % role
 	return "ok"
