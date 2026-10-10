@@ -37,6 +37,10 @@ var sidebar_label: Label = null
 var ticker_clip: Control = null
 var ticker_labels: Array[Label] = []
 var map_label: Label = null
+## Shared readable palette: every HUD label and every opaque modal body uses these.
+const HUD_TEXT_COLOR := Color(0.55, 1.0, 0.7)
+const MODAL_BG_COLOR := Color(0.02, 0.06, 0.04, 0.97)
+
 var market_modal: Panel = null
 var market_label: Label = null
 var resolution_modal: Panel = null
@@ -425,7 +429,7 @@ func _make_label(parent: Control, rect: Rect2, size: int = 16) -> Label:
 	l.position = rect.position
 	l.size = rect.size
 	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", Color(0.55, 1.0, 0.7))
+	l.add_theme_color_override("font_color", HUD_TEXT_COLOR)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(l)
 	return l
@@ -460,7 +464,7 @@ func _build_readouts() -> void:
 	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 18)
 	resolution_modal = Panel.new()
 	var opaque := StyleBoxFlat.new()
-	opaque.bg_color = Color(0.02, 0.06, 0.04, 0.97)
+	opaque.bg_color = MODAL_BG_COLOR
 	opaque.border_color = Color(0.3, 0.8, 0.5)
 	opaque.set_border_width_all(2)
 	resolution_modal.add_theme_stylebox_override("panel", opaque)
@@ -468,7 +472,8 @@ func _build_readouts() -> void:
 	resolution_modal.size = RESOLUTION_RECT.size
 	hud_container.add_child(resolution_modal)
 	resolution_label = _make_label(resolution_modal, Rect2(20, 16, 560, 288), 20)
-	resolution_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+	# Body text keeps the shared HUD phosphor green (_make_label). A red override here
+	# was unreadable on the dark panel once the CRT aberration split its channels.
 	resolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
