@@ -778,6 +778,8 @@ func _build_readouts() -> void:
 		return
 	header_label = _make_label(header_panel, Rect2(16, 4, 1248, 28), 18)
 	hint_label = _make_label(header_panel, Rect2(16, 34, 1248, 26), HINT_FONT_SIZE)
+	# Tab strip and control hints are the longest single line: narrow the width axis to 90 (fit rule).
+	hint_label.add_theme_font_override("font", HudTheme.role_font(HudTheme.ROLE_HINT, 90))
 	hint_label.add_theme_color_override("font_color", HudTheme.BONE_DIM)
 	map_label = _make_label(tactical_map_panel, Rect2(16, 8, 848, 168), 16)
 	map_label.add_theme_color_override("font_color", PAPER_TEXT_COLOR)
@@ -814,6 +816,9 @@ func _build_readouts() -> void:
 	market_highlight = HudTheme.make_focus_bar(market_modal, FOCUS_BAR_DARK_FILL, FOCUS_BAR_DARK_EDGE)
 	market_highlight.visible = true
 	market_label = _make_label(market_modal, Rect2(20, 16, OrbitalHUD.MODAL_OVERLAY_RECT.size.x - 40.0, OrbitalHUD.MODAL_OVERLAY_RECT.size.y - 32.0), 16)
+	# The quote board is the densest text on screen: narrow the width axis (100 to 85, the
+	# design system's fit rule) so pseudo-locale rows fit before anything wraps.
+	market_label.add_theme_font_override("font", HudTheme.role_font(HudTheme.ROLE_BODY, 85))
 	resolution_modal = Panel.new()
 	HudTheme.style_panel(resolution_modal, "ModalPanel")
 	resolution_modal.position = RESOLUTION_RECT.position

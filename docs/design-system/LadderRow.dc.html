@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes ag-boil{0%{transform:translate(0,0)}33%{transform:translate(.6px,-.6px)}66%{transform:translate(-.6px,.6px)}100%{transform:translate(0,0)}}</style></helmet>
+<div onClick="{{ onClick }}" style="display:grid;grid-template-columns:64px 56px minmax(0,1fr) 44px;align-items:center;gap:10px;height:{{ h }};padding:0 8px;box-sizing:border-box;cursor:pointer;font-family:'Archivo',sans-serif;font-variant-numeric:tabular-nums;color:#1c1a17;background:{{ bg }};border:3px solid {{ bd }};box-shadow:{{ sh }};animation:{{ anim }};transition:background-color 83ms steps(1,end),box-shadow 83ms steps(1,end)">
+  <div style="background:{{ sideC }};border:2px solid #1c1a17;font-size:12px;font-weight:800;color:{{ sideInk }};text-align:center;line-height:18px;white-space:nowrap">{{ sideLabel }}</div>
+  <div style="font-size:17px;font-weight:{{ w }};font-stretch:85%;text-align:right">{{ price }}</div>
+  <div style="height:10px;background:#d9cdb0;border:2px solid #1c1a17"><div style="width:{{ depth }}%;height:100%;background:{{ sideC }};transition:width 250ms steps(3,end)"></div></div>
+  <div style="font-size:15px;font-weight:{{ w }};text-align:right">×{{ qty }}</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:420,&quot;height&quot;:40},&quot;side&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ask&quot;,&quot;bid&quot;],&quot;default&quot;:&quot;ask&quot;,&quot;tsType&quot;:&quot;'ask'|'bid'&quot;},&quot;price&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:18,&quot;step&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;},&quot;qty&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:19,&quot;tsType&quot;:&quot;number&quot;},&quot;depth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:100,&quot;default&quot;:35,&quot;tsType&quot;:&quot;number&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;deuteranopia&quot;,&quot;protanopia&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onSelect&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const pal = { default: ['#1a6b75', '#c74d24', '#e6dcc3'], deuteranopia: ['#56B4E9', '#E69F00', '#1c1a17'], protanopia: ['#56B4E9', '#F0E442', '#1c1a17'] }[this.props.palette ?? 'default'] || ['#1a6b75', '#c74d24', '#e6dcc3'];
+    const ask = (this.props.side ?? 'ask') === 'ask';
+    const f = !!this.props.focused;
+    return {
+      sideLabel: ask ? '− ASK' : '+ BID', sideC: ask ? pal[1] : pal[0], sideInk: ask ? '#1c1a17' : pal[2],
+      price: Number(this.props.price ?? 18).toFixed(1), qty: this.props.qty ?? 19, depth: Math.max(0, Math.min(100, this.props.depth ?? 35)),
+      bg: f ? '#c99a2e' : 'transparent', bd: f ? '#1c1a17' : 'transparent', sh: f ? '4px 4px 0 #1c1a17' : 'none', w: f ? 800 : 700,
+      anim: f ? 'ag-boil 250ms steps(3,end) infinite' : 'none', h: this.props.compact ? '28px' : '32px',
+      onClick: () => this.props.onSelect && this.props.onSelect()
+    };
+  }
+}
+</script>
+</body>
+</html>

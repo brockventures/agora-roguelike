@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1c1a17}a{color:#c99a2e}a:hover{color:#e6dcc3}</style>
+</helmet>
+<div style="background:#1c1a17;color:#e6dcc3;font-family:'Archivo',sans-serif;min-height:100vh;padding:48px 40px 96px;box-sizing:border-box">
+<div style="max-width:1360px;margin:0 auto;display:flex;flex-direction:column;gap:56px">
+
+  <header style="display:flex;flex-direction:column;gap:12px;border-bottom:4px solid #e6dcc3;padding-bottom:24px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#c99a2e">AGORA · HEAVY CEL · v0.1</div>
+    <div style="font-size:56px;font-weight:800;font-stretch:75%;line-height:1;letter-spacing:-.01em">Station Agora design system</div>
+    <div style="font-size:16px;color:#b8ad94;max-width:760px;text-wrap:pretty;line-height:1.5">Ligne claire ink contours, flat shadow cuts, mineral and rust ground. Built for a 1280×800 Steam Deck screen, gamepad focus, three text scales and +30% pseudo-loc. Every token maps to <span style="color:#e6dcc3">hud_theme.gd</span> / <span style="color:#e6dcc3">palette.gd</span>.</div>
+  </header>
+
+  <section data-screen-label="Color" style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:16px"><div style="font-size:28px;font-weight:800;font-stretch:75%">01 Color</div><div style="font-size:14px;color:#b8ad94">Pairs: base + _DARK shadow cut. Never blur, never gradient.</div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#1c1a17"></div><div style="background:#2c353b"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>INK / SLATE</span><span style="font-weight:500">1c1a17 · 2c353b</span></div></div>
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#e6dcc3"></div><div style="background:#b8ad94"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>BONE</span><span style="font-weight:500">e6dcc3 · b8ad94</span></div></div>
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#d9cdb0"></div><div style="background:#cdbf9f"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>PAPER</span><span style="font-weight:500">d9cdb0 · cdbf9f</span></div></div>
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#c99a2e"></div><div style="background:#9a6f1c"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>OCHRE · focus</span><span style="font-weight:500">c99a2e · 9a6f1c</span></div></div>
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#a8431f"></div><div style="background:#7a2e14"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>RUST · alert</span><span style="font-weight:500">a8431f · 7a2e14</span></div></div>
+      <div style="border:4px solid #e6dcc3;box-shadow:4px 4px 0 #000"><div style="height:72px;display:grid;grid-template-columns:2fr 1fr"><div style="background:#2f6f6a"></div><div style="background:#1f4f4b"></div></div><div style="padding:10px 12px;background:#e6dcc3;color:#1c1a17;font-size:13px;font-weight:700;display:flex;justify-content:space-between"><span>TEAL · nodes</span><span style="font-weight:500">2f6f6a · 1f4f4b</span></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">MEANING · DEFAULT</div>
+        <div style="display:flex;gap:10px"><div style="flex:1;background:#1a6b75;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#e6dcc3">+ BID</div><div style="flex:1;background:#c74d24;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#1c1a17">− ASK</div></div>
+      </div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">DEUTERANOPIA · OKABE-ITO</div>
+        <div style="display:flex;gap:10px"><div style="flex:1;background:#56B4E9;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#1c1a17">+ BID</div><div style="flex:1;background:#E69F00;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#1c1a17">− ASK</div></div>
+      </div>
+      <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">PROTANOPIA · OKABE-ITO</div>
+        <div style="display:flex;gap:10px"><div style="flex:1;background:#56B4E9;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#1c1a17">+ BID</div><div style="flex:1;background:#F0E442;border:3px solid #1c1a17;padding:10px;font-weight:800;font-size:16px;color:#1c1a17">− ASK</div></div>
+      </div>
+    </div>
+    <div style="font-size:14px;color:#b8ad94;line-height:1.5">Rule: glyph + word on every side marker. Ink text on bright fills; bone text only on teal/slate/ink.</div>
+  </section>
+
+  <section data-screen-label="Type" style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:16px"><div style="font-size:28px;font-weight:800;font-stretch:75%">02 Type</div><div style="font-size:14px;color:#b8ad94">Archivo, one family. Width axis does the work: condensed for headlines and dense readouts, normal for prose. Tabular figures everywhere numbers move.</div></div>
+    <div style="background:#d9cdb0;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;display:flex;flex-direction:column">
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">DISPLAY 40</span><span style="font-size:40px;font-weight:800;font-stretch:70%;line-height:1">SOVEREIGN DEFAULT</span><span style="font-size:12px;font-weight:500">800 · wdth 70 · modal titles</span></div>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">TITLE 24</span><span style="font-size:24px;font-weight:800;font-stretch:75%">ARCADIA FOUNDRIES · ORE</span><span style="font-size:12px;font-weight:500">800 · wdth 75 · panel titles</span></div>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">READOUT 20</span><span style="font-size:20px;font-weight:700;font-stretch:85%;font-variant-numeric:tabular-nums">CR 5,000 · 18.0 × 19</span><span style="font-size:12px;font-weight:500">700 · wdth 85 · tnum · stats, ladder</span></div>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">BODY 16</span><span style="font-size:16px;font-weight:500">Deep-core ore extractors reporting record yields at Station Alpha.</span><span style="font-size:12px;font-weight:500">500 · wdth 100 · ticker, modals</span></div>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">HINT 14</span><span style="font-size:14px;font-weight:600">B back   X Ch.11   Y speed</span><span style="font-size:12px;font-weight:500">600 · control prompts</span></div>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;gap:16px;padding:16px 20px"><span style="font-size:12px;font-weight:700;letter-spacing:.1em">LABEL 12</span><span style="font-size:12px;font-weight:700;letter-spacing:.12em">DOOMSDAY · CARGO · SPREAD</span><span style="font-size:12px;font-weight:500">700 · +12% track · floor size</span></div>
+    </div>
+    <div style="font-size:14px;color:#b8ad94;line-height:1.5">12 px is the floor at 100%; at 115/130% everything scales up, never down. Width axis gives pseudo-loc headroom: a label that overflows drops wdth 85 → 70 before it wraps.</div>
+  </section>
+
+  <section data-screen-label="Form" style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:16px"><div style="font-size:28px;font-weight:800;font-stretch:75%">03 Line, shadow, cut, space</div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px">
+      <div style="display:flex;flex-direction:column;gap:12px"><div style="height:120px;background:#d9cdb0;border:4px solid #000;box-shadow:4px 4px 0 #000"></div><div style="font-size:14px;font-weight:700">Panel · 4px ink, 4/4 shadow</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><div style="height:120px;background:linear-gradient(135deg,#c99a2e 0 68%,#9a6f1c 68% 100%);border:3px solid #000;box-shadow:4px 4px 0 #000"></div><div style="font-size:14px;font-weight:700">Shadow cut · hard 135° chord, lower-right</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><div style="height:120px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="width:120px;height:44px;background:#e6dcc3;border:3px solid #1c1a17;box-shadow:0 0 0 3px #c99a2e,6px 6px 0 3px #000"></div></div><div style="font-size:14px;font-weight:700">Focus · 3px ochre ring + ink drop</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px"><div style="height:120px;background:#2c353b;border:4px solid #000;display:flex;align-items:flex-end;gap:8px;padding:16px;box-sizing:border-box"><div style="width:4px;height:4px;background:#e6dcc3"></div><div style="width:8px;height:8px;background:#e6dcc3"></div><div style="width:12px;height:12px;background:#e6dcc3"></div><div style="width:16px;height:16px;background:#e6dcc3"></div><div style="width:24px;height:24px;background:#e6dcc3"></div><div style="width:32px;height:32px;background:#e6dcc3"></div><div style="width:48px;height:48px;background:#e6dcc3"></div></div><div style="font-size:14px;font-weight:700">Space · 4 8 12 16 24 32 48</div></div>
+    </div>
+    <div style="font-size:14px;color:#b8ad94;line-height:1.5">Outlines: panel 4 · node/control 3 · ring/rule 2. Radius: 0 for frames, full round for nodes and pad glyphs only. Gutter between panels = 8 (two ink lines meeting).</div>
+  </section>
+
+  <section data-screen-label="Components" style="display:flex;flex-direction:column;gap:32px">
+    <div style="display:flex;align-items:baseline;gap:16px"><div style="font-size:28px;font-weight:800;font-stretch:75%">04 Components</div><div style="font-size:14px;color:#b8ad94">2–3 variants per key component. Pick one per row; the HUD v2 file uses the A-variants.</div></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:16px;font-weight:800;letter-spacing:.06em">ORDER LADDER ROW</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:24px">
+        <div id="ladder-a" style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">A · DEPTH BAR</div>
+          <div style="background:#cdbf9f;border:4px solid #000;padding:12px;display:flex;flex-direction:column;gap:4px;color:#1c1a17;font-variant-numeric:tabular-nums">
+            <div style="display:grid;grid-template-columns:72px 64px 1fr 48px;align-items:center;gap:10px;height:32px;padding:0 8px"><div style="background:{{ askC }};border:2px solid #1c1a17;font-size:13px;font-weight:800;color:#1c1a17;text-align:center;line-height:20px">− ASK</div><div style="font-size:18px;font-weight:700;font-stretch:85%;text-align:right">19.0</div><div style="height:12px;background:#d9cdb0;border:2px solid #1c1a17"><div style="width:45%;height:100%;background:{{ askC }}"></div></div><div style="font-size:16px;font-weight:600;text-align:right">×26</div></div>
+            <div style="display:grid;grid-template-columns:72px 64px 1fr 48px;align-items:center;gap:10px;height:32px;padding:0 8px;background:#c99a2e;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;margin:2px 0"><div style="background:{{ askC }};border:2px solid #1c1a17;font-size:13px;font-weight:800;color:#1c1a17;text-align:center;line-height:20px">− ASK</div><div style="font-size:18px;font-weight:800;font-stretch:85%;text-align:right">18.0</div><div style="height:12px;background:#d9cdb0;border:2px solid #1c1a17"><div style="width:32%;height:100%;background:{{ askC }}"></div></div><div style="font-size:16px;font-weight:700;text-align:right">×19</div></div>
+            <div style="display:flex;align-items:center;gap:8px;height:24px;font-size:12px;font-weight:700;letter-spacing:.12em"><div style="flex:1;height:2px;background:#1c1a17"></div>SPREAD 2.0<div style="flex:1;height:2px;background:#1c1a17"></div></div>
+            <div style="display:grid;grid-template-columns:72px 64px 1fr 48px;align-items:center;gap:10px;height:32px;padding:0 8px"><div style="background:{{ bidC }};border:2px solid #1c1a17;font-size:13px;font-weight:800;color:{{ bidInk }};text-align:center;line-height:20px">+ BID</div><div style="font-size:18px;font-weight:700;font-stretch:85%;text-align:right">16.0</div><div style="height:12px;background:#d9cdb0;border:2px solid #1c1a17"><div style="width:40%;height:100%;background:{{ bidC }}"></div></div><div style="font-size:16px;font-weight:600;text-align:right">×23</div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">B · TICKET STRIP</div>
+          <div style="background:#2c353b;border:4px solid #000;padding:12px;display:flex;flex-direction:column;gap:6px;color:#e6dcc3;font-variant-numeric:tabular-nums">
+            <div style="display:flex;align-items:stretch;height:34px;border:3px solid #1c1a17;background:#e6dcc3;color:#1c1a17"><div style="width:34px;background:{{ askC }};border-right:3px solid #1c1a17;font-size:20px;font-weight:800;text-align:center;line-height:28px">−</div><div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:16px;font-weight:700"><span style="font-size:12px;letter-spacing:.1em">ASK</span><span style="font-size:18px">19.0</span><span>×26</span></div></div>
+            <div style="display:flex;align-items:stretch;height:34px;border:3px solid #1c1a17;background:#c99a2e;color:#1c1a17;box-shadow:0 0 0 3px #e6dcc3,6px 6px 0 3px #000"><div style="width:34px;background:{{ askC }};border-right:3px solid #1c1a17;font-size:20px;font-weight:800;text-align:center;line-height:28px">−</div><div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:16px;font-weight:800"><span style="font-size:12px;letter-spacing:.1em">ASK ▸</span><span style="font-size:18px">18.0</span><span>×19</span></div></div>
+            <div style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94;line-height:22px">SPREAD 2.0</div>
+            <div style="display:flex;align-items:stretch;height:34px;border:3px solid #1c1a17;background:#e6dcc3;color:#1c1a17"><div style="width:34px;background:{{ bidC }};border-right:3px solid #1c1a17;font-size:20px;font-weight:800;text-align:center;line-height:28px;color:{{ bidInk }}">+</div><div style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:16px;font-weight:700"><span style="font-size:12px;letter-spacing:.1em">BID</span><span style="font-size:18px">16.0</span><span>×23</span></div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">C · SPLIT BOOK</div>
+          <div style="background:#cdbf9f;border:4px solid #000;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;color:#1c1a17;font-variant-numeric:tabular-nums">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.1em;display:flex;gap:6px;align-items:center"><div style="width:14px;height:14px;background:{{ bidC }};border:2px solid #1c1a17"></div>+ BID</div>
+            <div style="font-size:12px;font-weight:800;letter-spacing:.1em;display:flex;gap:6px;align-items:center;justify-content:flex-end">− ASK<div style="width:14px;height:14px;background:{{ askC }};border:2px solid #1c1a17"></div></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 8px;border-top:2px solid #1c1a17;font-size:17px;font-weight:700"><span>×23</span><span>16.0</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 8px;background:#c99a2e;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;font-size:17px;font-weight:800"><span>18.0</span><span>×19</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 8px;border-top:2px solid #1c1a17;font-size:17px;font-weight:700"><span>×31</span><span>15.0</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 8px;border-top:2px solid #1c1a17;font-size:17px;font-weight:700"><span>19.0</span><span>×26</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:16px;font-weight:800;letter-spacing:.06em">HEADER READOUT</div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">A · STACKED CHIPS</div>
+          <div style="background:#2c353b;border:4px solid #000;padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums">
+            <div style="padding:4px 12px;border-right:2px solid #1c1a17;display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">CREDITS</span><span style="font-size:20px;font-weight:800;font-stretch:85%">5,000 CR</span></div>
+            <div style="padding:4px 12px;border-right:2px solid #1c1a17;display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">DEBT</span><span style="font-size:20px;font-weight:800;font-stretch:85%">3,750</span></div>
+            <div style="padding:4px 12px;display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#a8431f 0 80%,#7a2e14 80% 100%);border:3px solid #1c1a17;color:#e6dcc3"><div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em">DOOMSDAY · UNSTABLE</span><span style="font-size:20px;font-weight:800;font-stretch:85%">7:29</span></div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">B · SINGLE LINE (current, typeset)</div>
+          <div style="background:#2c353b;border:4px solid #000;padding:10px 16px;display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;font-size:18px;font-weight:700;font-stretch:85%;font-variant-numeric:tabular-nums"><span style="font-weight:800;color:#c99a2e">AGORA</span><span><span style="font-size:12px;color:#b8ad94;letter-spacing:.1em">CR </span>5,000</span><span><span style="font-size:12px;color:#b8ad94;letter-spacing:.1em">DEBT </span>3,750</span><span><span style="font-size:12px;color:#b8ad94;letter-spacing:.1em">DOOMSDAY </span>7:29 <span style="color:#e6dcc3;background:#a8431f;padding:0 6px;border:2px solid #1c1a17">UNSTABLE</span></span><span><span style="font-size:12px;color:#b8ad94;letter-spacing:.1em">SPEED </span>PAUSED</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:32px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">CONTROL PROMPT</div>
+        <div style="background:#2c353b;border:4px solid #000;padding:16px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em;width:72px">A · DISC</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600"><div style="width:22px;height:22px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">A</div>Buy/sell</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;margin-left:10px"><div style="width:22px;height:22px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">B</div>Back</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em;width:72px">B · CAP</div>
+            <div style="display:flex;align-items:stretch;border:2px solid #1c1a17;box-shadow:3px 3px 0 #000;font-size:14px;font-weight:700"><div style="background:#e6dcc3;color:#1c1a17;padding:2px 8px">LB</div><div style="padding:2px 8px;background:#1c1a17">Tab</div></div>
+            <div style="display:flex;align-items:stretch;border:2px solid #1c1a17;box-shadow:3px 3px 0 #000;font-size:14px;font-weight:700"><div style="background:#e6dcc3;color:#1c1a17;padding:2px 8px">X</div><div style="padding:2px 8px;background:#1c1a17">Chapter 11</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">TABS</div>
+        <div style="background:#2c353b;border:4px solid #000;padding:16px 16px 0;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">A · PAPER TAB (joins panel below)</div>
+          <div style="display:flex;align-items:flex-end;gap:4px">
+            <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 8px">LB</div>
+            <div style="background:#d9cdb0;color:#1c1a17;border:3px solid #1c1a17;border-bottom:none;padding:6px 16px 8px;font-size:14px;font-weight:800;letter-spacing:.08em">MAP</div>
+            <div style="color:#b8ad94;padding:6px 16px 8px;font-size:14px;font-weight:700;letter-spacing:.08em">MARKET</div>
+            <div style="color:#b8ad94;padding:6px 16px 8px;font-size:14px;font-weight:700;letter-spacing:.08em">FLEET</div>
+            <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 8px">RB</div>
+          </div>
+          <div style="height:12px;background:#d9cdb0;border-top:3px solid #1c1a17;margin:0 -16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:32px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">TICKER LINE</div>
+        <div style="background:#2c353b;border:4px solid #000;padding:12px 16px;display:flex;flex-direction:column;gap:8px;font-size:16px;font-weight:500">
+          <div style="display:flex;gap:10px;align-items:center"><span style="background:#c99a2e;color:#1c1a17;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:1px 6px">REGULATION</span><span>Doomsday debt enforcement protocol active.</span></div>
+          <div style="display:flex;gap:10px;align-items:center"><span style="background:#2f6f6a;color:#e6dcc3;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:1px 6px">MARKET</span><span>Deep-core ore extractors report record yields.</span></div>
+          <div style="display:flex;gap:10px;align-items:center"><span style="background:#a8431f;color:#e6dcc3;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:1px 6px">PIRACY</span><span>Pirates demand 400 CR ransom, Mars → Ceres.</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">MAP NODE</div>
+        <div style="background:#d9cdb0;border:4px solid #000;height:150px;position:relative">
+          <svg width="100%" height="146" viewBox="0 0 380 146" preserveAspectRatio="xMidYMid meet" style="position:absolute;left:0;top:0">
+            <g transform="translate(60 70)"><circle cx="4" cy="4" r="27" fill="#1c1a17"></circle><circle r="27" fill="#1c1a17"></circle><circle r="24" fill="#c99a2e"></circle><path d="M21.28 -11.10 A24 24 0 0 1 -11.10 21.28 Z" fill="#9a6f1c"></path></g>
+            <g transform="translate(170 70)"><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path></g>
+            <g transform="translate(290 70)"><circle r="26" fill="none" stroke="#c99a2e" stroke-width="4" stroke-dasharray="8 6"></circle><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#a8431f"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#7a2e14"></path></g>
+            <g font-family="Archivo, sans-serif" font-weight="800" font-size="12" letter-spacing="1.2" text-anchor="middle" fill="#1c1a17"><text x="60" y="126">SOL</text><text x="170" y="126">STATION</text><text x="290" y="126">DOCKED · FOCUS</text></g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:32px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">MODAL</div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">A · TITLE BAND</div>
+          <div style="background:#2c353b;border:4px solid #1c1a17;box-shadow:6px 6px 0 #000;display:flex;flex-direction:column">
+            <div style="background:linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%);border-bottom:4px solid #1c1a17;padding:10px 20px;font-size:28px;font-weight:800;font-stretch:70%;letter-spacing:.02em">CHAPTER 11</div>
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.45"><span>Insolvent: debt <b>3,750</b> exceeds liquidation value <b>1,980</b>.</span><span style="color:#b8ad94">The clock is halted.</span></div>
+            <div style="border-top:2px solid #1c1a17;padding:10px 20px;display:flex;gap:16px;justify-content:flex-end;font-size:14px;font-weight:600"><div style="display:flex;align-items:center;gap:6px"><div style="width:22px;height:22px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">X</div>File and found a new corp</div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.1em">B · PAPER NOTICE</div>
+          <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #1c1a17;box-shadow:6px 6px 0 #000;padding:16px 20px;display:flex;gap:16px;align-items:flex-start">
+            <div style="width:40px;height:40px;flex:none;background:#a8431f;border:3px solid #1c1a17;color:#e6dcc3;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center">!</div>
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:20px;font-weight:800;font-stretch:75%">PAUSED · RESUMED FROM SLEEP</span><span style="font-size:14px;font-weight:600">Press Start to resume.</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:16px;font-weight:800;letter-spacing:.06em">CARD · 4:3 VIEWPORT</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div style="width:240px;background:#e6dcc3;border:4px solid #1c1a17;box-shadow:4px 4px 0 #000;display:flex;flex-direction:column">
+            <div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:repeating-linear-gradient(135deg,#cdbf9f 0 8px,#d9cdb0 8px 16px);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px;color:#1c1a17">card art · no text</div>
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px;color:#1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#7a2e14">CRISIS · REGULATORY</span><span style="font-size:18px;font-weight:800;font-stretch:80%">Antitrust Audit</span><span style="font-size:13px;font-weight:600">Orders capped at 20 units · 3 rd</span></div>
+          </div>
+          <div style="width:240px;background:#e6dcc3;border:4px solid #1c1a17;box-shadow:0 0 0 3px #c99a2e,7px 7px 0 3px #000;display:flex;flex-direction:column">
+            <div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:repeating-linear-gradient(135deg,#cdbf9f 0 8px,#d9cdb0 8px 16px);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px;color:#1c1a17">card art · no text</div>
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px;color:#1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#1f4f4b">PERK · T1 · OWNED</span><span style="font-size:18px;font-weight:800;font-stretch:80%">Corrupt Regulator</span><span style="font-size:13px;font-weight:600">Regulatory Capture · focused</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;deuteranopia&quot;,&quot;protanopia&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const pal = {
+      default: { bid: '#1a6b75', ask: '#c74d24', bidInk: '#e6dcc3' },
+      deuteranopia: { bid: '#56B4E9', ask: '#E69F00', bidInk: '#1c1a17' },
+      protanopia: { bid: '#56B4E9', ask: '#F0E442', bidInk: '#1c1a17' }
+    }[this.props.palette ?? 'default'] || {};
+    return { bidC: pal.bid, askC: pal.ask, bidInk: pal.bidInk };
+  }
+}
+</script>
+</body>
+</html>

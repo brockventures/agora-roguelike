@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#111}a{color:#c99a2e}a:hover{color:#e6dcc3}</style>
+</helmet>
+<div data-screen-label="HUD Fleet tab" style="position:relative;width:1280px;height:800px;background:#1c1a17;overflow:hidden;font-family:'Archivo',sans-serif;color:#e6dcc3;font-variant-numeric:tabular-nums">
+  <div style="position:absolute;left:0;top:64px;width:1280px;height:456px;background:#d9cdb0;overflow:hidden">
+    <svg width="1280" height="456" viewBox="0 0 1280 456" style="position:absolute;left:0;top:0">
+      <g fill="none" stroke="#1c1a17" stroke-width="2"><ellipse cx="640" cy="222" rx="420" ry="196"></ellipse><ellipse cx="640" cy="222" rx="150" ry="70"></ellipse><ellipse cx="640" cy="222" rx="132" ry="61"></ellipse><ellipse cx="640" cy="222" rx="250" ry="117"></ellipse></g>
+      <path d="M420 165 Q 560 40 860 55" fill="none" stroke="#1c1a17" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"></path>
+      <g transform="translate(600 76) rotate(45)"><rect x="-9" y="-9" width="18" height="18" fill="#1c1a17"></rect><rect x="-6" y="-6" width="12" height="12" fill="#e6dcc3"></rect></g>
+      <g transform="translate(700 70) rotate(45)"><rect x="-10" y="-10" width="20" height="20" fill="#1c1a17"></rect><rect x="-7" y="-7" width="14" height="14" fill="#a8431f"></rect></g>
+      <sc-if value="{{ showRoute }}" hint-placeholder-val="{{ false }}">
+        <path d="M420 165 Q 520 260 700 285" fill="none" stroke="#c99a2e" stroke-width="10" stroke-linecap="round"></path>
+        <path d="M420 165 Q 520 260 700 285" fill="none" stroke="#1c1a17" stroke-width="3" stroke-dasharray="10 8" stroke-linecap="round"></path>
+      </sc-if>
+      <g transform="translate(640 222)"><circle cx="4" cy="4" r="27" fill="#1c1a17"></circle><circle r="27" fill="#1c1a17"></circle><circle r="24" fill="#c99a2e"></circle><path d="M21.28 -11.10 A24 24 0 0 1 -11.10 21.28 Z" fill="#9a6f1c"></path></g>
+      <g transform="translate(860 55)"><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path></g>
+      <g transform="translate(420 165)"><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#a8431f"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#7a2e14"></path></g>
+      <g transform="translate(672 283)"><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path></g>
+      <g transform="translate(724 284)"><sc-if value="{{ showTargetRing }}" hint-placeholder-val="{{ false }}"><circle r="28" fill="none" stroke="#c99a2e" stroke-width="5"></circle><circle r="28" fill="none" stroke="#1c1a17" stroke-width="2" stroke-dasharray="8 6"></circle></sc-if><circle cx="4" cy="4" r="17" fill="#1c1a17"></circle><circle r="17" fill="#1c1a17"></circle><circle r="14" fill="#2f6f6a"></circle><path d="M12.41 -6.47 A14 14 0 0 1 -6.47 12.41 Z" fill="#1f4f4b"></path></g>
+      <g font-family="Archivo, sans-serif" font-weight="800" font-size="13" letter-spacing="1" stroke="#d9cdb0" stroke-width="6" stroke-linejoin="round" paint-order="stroke">
+        <text x="886" y="60" fill="#1c1a17">CERES</text>
+        <text x="300" y="125" fill="#7a2e14">ARCADIA FOUNDRIES</text>
+        <text x="756" y="289" fill="#1c1a17">KENNEDY ELEVATOR</text>
+        <text x="652" y="326" fill="#1c1a17">LUNA</text>
+        <text x="560" y="104" fill="#1c1a17" font-size="12">HULL 2 · ETA 1 RD</text>
+        <text x="718" y="100" fill="#7a2e14" font-size="12">PIRACY · HIGH</text>
+      </g>
+    </svg>
+    <sc-if value="{{ showRoute }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:470px;top:300px;background:#e6dcc3;color:#1c1a17;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;padding:6px 10px;display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em">ROUTE · MARS → EARTH</span><span style="font-size:15px;font-weight:700">2 rounds · storm risk low · piracy none</span></div>
+    </sc-if>
+    <div style="position:absolute;left:16px;top:12px;display:flex;flex-direction:column;gap:2px;color:#1c1a17"><span style="font-size:12px;font-weight:800;letter-spacing:.14em">FLEET · ROUND 9</span><span style="font-size:13px;font-weight:600">3 hulls · 1 in transit</span></div>
+  </div>
+  <div style="position:absolute;left:0;top:0;width:1280px;height:64px;background:#2c353b;border-bottom:4px solid #1c1a17;box-sizing:border-box;display:flex;align-items:stretch">
+    <div style="display:flex;align-items:center;padding:0 20px;border-right:3px solid #1c1a17;font-size:22px;font-weight:800;font-stretch:70%;letter-spacing:.06em;color:#c99a2e">AGORA</div>
+    <div style="display:flex;align-items:flex-end;gap:2px;padding:0 12px">
+      <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 10px">LB</div>
+      <div style="color:#e6dcc3;padding:8px 14px 10px;font-size:14px;font-weight:700;letter-spacing:.08em">MAP</div>
+      <div style="color:#e6dcc3;padding:8px 14px 10px;font-size:14px;font-weight:700;letter-spacing:.08em">MARKET</div>
+      <div style="background:#d9cdb0;color:#1c1a17;border:3px solid #1c1a17;border-bottom:none;padding:8px 14px 10px;font-size:14px;font-weight:800;letter-spacing:.08em;margin-bottom:-4px">FLEET</div>
+      <div style="font-size:12px;font-weight:800;color:#b8ad94;padding:0 6px 10px">RB</div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">CREDITS</span><span style="font-size:20px;font-weight:800;font-stretch:85%">5,000</span></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">DEBT</span><span style="font-size:20px;font-weight:800;font-stretch:85%">3,750</span></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-left:2px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">SPEED</span><span style="font-size:20px;font-weight:800;font-stretch:85%">PAUSED</span></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;padding:0 20px;background:linear-gradient(135deg,#a8431f 0 82%,#7a2e14 82% 100%);border-left:3px solid #1c1a17"><span style="font-size:12px;font-weight:700;letter-spacing:.12em">DOOMSDAY · UNSTABLE</span><span style="font-size:20px;font-weight:800;font-stretch:85%">7:29</span></div>
+  </div>
+  <div style="position:absolute;left:0;top:520px;width:1280px;height:280px;display:grid;grid-template-columns:440px 340px 1fr;gap:8px;padding:8px;box-sizing:border-box">
+    <div style="background:#cdbf9f;border:4px solid #1c1a17;display:flex;flex-direction:column;color:#1c1a17">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:2px solid #1c1a17"><span style="font-size:18px;font-weight:800;font-stretch:75%">HULLS</span><span style="font-size:12px;font-weight:800;letter-spacing:.1em">D-PAD ▴▾</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding:8px">
+        <sc-for list="{{ hulls }}" as="h" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:16px 1fr auto;gap:10px;align-items:center;padding:7px 10px;background:{{ h.bg }};border:{{ h.bd }};box-shadow:{{ h.sh }}">
+            <span style="font-size:14px;font-weight:800">{{ h.marker }}</span>
+            <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:800;font-stretch:80%">{{ h.id }} <span style="font-size:13px;font-weight:600;font-stretch:100%">· {{ h.cls }}</span></span><span style="font-size:12px;font-weight:800;letter-spacing:.08em;color:{{ h.stC }}">{{ h.status }}</span></div>
+            <span style="font-size:15px;font-weight:700">{{ h.cargo }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:#cdbf9f;border:4px solid #1c1a17;display:flex;flex-direction:column;color:#1c1a17">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:2px solid #1c1a17"><span style="font-size:18px;font-weight:800;font-stretch:75%">CARGO MANIFEST</span><span style="font-size:12px;font-weight:800;letter-spacing:.1em">60/140</span></div>
+      <div style="display:flex;flex-direction:column;padding:6px 12px">
+        <sc-for list="{{ manifest }}" as="m" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:1fr 48px 64px;gap:8px;align-items:baseline;padding:7px 0;border-bottom:2px solid #1c1a17"><span style="font-size:16px;font-weight:800;font-stretch:80%">{{ m.c }}</span><span style="font-size:16px;font-weight:700;text-align:right">×{{ m.q }}</span><span style="font-size:12px;font-weight:700;letter-spacing:.06em;text-align:right">{{ m.h }}</span></div>
+        </sc-for>
+      </div>
+      <div style="margin-top:auto;padding:8px 12px;border-top:2px solid #1c1a17;display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600"><span style="background:#a8431f;color:#e6dcc3;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.08em;padding:0 5px">RISK</span>Hull 2 route: piracy high</div>
+    </div>
+    <div style="background:#2c353b;border:4px solid #1c1a17;display:flex;flex-direction:column">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:4px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;text-align:center">
+        <div style="padding:8px 4px;background:{{ s1 }};color:{{ t1 }}">1 · HULL</div>
+        <div style="padding:8px 4px;background:{{ s2 }};color:{{ t2 }};border-left:2px solid #1c1a17">2 · DESTINATION</div>
+        <div style="padding:8px 4px;background:{{ s3 }};color:{{ t3 }};border-left:2px solid #1c1a17">3 · CONFIRM</div>
+      </div>
+      <div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+        <sc-if value="{{ stepHull }}" hint-placeholder-val="{{ true }}">
+          <span style="font-size:22px;font-weight:800;font-stretch:72%">DISPATCH HULL 1</span>
+          <span style="font-size:15px;font-weight:500;line-height:1.45;color:#e6dcc3">Bulk hauler, docked at Arcadia Foundries, carrying ORE ×28 and FUEL ×12.</span>
+        </sc-if>
+        <sc-if value="{{ stepStation }}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:22px;font-weight:800;font-stretch:72%">PICK A STATION ON THE MAP</span>
+          <span style="font-size:15px;font-weight:500;line-height:1.45">Kennedy Elevator · 2 rounds · storm low · piracy none. ORE bids there: 19.5.</span>
+        </sc-if>
+        <sc-if value="{{ stepConfirm }}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:22px;font-weight:800;font-stretch:72%">MARS → KENNEDY ELEVATOR</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:14px;font-weight:600"><span style="color:#b8ad94">ETA</span><span style="text-align:right;font-weight:800">2 rounds</span><span style="color:#b8ad94">FUEL BURN</span><span style="text-align:right;font-weight:800">6 FUEL</span><span style="color:#b8ad94">RISK</span><span style="text-align:right;font-weight:800">Low</span></div>
+        </sc-if>
+        <div style="margin-top:auto;display:flex;gap:14px;font-size:13px;font-weight:600;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">A</div>Next</div><div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">B</div>Back</div><div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:#e6dcc3;border:2px solid #1c1a17;color:#1c1a17;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">R</div>Cycle station</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:800},&quot;step&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;hull&quot;,&quot;station&quot;,&quot;confirm&quot;],&quot;default&quot;:&quot;hull&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const step = this.props.step ?? 'hull';
+    const hulls = [
+      { id: 'HULL 1', cls: 'Bulk hauler', status: 'DOCKED · MARS', cargo: '40/60', stC: '#1f4f4b' },
+      { id: 'HULL 2', cls: 'Courier', status: 'IN TRANSIT · ETA 1', cargo: '20/20', stC: '#9a6f1c' },
+      { id: 'HULL 3', cls: 'Bulk hauler', status: 'DOCKED · MARS', cargo: '0/60', stC: '#1f4f4b' }
+    ].map((h, i) => {
+      const f = i === 0;
+      return { ...h, bg: f ? '#c99a2e' : 'transparent', bd: f ? '3px solid #1c1a17' : '3px solid transparent', sh: f ? '4px 4px 0 #1c1a17' : 'none', marker: f ? '▸' : '' };
+    });
+    const manifest = [['ORE', 28, 'HULL 1'], ['FUEL', 12, 'HULL 1'], ['MACHINERY', 20, 'HULL 2']].map(m => ({ c: m[0], q: m[1], h: m[2] }));
+    return {
+      hulls, manifest,
+      showRoute: step !== 'hull', showTargetRing: step === 'station',
+      stepHull: step === 'hull', stepStation: step === 'station', stepConfirm: step === 'confirm',
+      s1: step === 'hull' ? '#c99a2e' : '#1c1a17', s2: step === 'station' ? '#c99a2e' : (step === 'confirm' ? '#1c1a17' : 'transparent'), s3: step === 'confirm' ? '#c99a2e' : 'transparent',
+      t1: step === 'hull' ? '#1c1a17' : '#e6dcc3', t2: step === 'station' ? '#1c1a17' : (step === 'confirm' ? '#e6dcc3' : '#b8ad94'), t3: step === 'confirm' ? '#1c1a17' : '#b8ad94'
+    };
+  }
+}
+</script>
+</body>
+</html>

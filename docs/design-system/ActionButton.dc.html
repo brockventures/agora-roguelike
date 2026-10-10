@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<button onClick="{{ onClick }}" disabled="{{ disabled }}" style="display:inline-flex;align-items:center;gap:10px;font-family:'Archivo',sans-serif;font-size:{{ fs }};font-weight:800;letter-spacing:.1em;padding:{{ pad }};background:{{ bg }};color:{{ fg }};border:{{ bw }} solid #1c1a17;box-shadow:{{ shadow }};transform:{{ tf }};cursor:pointer;opacity:{{ op }};transition:transform 83ms steps(2,end),box-shadow 83ms steps(2,end)" style-active="transform:translate(4px,4px);box-shadow:0 0 0 #1c1a17" style-hover="filter:brightness(1.06)">
+  <sc-if value="{{ hasGlyph }}" hint-placeholder-val="{{ false }}"><span style="width:20px;height:20px;border-radius:50%;background:{{ fg }};color:{{ bg }};font-size:12px;display:flex;align-items:center;justify-content:center;flex:none">{{ glyph }}</span></sc-if>
+  <span>{{ label }}</span>
+</button>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:320,&quot;height&quot;:80},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;WISHLIST ON STEAM&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;primary&quot;,&quot;alert&quot;,&quot;plate&quot;,&quot;paper&quot;],&quot;default&quot;:&quot;primary&quot;,&quot;tsType&quot;:&quot;'primary'|'alert'|'plate'|'paper'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;md&quot;,&quot;lg&quot;],&quot;default&quot;:&quot;md&quot;,&quot;tsType&quot;:&quot;'md'|'lg'&quot;},&quot;glyph&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;disabled&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onPress&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? 'primary';
+    const map = { primary: ['#c99a2e', '#1c1a17'], alert: ['#a8431f', '#e6dcc3'], plate: ['#2c353b', '#e6dcc3'], paper: ['#e6dcc3', '#1c1a17'] };
+    const c = map[v] || map.primary;
+    const lg = (this.props.size ?? 'md') === 'lg';
+    const focused = !!this.props.focused, dis = !!this.props.disabled;
+    return {
+      label: this.props.label ?? 'WISHLIST ON STEAM', glyph: this.props.glyph ?? '', hasGlyph: !!this.props.glyph,
+      bg: c[0], fg: c[1], fs: lg ? '17px' : '14px', pad: lg ? '14px 24px' : '8px 14px', bw: lg ? '4px' : '3px',
+      shadow: dis ? 'none' : (focused ? '0 0 0 3px #e6dcc3, 7px 7px 0 3px #1c1a17' : (lg ? '6px 6px 0 #1c1a17' : '4px 4px 0 #1c1a17')),
+      tf: 'none', op: dis ? 0.45 : 1, disabled: dis,
+      onClick: () => { if (!dis && this.props.onPress) this.props.onPress(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

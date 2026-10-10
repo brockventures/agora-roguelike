@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<span style="display:inline-block;background:{{ bg }};color:{{ fg }};border:2px solid #1c1a17;font-family:'Archivo',sans-serif;font-size:12px;font-weight:800;letter-spacing:.1em;line-height:16px;padding:0 6px;white-space:nowrap">{{ text }}</span>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:140,&quot;height&quot;:30},&quot;text&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;MARKET&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ochre&quot;,&quot;teal&quot;,&quot;rust&quot;,&quot;bone&quot;,&quot;ink&quot;],&quot;default&quot;:&quot;ochre&quot;,&quot;tsType&quot;:&quot;'ochre'|'teal'|'rust'|'bone'|'ink'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const tones = { ochre: ['#c99a2e', '#1c1a17'], teal: ['#2f6f6a', '#e6dcc3'], rust: ['#a8431f', '#e6dcc3'], bone: ['#e6dcc3', '#1c1a17'], ink: ['#1c1a17', '#e6dcc3'] };
+    const t = tones[this.props.tone ?? 'ochre'] || tones.ochre;
+    return { bg: t[0], fg: t[1], text: this.props.text ?? 'MARKET' };
+  }
+}
+</script>
+</body>
+</html>

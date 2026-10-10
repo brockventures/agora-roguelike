@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#1c1a17}a{color:#c99a2e}a:hover{color:#e6dcc3}
+@keyframes ag-boil{0%{transform:translate(0,0)}33%{transform:translate(.6px,-.6px)}66%{transform:translate(-.6px,.6px)}100%{transform:translate(0,0)}}
+@keyframes ag-pop{0%{transform:scale(.86)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes ag-drop{0%{transform:translateY(-28px);box-shadow:0 0 0 #000}60%{transform:translateY(3px);box-shadow:0 0 0 #000}100%{transform:translateY(0);box-shadow:8px 8px 0 #000}}
+@keyframes ag-flash{0%,49%{background-color:#a8431f}50%,100%{background-color:#7a2e14}}
+@keyframes ag-wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes ag-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes ag-ring{to{stroke-dashoffset:-28}}
+@keyframes ag-slide{from{transform:translateX(0)}to{transform:translateX(220px)}}
+@keyframes ag-orbit{to{transform:rotate(360deg)}}
+@keyframes ag-smear{0%{transform:translateX(-140%)}25%{transform:translateX(-30%) scaleX(1.35) skewX(-14deg)}50%{transform:translateX(6%) scaleX(.96)}75%,100%{transform:translateX(0)}}
+@keyframes ag-impact{0%,32%{filter:invert(1)}33%,100%{filter:none}}
+@keyframes ag-roll{0%{transform:translateY(0)}100%{transform:translateY(-75%)}}
+@keyframes ag-crawl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes ag-press{0%,40%{transform:translate(0,0);box-shadow:4px 4px 0 #1c1a17}50%,90%{transform:translate(4px,4px);box-shadow:0 0 0 #1c1a17}100%{transform:translate(0,0);box-shadow:4px 4px 0 #1c1a17}}
+</style>
+</helmet>
+<div style="background:#1c1a17;color:#e6dcc3;font-family:'Archivo',sans-serif;min-height:100vh;padding:40px 32px 96px;box-sizing:border-box">
+<div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:36px">
+  <header style="display:flex;flex-direction:column;gap:14px;border-bottom:4px solid #e6dcc3;padding-bottom:20px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#c99a2e">AGORA DESIGN SYSTEM · MOTION</div>
+    <div style="font-size:52px;font-weight:800;font-stretch:72%;line-height:1">Animated on twos</div>
+    <div style="font-size:16px;color:#b8ad94;max-width:780px;line-height:1.5;text-wrap:pretty">The HUD moves like a hand-animated cel film: 12 drawings a second, hard cuts, held poses, and solid shadows that snap instead of fade. Nothing blurs, nothing tweens smoothly except the slow orbits. Each beat is a whole number of drawings (1 drawing = 83ms).</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button onClick="{{ replay }}" style="font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.1em;background:#c99a2e;color:#1c1a17;border:4px solid #1c1a17;box-shadow:5px 5px 0 #000;padding:10px 18px;cursor:pointer" style-active="transform:translate(5px,5px);box-shadow:none">REPLAY ALL</button>
+      <span style="font-size:13px;color:#b8ad94;font-weight:600">Looping demos keep running. One-shot demos replay on click.</span>
+    </div>
+  </header>
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:16px">
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#7a2e14">01</span><span style="font-size:20px;font-weight:800;font-stretch:75%">On twos</span><span style="font-size:14px;line-height:1.45">12 drawings a second. Every timing is steps(n), never a smooth curve. Quantize in Godot: t = floor(t·12)/12.</span></div>
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#7a2e14">02</span><span style="font-size:20px;font-weight:800;font-stretch:75%">Hold the pose</span><span style="font-size:14px;line-height:1.45">Move fast, then hold. A beat is 3–5 drawings; the held frame is what the player reads.</span></div>
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#7a2e14">03</span><span style="font-size:20px;font-weight:800;font-stretch:75%">Shadows snap</span><span style="font-size:14px;line-height:1.45">Ink shadows are on or off: 4px when resting, 0 when pressed, 8px on landing. Never faded, never blurred.</span></div>
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#7a2e14">04</span><span style="font-size:20px;font-weight:800;font-stretch:75%">Boil what's live</span><span style="font-size:14px;line-height:1.45">Only the focused thing boils. One boiling element per screen, so focus is findable at a glance.</span></div>
+    <div style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:16px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#7a2e14">05</span><span style="font-size:20px;font-weight:800;font-stretch:75%">Cut, don't fade</span><span style="font-size:14px;line-height:1.45">State changes are hard cuts or wipes. Opacity fades only for the scrim, at one drawing.</span></div>
+  </section>
+  <section style="background:#2c353b;border:4px solid #000;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;font-variant-numeric:tabular-nums">
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">SNAP · 1 DRAWING</span><span style="font-size:22px;font-weight:800;font-stretch:80%">83 ms</span><span style="font-size:13px;color:#b8ad94">focus, press, toggles</span></div>
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">CUT · 2</span><span style="font-size:22px;font-weight:800;font-stretch:80%">167 ms</span><span style="font-size:13px;color:#b8ad94">shake, tab switch</span></div>
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">MOVE · 3</span><span style="font-size:22px;font-weight:800;font-stretch:80%">250 ms</span><span style="font-size:13px;color:#b8ad94">pop, wipe, roll, depth bars</span></div>
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">SCENE · 5</span><span style="font-size:22px;font-weight:800;font-stretch:80%">417 ms</span><span style="font-size:13px;color:#b8ad94">modal drop, panel smear</span></div>
+    <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">REDUCED MOTION</span><span style="font-size:22px;font-weight:800;font-stretch:80%">Cuts only</span><span style="font-size:13px;color:#b8ad94">no boil, smear, shake, impact</span></div>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:28px;font-weight:800;font-stretch:72%;border-bottom:2px solid #b8ad94;padding-bottom:8px">Loops · ambient</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#cdbf9f;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="width:200px;height:34px;background:#c99a2e;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;display:flex;align-items:center;justify-content:space-between;padding:0 10px;box-sizing:border-box;color:#1c1a17;font-weight:800;font-size:16px;animation:{{ a.boil }}"><span style="font-size:12px;letter-spacing:.1em">− ASK</span><span>18.0</span><span>×19</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Line boil</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">3 drawings · loop</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Focused element only. ±0.5px drift on 3 held drawings, like redrawn ink.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#d9cdb0;border:4px solid #000;display:flex;align-items:center;justify-content:center"><svg width="90" height="90" viewBox="-45 -45 90 90"><circle r="30" fill="none" stroke="#c99a2e" stroke-width="4" stroke-dasharray="8 6" style="animation:{{ a.ring }}"></circle><circle cx="4" cy="4" r="20" fill="#1c1a17"></circle><circle r="20" fill="#1c1a17"></circle><circle r="17" fill="#a8431f"></circle><path d="M15.07 -7.86 A17 17 0 0 1 -7.86 15.07 Z" fill="#7a2e14"></path></svg></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Ring march</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">4 drawings · loop</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Dashed ochre ring on the docked or focused map node.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#d9cdb0;border:4px solid #000;display:flex;align-items:center;justify-content:center;position:relative"><svg width="140" height="140" viewBox="-70 -70 140 140"><circle r="56" fill="none" stroke="#1c1a17" stroke-width="2"></circle><circle cx="3" cy="3" r="14" fill="#1c1a17"></circle><circle r="14" fill="#1c1a17"></circle><circle r="12" fill="#c99a2e"></circle><g style="animation:{{ a.orbit }};transform-origin:0 0"><circle cx="59" cy="3" r="9" fill="#1c1a17"></circle><circle cx="56" r="9" fill="#1c1a17"></circle><circle cx="56" r="7" fill="#2f6f6a"></circle></g></svg></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Stepped orbit</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">12 fps · 12 s</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Map bodies move at sim speed, still quantized to 12fps so the map reads as drawn, not rendered.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="padding:6px 18px;border:3px solid #1c1a17;color:#e6dcc3;display:flex;flex-direction:column;animation:{{ a.flash }};font-variant-numeric:tabular-nums"><span style="font-size:12px;font-weight:700;letter-spacing:.12em">DOOMSDAY · CRITICAL</span><span style="font-size:22px;font-weight:800;font-stretch:85%">0:48</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Alarm flash</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">1 s · hard cut</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Rust ↔ rust-dark, two held frames. Under 3 flashes/s (photosensitivity safe).</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;overflow:hidden"><div style="display:flex;gap:40px;white-space:nowrap;font-size:15px;font-weight:600;animation:{{ a.crawl }}"><span>REGULATION · Doomsday debt protocol active</span><span>MARKET · Ceres ore yields at record</span><span>PIRACY · 400 CR ransom, Mars → Ceres</span><span>REGULATION · Doomsday debt protocol active</span><span>MARKET · Ceres ore yields at record</span><span>PIRACY · 400 CR ransom, Mars → Ceres</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Ticker crawl</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">12 fps · optional</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Only for the web landing. In-game the ticker wipes line by line so it stays readable.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:150px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center"><div style="background:#c99a2e;color:#1c1a17;border:3px solid #1c1a17;padding:10px 18px;font-size:15px;font-weight:800;letter-spacing:.1em;animation:{{ a.press }}">BUY</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Press</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">1 drawing down</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Button slides onto its shadow: translate(4,4), shadow 0. Holds while A is held.</div>
+      </div>
+    </div>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid #b8ad94;padding-bottom:8px;flex-wrap:wrap"><span style="font-size:28px;font-weight:800;font-stretch:72%">One-shots · events</span><span style="font-size:13px;color:#b8ad94;font-weight:600">Click any stage to replay</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:20px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#cdbf9f;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="background:#e6dcc3;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;padding:8px 14px;display:flex;gap:10px;align-items:center;color:#1c1a17;animation:{{ a.pop }}"><span style="background:#2f6f6a;color:#e6dcc3;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">FILLED</span><span style="font-size:14px;font-weight:700">BUY 5 ORE @ 18.0</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Pop</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">3 drawings</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Squash 86% → stretch 106% → rest. Order filled, perk bought.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#cdbf9f;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="background:#e6dcc3;border:3px solid #1c1a17;box-shadow:4px 4px 0 #1c1a17;padding:8px 14px;display:flex;gap:10px;align-items:center;color:#1c1a17;animation:{{ a.shake }}"><span style="background:#a8431f;color:#e6dcc3;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">REJECTED</span><span style="font-size:14px;font-weight:700">Cargo hold full</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Shake</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">4 × 1 drawing</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">±6px hard, no easing. Rejected order, blocked input. Pair with a rumble pulse.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#d9cdb0;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden"><div style="width:220px;background:#2c353b;border:4px solid #1c1a17;color:#e6dcc3;animation:{{ a.drop }}"><div style="background:linear-gradient(135deg,#a8431f 0 85%,#7a2e14 85% 100%);border-bottom:3px solid #1c1a17;padding:6px 12px;font-size:20px;font-weight:800;font-stretch:70%">CHAPTER 11</div><div style="padding:8px 12px;font-size:13px">The clock is halted.</div></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Drop</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">5 drawings</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Modal falls 28px, overshoots 3px, lands. The 8px shadow appears only on the landing frame.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;padding:0 16px;cursor:pointer"><div style="display:flex;gap:10px;align-items:center;animation:{{ a.wipe }}"><span style="background:#c99a2e;color:#1c1a17;border:2px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;padding:0 6px">REGULATION</span><span style="font-size:14px;font-weight:600">Doomsday debt enforcement active.</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Wipe</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">3 drawings</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Left-to-right reveal in three thirds. New headline, new tab content.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#1c1a17;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden"><div style="width:200px;height:90px;background:#cdbf9f;border:4px solid #e6dcc3;color:#1c1a17;padding:8px 12px;box-sizing:border-box;font-size:16px;font-weight:800;font-stretch:75%;transform-origin:left center;animation:{{ a.smear }}">ORDER TICKET</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Smear</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">4 drawings</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Panel enters with one stretched, skewed smear drawing, overshoots, holds. MARKET strip rising.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#d9cdb0;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer;animation:{{ a.impact }}"><div style="background:#a8431f;color:#e6dcc3;border:4px solid #1c1a17;box-shadow:6px 6px 0 #1c1a17;padding:10px 18px;font-size:26px;font-weight:800;font-stretch:70%">INSOLVENT</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Impact frame</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">1 inverted drawing</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Run-ending beats only (Chapter 11, Sovereign Default). Max once per run. Off in reduced motion.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div onClick="{{ replay }}" style="height:150px;background:#2c353b;border:4px solid #000;display:flex;align-items:center;justify-content:center;cursor:pointer;font-variant-numeric:tabular-nums"><div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#b8ad94">CREDITS</span><div style="height:30px;overflow:hidden"><div style="display:flex;flex-direction:column;animation:{{ a.roll }}"><span style="height:30px;line-height:30px;font-size:26px;font-weight:800;font-stretch:85%">5,000</span><span style="height:30px;line-height:30px;font-size:26px;font-weight:800;font-stretch:85%">4,994</span><span style="height:30px;line-height:30px;font-size:26px;font-weight:800;font-stretch:85%">4,988</span><span style="height:30px;line-height:30px;font-size:26px;font-weight:800;font-stretch:85%">4,982</span></div></div></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:800">Counter roll</span><span style="font-size:12px;font-weight:700;color:#c99a2e;letter-spacing:.08em">3 drawings</span></div>
+        <div style="font-size:13px;color:#b8ad94;line-height:1.45">Stat chips roll through 3 interim values then hold the true one. Tabular figures so width never jumps.</div>
+      </div>
+    </div>
+  </section>
+  <section style="background:#e6dcc3;color:#1c1a17;border:4px solid #000;box-shadow:4px 4px 0 #000;padding:20px 24px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:22px;font-weight:800;font-stretch:75%">Godot implementation</div>
+    <div style="font-size:14px;line-height:1.55;display:flex;flex-direction:column;gap:6px;max-width:860px">
+      <span>AnimationPlayer tracks use <b>Discrete</b> update mode at 12fps keys. For code tweens, quantize progress: <b>t = floor(t × 12 × dur) / (12 × dur)</b>.</span>
+      <span>Boil: offset the StyleBox draw by a 3-entry table, swap every 83ms on the focused control only.</span>
+      <span>Shadows: toggle StyleBoxFlat.shadow_size / shadow_offset between fixed values; never animate shadow_size continuously.</span>
+      <span>Settings → Motion: Full / Reduced (cuts + pop only) / Off. Respect it everywhere, including the web.</span>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { play: true };
+  replay() {
+    this.setState({ play: false });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ play: true }), 40);
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  renderVals() {
+    const p = this.state.play;
+    const one = (v) => p ? v : 'none';
+    return {
+      a: {
+        boil: 'ag-boil 250ms steps(3,end) infinite',
+        ring: 'ag-ring 333ms steps(4,end) infinite',
+        orbit: 'ag-orbit 12s steps(144,end) infinite',
+        flash: 'ag-flash 1s linear infinite',
+        crawl: 'ag-crawl 18s steps(216,end) infinite',
+        press: 'ag-press 1.25s steps(15,end) infinite',
+        pop: one('ag-pop 250ms steps(3,end) both'),
+        shake: one('ag-shake 83ms steps(2,end) 4'),
+        drop: one('ag-drop 417ms steps(5,end) both'),
+        wipe: one('ag-wipe 250ms steps(3,end) both'),
+        smear: one('ag-smear 333ms steps(4,end) both'),
+        impact: one('ag-impact 250ms steps(3,end) both'),
+        roll: one('ag-roll 250ms steps(3,end) both')
+      },
+      replay: () => this.replay()
+    };
+  }
+}
+</script>
+</body>
+</html>

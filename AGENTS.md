@@ -30,6 +30,10 @@ python tools/golden/check_drift.py
 python tools/fuzz_harness.py 1500
 ```
 
+## Design system
+
+Mike's AGORA design system export lives in `docs/design-system/` (start at `Foundations.dc.html`; `github.md` maps screens to repo files). Tokens are mirrored in `game/ui/hud_theme.gd` and `game/core/palette.gd`, and `game/tests/test_hud_theme.gd` checks them against `docs/design-system/tokens/*.css`. Archivo is bundled in `game/assets/fonts/`.
+
 ## Release
 
 Tagging `vX.Y.Z` runs `.github/workflows/release.yml`: tests, then Linux, Windows and Steam Deck exports attached to a GitHub Release. See `docs/release.md`. Presets are in `game/export_presets.cfg`, guarded by `tests/test_export_presets.py`; running `Godot --export-release` locally needs export templates installed (see `docs/release.md`).

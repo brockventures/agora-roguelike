@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes ag-ring{to{stroke-dashoffset:-28}}</style></helmet>
+<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
+<svg width="{{ box }}" height="{{ box }}" viewBox="{{ vb }}" style="overflow:visible;display:block">
+  <sc-if value="{{ ringed }}" hint-placeholder-val="{{ false }}"><circle r="{{ ringR }}" fill="none" stroke="#c99a2e" stroke-width="4" stroke-dasharray="8 6" style="animation:ag-ring 667ms steps(4,end) infinite"></circle></sc-if>
+  <circle cx="4" cy="4" r="{{ outer }}" fill="#1c1a17"></circle>
+  <circle r="{{ outer }}" fill="#1c1a17"></circle>
+  <circle r="{{ r }}" fill="{{ fill }}"></circle>
+  <path d="{{ cut }}" fill="{{ cutC }}"></path>
+</svg>
+<sc-if value="{{ hasLabel }}" hint-placeholder-val="{{ true }}"><div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;letter-spacing:.08em;color:{{ labelC }};text-shadow:0 0 3px #d9cdb0,0 0 3px #d9cdb0;white-space:nowrap">{{ label }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:200,&quot;height&quot;:100},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sol&quot;,&quot;station&quot;,&quot;docked&quot;],&quot;default&quot;:&quot;station&quot;,&quot;tsType&quot;:&quot;'sol'|'station'|'docked'&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;CERES&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.kind ?? 'station';
+    const r = kind === 'sol' ? 24 : 14;
+    const fills = { sol: ['#c99a2e', '#9a6f1c'], station: ['#2f6f6a', '#1f4f4b'], docked: ['#a8431f', '#7a2e14'] }[kind] || ['#2f6f6a', '#1f4f4b'];
+    const half = Math.acos(0.3), mid = Math.PI / 4;
+    const p = a => `${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`;
+    const ringed = !!this.props.focused || kind === 'docked';
+    const ext = r + 16, lab = !!this.props.label;
+    return {
+      r, outer: r + 3, fill: fills[0], cutC: fills[1], cut: `M${p(mid - half)} A${r} ${r} 0 0 1 ${p(mid + half)} Z`,
+      ringed, ringR: r + 13, label: (this.props.label ?? '').toUpperCase(), hasLabel: lab, labelY: r + 24,
+      labelC: kind === 'docked' ? '#7a2e14' : '#1c1a17',
+      box: ext * 2, vb: `${-ext} ${-ext} ${ext * 2} ${ext * 2}`
+    };
+  }
+}
+</script>
+</body>
+</html>

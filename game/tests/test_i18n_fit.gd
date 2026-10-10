@@ -23,7 +23,7 @@ func _scene() -> Node:
 static func text_extent(label: Label, text: String, box: Vector2 = Vector2.ZERO) -> Vector2:
 	if box == Vector2.ZERO:
 		box = label.size
-	var font: Font = label.get_theme_default_font()
+	var font: Font = label.get_theme_font("font") if label.has_theme_font_override("font") else label.get_theme_default_font()
 	var fs: int = label.get_theme_font_size("font_size")
 	var width: float = box.x if label.autowrap_mode != TextServer.AUTOWRAP_OFF else -1.0
 	var flags: int = TextServer.BREAK_MANDATORY

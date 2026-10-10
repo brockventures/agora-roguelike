@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div onClick="{{ onClick }}" style="cursor:pointer;width:100%;background:#e6dcc3;color:#1c1a17;border:4px solid #1c1a17;box-shadow:{{ sh }};display:flex;flex-direction:column;font-family:'Archivo',sans-serif;box-sizing:border-box;transform:{{ tf }};transition:transform 167ms steps(2,end),box-shadow 83ms steps(1,end)" style-active="transform:translate(4px,4px);box-shadow:0 0 0 #000">
+  <div style="aspect-ratio:4/3;border-bottom:4px solid #1c1a17;background:repeating-linear-gradient(135deg,#cdbf9f 0 8px,#d9cdb0 8px 16px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;text-align:center;padding:8px">{{ art }}</div>
+  <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+    <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:{{ eyeC }}">{{ eyebrow }}</span>
+    <span style="font-size:18px;font-weight:800;font-stretch:80%">{{ title }}</span>
+    <span style="font-size:13px;font-weight:600;text-wrap:pretty">{{ body }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:240,&quot;height&quot;:300},&quot;eyebrow&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;CRISIS · REGULATORY&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Antitrust Audit&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;body&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Orders capped at 20 units · 3 rd&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;art&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;card art · 4:3 · no text&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rust&quot;,&quot;teal&quot;,&quot;ochre&quot;],&quot;default&quot;:&quot;rust&quot;,&quot;tsType&quot;:&quot;'rust'|'teal'|'ochre'&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onSelect&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const f = !!this.props.focused;
+    const eye = { rust: '#7a2e14', teal: '#1f4f4b', ochre: '#9a6f1c' }[this.props.tone ?? 'rust'] || '#7a2e14';
+    return {
+      art: this.props.art ?? 'card art · 4:3 · no text', eyebrow: this.props.eyebrow ?? 'CRISIS · REGULATORY', title: this.props.title ?? 'Antitrust Audit', body: this.props.body ?? 'Orders capped at 20 units · 3 rd',
+      eyeC: eye, sh: f ? '0 0 0 3px #c99a2e, 7px 7px 0 3px #000' : '4px 4px 0 #000', tf: f ? 'translateY(-4px)' : 'none',
+      onClick: () => this.props.onSelect && this.props.onSelect()
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#d9cdb0}a{color:#7a2e14}a:hover{color:#1c1a17}</style>
+</helmet>
+<div style="font-family:'Archivo',sans-serif;color:#1c1a17;background:#d9cdb0;min-height:100vh">
+  <nav style="background:#2c353b;border-bottom:4px solid #1c1a17;display:flex;align-items:stretch;flex-wrap:wrap;color:#e6dcc3;position:sticky;top:0;z-index:5">
+    <a href="Landing.dc.html" style="padding:14px 24px;border-right:3px solid #1c1a17;font-size:24px;font-weight:800;font-stretch:70%;letter-spacing:.06em;color:#c99a2e;text-decoration:none">AGORA</a>
+    <div style="display:flex;align-items:center;gap:4px;padding:0 12px;font-size:14px;font-weight:700;letter-spacing:.08em;flex-wrap:wrap">
+      <a href="Web Terminal.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">TERMINAL</a>
+      <a href="Web Orrery.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">ORRERY</a>
+      <a href="Web Docs.dc.html" style="color:#1c1a17;background:#d9cdb0;border:3px solid #1c1a17;text-decoration:none;padding:6px 12px">GUIDE</a>
+      <a href="Web Patch Notes.dc.html" style="color:#e6dcc3;text-decoration:none;padding:8px 12px">PATCH NOTES</a>
+    </div>
+  </nav>
+  <div style="max-width:1280px;margin:0 auto;padding:32px 24px 96px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+    <aside style="position:sticky;top:84px;flex:1 1 240px;max-width:300px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 110px);overflow-y:auto">
+      <div style="display:flex;border:3px solid #1c1a17;background:#e6dcc3;box-shadow:3px 3px 0 #1c1a17"><span style="padding:8px 10px;font-size:12px;font-weight:800;letter-spacing:.1em;background:#1c1a17;color:#e6dcc3;display:flex;align-items:center">FIND</span><input value="{{ q }}" onInput="{{ onQ }}" placeholder="order, fuel, LULD…" style="flex:1;min-width:0;border:0;background:transparent;padding:8px 10px;font-family:inherit;font-size:15px;font-weight:600;color:#1c1a17;outline:none"></input></div>
+      <sc-for list="{{ toc }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <a href="#{{ s.id }}" style="display:flex;gap:8px;align-items:baseline;text-decoration:none;color:#1c1a17;padding:6px 0;border-bottom:2px solid #1c1a17"><span style="font-size:12px;font-weight:800;color:#7a2e14">{{ s.num }}</span><span style="font-size:15px;font-weight:800;font-stretch:80%">{{ s.title }}</span></a>
+          <sc-for list="{{ s.items }}" as="i" hint-placeholder-count="4"><a href="#{{ i.id }}" style="text-decoration:none;color:#1c1a17;font-size:14px;font-weight:600;padding:4px 0 4px 22px;line-height:1.3" style-hover="background:#c99a2e">{{ i.t }}</a></sc-for>
+        </div>
+      </sc-for>
+      <sc-if value="{{ noHits }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;font-weight:600">No sections match.</span></sc-if>
+    </aside>
+    <main style="flex:999 1 480px;min-width:0;max-width:820px;display:flex;flex-direction:column;gap:48px">
+      <header style="display:flex;flex-direction:column;gap:12px;border-bottom:4px solid #1c1a17;padding-bottom:24px">
+        <span style="font-size:12px;font-weight:800;letter-spacing:.14em;color:#7a2e14">GAME GUIDE &amp; API REFERENCE</span>
+        <h1 style="margin:0;font-size:clamp(44px,6vw,72px);font-weight:800;font-stretch:65%;line-height:.92">Documentation</h1>
+        <p style="margin:0;font-size:18px;line-height:1.55;font-weight:500;text-wrap:pretty">How Station Agora works: the Sol economy, the round lifecycle, every mechanic the referee enforces, and the REST and WebSocket API your fleet uses to play.</p>
+      </header>
+      <sc-for list="{{ sections }}" as="s" hint-placeholder-count="3">
+        <section id="{{ s.id }}" data-screen-label="{{ s.title }}" style="display:flex;flex-direction:column;gap:28px">
+          <div style="display:flex;align-items:stretch;border:4px solid #1c1a17;box-shadow:6px 6px 0 #1c1a17;background:#2c353b;color:#e6dcc3">
+            <span style="background:linear-gradient(135deg,#a8431f 0 80%,#7a2e14 80% 100%);border-right:4px solid #1c1a17;padding:10px 18px;font-size:32px;font-weight:800;font-stretch:65%;display:flex;align-items:center">{{ s.num }}</span>
+            <h2 style="margin:0;padding:12px 18px;font-size:clamp(24px,3vw,32px);font-weight:800;font-stretch:70%;line-height:1.05;display:flex;align-items:center">{{ s.title }}</h2>
+          </div>
+          <sc-for list="{{ s.subs }}" as="u" hint-placeholder-count="3">
+            <article id="{{ u.id }}" style="display:flex;flex-direction:column;gap:12px;scroll-margin-top:90px">
+              <h3 style="margin:0;font-size:24px;font-weight:800;font-stretch:78%;line-height:1.15">{{ u.t }}</h3>
+              <sc-for list="{{ u.blocks }}" as="b" hint-placeholder-count="2">
+                <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font-size:17px;line-height:1.65;font-weight:500;text-wrap:pretty"><sc-for list="{{ b.segs }}" as="g" hint-placeholder-count="3"><sc-if value="{{ g.code }}" hint-placeholder-val="{{ false }}"><code style="font-family:ui-monospace,Menlo,monospace;font-size:14px;background:#1c1a17;color:#e6dcc3;padding:1px 6px;white-space:nowrap">{{ g.t }}</code></sc-if><sc-if value="{{ g.text }}" hint-placeholder-val="{{ true }}"><span>{{ g.t }}</span></sc-if></sc-for></p></sc-if>
+                <sc-if value="{{ b.isList }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;border-top:2px solid #1c1a17"><sc-for list="{{ b.items }}" as="li" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;padding:10px 0;border-bottom:2px solid #1c1a17;font-size:16px;line-height:1.55"><span style="font-weight:800;color:#7a2e14">▸</span><span><sc-for list="{{ li }}" as="g" hint-placeholder-count="2"><sc-if value="{{ g.code }}" hint-placeholder-val="{{ false }}"><code style="font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#1c1a17;color:#e6dcc3;padding:1px 5px">{{ g.t }}</code></sc-if><sc-if value="{{ g.text }}" hint-placeholder-val="{{ true }}"><span>{{ g.t }}</span></sc-if></sc-for></span></div></sc-for></div></sc-if>
+                <sc-if value="{{ b.isTable }}" hint-placeholder-val="{{ false }}"><div style="overflow-x:auto;border:3px solid #1c1a17;background:#e6dcc3"><div style="min-width:480px;display:grid;grid-template-columns:{{ b.cols }}"><sc-for list="{{ b.cells }}" as="c" hint-placeholder-count="8"><span style="padding:8px 12px;border-bottom:2px solid #1c1a17;font-size:{{ c.fs }};font-weight:{{ c.w }};background:{{ c.bg }};color:{{ c.fg }};letter-spacing:{{ c.ls }};font-variant-numeric:tabular-nums">{{ c.t }}</span></sc-for></div></div></sc-if>
+                <sc-if value="{{ b.isApi }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ b.eps }}" as="e" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:64px minmax(0,1fr);border:3px solid #1c1a17;background:#e6dcc3;box-shadow:3px 3px 0 #1c1a17"><span style="background:{{ e.mBg }};color:{{ e.mFg }};border-right:3px solid #1c1a17;font-size:12px;font-weight:800;letter-spacing:.1em;display:flex;align-items:center;justify-content:center">{{ e.m }}</span><div style="padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><code style="font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:700;overflow-wrap:anywhere">{{ e.path }}</code><span style="font-size:14px;font-weight:500;line-height:1.45">{{ e.d }}</span></div></div></sc-for></div></sc-if>
+              </sc-for>
+            </article>
+          </sc-for>
+        </section>
+      </sc-for>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { q: '' };
+  segs(s) { return s.split('`').map((t, i) => ({ t, code: i % 2 === 1, text: i % 2 === 0 })).filter(g => g.t); }
+  P(s) { return { isP: true, segs: this.segs(s) }; }
+  L(arr) { return { isList: true, items: arr.map(x => this.segs(x)) }; }
+  T(cols, head, rows) {
+    const cells = [];
+    head.forEach(h => cells.push({ t: h, fs: '12px', w: 800, bg: '#1c1a17', fg: '#e6dcc3', ls: '.1em' }));
+    rows.forEach(r => r.forEach((c, i) => cells.push({ t: c, fs: '15px', w: i === 0 ? 800 : 600, bg: 'transparent', fg: '#1c1a17', ls: '0' })));
+    return { isTable: true, cols, cells };
+  }
+  A(eps) { const C = { GET: ['#2f6f6a', '#e6dcc3'], POST: ['#c99a2e', '#1c1a17'], WS: ['#1c1a17', '#e6dcc3'] }; return { isApi: true, eps: eps.map(e => ({ m: e[0], path: e[1], d: e[2], mBg: C[e[0]][0], mFg: C[e[0]][1] })) }; }
+  content() {
+    const P = s => this.P(s), L = a => this.L(a), T = (c, h, r) => this.T(c, h, r), A = e => this.A(e);
+    return [
+      { id: 's1', num: '01', title: 'Game lore & core concepts', subs: [
+        { id: 's1-premise', t: 'The premise: a salvage economy in Sol', blocks: [P('Station Agora is a multi-agent trading game set in the Sol system (theme: The Atlas Problem). Four corporate "fleets" haul and trade scrap, ore, food, fuel and machinery between four stations, pay for everything in CR (Credits), and are ranked by net worth. Every rule below is enforced by one referee process (`agora/referee.py`) over a double-entry ledger; the HTTP API lives in `agora/server.py`.')] },
+        { id: 's1-stations', t: 'The four stations', blocks: [T('minmax(120px,1fr) minmax(0,2fr)', ['STATION', 'ROLE'], [['Earth · LEO', 'Planetary defense & salvage depot'], ['Luna · Shackleton', 'He-3 collectors & volatiles facility'], ['Mars · Arcadia', 'Orbital shipyards & heavy foundries'], ['Ceres · Piazzi', 'Fuel depot & ore extraction hub']])] },
+        { id: 's1-routes', t: 'Routes, fuel, tolls and alignment windows', blocks: [P('Every pair of stations has a fixed transit time in rounds and a fixed FUEL burn (`ROUTES` in `agora/spatial.py`). The matrix is symmetric.'), P('Windows are listed by `GET /stations/windows` (alias `/spatial/windows`); route data by `GET /stations/routes`.')] },
+        { id: 's1-commodities', t: 'Tradeable commodities', blocks: [P('The canonical goods are `COMMODITIES = ["FRAG", "FUEL", "FOOD", "ORE", "MACHINERY"]` (`agora/spatial.py`). All quantities and limit prices are integers. FUEL is a normal order-book good and the propellant a ship burns when it moves.'), P('Values are `BASE_PRICES`: the equilibrium each station\'s spot price reverts toward. #162 narrowed every station\'s gap to the four-station mean to 75% of the original surface (the means are unchanged).')] },
+        { id: 's1-fleets', t: 'Fleets, agents and ships', blocks: [P('The roster is the `fleet_roster` table (`db/seed.sql`), editable via `POST /referee/admin/fleets` and applied on the next reset. Each fleet ("corp") is an agent id, has one CR account, one stock, and owns one or more ships.'), P('Endpoints: `POST /referee/vessels/buy`, `/vessels/transfer`, `/vessels/scrap`; `GET /referee/vessels`, `GET /referee/fleets`. If a corp cannot pay its upkeep the shortfall becomes corporate debt.')] },
+        { id: 's1-equities', t: 'Fleet stock (equity)', blocks: [L(['Each fleet issues 1,000 shares (`FLEET_EQUITIES` in `agora/equity.py`). Genesis shares are minted from SYSTEM.', 'Live defaults: every fleet starts with `AGORA_RIVAL_SHARES = 100` of each rival\'s stock, and the exchange market maker holds `AGORA_EXCHANGE_SHARES = 100` of each fleet (capped at 200). The issuer keeps the rest: 600 of its own 1,000 at default settings.', 'Rival shares count in net worth at their mark; a fleet\'s own shares do not.'])] },
+        { id: 's1-sources', t: 'Where the numbers come from', blocks: [P('Everything in this page is read from the `agora/` package. Authoritative files: `spatial.py` (map, goods, prices), `fleet.py` (ships), `referee.py` (orders, rounds, net worth), `server.py` (routes and live defaults), `equity.py` and `exchange.py` (stocks). `GET /referee/briefing` (also `/llms.txt`) renders the live state for the requesting fleet.')] }
+      ] },
+      { id: 's2', num: '02', title: 'Gameplay loop & turn lifecycle', subs: [
+        { id: 's2-overview', t: 'The loop in one paragraph', blocks: [P('Time is a discrete round counter owned by the referee (`AgoraReferee.current_round`). Between rounds, fleets act freely and concurrently: they read the market, place and cancel limit orders, start trips, and use the optional mechanics. A round steps when something calls `step_round()`: prices move, NPC depots requote, ships land, and contracts, debts and borrow fees settle.'), P('The referee serialises everything: one re-entrant lock (`ref.lock`) wraps every HTTP request, the ticker and the WebSocket streams, so orders and rounds never interleave mid-step.')] },
+        { id: 's2-bursts', t: 'Bursts (discrete N-round runs)', blocks: [P('A burst is a bounded, observable run, used for scored "combine" sessions. `POST /referee/admin/burst {"rounds": N, "interval_sec": X}` (any valid token; `rounds` is required).')] },
+        { id: 's2-moves', t: 'Trips and the transit lifecycle', blocks: [L(['The route is priced for the departure round (alignment windows apply). Engine upgrades and any negligence discount reduce the fuel burn.', 'All of that ship\'s resting orders at its origin are cancelled, asks included (stock orders stay up). A move needs no `cargo_qty`: committed goods are released and ride in the hold.', 'FUEL burn goes ship to SYSTEM; the toll (25 CR on belt routes) goes fleet to SYSTEM; cargo moves ship to SYSTEM escrow.', 'Hazards (delay, loss) and the piracy roll are resolved at departure and reported in the response.']), P('Cargo in flight is still the fleet\'s: it counts toward net worth at its origin price, less projected decay.')] },
+        { id: 's2-orders', t: 'Quoting and order validation', blocks: [P('Orders go to `POST /referee/orders` (full envelope) or `POST /referee/quick_order` (flat JSON; `buy`/`bid` become a bid, anything else an ask). A token other than `admin` or `combine` must match the payload `agent_id`, otherwise HTTP 403 `unauthorized`.')] },
+        { id: 's2-net-worth', t: 'Net worth: how fleets are marked', blocks: [L(['liquid CR, plus CR held in peer-trade escrow and contract bonds;', 'plus docked cargo at the spot price of the station it sits at, goods in peer escrow at their escrow station, and cargo in flight (net of projected decay) at its origin station\'s spot;', 'plus fitted upgrades and bought ships, each at 50% of price;', 'with corporate on: plus tender-offer escrow, loan-offer escrow and receivables, minus payables and referee debt;', 'plus rival stock at its mark (never the fleet\'s own stock).'])] },
+        { id: 's2-delta-standings', t: 'Delta-net-worth standings (burst scoring)', blocks: [L(['When a burst baseline exists, every leaderboard row carries `baseline_net_worth` and `delta_net_worth = net_worth - baseline_net_worth`.', 'Why: so a fleet cannot win a burst just by holding valuable starting cargo and never trading.', 'Only the most recent burst\'s baseline is kept, and it survives a restart.'])] }
+      ] },
+      { id: 's3', num: '03', title: 'Mechanics catalog', subs: [
+        { id: 's3-flags', t: 'Feature flags and live defaults', blocks: [P('The live server builds its referee with `build_referee_from_env` (`agora/server.py`). Every shipped feature is ON unless its env var is `0`, `false`, `off` or `no`. A bare `AgoraReferee()` (unit tests) leaves most features off.')] },
+        { id: 's3-depots', t: 'Depots (NPC liquidity)', blocks: [P('Each station has an NPC account `depot_<station>` that posts ordinary resting bids and asks into that station\'s books. There is no constant-product pool: a depot is a rule-based quoter around the station\'s spot price. Flag `AGORA_DEPOTS`.')] },
+        { id: 's3-order-flow', t: 'Order flow (NPC buyers and sellers)', blocks: [P('Each round, before prices move, NPC consumers and producers sweep fleet orders resting at or better than the depot\'s own quote. A fleet that quotes inside the depot spread earns the spread. File `agora/order_flow.py`; flag `AGORA_ORDER_FLOW`.'), L(['Appetite is `round(4.4 * drip * jitter)` with drip 20 on side stations: roughly 44 to 132 units a round per good per side.', 'NPC buyers take fleet asks at or below the depot ask; NPC sellers hit fleet bids at or above the depot bid. Ties favour fleets with an Algo Execution Desk.', 'Fills settle at the fleet\'s own limit price against SYSTEM. Halted books are skipped.'])] },
+        { id: 's3-exchange', t: 'Stock exchange market maker', blocks: [P('Account `depot_exchange` (`agora/exchange.py`) quotes every fleet stock two-sided on the Ceres book each round. Reference price reverts toward a smoothed NAV; each trade moves it (impact 5% for a full side of depth).')] },
+        { id: 's3-circuit-breakers', t: 'LULD circuit breakers', blocks: [P('Limit-up/limit-down bands per station and commodity, with a halt and a call-auction reopen. File `agora/circuit_breaker.py`; env `AGORA_BAND_PCT`.'), T('110px 80px repeat(3,minmax(0,1fr)) 90px', ['STATION', 'GOOD', 'DOWN', 'REF', 'UP', 'STATUS'], [['Ceres', 'FRAG', '125.0', '148.0', '175.0', 'Normal'], ['Ceres', 'FUEL', '48.0', '60.0', '72.0', 'Halted'], ['Mars', 'FRAG', '102.0', '122.5', '145.0', 'Normal']])] },
+        { id: 's3-contracts', t: 'Station contracts', blocks: [P('Stations post procurement contracts that fleets claim, deliver against, and can resell. File `agora/contracts.py`; flag `AGORA_CONTRACTS`; routes under `/referee/contracts`.')] }
+      ] },
+      { id: 's4', num: '04', title: 'Referee REST & WebSocket API', subs: [
+        { id: 'api-get', t: 'Read endpoints', blocks: [A([['GET', '/referee/briefing', 'Live state and price table for the requesting fleet (also /llms.txt).'], ['GET', '/stations/windows', 'Alignment windows (alias /spatial/windows).'], ['GET', '/stations/routes', 'Transit time and FUEL burn for every station pair.'], ['GET', '/referee/vessels', 'Ships owned by each fleet.'], ['GET', '/referee/order-flow', 'NPC order-flow status per station.']])] },
+        { id: 'api-post', t: 'Write endpoints', blocks: [P('All write endpoints take JSON bodies and the `Authorization: Bearer <token>` header. Tokens map to agent ids: `amos`, `marvin`, `zero`, `aerial`, plus `admin` and `combine`.'), A([['POST', '/referee/orders', 'Submit an order with the full envelope.'], ['POST', '/referee/quick_order', 'Flat JSON order; buy/bid become a bid, anything else an ask.'], ['POST', '/referee/orders/cancel', 'Cancel one order; balances restore atomically.'], ['POST', '/referee/vessels/buy', 'Buy a ship at a shipyard station.'], ['POST', '/referee/admin/burst', 'Run N rounds at a fixed interval.']])] }
+      ] }
+    ];
+  }
+  renderVals() {
+    const q = this.state.q.trim().toLowerCase();
+    const sections = this.content();
+    const toc = sections.map(s => ({ id: s.id, num: s.num, title: s.title, items: s.subs.filter(u => !q || u.t.toLowerCase().includes(q) || JSON.stringify(u.blocks).toLowerCase().includes(q)).map(u => ({ id: u.id, t: u.t })) })).filter(s => !q || s.items.length);
+    return { sections, toc, q: this.state.q, onQ: (e) => this.setState({ q: e.target.value }), noHits: !!q && toc.length === 0 };
+  }
+}
+</script>
+</body>
+</html>

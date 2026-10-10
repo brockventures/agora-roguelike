@@ -1,4 +1,6 @@
-[gd_resource type="Theme" load_steps=12 format=3]
+[gd_resource type="Theme" load_steps=19 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Archivo-VF.ttf" id="archivo"]
 
 [sub_resource type="StyleBoxFlat" id="plate"]
 bg_color = Color(0.1725, 0.2078, 0.2314, 1)
@@ -49,7 +51,7 @@ border_width_bottom = 4
 border_color = Color(0.1098, 0.1020, 0.0902, 1)
 shadow_color = Color(0.1098, 0.1020, 0.0902, 1)
 shadow_size = 1
-shadow_offset = Vector2(5, 5)
+shadow_offset = Vector2(4, 4)
 
 [sub_resource type="StyleBoxFlat" id="alert"]
 bg_color = Color(0.4784, 0.1804, 0.0784, 1)
@@ -60,7 +62,7 @@ border_width_bottom = 4
 border_color = Color(0.1098, 0.1020, 0.0902, 1)
 shadow_color = Color(0.1098, 0.1020, 0.0902, 1)
 shadow_size = 1
-shadow_offset = Vector2(5, 5)
+shadow_offset = Vector2(4, 4)
 
 [sub_resource type="StyleBoxFlat" id="frame_rust"]
 draw_center = false
@@ -78,7 +80,40 @@ border_width_right = 4
 border_width_bottom = 4
 border_color = Color(0.7882, 0.6039, 0.1804, 1)
 
+[sub_resource type="FontVariation" id="font_display"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 70, 2003265652: 800 }
+
+[sub_resource type="FontVariation" id="font_title"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 75, 2003265652: 800 }
+
+[sub_resource type="FontVariation" id="font_readout"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 85, 2003265652: 700 }
+opentype_features = { 1953396077: 1 }
+
+[sub_resource type="FontVariation" id="font_body"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 100, 2003265652: 500 }
+
+[sub_resource type="FontVariation" id="font_hint"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 100, 2003265652: 600 }
+
+[sub_resource type="FontVariation" id="font_label"]
+base_font = ExtResource("archivo")
+spacing_space = 1
+variation_opentype = { 2003072104: 100, 2003265652: 700 }
+spacing_glyph = 1
+
 [resource]
+default_font = SubResource("font_body")
 default_font_size = 16
 Label/colors/font_color = Color(0.9020, 0.8627, 0.7647, 1)
 Panel/styles/panel = SubResource("base")
@@ -102,3 +137,21 @@ FocusFrameOchre/base_type = &"Panel"
 FocusFrameOchre/styles/panel = SubResource("frame_ochre")
 HeaderPanelPaused/base_type = &"Panel"
 HeaderPanelPaused/styles/panel = SubResource("plate_paused")
+LabelDisplay/base_type = &"Label"
+LabelDisplay/fonts/font = SubResource("font_display")
+LabelDisplay/font_sizes/font_size = 40
+LabelTitle/base_type = &"Label"
+LabelTitle/fonts/font = SubResource("font_title")
+LabelTitle/font_sizes/font_size = 24
+LabelReadout/base_type = &"Label"
+LabelReadout/fonts/font = SubResource("font_readout")
+LabelReadout/font_sizes/font_size = 20
+LabelBody/base_type = &"Label"
+LabelBody/fonts/font = SubResource("font_body")
+LabelBody/font_sizes/font_size = 16
+LabelHint/base_type = &"Label"
+LabelHint/fonts/font = SubResource("font_hint")
+LabelHint/font_sizes/font_size = 14
+LabelLabel/base_type = &"Label"
+LabelLabel/fonts/font = SubResource("font_label")
+LabelLabel/font_sizes/font_size = 12

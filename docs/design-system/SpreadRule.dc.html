@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;align-items:center;gap:8px;height:22px;font-family:'Archivo',sans-serif;font-size:12px;font-weight:800;letter-spacing:.12em;color:{{ fg }}"><div style="flex:1;height:2px;background:{{ fg }}"></div>{{ text }}<div style="flex:1;height:2px;background:{{ fg }}"></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:400,&quot;height&quot;:24},&quot;value&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:2,&quot;step&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;SPREAD&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;paper&quot;,&quot;plate&quot;],&quot;default&quot;:&quot;paper&quot;,&quot;tsType&quot;:&quot;'paper'|'plate'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { text: (this.props.label ?? 'SPREAD') + ' ' + Number(this.props.value ?? 2).toFixed(1), fg: (this.props.surface ?? 'paper') === 'plate' ? '#b8ad94' : '#1c1a17' };
+  }
+}
+</script>
+</body>
+</html>
