@@ -506,6 +506,11 @@ func _post_rival_headline(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_RIVAL_FRONTRUN", [fleet, com, station, (10000 - int(e["depth_bps"])) / 100, int(e["rounds"])], "MARKET", "WARNING")
 		"rival_bounty_traced":
 			hud.post_headline_tr("HL_RIVAL_BOUNTY_TRACED", [fleet, int(e["rounds"])], "CRISIS", "WARNING")
+		"rival_raid":
+			if str(e.get("choice", "")) == "pay":
+				hud.post_headline_tr("HL_RIVAL_RAID_PAID", [fleet, int(e["ransom"])], "CRISIS", "CRITICAL")
+			else:
+				hud.post_headline_tr("HL_RIVAL_RAID_TAKEN", [fleet, int(e["qty_taken"]), com], "CRISIS", "CRITICAL")
 		"rival_trade":
 			if here:
 				hud.post_headline_tr("HL_RIVAL_SELL", [fleet, int(e["qty"]), com, station, int(e["price"])], "MARKET", "INFO")

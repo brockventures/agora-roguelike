@@ -422,6 +422,8 @@ CRISIS_SOL_OPPORTUNISTIC_LEVY_NAME,Sol Levy
 CRISIS_SOL_OPPORTUNISTIC_LEVY_HEADLINE,LEVY: Sol Central posts a surprise levy at {station} for {rounds} rounds
 HL_RIVAL_FRONTRUN,"%s front-runs your %s run: pre-positioned at %s, book depth -%d%% for %d rounds"
 HL_RIVAL_BOUNTY_TRACED,Traced: %s has hired privateers against you for %d rounds
+HL_RIVAL_RAID_PAID,RAID: %s privateers board your ship and take a %d CR ransom
+HL_RIVAL_RAID_TAKEN,RAID: %s privateers board your ship and seize %d %s
 HL_HEAT_QUEUED,"%s remembers: heat %d, retaliation lands next round"
 HL_BARON_RETALIATION_CH11,%s: the retaliation leaves you insolvent
 TAG_RIVAL_FRONT,%s FRONT-RUN -%d%% DEPTH
