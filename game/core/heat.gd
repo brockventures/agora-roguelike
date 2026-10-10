@@ -18,8 +18,8 @@ extends RefCounted
 ##    (CrisisDeck.inject: no Bags, no max_active, no draw_count) and never touching doomsday
 ##    ticks. Its fine goes through Barons.penalize(.., "consequence"), uncapped, and may
 ##    force Chapter 11 because the player's own choices exposed them (decision 9.4).
-##  - Random baron events. `consequence.random_event_bps` (shipped 0 = off, because turning
-##    it on moves every pinned world hash; task 12 re-pins) is the chance per baron per round
+##  - Random baron events. `consequence.random_event_bps` (shipped 300 = 3% a baron a round, a
+##    placeholder; it was 0 until task 12 switched it on and re-pinned the world hashes) is the chance per baron per round
 ##    of an `origin: "random"` entry for the archetype. Its fine goes through
 ##    Barons.penalize(.., "random"): clamped by the lethal guard, so it can never push net
 ##    worth below its pre-event value minus `consequence.random_max_loss_bps` and can never

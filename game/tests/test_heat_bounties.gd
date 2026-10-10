@@ -79,7 +79,7 @@ func test_the_shipped_data_validates_and_new_keys_are_checked() -> String:
 		return "barons.json invalid: %s" % str(errs)
 	var w := Barons.new()
 	var h: Dictionary = Heat.settings(w)
-	if int(h["retaliation_at"]) != 6 or int(h["corner_round"]) != 2 or Heat.random_event_bps(w) != 0:
+	if int(h["retaliation_at"]) != 6 or int(h["corner_round"]) != 2 or Heat.random_event_bps(w) != 300:  # 300: switched on in task 12 (was 0), a placeholder
 		return "heat settings wrong: %s" % str(h)
 	var cases := {
 		"heat key": func(d: Dictionary): d["heat"]["warp"] = 1,
@@ -159,6 +159,9 @@ func test_a_random_crisis_instance_and_a_quiet_world_carry_no_new_keys() -> Stri
 func test_nothing_the_player_does_not_start_raises_heat_or_hires_a_bounty() -> String:
 	var c := _ctx(84, 50000, {"decide_chance_bps": 10000})
 	var w: Barons = c["w"]
+	# Random baron events (on since task 12) are the world's own doing, not a reaction to the
+	# player, and are covered below; this test is about the player-started chain.
+	w.data["consequence"]["random_event_bps"] = 0
 	for r in range(1, 41):
 		_boundary(c, r)
 	for id in w.ids():
@@ -818,9 +821,11 @@ func test_the_guard_does_nothing_for_a_player_with_no_net_worth_and_never_goes_b
 	return "ok"
 
 
-func test_random_events_are_off_in_the_shipped_data_and_do_not_fire_below_the_chance() -> String:
+func test_random_events_are_off_at_zero_and_rare_at_the_shipped_chance() -> String:
 	var c := _ctx(84, 50000)
 	var w: Barons = c["w"]
+	# The shipped chance is 300 (on since task 12, a placeholder); 0 must still mean off.
+	w.data["consequence"]["random_event_bps"] = 0
 	for r in range(1, 41):
 		var ev: Array = _boundary(c, r)
 		if _kinds(ev).has("retaliation"):
