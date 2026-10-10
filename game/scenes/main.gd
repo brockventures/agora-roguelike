@@ -1828,7 +1828,18 @@ func _update_market_highlight() -> void:
 	HudTheme.place_focus_bar(market_highlight, _board["sel_rect"])
 
 
-# --- Fleet tab: hulls and cargo, restyled with the same rows ---
+# --- Fleet tab: hull rows, hull / shield / hold meters, ETA chips (Epic 6 #122) ---
+
+const FLEET_ROWS: int = 3
+const FLEET_LIST_W: float = 400.0
+const FLEET_GAP: float = 20.0
+const FLEET_ARCH_TONES: Dictionary = {
+	"HAULER": [HudTheme.OCHRE, HudTheme.INK],
+	"INTERCEPTOR": [HudTheme.RUST, HudTheme.BONE],
+	"FREIGHTER": [HudTheme.TEAL, HudTheme.BONE],
+	"SCOUT": [HudTheme.BONE, HudTheme.INK],
+	"SCRAP_BARGE": [HudTheme.INK, HudTheme.BONE],
+}
 
 var _fleet: Dictionary = {}
 var fleet_panel: Panel = null
@@ -1839,12 +1850,40 @@ func _build_fleet() -> void:
 	var p: Panel = fleet_panel
 	_fleet["eyebrow"] = kit.label(p, "FleetEyebrow", HudTheme.ROLE_LABEL, 12, HudTheme.RUST_DARK)
 	_fleet["title"] = kit.label(p, "FleetTitle", HudTheme.ROLE_TITLE, 22, PAPER_TEXT_COLOR)
+	_fleet["nav"] = kit.label(p, "FleetNav", HudTheme.ROLE_LABEL, 12, PAPER_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT)
 	_fleet["rule"] = kit.plate(p, Rect2(), HudTheme.INK)
+	var hulls: Array = []
+	for i in FLEET_ROWS:
+		var bg: HudKit.Plate = kit.plate(p, Rect2(), HudTheme.OCHRE, HudTheme.INK, 3.0)
+		bg.shadow = true
+		hulls.append({
+			"bg": bg,
+			"marker": kit.label(p, "FleetMarker%d" % i, HudTheme.ROLE_READOUT, 14, PAPER_TEXT_COLOR),
+			"name": kit.label(p, "FleetHull%d" % i, HudTheme.ROLE_TITLE, 17, PAPER_TEXT_COLOR),
+			"tag": kit.tag(p, "FleetArch%d" % i),
+			"status": kit.label(p, "FleetStatus%d" % i, HudTheme.ROLE_LABEL, 12, HudTheme.TEAL_DARK),
+			"cargo": kit.label(p, "FleetHold%d" % i, HudTheme.ROLE_READOUT, 15, PAPER_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
+		})
+	_fleet["hulls"] = hulls
+	_fleet["divider"] = kit.plate(p, Rect2(), HudTheme.INK)
+	_fleet["d_name"] = kit.label(p, "FleetDetailName", HudTheme.ROLE_TITLE, 17, PAPER_TEXT_COLOR)
+	_fleet["d_tag"] = kit.tag(p, "FleetDetailArch")
+	_fleet["d_state"] = kit.tag(p, "FleetDetailState")
+	_fleet["d_eta"] = kit.tag(p, "FleetDetailEta")
+	var stats: Array = []
+	for i in 3:
+		stats.append({
+			"name": kit.label(p, "FleetStat%d" % i, HudTheme.ROLE_LABEL, 12, PAPER_TEXT_COLOR),
+			"bar": kit.plate(p, Rect2(), HudTheme.PAPER_DEEP, HudTheme.INK, 2.0),
+			"value": kit.label(p, "FleetStatValue%d" % i, HudTheme.ROLE_READOUT, 15, PAPER_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
+		})
+	_fleet["stats"] = stats
+	_fleet["m_title"] = kit.label(p, "FleetManifest", HudTheme.ROLE_LABEL, 12, HudTheme.RUST_DARK)
 	var rows: Array = []
 	for i in Transit.COMMODITIES.size():
 		rows.append({
-			"name": kit.label(p, "FleetName%d" % i, HudTheme.ROLE_TITLE, 17, PAPER_TEXT_COLOR),
-			"qty": kit.label(p, "FleetQty%d" % i, HudTheme.ROLE_READOUT, 17, PAPER_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
+			"name": kit.label(p, "FleetName%d" % i, HudTheme.ROLE_TITLE, 15, PAPER_TEXT_COLOR),
+			"qty": kit.label(p, "FleetQty%d" % i, HudTheme.ROLE_READOUT, 15, PAPER_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
 		})
 	_fleet["rows"] = rows
 	_fleet["foot_rule"] = kit.plate(p, Rect2(), HudTheme.INK)
@@ -1852,12 +1891,20 @@ func _build_fleet() -> void:
 	fleet_panel.visible = false
 
 
+func _fleet_meter_color(pct: int, base: Color) -> Color:
+	return HudTheme.RUST if pct < 35 else base
+
+
 func _refresh_fleet() -> void:
-	var cargo: Dictionary = controller.cargo
-	var names: Array = []
-	for c in cargo:
-		names.append([c, int(cargo[c])])
-	if not _changed("fleet", [controller.ships.size(), names, controller.get_total_cargo(), controller.cargo_capacity, Loc.current()]):
+	var rc: RunController = controller
+	var cargo: Dictionary = rc.cargo
+	var manifest: Array = []
+	for c in Transit.COMMODITIES:
+		if int(cargo.get(c, 0)) > 0:
+			manifest.append([c, int(cargo[c])])
+	var status: Dictionary = FleetView.status_of(rc)
+	var cursor: int = loop.selected_hull()
+	if not _changed("fleet", [rc.ships, cursor, manifest, rc.get_total_cargo(), rc.cargo_capacity, status, Loc.current(), kit.text_scale]):
 		_park_below_map_status(fleet_panel)
 		return
 	var p: Panel = fleet_panel
@@ -1866,7 +1913,8 @@ func _refresh_fleet() -> void:
 	var y: float = HudLayout.BORDER + 8.0
 	var eb: Label = _fleet["eyebrow"]
 	var ti: Label = _fleet["title"]
-	kit.fit_text(eb, tr("FLEET_HULLS") % controller.ships.size(), w)
+	var nav: Label = _fleet["nav"]
+	kit.fit_text(eb, tr("FLEET_HULLS") % rc.ships.size(), w)
 	ti.text = tr("FLEET_TITLE")
 	var eh: float = HudKit.line_height(eb)
 	var th: float = HudKit.line_height(ti)
@@ -1874,39 +1922,167 @@ func _refresh_fleet() -> void:
 	eb.size = Vector2(w, eh)
 	ti.position = Vector2(x0, y + eh)
 	ti.size = Vector2(kit.natural_width(ti, ti.text) + 2.0, th)
+	kit.fit_text(nav, tr("FLEET_NAV"), 140.0)
+	nav.visible = rc.ships.size() > 1
+	nav.position = Vector2(x0 + w - 140.0, y + eh + th - HudKit.line_height(nav) - 2.0)
+	nav.size = Vector2(140.0, HudKit.line_height(nav))
 	y += eh + th + 6.0
 	var rule: HudKit.Plate = _fleet["rule"]
 	rule.position = Vector2(HudLayout.BORDER, y)
 	rule.size = Vector2(p.size.x - 2.0 * HudLayout.BORDER, 2.0)
-	y += 2.0 + 6.0
+	y += 2.0 + 8.0
+	var top: float = y
+
+	# --- Left column: the hull list (HullRow) ---
+	var ly: float = top
+	var lw: float = FLEET_LIST_W
+	var first: int = FleetView.window_start(cursor, rc.ships.size(), FLEET_ROWS)
+	var hulls: Array = _fleet["hulls"]
+	for k in hulls.size():
+		var r: Dictionary = hulls[k]
+		var idx: int = first + k
+		var show: bool = idx < rc.ships.size()
+		for key in ["bg", "marker", "name", "tag", "status", "cargo"]:
+			(r[key] as CanvasItem).visible = show
+		if not show:
+			continue
+		var ship = rc.ships[idx]
+		var sel: bool = idx == cursor
+		var nm: Label = r["name"]
+		var mk: Label = r["marker"]
+		var st: Label = r["status"]
+		var cg: Label = r["cargo"]
+		var chip: HudKit.Plate = r["tag"]
+		var bg: HudKit.Plate = r["bg"]
+		nm.text = tr("FLEET_HULL_N") % (idx + 1)
+		mk.text = "▸" if sel else ""
+		var docked: bool = str(status["state"]) == FleetView.STATE_DOCKED
+		var where: String = tr("FLEET_DOCKED") % Loc.station(str(status["station"])) if docked else tr("FLEET_TRANSIT") % Loc.station(str(status["destination"]))
+		var tone: Array = FLEET_ARCH_TONES[FleetView.archetype_of(ship)]
+		var hold_w: float = 76.0
+		var status_w: float = lw - 28.0 - 12.0
+		# Cargo: the one corp hold lives on the lead hull; the others carry none of their own.
+		cg.text = (tr("FLEET_HOLD_VALUE") % [rc.get_total_cargo(), rc.cargo_capacity]) if idx == 0 else tr("FLEET_NO_HOLD")
+		kit.fit_text(cg, cg.text, hold_w)
+		kit.set_tag(chip, FleetView.archetype_label(ship), tone[0], tone[1], maxf(84.0, lw - 28.0 - kit.natural_width(nm, nm.text) - 6.0 - hold_w - 14.0))
+		kit.fit_text(st, where, status_w)
+		var sth: float = HudKit.wrapped_height(st, st.text, status_w) if st.autowrap_mode != TextServer.AUTOWRAP_OFF else HudKit.line_height(st)
+		var rh: float = HudKit.line_height(nm) + sth + 14.0
+		st.add_theme_color_override("font_color", HudTheme.INK if sel else (HudTheme.TEAL_DARK if docked else HudTheme.OCHRE_DARK))
+		bg.position = Vector2(x0, ly)
+		bg.size = Vector2(lw, rh)
+		bg.fill = HudTheme.OCHRE
+		bg.edge = HudTheme.INK
+		bg.visible = sel
+		bg.queue_redraw()
+		mk.position = Vector2(x0 + 10.0, ly + 7.0)
+		mk.size = Vector2(16.0, HudKit.line_height(mk))
+		var nw: float = kit.natural_width(nm, nm.text) + 2.0
+		nm.position = Vector2(x0 + 28.0, ly + 5.0)
+		nm.size = Vector2(nw, HudKit.line_height(nm))
+		chip.position = Vector2(x0 + 28.0 + nw + 6.0, ly + 5.0 + (HudKit.line_height(nm) - chip.size.y) * 0.5)
+		st.position = Vector2(x0 + 28.0, ly + 5.0 + HudKit.line_height(nm) + 1.0)
+		st.size = Vector2(status_w, sth)
+		cg.position = Vector2(x0 + lw - 10.0 - hold_w, ly + 5.0)
+		cg.size = Vector2(hold_w, HudKit.line_height(cg))
+		ly += rh + 4.0
+
+	# --- Right column: the selected hull (stats, ETA, manifest) ---
+	var rx: float = x0 + lw + FLEET_GAP
+	var rw: float = w - lw - FLEET_GAP
+	var ry: float = top
+	var ship_sel = rc.ships[cursor] if cursor < rc.ships.size() else {}
+	var dn: Label = _fleet["d_name"]
+	dn.text = tr("FLEET_HULL_N") % (cursor + 1)
+	var dnw: float = kit.natural_width(dn, dn.text) + 2.0
+	dn.position = Vector2(rx, ry)
+	dn.size = Vector2(dnw, HudKit.line_height(dn))
+	var atone: Array = FLEET_ARCH_TONES[FleetView.archetype_of(ship_sel)]
+	var dt: HudKit.Plate = _fleet["d_tag"]
+	kit.set_tag(dt, FleetView.archetype_label(ship_sel), atone[0], atone[1], 210.0)
+	var docked_now: bool = str(status["state"]) == FleetView.STATE_DOCKED
+	var ds: HudKit.Plate = _fleet["d_state"]
+	var de: HudKit.Plate = _fleet["d_eta"]
+	kit.set_tag(ds, tr("FLEET_DOCKED") % Loc.station(str(status["station"])) if docked_now else tr("FLEET_TRANSIT") % Loc.station(str(status["destination"])), HudTheme.TEAL if docked_now else HudTheme.OCHRE, HudTheme.BONE if docked_now else HudTheme.INK, rw)
+	de.visible = not docked_now
+	if not docked_now:
+		kit.set_tag(de, tr("FLEET_ETA") % _rounds_text(int(status["eta_rounds"])), HudTheme.INK, HudTheme.BONE, 230.0)
+	var lh: float = HudKit.line_height(dn)
+	dt.position = Vector2(rx + dnw + 6.0, ry + (lh - dt.size.y) * 0.5)
+	ry += lh + 6.0
+	ds.position = Vector2(rx, ry)
+	de.position = Vector2(rx + ds.size.x + 6.0, ry)
+	if not docked_now and de.position.x + de.size.x > rx + rw:
+		de.position = Vector2(rx, ry + ds.size.y + 4.0)
+		ry += de.size.y + 4.0
+	ry += ds.size.y + 8.0
+	var vals: Array = [
+		[tr("FLEET_STAT_HULL"), FleetView.hull_pct(ship_sel), tr("FLEET_PCT") % FleetView.hull_pct(ship_sel), HudTheme.TEAL],
+		[tr("FLEET_STAT_SHIELD"), FleetView.shield_pct(ship_sel), tr("FLEET_PCT") % FleetView.shield_pct(ship_sel), HudTheme.OCHRE],
+		[tr("FLEET_STAT_HOLD"), 0 if rc.cargo_capacity <= 0 else int(round(100.0 * rc.get_total_cargo() / rc.cargo_capacity)), tr("FLEET_HOLD_VALUE") % [rc.get_total_cargo(), rc.cargo_capacity], HudTheme.SLATE],
+	]
+	var stats: Array = _fleet["stats"]
+	var name_w: float = 62.0
+	var val_w: float = 72.0
+	for i in stats.size():
+		var s: Dictionary = stats[i]
+		var nl: Label = s["name"]
+		var vl: Label = s["value"]
+		var bar: HudKit.Plate = s["bar"]
+		kit.fit_text(nl, vals[i][0], name_w)
+		kit.fit_text(vl, vals[i][2], val_w)
+		var sh: float = maxf(HudKit.line_height(vl), 18.0)
+		nl.position = Vector2(rx, ry)
+		nl.size = Vector2(name_w, sh)
+		bar.position = Vector2(rx + name_w + 6.0, ry + 3.0)
+		bar.size = Vector2(rw - name_w - val_w - 12.0, sh - 6.0)
+		bar.bar_frac = float(vals[i][1]) / 100.0
+		bar.bar_color = _fleet_meter_color(int(vals[i][1]), vals[i][3] as Color) if i < 2 else (HudTheme.RUST if int(vals[i][1]) >= 90 else vals[i][3] as Color)
+		bar.queue_redraw()
+		vl.position = Vector2(rx + rw - val_w, ry)
+		vl.size = Vector2(val_w, sh)
+		ry += sh + 4.0
+	ry += 4.0
+	var mt: Label = _fleet["m_title"]
+	kit.fit_text(mt, tr("FLEET_MANIFEST") if not manifest.is_empty() else tr("FLEET_HOLD_EMPTY"), rw)
+	mt.position = Vector2(rx, ry)
+	mt.size = Vector2(rw, HudKit.line_height(mt))
+	ry += HudKit.line_height(mt) + 2.0
 	var rows: Array = _fleet["rows"]
 	for i in rows.size():
 		var r: Dictionary = rows[i]
-		var show: bool = i < names.size()
-		(r["name"] as CanvasItem).visible = show
-		(r["qty"] as CanvasItem).visible = show
-		if not show:
+		var showm: bool = i < manifest.size()
+		(r["name"] as CanvasItem).visible = showm
+		(r["qty"] as CanvasItem).visible = showm
+		if not showm:
 			continue
-		var nm: Label = r["name"]
+		var nm2: Label = r["name"]
 		var q: Label = r["qty"]
-		nm.text = Loc.commodity(str(names[i][0]))
-		q.text = tr("FLEET_CARGO_QTY") % int(names[i][1])
-		var rh: float = maxf(32.0, HudKit.line_height(nm) + 10.0)
-		nm.position = Vector2(x0 + 8.0, y + 5.0)
-		nm.size = Vector2(w * 0.6, HudKit.line_height(nm))
-		q.position = Vector2(x0 + w - 8.0 - 120.0, y + 5.0)
-		q.size = Vector2(120.0, HudKit.line_height(q))
-		y += rh + 4.0
+		nm2.text = Loc.commodity(str(manifest[i][0]))
+		q.text = tr("FLEET_CARGO_QTY") % int(manifest[i][1])
+		var mh: float = HudKit.line_height(nm2)
+		var colw: float = (rw - 16.0) * 0.5
+		var cx: float = rx + float(i % 2) * (colw + 16.0)
+		nm2.position = Vector2(cx, ry)
+		nm2.size = Vector2(colw * 0.62, mh)
+		q.position = Vector2(cx + colw - 64.0, ry)
+		q.size = Vector2(64.0, mh)
+		if i % 2 == 1 or i == manifest.size() - 1:
+			ry += mh + 2.0
+
+	var bottom: float = maxf(ly, ry) + 4.0
+	var dv: HudKit.Plate = _fleet["divider"]
+	dv.position = Vector2(x0 + lw + FLEET_GAP * 0.5 - 1.0, top)
+	dv.size = Vector2(2.0, bottom - top)
 	var fr: HudKit.Plate = _fleet["foot_rule"]
-	fr.position = Vector2(HudLayout.BORDER, y + 2.0)
+	fr.position = Vector2(HudLayout.BORDER, bottom + 2.0)
 	fr.size = Vector2(p.size.x - 2.0 * HudLayout.BORDER, 2.0)
 	var ft: Label = _fleet["foot"]
-	kit.fit_text(ft, tr("HUD_CARGO_TOTAL") % [controller.get_total_cargo(), controller.cargo_capacity], w)
-	ft.position = Vector2(x0, y + 10.0)
+	kit.fit_text(ft, tr("HUD_CARGO_TOTAL") % [rc.get_total_cargo(), rc.cargo_capacity], w)
+	ft.position = Vector2(x0, bottom + 10.0)
 	ft.size = Vector2(w, HudKit.line_height(ft))
-	p.size.y = y + 10.0 + HudKit.line_height(ft) + 10.0
+	p.size.y = bottom + 10.0 + HudKit.line_height(ft) + 10.0
 	_park_below_map_status(p)
-
 
 
 # --- Modals: the title-band variant (Modal.dc.html variant A) ---
