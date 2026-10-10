@@ -240,6 +240,19 @@
 						}
 					}
 				}
+				"click"
+				{
+					"activators"
+					{
+						"Full_Press"
+						{
+							"bindings"
+							{
+								"binding"		"game_action InGame m0_credit"
+							}
+						}
+					}
+				}
 			}
 		}
 		"group"

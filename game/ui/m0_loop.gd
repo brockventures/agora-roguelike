@@ -77,11 +77,13 @@ const ACT_PAUSE: String = "m0_pause"
 const ACT_LOCALE: String = "m0_locale"
 ## Buys the lot of shares the docked baron is auctioning in distress (Epic 3 task 7).
 const ACT_SHARES: String = "m0_shares"
+## Extends the standard credit line to the docked baron (Epic 3 task 8, lever c).
+const ACT_CREDIT: String = "m0_credit"
 
 const ALL_ACTIONS: Array[String] = [
 	ACT_TAB_PREV, ACT_TAB_NEXT, ACT_STATION_PREV, ACT_STATION_NEXT,
 	ACT_COMMODITY_PREV, ACT_COMMODITY_NEXT, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
-	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE, ACT_SHARES,
+	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE, ACT_SHARES, ACT_CREDIT,
 ]
 
 ## Actions that stay live while a resolution overlay is up.
@@ -373,10 +375,27 @@ func _post_baron_event(e: Dictionary) -> void:
 				hud.post_headline_tr("HL_SOL_NOCROSS", [who, com, int(e["qty"])], "MARKET", "WARNING")
 			else:
 				hud.post_headline_tr("HL_SOL_LAPSE", [who, int(e["qty"]), com, int(e["price"])], "MARKET", "WARNING")
+		"lever_corner":
+			if int(e["round"]) == 1:
+				hud.post_headline_tr("HL_CORNER", [who, com, int(e["from_stock"]), int(e["cost"])], "MARKET", "WARNING")
+			if int(e["unpaid"]) > 0:
+				hud.post_headline_tr("HL_CORNER_UNPAID", [who, int(e["unpaid"])], "INSOLVENCY", "WARNING")
+		"lever_corner_end":
+			hud.post_headline_tr("HL_CORNER_END", [who, com], "MARKET", "INFO")
+		"lever_margin":
+			hud.post_headline_tr("HL_LEVER_MARGIN", [who, int(e["units"]), int(e["proceeds"]), int(e["deficiency"])], "INSOLVENCY", "CRITICAL")
+		"credit_open":
+			hud.post_headline_tr("HL_CREDIT_OPEN", [who, int(e["principal"]), int(e["rate_bps"]) / 100, int(e["due"]), int(e["due_round"])], "DEBT", "INFO")
+		"credit_repaid":
+			hud.post_headline_tr("HL_CREDIT_REPAID", [who, int(e["due"])], "DEBT", "INFO")
+		"credit_default":
+			hud.post_headline_tr("HL_CREDIT_DEFAULT", [who, int(e["due"])], "INSOLVENCY", "WARNING")
 		"distress":
 			hud.post_headline_tr("HL_DISTRESS", [who, int(e["qty"]), int(e["px"]), int(e["cap"])], "INSOLVENCY", "WARNING")
 		"shares":
-			if str(e.get("buyer", "")) == Takeover.PLAYER:
+			if str(e.get("buyer", "")) == Takeover.PLAYER and bool(e.get("tender", false)):
+				hud.post_headline_tr("HL_TENDER_BOUGHT", [int(e["qty"]), who, int(e["px"]), int(e["held"]), int(e["threshold"])], "MARKET", "INFO")
+			elif str(e.get("buyer", "")) == Takeover.PLAYER:
 				hud.post_headline_tr("HL_SHARES_BOUGHT", [int(e["qty"]), who, int(e["px"]), int(e["held"]), int(e["threshold"])], "MARKET", "INFO")
 			else:
 				hud.post_headline_tr("HL_SHARES_SOLD", [who, int(e["qty"]), str(e.get("buyer", "")).to_upper(), int(e["px"])], "MARKET", "INFO")
@@ -485,9 +504,16 @@ func buy_shares() -> bool:
 	if controller == null or controller.world == null or controller.docked_at == "":
 		return false
 	var o: Dictionary = controller.world.distress_at(controller.docked_at)
-	if o.is_empty():
-		return false  # no lot on offer here: the key does nothing
-	var res: Dictionary = controller.world.buy_shares(controller, controller.docked_at, int(o["qty"]))
+	var res: Dictionary
+	if not o.is_empty():
+		res = controller.world.buy_shares(controller, controller.docked_at, int(o["qty"]))
+	else:
+		# No lot on offer: with the Hostile Buyout Line the same key tenders for the public float.
+		var tid: String = controller.world.baron_at(controller.docked_at)
+		var to: Dictionary = Takeover.tender_offer(controller.world, tid, controller) if tid != "" else {}
+		if to.is_empty():
+			return false  # nothing to buy here: the key does nothing
+		res = controller.world.tender_shares(controller, controller.docked_at, int(to["qty"]))
 	last_shares_reason = "" if bool(res["ok"]) else str(res["reason"])
 	if not bool(res["ok"]):
 		if hud != null:
@@ -496,6 +522,32 @@ func buy_shares() -> bool:
 				hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
 		return false
 	_refresh_world_mods()  # a taken baron's pipeline premium is gone; its repricing posts first
+	for e in res["events"]:
+		_post_baron_event(e)
+	if hud != null and hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
+	return true
+
+
+## Why the last credit line was refused ("" when it was extended); see extend_credit().
+var last_credit_reason: String = ""
+
+
+## ACT_CREDIT: extend the standard credit line to the baron anchoring the docked
+## station (lever c). Returns true when the line was extended.
+func extend_credit() -> bool:
+	if controller == null or controller.world == null or controller.docked_at == "":
+		return false
+	if controller.world.baron_at(controller.docked_at) == "":
+		return false
+	var res: Dictionary = controller.world.open_credit(controller, controller.docked_at)
+	last_credit_reason = "" if bool(res["ok"]) else str(res["reason"])
+	if not bool(res["ok"]):
+		if hud != null:
+			hud.post_headline_tr("HL_CREDIT_REFUSED", [Loc.key_arg(Levers.reason_key(last_credit_reason))], "DEBT", "WARNING")
+			if hud.tactile_audio != null:
+				hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
+		return false
 	for e in res["events"]:
 		_post_baron_event(e)
 	if hud != null and hud.tactile_audio != null:
@@ -542,9 +594,92 @@ func takeover_lines(station: String) -> Array:
 	else:
 		out.append(Loc.t("SIDE_DISTRESS") % [int(o["qty"]), int(o["px"])])
 	out.append(Loc.t("SIDE_INSOLVENT") % [s.strain, int(t["bankrupt_rounds"])])
-	out.append(Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), int(t["threshold"])])
+	out.append(Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), Takeover.threshold_for(w, Takeover.PLAYER, controller)])
 	if not o.is_empty() and controller.docked_at == station.to_lower():
 		out.append(Loc.t("SIDE_SHARES_HINT"))
+	return out
+
+
+# --- Levers (Epic 3 task 8): corner, margin, credit line, tender ---
+
+## Book tag for a lever leaning on one book ("CORNERED +50%", "FORCED SALE -15%",
+## "SELL PRESSURE -20%"), "" when none is or there is no world.
+func lever_tag(station: String, commodity: String) -> String:
+	if controller == null or controller.world == null:
+		return ""
+	var w: Barons = controller.world
+	var id: String = w.baron_at(station)
+	var s: BaronState = w.state(id) if id != "" else null
+	if s == null or s.holder != "":
+		return ""
+	var c: String = commodity.to_upper()
+	var cn: Dictionary = w.corner_on(station, c)
+	if not cn.is_empty():
+		return Loc.t("TAG_CORNERED") % (int(cn["price_bps"]) / 100)
+	if Levers.crashes(w, id).has(c):
+		return Loc.t("TAG_FORCED_SALE") % (int(Levers.settings(w)["margin"]["crash_bps"]) / 100)
+	var p: int = int(Levers.pressure(w, id).get(c, 0))
+	if p >= 100:
+		return Loc.t("TAG_SELL_PRESSURE") % (p / 100)
+	return ""
+
+
+## Sidebar notes for the levers on the baron anchoring `station`, as {kind, text, tone}
+## ("chip" or "line"; tone "bad", "credit" or "tender"). Empty for a held baron, a
+## station with no baron, or when no lever is in play.
+func lever_notes(station: String) -> Array:
+	var out: Array = []
+	if controller == null or controller.world == null:
+		return out
+	var w: Barons = controller.world
+	var id: String = w.baron_at(station)
+	var s: BaronState = w.state(id) if id != "" else null
+	if s == null or s.holder != "":
+		return out
+	var docked: bool = controller.docked_at == station.to_lower() and not controller.is_in_transit()
+	var cfg: Dictionary = Levers.settings(w)
+	# a. corner
+	var corners: Dictionary = Levers.corners(w, id)
+	var corner_keys: Array = corners.keys()
+	corner_keys.sort()
+	for c in corner_keys:
+		var cc: Dictionary = Levers.cover_cost(w, id, str(c))
+		out.append({"kind": "chip", "text": Loc.t("TAG_CORNER_NOTE") % Loc.commodity(str(c)), "tone": "bad"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_CORNER_COST") % [int(cc["from_stock"]), int(cc["cost"])], "tone": "bad"})
+	if docked and corner_keys.is_empty():
+		var best: String = ""
+		for c in Levers.float_commodities(w, id):
+			if int(controller.cargo.get(c, 0)) > int(controller.cargo.get(best, 0)):
+				best = c
+		if best != "":
+			out.append({"kind": "line", "text": Loc.t("SIDE_CORNER_HOLD") % [Loc.commodity(best), int(cfg["corner"]["hold_qty"]), int(controller.cargo.get(best, 0))], "tone": "bad"})
+	# b. margin
+	var press: Dictionary = Levers.pressure(w, id)
+	var crash: Dictionary = Levers.crashes(w, id)
+	if s.margin_debt_cr > 0 and (not press.is_empty() or not crash.is_empty()):
+		out.append({"kind": "chip", "text": Loc.t("TAG_MARGIN_FORCED" if not crash.is_empty() else "TAG_MARGIN"), "tone": "bad"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_MARGIN") % [Levers.margin_ratio_pct(w, id), int(cfg["margin"]["maintenance_bps"]) / 100], "tone": "bad"})
+		var pk: Array = press.keys()
+		pk.sort()
+		for c in pk:
+			out.append({"kind": "line", "text": Loc.t("SIDE_PRESSURE") % [Loc.commodity(str(c)), int(press[c]) / 100], "tone": "bad"})
+	# c. credit line
+	var cl: Dictionary = Levers.credit(w, id)
+	if not cl.is_empty():
+		out.append({"kind": "chip", "text": Loc.t("TAG_CREDIT"), "tone": "credit"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_OPEN") % [int(cl["due"]), int(cl["due_round"])], "tone": "credit"})
+	elif docked and Levers.is_pressed(w, id):
+		out.append({"kind": "chip", "text": Loc.t("TAG_CREDIT_OFFER"), "tone": "credit"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_OFFER") % [int(cfg["credit"]["line_cr"]), int(cfg["credit"]["rate_bps"]) / 100, int(cfg["credit"]["term_rounds"])], "tone": "credit"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_HINT"), "tone": "credit"})
+	# tender (Hostile Buyout Line)
+	var to: Dictionary = Takeover.tender_offer(w, id, controller)
+	if not to.is_empty() and w.distress_at(station).is_empty():
+		out.append({"kind": "chip", "text": Loc.t("TAG_TENDER"), "tone": "tender"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_TENDER") % [int(to["qty"]), int(to["px"])], "tone": "tender"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), Takeover.threshold_for(w, Takeover.PLAYER, controller)], "tone": "tender"})
+		if docked:
+			out.append({"kind": "line", "text": Loc.t("SIDE_SHARES_HINT"), "tone": "tender"})
 	return out
 
 
@@ -895,6 +1030,8 @@ func dispatch_action(action: String) -> bool:
 			handled = not file_chapter_11().is_empty()
 		ACT_SHARES:
 			handled = buy_shares()
+		ACT_CREDIT:
+			handled = extend_credit()
 		ACT_SPEED:
 			cycle_speed()
 			handled = controller != null
@@ -1052,8 +1189,11 @@ func start_next_run() -> RunController:
 
 # --- Signal handlers ---
 
-func _on_order_executed(_payload: Dictionary) -> void:
+func _on_order_executed(payload: Dictionary) -> void:
 	total_fills += 1
+	# Lever b: a sale at a baron's anchor leans on its collateral (Levers.record_trade).
+	if controller != null and controller.world != null:
+		controller.world.record_trade(str(payload.get("station", "")).to_lower(), str(payload.get("commodity", "")), str(payload.get("side", "")), int(payload.get("qty", 0)))
 	if hud != null and hud.tactile_audio != null:
 		hud.tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
 

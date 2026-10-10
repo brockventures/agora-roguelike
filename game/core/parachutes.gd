@@ -32,6 +32,9 @@ extends RefCounted
 ##     insolvency before automatic Chapter 11 filing (base 0).
 ##   piracy_odds_bps: Piracy.chance/roll_departure(..., odds_bps), via
 ##     RunController.piracy_odds_bps() (base 10000 = x1.0).
+##   takeover_threshold_shares: Takeover.threshold_for cuts the shares the player needs
+##     to take a baron (base 501); its presence also unlocks tender offers
+##     (Takeover.tender_unlocked), via RunController.modifiers (Hostile Buyout Line, -50).
 ## RunController derives modifiers from the profile's owned perks when none are
 ## passed, and banks Severance at run end (RunController.end_run).
 
@@ -50,6 +53,7 @@ const STATS: Dictionary = {
 	"hazard_odds_bps": "live",
 	"piracy_odds_bps": "live",
 	"bankruptcy_grace_ticks": "live",
+	"takeover_threshold_shares": "live",  # Epic 3 task 8: Takeover.threshold_for (the player's 501 less the perk)
 }
 
 ## Severance formula, placeholder constants (Ryan may overrule).

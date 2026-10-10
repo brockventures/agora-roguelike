@@ -102,6 +102,9 @@ func _mods_of(id: String) -> Array:
 		out.append_array(AresHeavy.squeeze_mods(self, id))
 	elif str(d.get("archetype", "")) == "hoarder":
 		out.append_array(TitanCryoHydro.mods(self, id))
+	# The player's levers (task 8) come after the baron's own mods, so a book no lever
+	# touches folds exactly as before.
+	out.append_array(Levers.mods(self, id))
 	return out
 
 
@@ -125,12 +128,60 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 				events.append_array(TitanCryoHydro.advance(self, id, round_num, rc, market))
 			"auctioneer":
 				events.append_array(SolCentral.advance(self, id, round_num, rc, market))
+	# The player's levers (task 8): corner cover, margin calls, credit maturities, and the
+	# sell pressure's halving. Before the takeover core so a baron a lever just broke is
+	# assessed, and offered for sale, the same boundary.
+	for id in ids():
+		events.append_array(Levers.advance(self, id, round_num, rc))
 	# Takeover core (task 7): insolvency, the distress auction, bankruptcy and the
 	# rent a held baron pays. After the archetypes, barons by sorted id; a baron
 	# that is solvent and not held writes nothing.
 	for id in ids():
 		events.append_array(Takeover.advance(self, id, round_num, rc))
 	return events
+
+
+# --- The levers (Epic 3 task 8, design doc 5.2): see Levers ---
+
+## A sale the player made (the trade StationMarket.execute filled): adds sell pressure
+## at a baron's anchor. Returns the pressure standing on that commodity.
+func record_trade(station: String, commodity: String, side: String, qty: int) -> int:
+	return Levers.record_trade(self, station, commodity, side, qty)
+
+
+## The player extends the standard credit line to the baron anchoring `station`.
+func open_credit(rc: RunController, station: String) -> Dictionary:
+	return Levers.open_credit(self, station, rc)
+
+
+## The open credit line at `station` as {baron, principal, due, due_round, rate_bps}, {} when none.
+func credit_at(station: String) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {}
+	var c: Dictionary = Levers.credit(self, id)
+	if not c.is_empty():
+		c["baron"] = id
+	return c
+
+
+## The corner standing on (station, commodity) as {baron, rounds, price_bps}, {} when none.
+func corner_on(station: String, commodity: String) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {}
+	var rounds: int = int(Levers.corners(self, id).get(commodity.to_upper(), 0))
+	if rounds <= 0:
+		return {}
+	return {"baron": id, "rounds": rounds, "price_bps": int(Levers.settings(self)["corner"]["squeeze_bps"])}
+
+
+## The player's tender offer at `station`'s baron: see Takeover.tender.
+func tender_shares(rc: RunController, station: String, n: int) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {"ok": false, "reason": "NO_OFFER", "n": 0, "cost": 0, "held": 0, "events": []}
+	return Takeover.tender(self, id, rc, n)
 
 
 # --- Takeover and insolvency (Epic 3 task 7, design doc 5): see Takeover ---
@@ -507,6 +558,7 @@ static func validate(d: Dictionary) -> Array:
 				errs.append("takeover.%s must be a whole number >= 0" % k)
 		if take.has("reset_treasury_bps") and (not _is_int(take["reset_treasury_bps"]) or int(take["reset_treasury_bps"]) < 0 or int(take["reset_treasury_bps"]) > 10000):
 			errs.append("takeover.reset_treasury_bps must be 0..10000")
+	errs.append_array(_check_levers(d.get("levers", null)))
 	var heat = d.get("heat", null)
 	if not (heat is Dictionary):
 		errs.append("heat must be an object")
@@ -564,6 +616,31 @@ static func validate(d: Dictionary) -> Array:
 		_check_commodity_map(b.get("inventory", null), "%s: inventory" % where, errs)
 		_check_privileges(b.get("privileges", null), where, errs)
 		_check_params(b.get("params", null), arch, where, errs)
+	return errs
+
+
+## `levers` is optional (defaults apply); when present every key of a group is a whole
+## number >= 0; the share-of-a-whole bps keys are at most 10000.
+static func _check_levers(v: Variant) -> Array:
+	var errs: Array = []
+	if v == null:
+		return errs
+	if not (v is Dictionary):
+		return ["levers must be an object"]
+	for group in v:
+		if not Levers.DEFAULTS.has(group):
+			errs.append("levers.%s is not a lever group" % group)
+			continue
+		if not (v[group] is Dictionary):
+			errs.append("levers.%s must be an object" % group)
+			continue
+		for k in v[group]:
+			if not Levers.DEFAULTS[group].has(k):
+				errs.append("levers.%s.%s is not a lever key" % [group, k])
+			elif not _is_int(v[group][k]) or int(v[group][k]) < 0:
+				errs.append("levers.%s.%s must be a whole number >= 0" % [group, k])
+			elif k in ["spend_bps", "liquidate_bps", "pressure_max_bps", "accept_below_bps"] and int(v[group][k]) > 10000:
+				errs.append("levers.%s.%s must be at most 10000" % [group, k])
 	return errs
 
 

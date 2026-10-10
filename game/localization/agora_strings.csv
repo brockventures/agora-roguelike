@@ -162,6 +162,13 @@ SHARES_REASON_NO_OFFER,no shares on offer
 SHARES_REASON_NO_CR,not enough CR
 SHARES_REASON_WOULD_BANKRUPT,the purchase would leave you insolvent
 SHARES_REASON_HELD,already held
+SHARES_REASON_LOCKED,needs the Hostile Buyout Line
+CREDIT_REASON_NO_BARON,no baron here
+CREDIT_REASON_HELD,already held
+CREDIT_REASON_OPEN,a line is already open
+CREDIT_REASON_NOT_PRESSED,the baron is not short of cash
+CREDIT_REASON_NO_CR,not enough CR
+CREDIT_REASON_WOULD_BANKRUPT,the loan would leave you insolvent
 TAG_HELD,HELD
 SIDE_HELD_RENT,RENT +%d CR A ROUND
 SIDE_HELD_BY,HELD BY %s
@@ -171,6 +178,32 @@ SIDE_DISTRESS_SOLD,DISTRESS: LOT SOLD
 SIDE_INSOLVENT,INSOLVENT RD %d OF %d
 SIDE_SHARES_HELD,YOU HOLD %d OF %d SHARES
 SIDE_SHARES_HINT,F / L3 BUYS THE LOT
+HL_CORNER,"%s is cornered on %s: %d units of cover from stock, %d CR bought at the squeeze"
+HL_CORNER_UNPAID,"%s cannot pay for its cover: %d CR added to its debt"
+HL_CORNER_END,"%s: the %s corner ends"
+HL_LEVER_MARGIN,"%s margin call: %d units sold at a haircut for %d CR, %d CR written off as debt"
+HL_CREDIT_OPEN,"%s takes your credit line: %d CR at %d%%, %d CR due round %d"
+HL_CREDIT_REPAID,"%s repays your credit line: %d CR"
+HL_CREDIT_DEFAULT,"%s defaults on your credit line: %d CR added to its debt, your claim"
+HL_CREDIT_REFUSED,"Credit line refused: %s"
+HL_TENDER_BOUGHT,"You tender for %d %s shares at %d CR each: %d of %d held"
+TAG_CORNERED,CORNERED +%d%%
+TAG_FORCED_SALE,FORCED SALE -%d%%
+TAG_SELL_PRESSURE,SELL PRESSURE -%d%%
+TAG_CORNER_NOTE,CORNERED %s
+SIDE_CORNER_COST,"COVER: %d FROM STOCK, %d CR A ROUND"
+SIDE_CORNER_HOLD,"CORNER %s: HOLD %d, HAVE %d"
+TAG_MARGIN,MARGIN PRESSURE
+TAG_MARGIN_FORCED,FORCED SALE
+SIDE_MARGIN,"COLLATERAL %d%%, CALL BELOW %d%%"
+SIDE_PRESSURE,"%s PRESSURE -%d%%"
+TAG_CREDIT,CREDIT LINE
+TAG_CREDIT_OFFER,CREDIT LINE OFFER
+SIDE_CREDIT_OPEN,"OWES YOU %d CR, DUE RD %d"
+SIDE_CREDIT_OFFER,"%d CR @ %d%%, DUE IN %d RDS"
+SIDE_CREDIT_HINT,G / R3 EXTENDS THE LINE
+TAG_TENDER,TENDER OFFER
+SIDE_TENDER,"TENDER: %d SHARES @ %d CR"
 HL_ARES_OFFER,"%s posts a defense contract: %d %s to %s within %d rounds, %d CR"
 HL_ARES_ACCEPTED,"%s: defense contract taken, %d %s due by round %d"
 HL_ARES_DECLINED,%s: defense contract declined
@@ -263,6 +296,7 @@ SET_ACT_SPEED,Cycle speed
 SET_ACT_PAUSE,Pause / resume
 SET_ACT_LOCALE,Cycle language
 SET_ACT_SHARES,Buy distressed shares
+SET_ACT_CREDIT,Extend credit line
 HUD_CHIP_LANG,LANG
 HUD_CHIP_CREDITS,CREDITS
 HUD_CHIP_DEBT,DEBT

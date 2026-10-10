@@ -116,11 +116,66 @@ const REASON_KEYS: Dictionary = {
 	"NO_CR": "SHARES_REASON_NO_CR",
 	"WOULD_BANKRUPT": "SHARES_REASON_WOULD_BANKRUPT",
 	"HELD": "SHARES_REASON_HELD",
+	"LOCKED": "SHARES_REASON_LOCKED",
 }
 
 
 static func reason_key(reason: String) -> String:
 	return str(REASON_KEYS.get(reason, "SHARES_REASON_NO_OFFER"))
+
+
+## The shares `buyer` needs to take the baron. The player's is cut by the
+## `takeover_threshold_shares` perk stat (Hostile Buyout Line, -50: 451 not 501);
+## every other buyer needs the full threshold.
+static func threshold_for(w: Barons, buyer: String, rc: RunController = null) -> int:
+	var base: int = int(settings(w)["threshold"])
+	if buyer == PLAYER and rc != null:
+		return clampi(Parachutes.apply_stat(rc.modifiers, "takeover_threshold_shares", base), 1, base)
+	return base
+
+
+## True while the Hostile Buyout Line perk is owned: it unlocks tender offers.
+static func tender_unlocked(rc: RunController) -> bool:
+	return rc != null and rc.modifiers.has("takeover_threshold_shares")
+
+
+## Shares outside the baron's treasury that nobody in the world holds yet: what a
+## tender offer can reach (the float less the treasury's and every holder's).
+static func public_float(w: Barons, id: String) -> int:
+	var s: BaronState = _s(w, id)
+	if s == null or s.holder != "":
+		return 0
+	var held: int = 0
+	for k in s.shares:
+		held += int(s.shares[k])
+	return maxi(0, int(settings(w)["float"]) - s.treasury_shares - held)
+
+
+## The tender price per share: NAV per share (at least the auction floor) over
+## `tender.premium_bps`. A tender buys at a premium, the distress auction at a discount.
+static func tender_price(w: Barons, id: String) -> int:
+	var a: Dictionary = assess(w, id)
+	var cfg: Dictionary = settings(w)
+	var nav_ps: int = maxi(0, int(a["liquidation_value"]) - int(a["total_debt"])) / maxi(1, int(cfg["float"]))
+	return maxi(1, maxi(nav_ps, int(cfg["floor"])) * int(Levers.settings(w)["tender"]["premium_bps"]) / 10000)
+
+
+## The tender standing now as {px, qty}: up to `tender.cap` shares a round of the
+## public float. {} when the perk is not owned, the baron is held, or nothing is left.
+static func tender_offer(w: Barons, id: String, rc: RunController) -> Dictionary:
+	if not tender_unlocked(rc):
+		return {}
+	var s: BaronState = _s(w, id)
+	if s == null or s.holder != "":
+		return {}
+	var used: int = 0
+	var t = s.scratch.get("tender", null)
+	if t is Dictionary and int(t.get("round", -1)) == rc.get_current_round():
+		used = int(t.get("n", 0))
+	var qty: int = mini(public_float(w, id), maxi(0, int(Levers.settings(w)["tender"]["cap"]) - used))
+	if qty <= 0:
+		return {}
+	return {"px": tender_price(w, id), "qty": qty}
 
 
 static func shares_of(w: Barons, id: String, holder: String) -> int:
@@ -220,7 +275,7 @@ static func buy(w: Barons, id: String, rc: RunController, n: int) -> Dictionary:
 	var take_n: int = mini(n, int(o["qty"]))
 	# No more than the threshold needs: the 501st share takes the baron, the rest of
 	# the lot stays on offer.
-	take_n = mini(take_n, maxi(1, int(settings(w)["threshold"]) - shares_of(w, id, PLAYER)))
+	take_n = mini(take_n, maxi(1, threshold_for(w, PLAYER, rc) - shares_of(w, id, PLAYER)))
 	take_n = mini(take_n, maxi(0, rc.cr) / px)
 	if take_n <= 0:
 		out["reason"] = "NO_CR"
@@ -239,28 +294,76 @@ static func buy(w: Barons, id: String, rc: RunController, n: int) -> Dictionary:
 	return out
 
 
+## The player tenders for up to `n` shares of the public float at the tender price
+## (Hostile Buyout Line only). {ok, reason, n, cost, held, events}. Refused: LOCKED (no
+## perk), HELD, NO_OFFER (the float or this round's cap is spent), NO_CR,
+## WOULD_BANKRUPT (the spend would leave the corp insolvent).
+static func tender(w: Barons, id: String, rc: RunController, n: int) -> Dictionary:
+	var out: Dictionary = {"ok": false, "reason": "", "n": 0, "cost": 0, "held": 0, "events": []}
+	var s: BaronState = _s(w, id)
+	if s == null:
+		out["reason"] = "NO_OFFER"
+		return out
+	if s.holder != "":
+		out["reason"] = "HELD"
+		return out
+	if not tender_unlocked(rc):
+		out["reason"] = "LOCKED"
+		return out
+	var o: Dictionary = tender_offer(w, id, rc)
+	if o.is_empty() or n <= 0:
+		out["reason"] = "NO_OFFER"
+		return out
+	var px: int = int(o["px"])
+	var take_n: int = mini(n, int(o["qty"]))
+	take_n = mini(take_n, maxi(1, threshold_for(w, PLAYER, rc) - shares_of(w, id, PLAYER)))
+	take_n = mini(take_n, maxi(0, rc.cr) / px)
+	if take_n <= 0:
+		out["reason"] = "NO_CR"
+		return out
+	var snap: Dictionary = rc.snapshot()
+	snap["cr"] = rc.cr - take_n * px
+	if bool(Chapter11.assess(snap, rc.haircut_bps())["insolvent"]):
+		out["reason"] = "WOULD_BANKRUPT"
+		return out
+	out["events"] = _transfer(w, id, PLAYER, take_n, px, rc, true)
+	out["ok"] = true
+	out["n"] = take_n
+	out["cost"] = take_n * px
+	out["held"] = shares_of(w, id, PLAYER)
+	return out
+
+
 ## Moves `n` treasury shares to `buyer` at `px`, treasury takes the cash, and takes
 ## the baron when the buyer reaches the threshold. The player's cash is debited here;
 ## any other buyer is a stand-in with no ledger of its own. Returns the events.
-static func _transfer(w: Barons, id: String, buyer: String, n: int, px: int, rc: RunController) -> Array:
+static func _transfer(w: Barons, id: String, buyer: String, n: int, px: int, rc: RunController, tender: bool = false) -> Array:
 	var events: Array = []
 	var s: BaronState = _s(w, id)
-	var cfg: Dictionary = settings(w)
 	if buyer == PLAYER and rc != null:
 		rc.cr -= n * px
-	s.treasury_cr += n * px
-	s.treasury_shares -= n
+	if tender:
+		# A tender buys from the public float: the cash goes to the sellers, not the treasury.
+		var t = s.scratch.get("tender", null)
+		var rd: int = rc.get_current_round() if rc != null else 0
+		var used: int = int(t.get("n", 0)) if t is Dictionary and int(t.get("round", -1)) == rd else 0
+		s.scratch["tender"] = {"round": rd, "n": used + n}
+		s.scratch["tendered"] = int(s.scratch.get("tendered", 0)) + n
+	else:
+		s.treasury_cr += n * px
+		s.treasury_shares -= n
+		var d = s.scratch.get("distress", null)
+		if d is Dictionary:
+			var left: int = int(d.get("qty", 0)) - n
+			if left > 0:
+				d["qty"] = left
+			else:
+				s.scratch.erase("distress")
 	s.shares[buyer] = int(s.shares.get(buyer, 0)) + n
-	var d = s.scratch.get("distress", null)
-	if d is Dictionary:
-		var left: int = int(d.get("qty", 0)) - n
-		if left > 0:
-			d["qty"] = left
-		else:
-			s.scratch.erase("distress")
 	var held: int = int(s.shares[buyer])
-	events.append({"kind": "shares", "baron": id, "buyer": buyer, "qty": n, "px": px, "held": held, "threshold": int(cfg["threshold"])})
-	if held >= int(cfg["threshold"]):
+	var need: int = threshold_for(w, buyer, rc)
+	events.append({"kind": "shares", "baron": id, "buyer": buyer, "qty": n, "px": px, "held": held, "threshold": need, "tender": tender})
+	if held >= need:
 		events.append(take(w, id, buyer, rc))
 	return events
 
@@ -292,6 +395,9 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 	s.treasury_shares = 0
 	s.scratch.erase("claims")
 	s.scratch.erase("distress")
+	s.scratch.erase("tender")
+	s.scratch.erase("tendered")
+	Levers.cancel_baron(w, id)  # a line the taker extended is its own now: cancelled, like its claim
 	_cancel_archetype(w, id)
 	return ev
 
@@ -302,6 +408,7 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 static func settle(w: Barons, id: String, rc: RunController) -> Dictionary:
 	var s: BaronState = _s(w, id)
 	var cfg: Dictionary = settings(w)
+	Levers.accelerate(w, id)  # an open credit line is called in: its amount due is a claim
 	var a: Dictionary = assess(w, id)
 	var liquidation: int = int(a["liquidation_value"])
 	var cl: Dictionary = claims(w, id)
@@ -338,6 +445,9 @@ static func settle(w: Barons, id: String, rc: RunController) -> Dictionary:
 	s.strain = 0
 	s.scratch.erase("claims")
 	s.scratch.erase("distress")
+	s.scratch.erase("tender")
+	s.scratch.erase("tendered")
+	s.scratch.erase("corner")
 	if holder == "":
 		# No creditor of its own took it: it reorganises under NPC management.
 		var d: Dictionary = w.def(id)
@@ -352,7 +462,7 @@ static func settle(w: Barons, id: String, rc: RunController) -> Dictionary:
 	}
 
 
-# --- Debt (seam for the levers, Epic 3 task 8) ---
+# --- Debt (the door the levers use, Epic 3 task 8) ---
 
 ## Adds `amount` to the baron's debt, attributed to `creditor` ("" or "system" =
 ## unattributed). Nothing in play raises a baron's debt until task 8's levers land;
@@ -396,10 +506,15 @@ static func forfeit(w: Barons) -> Array:
 			s.shares = {}
 			s.scratch.erase("claims")
 			s.scratch.erase("distress")
+			s.scratch.erase("tender")
+			s.scratch.erase("tendered")
 			events.append({"kind": "forfeit", "baron": id})
 		elif s.holder == "" and (int(s.shares.get(PLAYER, 0)) > 0 or int(claims(w, id).get(PLAYER, 0)) > 0):
-			s.treasury_shares += int(s.shares.get(PLAYER, 0))
+			# Shares tendered for came from the public float, not the treasury.
+			s.treasury_shares += maxi(0, int(s.shares.get(PLAYER, 0)) - int(s.scratch.get("tendered", 0)))
 			s.shares.erase(PLAYER)
+			s.scratch.erase("tendered")
+			s.scratch.erase("tender")
 			var cl: Dictionary = claims(w, id)
 			if cl.has(PLAYER):
 				s.debt_cr = maxi(0, s.debt_cr - int(cl[PLAYER]))
