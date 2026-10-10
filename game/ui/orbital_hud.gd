@@ -383,11 +383,13 @@ func cycle_sim_speed() -> int:
 
 ## Header text for the pace indicator: "PAUSED" or "1x" / "2x" / "5x".
 static func speed_label(p_paused: bool, p_speed: int) -> String:
-	return "PAUSED" if p_paused else "%dx" % p_speed
+	return Loc.t("HUD_PAUSED") if p_paused else Loc.t("HUD_SPEED_FMT") % p_speed
 
 # --- GalNet Ticker Stream ---
 
-func post_headline(text: String, category: String = "MARKET", severity: String = "INFO") -> Dictionary:
+## Posts a ticker line. text is shown as given; a headline that should follow a
+## language swap passes post_headline_tr() instead, which keeps its key + args.
+func post_headline(text: String, category: String = "MARKET", severity: String = "INFO", key: String = "", args: Array = []) -> Dictionary:
 	var r_num: int = controller.get_current_round() if controller != null else 0
 	var item: Dictionary = {
 		"text": text,
@@ -396,6 +398,9 @@ func post_headline(text: String, category: String = "MARKET", severity: String =
 		"round": r_num,
 		"seq": _next_seq()
 	}
+	if key != "":
+		item["key"] = key
+		item["args"] = args
 	galnet_headlines.push_front(item)
 	while galnet_headlines.size() > HEADLINE_HISTORY_MAX:
 		var dropped: Dictionary = galnet_headlines.pop_back()
@@ -411,6 +416,18 @@ func post_headline(text: String, category: String = "MARKET", severity: String =
 	headline_emitted.emit(item)
 	return item
 
+## Localized headline: translated now for "text", and re-translated from key + args
+## each time the ticker renders, so a language swap updates lines already posted.
+## Args may hold Loc.station_arg()/commodity_arg() placeholders.
+func post_headline_tr(key: String, args: Array = [], category: String = "MARKET", severity: String = "INFO") -> Dictionary:
+	return post_headline(Loc.format(key, args), category, severity, key, args)
+
+## Ticker text for a stored item in the current locale.
+func headline_text(item: Dictionary) -> String:
+	if item.has("key"):
+		return Loc.format(str(item["key"]), item["args"])
+	return str(item["text"])
+
 func _next_seq() -> int:
 	_headline_seq += 1
 	return _headline_seq
@@ -423,21 +440,27 @@ func _seed_default_headlines() -> void:
 	galnet_headlines.clear()
 	_ticker_clock.clear()
 	galnet_headlines.append({
-		"text": "SOL SYSTEM COMMERCE COMMISSION: Doomsday debt enforcement protocol active.",
+		"text": tr("HL_SEED_REGULATION"),
+		"key": "HL_SEED_REGULATION",
+		"args": [],
 		"category": "REGULATION",
 		"severity": "WARNING",
 		"round": 0,
 		"seq": _next_seq()
 	})
 	galnet_headlines.append({
-		"text": "CERES MINING GUILD: Deep-core ore extractors reporting record yields at Station Alpha.",
+		"text": tr("HL_SEED_MARKET"),
+		"key": "HL_SEED_MARKET",
+		"args": [],
 		"category": "MARKET",
 		"severity": "INFO",
 		"round": 0,
 		"seq": _next_seq()
 	})
 	galnet_headlines.append({
-		"text": "ORBITAL CORRIDORS: Earth-Luna syzygy alignment open for low-burn bulk transit.",
+		"text": tr("HL_SEED_TRANSIT"),
+		"key": "HL_SEED_TRANSIT",
+		"args": [],
 		"category": "TRANSIT",
 		"severity": "INFO",
 		"round": 0,
@@ -478,10 +501,10 @@ func bind_crisis_deck(d: CrisisDeck) -> void:
 		_crisis_deck.crisis_expired.connect(_on_crisis_expired)
 
 func _on_crisis_drawn(c: Dictionary) -> void:
-	post_headline(str(c.get("text", c.get("name", ""))), "CRISIS", "CRITICAL" if str(c.get("tier", "")) == "endgame" else "WARNING")
+	post_headline(Loc.crisis_text(c), "CRISIS", "CRITICAL" if str(c.get("tier", "")) == "endgame" else "WARNING")
 
 func _on_crisis_expired(c: Dictionary) -> void:
-	post_headline("%s has lifted, books restored" % str(c.get("name", "")), "CRISIS", "INFO")
+	post_headline_tr("HL_CRISIS_LIFTED", [Loc.crisis_name(c)], "CRISIS", "INFO")
 
 ## Feeds pirate demands and their settlement on a Piracy desk into the ticker.
 func bind_piracy(p: Piracy) -> void:
@@ -498,49 +521,62 @@ func bind_piracy(p: Piracy) -> void:
 ## Transit is a static rules library with no events of its own, so whatever
 ## dispatches a ship reports it here. kind is "departed" or "arrived".
 func post_transit_event(kind: String, origin: String, destination: String, commodity: String, qty: int, rounds: int = 0) -> Dictionary:
-	var route: String = "%s -> %s" % [StationMarket.station_name(origin).to_upper(), StationMarket.station_name(destination).to_upper()]
-	var text: String
+	var org: Dictionary = Loc.station_arg(origin)
+	var dst: Dictionary = Loc.station_arg(destination)
+	var com: Dictionary = Loc.commodity_arg(commodity)
 	if kind.to_lower() == "arrived":
-		text = "FLEET ARRIVAL: %d %s docked at %s from %s" % [qty, commodity.to_upper(), StationMarket.station_name(destination).to_upper(), StationMarket.station_name(origin).to_upper()]
-	else:
-		text = "FLEET DEPARTURE: %d %s on %s" % [qty, commodity.to_upper(), route]
-		if rounds > 0:
-			text += ", ETA %d round%s" % [rounds, "" if rounds == 1 else "s"]
-	return post_headline(text, "TRANSIT", "INFO")
+		return post_headline_tr("HL_ARRIVED", [qty, com, dst, org], "TRANSIT", "INFO")
+	if rounds > 0:
+		return post_headline_tr("HL_DEPARTURE_ETA_ONE" if rounds == 1 else "HL_DEPARTURE_ETA_MANY", [qty, com, org, dst, rounds], "TRANSIT", "INFO")
+	return post_headline_tr("HL_DEPARTURE", [qty, com, org, dst], "TRANSIT", "INFO")
 
 func _on_hazard_recorded(rec: Dictionary) -> void:
+	# The sim's own "note" is English replay data; the ticker rebuilds the line
+	# from the numbers so it follows the language.
 	var lost: int = int(rec.get("lost_qty", 0))
 	var delay: int = int(rec.get("delay", 0))
-	var text: String = str(rec.get("note", "")).strip_edges()
-	if str(rec.get("note", "")).strip_edges().is_empty():
-		text = "transit %s delayed %d, lost %d" % [str(rec.get("transit_id", "?")), delay, lost]
+	var tid: String = str(rec.get("transit_id", "?"))
+	var parts: PackedStringArray = []
+	if delay > 0:
+		parts.append(Loc.format("HL_HAZARD_DELAY_ONE" if delay == 1 else "HL_HAZARD_DELAY_MANY", [delay]))
+	if lost > 0:
+		parts.append(Loc.format("HL_HAZARD_LOSS", [lost]))
+	var text: String = "; ".join(parts)
+	if parts.is_empty():
+		text = Loc.format("HL_HAZARD_PLAIN", [tid, delay, lost])
 	var com: String = str(rec.get("commodity", ""))
+	var sev: String = "WARNING" if lost > 0 else "INFO"
 	if not com.is_empty():
-		text += " (%s, transit %s)" % [com, str(rec.get("transit_id", "?"))]
-	post_headline(text, "HAZARD", "WARNING" if lost > 0 else "INFO")
+		text += Loc.format("HL_HAZARD_TAIL", [Loc.commodity(com), tid])
+	post_headline(text, "HAZARD", sev)
 
 func _on_raid_demanded(d: Dictionary) -> void:
-	var text: String = "ALERT: pirates demand %d CR ransom from %s, %s -> %s (%s)" % [
-		int(d.get("ransom", 0)), str(d.get("agent_id", "?")), str(d.get("origin", "?")).to_upper(), str(d.get("destination", "?")).to_upper(), str(d.get("commodity", "")).to_upper()]
-	post_headline(text, "PIRACY", "CRITICAL")
+	post_headline_tr("HL_PIRACY_DEMAND", [int(d.get("ransom", 0)), str(d.get("agent_id", "?")), Loc.station_arg(str(d.get("origin", "?"))), Loc.station_arg(str(d.get("destination", "?"))), Loc.commodity_arg(str(d.get("commodity", "")))], "PIRACY", "CRITICAL")
 
 func _on_raid_resolved(row: Dictionary) -> void:
 	var status: String = str(row.get("status", ""))
-	var text: String
+	var agent: String = str(row.get("agent_id", "?"))
+	var qty: int = int(row.get("qty_taken", 0))
+	var com: Dictionary = Loc.commodity_arg(str(row.get("commodity", "")))
+	var key: String
+	var args: Array
 	match status:
 		"paid":
-			text = "%s paid %d CR ransom, cargo released" % [str(row.get("agent_id", "?")), int(row.get("cr_taken", 0))]
+			key = "HL_PIRACY_PAID"
+			args = [agent, int(row.get("cr_taken", 0))]
 		"surrendered":
-			text = "%s surrendered %d %s to the raiders" % [str(row.get("agent_id", "?")), int(row.get("qty_taken", 0)), str(row.get("commodity", "")).to_upper()]
+			key = "HL_PIRACY_SURRENDERED"
+			args = [agent, qty, com]
 		"escaped":
-			text = "%s fought off the raiders and escaped" % str(row.get("agent_id", "?"))
+			key = "HL_PIRACY_ESCAPED"
+			args = [agent]
 		_:
-			text = "%s lost %d %s after a failed fight" % [str(row.get("agent_id", "?")), int(row.get("qty_taken", 0)), str(row.get("commodity", "")).to_upper()]
-	post_headline(text, "PIRACY", "WARNING" if status in ["lost", "surrendered"] else "INFO")
+			key = "HL_PIRACY_LOST"
+			args = [agent, qty, com]
+	post_headline_tr(key, args, "PIRACY", "WARNING" if status in ["lost", "surrendered"] else "INFO")
 
 func _on_order_executed(o: Dictionary) -> void:
-	var text: String = "FILL: %s %d %s @ %.1f at %s" % [str(o.get("side", "")), int(o.get("qty", 0)), str(o.get("commodity", "")), float(o.get("price", 0.0)), StationMarket.station_name(str(o.get("station", active_station))).to_upper()]
-	post_headline(text, "MARKET", "INFO")
+	post_headline_tr("HL_FILL", [Loc.key_arg("ORDER_" + str(o.get("side", "")).to_upper()), int(o.get("qty", 0)), Loc.commodity_arg(str(o.get("commodity", "")), false), float(o.get("price", 0.0)), Loc.station_arg(str(o.get("station", active_station)))], "MARKET", "INFO")
 
 func _book_mid(station: String, commodity: String) -> float:
 	if market == null or not market.has_book(station, commodity):
@@ -557,7 +593,7 @@ func _on_book_changed(station: String, commodity: String) -> void:
 	var change: float = (mid - prev) / prev
 	if absf(change) < MARKET_MOVE_THRESHOLD:
 		return
-	post_headline("MOVE: %s %s %s %.1f%% to %.1f at %s" % [commodity.to_upper(), "firms" if change > 0.0 else "eases", "up" if change > 0.0 else "down", absf(change) * 100.0, mid, StationMarket.station_name(station).to_upper()], "MARKET", "INFO")
+	post_headline_tr("HL_MOVE_UP" if change > 0.0 else "HL_MOVE_DOWN", [Loc.commodity_arg(commodity), absf(change) * 100.0, mid, Loc.station_arg(station)], "MARKET", "INFO")
 
 # --- Ticker marquee (headless-safe: pure state, no nodes) ---
 
@@ -590,7 +626,7 @@ static func marquee_offset(clock: float, text_width: float, view_width: float) -
 func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER_VIEW_WIDTH) -> Array:
 	var out: Array = []
 	for item in get_recent_headlines(TICKER_VISIBLE_LINES):
-		var text: String = "%s: %s" % [item["category"], item["text"]]
+		var text: String = Loc.format("TICKER_LINE", [Loc.category(str(item["category"])), headline_text(item)])
 		var w: float = ticker_text_width(text, measure)
 		out.append({
 			"text": text,
@@ -605,25 +641,25 @@ func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER
 
 func _on_controller_round_advanced(r: int) -> void:
 	if r % 4 == 0:
-		post_headline("QUARTERLY REFINANCING: Central bank debt tranche rolled at current interest rate.", "DEBT", "INFO")
+		post_headline_tr("HL_REFINANCE", [], "DEBT", "INFO")
 	if tactile_audio != null:
 		tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
 
 func _on_controller_bankruptcy_pending(assessment: Dictionary) -> void:
 	var shortfall: int = int(assessment.get("shortfall", 0))
 	var total_debt: int = int(assessment.get("total_debt", 0))
-	var alert_msg: String = "CHAPTER 11 WARNING: Insolvent (Shortfall: %d CR, Total Debt: %d CR)" % [shortfall, total_debt]
-	post_headline(alert_msg, "INSOLVENCY", "CRITICAL")
+	var alert_msg: String = Loc.format("HL_CH11_WARNING", [shortfall, total_debt])
+	post_headline_tr("HL_CH11_WARNING", [shortfall, total_debt], "INSOLVENCY", "CRITICAL")
 	emergency_alert.emit(alert_msg)
 
 func _on_controller_stage_changed(_old_stage: int, new_stage: int) -> void:
 	var st_name: String = _stage_to_name(new_stage)
-	post_headline("SOL EMERGENCY LEVEL ESCALATION: Run stage advanced to %s" % st_name, "SECURITY", "WARNING")
+	post_headline_tr("HL_STAGE", [Loc.stage(st_name)], "SECURITY", "WARNING")
 	if tactile_audio != null:
 		tactile_audio.update_doomsday_stage(new_stage)
 
 func _on_controller_collapsed() -> void:
-	post_headline("SOVEREIGN DEFAULT: Sol System asset seizure initiated. Run collapsed.", "COLLAPSE", "CRITICAL")
+	post_headline_tr("HL_COLLAPSE", [], "COLLAPSE", "CRITICAL")
 	emergency_alert.emit("COLLAPSE")
 
 func _on_sim_clock_paused(_paused: bool) -> void:

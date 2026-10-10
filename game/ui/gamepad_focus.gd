@@ -405,21 +405,22 @@ func _note_rejection(payload: Dictionary) -> void:
 static func rejection_message(reason: String, payload: Dictionary = {}) -> String:
 	match reason:
 		"NOT_DOCKED_AT_STATION":
-			return "Not docked at %s" % StationMarket.station_name(str(payload.get("active_station", "this station")))
+			var st: String = str(payload.get("active_station", ""))
+			return Loc.t("REJ_NOT_DOCKED") % (Loc.station(st) if st != "" else Loc.t("REJ_THIS_STATION"))
 		"INSUFFICIENT_CR":
-			return "Not enough CR"
+			return Loc.t("REJ_INSUFFICIENT_CR")
 		"INSUFFICIENT_CARGO":
-			return "Not enough cargo to sell"
+			return Loc.t("REJ_INSUFFICIENT_CARGO")
 		"INSUFFICIENT_CARGO_CAPACITY":
-			return "Cargo hold full"
+			return Loc.t("REJ_CARGO_FULL")
 		"INSUFFICIENT_LIQUIDITY", "EXCEEDS_AVAILABLE_QTY":
-			return "Not enough volume at that price"
+			return Loc.t("REJ_NO_VOLUME")
 		"AUDIT_TRADE_CAP":
-			return "Antitrust audit: orders capped at %d units" % int(payload.get("cap", 0))
+			return Loc.t("REJ_AUDIT_CAP") % int(payload.get("cap", 0))
 		"INVALID_PRICE":
-			return "No quote at that level"
+			return Loc.t("REJ_NO_QUOTE")
 		"NO_HUD_BOUND":
-			return "Terminal offline"
+			return Loc.t("REJ_OFFLINE")
 		_:
 			return reason.capitalize()
 

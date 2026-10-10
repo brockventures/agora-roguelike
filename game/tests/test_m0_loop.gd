@@ -619,7 +619,7 @@ func test_market_board_marks_selected_commodity_and_hints_right_stick() -> Strin
 			marked.append(line)
 	var line_idx: int = main.market_row_line()
 	var ok_marker: bool = marked.size() == 1 and "ORE" in marked[0] and rows[line_idx].begins_with("> ORE")
-	var hint_ok: bool = "R-stick commodity" in main.CONTROLS_HINT and "R-STICK commodity" in main._board_text()
+	var hint_ok: bool = "R-stick commodity" in main.controls_hint() and "R-STICK commodity" in main._board_text()
 	main.free()
 	if not ok_marker:
 		return "selected commodity not uniquely marked at its row: %s" % str(marked)
