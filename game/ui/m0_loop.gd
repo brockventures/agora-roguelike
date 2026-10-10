@@ -28,6 +28,8 @@ signal collapse_phase_changed(phase: String)
 signal run_restarted(rc: RunController)
 ## A sim round completed and the books were refilled (the autosave point).
 signal round_completed(round_num: int)
+## The device woke from sleep (or the app was resumed): audio should be re-armed.
+signal woke_from_sleep(source: String)
 
 enum Tab { MAP = 0, MARKET = 1, FLEET = 2 }
 
@@ -99,6 +101,13 @@ var controller: RunController = null
 var market: StationMarket = null
 var tab: Tab = Tab.MAP
 var overlay_state: String = OVERLAY_NONE
+## Banner shown while the sim is paused by a wake; cleared when the player resumes.
+const SLEEP_PAUSE_NOTICE: String = "PAUSED \u2014 resumed from sleep"
+const FOCUS_ANCHOR_PAUSE: String = "pause"
+var sleep_pause_active: bool = false
+## What controller input is anchored to after a wake: an overlay state or "pause".
+var focus_anchor: String = ""
+var wake_count: int = 0
 var total_fills: int = 0
 ## Non-empty: the player is docked here and station cycling is disabled (see M0_STATION).
 var locked_station: String = ""
@@ -272,9 +281,44 @@ func _apply_lock() -> void:
 ## Steps the simulation by a real-time frame delta. Returns sub-ticks executed.
 ## Zero while paused, while the Chapter 11 overlay is up, or after collapse.
 func advance(delta: float) -> int:
+	# Raw delta is inspected first, ahead of the overlay/bankruptcy gates and the lag clamp.
+	if controller != null and SimClock.is_wake_delta(delta):
+		handle_wake("delta")
+		return 0
 	if controller == null or overlay_state != OVERLAY_NONE:
 		return 0
 	return controller.advance(delta)
+
+
+## Wake from suspend (raw-delta spike, or the platform pause/resume/focus notifications):
+## discard slept time, auto-pause, flag the banner, re-anchor focus and tell listeners
+## to re-arm audio. Zero sim ticks, doomsday ticks or market rounds run here.
+func handle_wake(source: String = "delta") -> void:
+	if controller == null:
+		return
+	var was_paused: bool = controller.sim_clock.paused
+	controller.sim_clock.handle_suspend_wake(source if source != "delta" else "system_suspend")
+	# A deliberate player pause is left as-is; only a pause the wake itself caused gets the banner.
+	sleep_pause_active = sleep_pause_active or not was_paused
+	wake_count += 1
+	reanchor_focus()
+	woke_from_sleep.emit(source)
+
+
+## Points controller input at the active modal (overlay) or the pause state, and
+## releases any m0_* action that was held when the device slept.
+func reanchor_focus() -> void:
+	for a in ALL_ACTIONS:
+		if InputMap.has_action(a) and Input.is_action_pressed(a):
+			Input.action_release(a)
+	if overlay_state != OVERLAY_NONE:
+		focus_anchor = overlay_state
+		return
+	focus_anchor = FOCUS_ANCHOR_PAUSE
+	if hud != null and hud.gamepad_focus != null:
+		var zone: GamepadFocus.Zone = GamepadFocus.Zone.ORDER_BOOK if tab == Tab.MARKET else GamepadFocus.Zone.TACTICAL_MAP
+		hud.gamepad_focus.current_zone = zone
+		hud.gamepad_focus.zone_changed.emit(int(zone))
 
 
 func speed_label() -> String:
@@ -588,6 +632,8 @@ func _on_round_advanced(round_num: int) -> void:
 
 
 func _on_clock_changed(_value: Variant) -> void:
+	if controller != null and not controller.sim_clock.paused:
+		sleep_pause_active = false
 	speed_changed.emit(speed_label())
 
 

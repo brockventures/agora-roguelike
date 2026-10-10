@@ -41,6 +41,13 @@ var map_label: Label = null
 const HUD_TEXT_COLOR := Color(0.55, 1.0, 0.7)
 const MODAL_BG_COLOR := Color(0.02, 0.06, 0.04, 0.97)
 
+## "PAUSED - resumed from sleep" banner, shown while a wake-pause is active.
+var sleep_modal: Panel = null
+var sleep_label: Label = null
+## How many times audio has been re-armed after a wake (read by tests).
+var audio_rearm_count: int = 0
+const SLEEP_BANNER_RECT: Rect2 = Rect2(300.0, 330.0, 680.0, 110.0)
+
 var market_modal: Panel = null
 var market_label: Label = null
 var resolution_modal: Panel = null
@@ -102,6 +109,11 @@ func _ready() -> void:
 ## Advances the SimClock at the selected speed; pause (or an overlay) stops it.
 func _process(delta: float) -> void:
 	if loop == null:
+		return
+	# A wake-sized raw delta must not drive the ticker or anything else either.
+	if SimClock.is_wake_delta(delta):
+		loop.advance(delta)
+		_refresh_readouts()
 		return
 	loop.advance(delta)
 	if hud != null:
@@ -216,6 +228,18 @@ func _on_action_handled(_action: String) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_all()
+	# Secondary wake triggers (mobile/minimise, focus loss): same path as the delta spike.
+	elif what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT \
+			or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		handle_suspend_notification("pause")
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		handle_suspend_notification("resume")
+
+
+## Routes a platform pause/resume/focus notification into the loop's wake handling.
+func handle_suspend_notification(source: String) -> void:
+	if loop != null:
+		loop.handle_wake(source)
 
 
 func initialize_systems(p_controller: RunController = null) -> void:
@@ -238,6 +262,8 @@ func initialize_systems(p_controller: RunController = null) -> void:
 		loop.rebind_controller()
 	# M0 is one station: Mars (Arcadia Foundries). Dock there and disable station cycling.
 	loop.lock_station(M0Loop.M0_STATION)
+	if not loop.woke_from_sleep.is_connected(_on_woke_from_sleep):
+		loop.woke_from_sleep.connect(_on_woke_from_sleep)
 	if not loop.run_restarted.is_connected(_on_run_restarted):
 		loop.run_restarted.connect(_on_run_restarted)
 	is_initialized = true
@@ -353,6 +379,26 @@ func _setup_audio() -> void:
 	_apply_drone(tactile_audio.current_drone_volume_db)
 	if is_inside_tree():
 		drone_player.play()
+
+
+func _on_woke_from_sleep(_source: String) -> void:
+	rearm_audio()
+
+
+## Wake recovery: stop every player (flushing stale buffers and any stuck tone) and
+## restart the drone so the audio server gets fresh streams.
+func rearm_audio() -> void:
+	audio_rearm_count += 1
+	for p in sfx_players:
+		p.stop()
+	for i in _voice_order.size():
+		_voice_order[i] = 0
+		_voice_priority[i] = false
+	if drone_player != null:
+		drone_player.stop()
+		_apply_drone(tactile_audio.current_drone_volume_db)
+		if is_inside_tree():
+			drone_player.play()
 
 
 func _bus_or_master(bus_name: String) -> String:
@@ -498,6 +544,14 @@ func _build_readouts() -> void:
 	# Body text keeps the shared HUD phosphor green (_make_label). A red override here
 	# was unreadable on the dark panel once the CRT aberration split its channels.
 	resolution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sleep_modal = Panel.new()
+	sleep_modal.add_theme_stylebox_override("panel", opaque)
+	sleep_modal.position = SLEEP_BANNER_RECT.position
+	sleep_modal.size = SLEEP_BANNER_RECT.size
+	hud_container.add_child(sleep_modal)
+	sleep_label = _make_label(sleep_modal, Rect2(20, 12, SLEEP_BANNER_RECT.size.x - 40.0, SLEEP_BANNER_RECT.size.y - 24.0), 22)
+	sleep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sleep_modal.visible = false
 
 
 func _draw_map() -> void:
@@ -538,6 +592,8 @@ func _refresh_readouts() -> void:
 	resolution_modal.size = OrbitalHUD.MODAL_OVERLAY_RECT.size if big else RESOLUTION_RECT.size
 	resolution_label.size = resolution_modal.size - Vector2(40, 32)
 	resolution_label.text = _resolution_text() if resolution_modal.visible else ""
+	sleep_modal.visible = loop.sleep_pause_active and controller.sim_clock.paused
+	sleep_label.text = "%s\n\nPress Start to resume." % M0Loop.SLEEP_PAUSE_NOTICE if sleep_modal.visible else ""
 	tactical_map_panel.queue_redraw()
 
 
