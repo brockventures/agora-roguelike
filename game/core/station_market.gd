@@ -81,6 +81,7 @@ func seed_book(station: String, commodity: String) -> bool:
 		half = maxi(1, int(round(float(half) * float(fx["spread_bps"]) / 10000.0)))
 	var depth_bps: int = int(fx["depth_bps"])
 	var ask_bps: int = int(fx["ask_price_bps"])
+	var ask_depth_bps: int = int(fx["ask_depth_bps"])
 	var maker: String = maker_for(s)
 	var mid: int = maxi(2, int(round(base)))
 	var best_bid: int = maxi(1, mid - half)
@@ -94,7 +95,7 @@ func seed_book(station: String, commodity: String) -> bool:
 		if ask_bps != 0:
 			# Side-specific price: the ask ladder only (bids are untouched).
 			ask_px = maxi(1, int(round(float(ask_px) * float(10000 + ask_bps) / 10000.0)))
-		book.insert_order(_maker_order(maker, c, "ask", maxi(1, (12 + (i + 1) * 7) * depth_bps / 10000), ask_px))
+		book.insert_order(_maker_order(maker, c, "ask", maxi(1, (12 + (i + 1) * 7) * ask_depth_bps / 10000), ask_px))
 	books[book_key(s, c)] = book
 	book_changed.emit(s, c)
 	return true
@@ -190,11 +191,14 @@ static func _mod_matches(m: Dictionary, station: String, commodity: String) -> b
 ## fixture tests/fixtures/world/fold_order.json.
 ## ask_price_bps is the side-specific price: it adds like price_bps but moves
 ## only the ask ladder (absent = 0, so a mod without it is untouched).
+## ask_depth_bps is the side-specific depth: it multiplies the ask ladder's
+## depth on top of depth_bps and leaves the bids alone (absent = 10000).
 func _mods_for(station: String, commodity: String) -> Dictionary:
 	var depth: int = 10000
 	var spread: int = 10000
 	var price: int = 0
 	var ask_price: int = 0
+	var ask_depth: int = 10000
 	for group in [world_mods, crisis_mods]:
 		for m in group:
 			if _mod_matches(m, station, commodity):
@@ -202,7 +206,10 @@ func _mods_for(station: String, commodity: String) -> Dictionary:
 				spread = spread * int(m.get("spread_bps", 10000)) / 10000
 				price += int(m.get("price_bps", 0))
 				ask_price += int(m.get("ask_price_bps", 0))
-	return {"depth_bps": depth, "spread_bps": spread, "price_bps": price, "ask_price_bps": ask_price}
+				ask_depth = ask_depth * int(m.get("ask_depth_bps", 10000)) / 10000
+	# The ask ladder's own depth is the shared depth scaled by the ask-only factor
+	# (with no ask_depth_bps anywhere this is exactly depth).
+	return {"depth_bps": depth, "spread_bps": spread, "price_bps": price, "ask_price_bps": ask_price, "ask_depth_bps": depth * ask_depth / 10000}
 
 
 ## Refills every book to full depth (called once per round).

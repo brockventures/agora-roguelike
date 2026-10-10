@@ -65,8 +65,8 @@ static func for_new_run() -> Barons:
 
 ## Book mods the world emits this round (StationMarket.set_world_mods), in the
 ## fold order the market relies on: barons by sorted id, then rival fleets by
-## sorted id. Epic 3 task 2 only wires the plumbing: nothing emits a mod yet
-## (privileges are task 3, archetype behaviours tasks 4-6, rivals task 10).
+## sorted id. Today a baron emits its supply pipelines (Epic 3 task 3); archetype
+## behaviours (tasks 4-6) and rivals (task 10) add to this.
 func market_mods() -> Array:
 	var out: Array = []
 	for id in ids():
@@ -74,8 +74,72 @@ func market_mods() -> Array:
 	return out
 
 
-func _mods_of(_id: String) -> Array:
-	return []
+## One baron's mods, in its pipelines' file order. A pipeline is two ask-side
+## effects on the anchor station's book for that commodity (design doc 3.3):
+## `ask_depth_bps` more depth for everyone, and `ask_price_bps` of premium that
+## only outsiders pay. The mods are the PLAYER's view of the book: the player is
+## an insider only while they hold the baron, so taking it removes the premium
+## and keeps the depth. (Rival fleets share the same books; their own insider
+## prices arrive with Epic 3 task 10.)
+func _mods_of(id: String) -> Array:
+	var out: Array = []
+	var d: Dictionary = def(id)
+	if d.is_empty():
+		return out
+	var insider: bool = is_insider(StationMarket.PLAYER_ID, id)
+	for pipe in d.get("privileges", {}).get("pipelines", []):
+		out.append({
+			"station": str(d.get("anchor", "")),
+			"commodity": str(pipe.get("commodity", "")),
+			"ask_depth_bps": int(pipe.get("depth_bps", 10000)),
+			"ask_price_bps": 0 if insider else int(pipe.get("outsider_ask_bps", 0)),
+		})
+	return out
+
+
+# --- Privileges (Epic 3 task 3, design doc 3.3) ---
+
+## Participant ids a baron treats as insiders: its `toll_exempt` list plus
+## whoever holds it ("player" after a takeover, a rival id later).
+func insiders(id: String) -> Array:
+	var out: Array = []
+	for e in def(id).get("privileges", {}).get("toll_exempt", []):
+		out.append(str(e))
+	var s: BaronState = state(id)
+	if s != null and s.holder != "" and not out.has(s.holder):
+		out.append(s.holder)
+	return out
+
+
+func is_insider(participant: String, id: String) -> bool:
+	return insiders(id).has(participant)
+
+
+## The docking toll `participant` owes on arriving at `station`: the anchoring
+## baron's `docking_toll_cr`, 0 for an insider or an unanchored station.
+func docking_toll_due(participant: String, station: String) -> int:
+	var id: String = baron_at(station)
+	if id == "" or is_insider(participant, id):
+		return 0
+	return maxi(0, int(def(id).get("privileges", {}).get("docking_toll_cr", 0)))
+
+
+## What is actually charged: the toll, capped at the CR the participant holds
+## (agora/referee.py:2147 caps the same way).
+func docking_toll(participant: String, station: String, cr_held: int) -> int:
+	return mini(docking_toll_due(participant, station), maxi(0, cr_held))
+
+
+## The pipeline on a (station, commodity) book as {baron, depth_bps,
+## outsider_ask_bps}, {} when none. `viewer` sees base ask prices if an insider.
+func pipeline(station: String, commodity: String) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {}
+	for pipe in def(id).get("privileges", {}).get("pipelines", []):
+		if str(pipe.get("commodity", "")) == commodity.to_upper():
+			return {"baron": id, "depth_bps": int(pipe.get("depth_bps", 0)), "outsider_ask_bps": int(pipe.get("outsider_ask_bps", 0))}
+	return {}
 
 
 ## Baron ids in sorted order: the only order anything may iterate them in.

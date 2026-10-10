@@ -1084,6 +1084,12 @@ func _sidebar_text() -> String:
 	out.append("")
 	out.append(tr("SIDE_ORDER") % [tr("ORDER_BUY") if buying else tr("ORDER_SELL"), f.order_qty])
 	out.append(tr("SIDE_HELD") % [hud.get_cargo_qty(hud.active_commodity), Loc.commodity(hud.active_commodity), controller.get_total_cargo(), controller.cargo_capacity])
+	var priv_lines: Array = []
+	for line in [loop.pipeline_tag(hud.active_station, hud.active_commodity), loop.toll_line(hud.active_station)]:
+		if line != "":
+			priv_lines.append(line)
+	if not priv_lines.is_empty():
+		out.append_array(PackedStringArray(priv_lines))
 	var crisis_lines: Array = _crisis_sidebar_lines()
 	if not crisis_lines.is_empty():
 		out.append("")
@@ -1122,6 +1128,9 @@ func _board_text() -> String:
 		if loop.market.has_book(hud.active_station, c):
 			var lad: Dictionary = loop.market.ladder(hud.active_station, c, 1)
 			var tag: String = loop.crisis_deck.tag_for(hud.active_station, c) if loop.crisis_deck != null else ""
+			var pipe: String = loop.pipeline_tag(hud.active_station, c)
+			if pipe != "":
+				tag = pipe if tag == "" else "%s, %s" % [pipe, tag]
 			out.append(tr("BOARD_ROW_LIVE") % [key_prefix, lad["best_bid"], lad["best_ask"], "   [%s]" % tag if tag != "" else ""])
 		else:
 			out.append(tr("BOARD_ROW_BASE") % [key_prefix, Transit.BASE_PRICES[hud.active_station][c]])

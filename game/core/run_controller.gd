@@ -142,6 +142,17 @@ func transit_info() -> Dictionary:
 func _arrive() -> void:
 	var info: Dictionary = transit_info()
 	docked_at = str(transit["destination"])
+	# Docking toll (Epic 3 task 3): an anchoring baron charges outsiders on
+	# arrival, capped at the CR held, to SYSTEM. No world, no toll.
+	var toll_due: int = 0
+	var toll_paid: int = 0
+	if world != null:
+		toll_due = world.docking_toll_due(StationMarket.PLAYER_ID, docked_at)
+		toll_paid = world.docking_toll(StationMarket.PLAYER_ID, docked_at, cr)
+		cr -= toll_paid
+	info["docking_toll_due"] = toll_due
+	info["docking_toll"] = toll_paid
+	info["toll_baron"] = world.baron_at(docked_at) if world != null else ""
 	transit = {}
 	info["ticks_left"] = 0
 	info["eta_rounds"] = 0
