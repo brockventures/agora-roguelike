@@ -108,7 +108,7 @@ func set_crisis_mods(mods: Array) -> void:
 	if old == mods:
 		return
 	crisis_mods = mods.duplicate(true)
-	for key in books.keys():
+	for key in _book_keys():
 		var parts: PackedStringArray = str(key).split(":")
 		if _mods_touch(old, parts[0], parts[1]) or _mods_touch(crisis_mods, parts[0], parts[1]):
 			seed_book(parts[0], parts[1])
@@ -142,9 +142,37 @@ func _mods_for(station: String, commodity: String) -> Dictionary:
 
 ## Refills every book to full depth (called once per round).
 func replenish() -> void:
-	for key in books.keys():
+	for key in _book_keys():
 		var parts: PackedStringArray = str(key).split(":")
 		seed_book(parts[0], parts[1])
+
+
+## Every book key in the canonical order: station name, then the commodity's
+## place in Transit.COMMODITIES (unknown commodities after, by name). Anything
+## that reseeds more than one book walks this order, never the Dictionary's own
+## insertion order: seeding assigns maker order ids from a running counter, and
+## insertion order does not survive a JSON save (keys come back sorted), so the
+## ids, and with them the raw market hash, would otherwise differ after a load.
+func _book_keys() -> Array:
+	var keys: Array = books.keys()
+	keys.sort_custom(StationMarket._key_before)
+	return keys
+
+
+static func _key_before(a: Variant, b: Variant) -> bool:
+	var pa: PackedStringArray = str(a).split(":")
+	var pb: PackedStringArray = str(b).split(":")
+	if pa[0] != pb[0]:
+		return pa[0] < pb[0]
+	var ia: int = Transit.COMMODITIES.find(pa[1]) if pa.size() > 1 else -1
+	var ib: int = Transit.COMMODITIES.find(pb[1]) if pb.size() > 1 else -1
+	if ia < 0:
+		ia = Transit.COMMODITIES.size()
+	if ib < 0:
+		ib = Transit.COMMODITIES.size()
+	if ia != ib:
+		return ia < ib
+	return str(a) < str(b)
 
 
 ## Aggregated ladder in the shape OrbitalHUD.get_order_book_ladder() returns.
@@ -222,7 +250,7 @@ static func counterparty_name(participant_id: String) -> String:
 
 func to_dict() -> Dictionary:
 	var out: Dictionary = {}
-	for key in books:
+	for key in _book_keys():
 		out[key] = (books[key] as OrderBook).to_dict()
 	return {"books": out, "seq": _seq, "order_counter": _order_counter}
 
@@ -236,7 +264,10 @@ static func from_dict(d: Dictionary) -> StationMarket:
 	m._order_counter = int(d.get("order_counter", 0))
 	var raw = d.get("books", {})
 	if raw is Dictionary:
-		for key in raw:
+		# Insert in canonical order whatever order the file listed them in.
+		var keys: Array = (raw as Dictionary).keys()
+		keys.sort_custom(StationMarket._key_before)
+		for key in keys:
 			if raw[key] is Dictionary:
 				m.books[str(key)] = OrderBook.from_dict(raw[key])
 	return m

@@ -333,21 +333,14 @@ func test_a_save_taken_mid_voyage_replays_like_one_that_never_stopped() -> Strin
 	_run_ticks(b["loop"], b["rc"], 3 * 30)
 	if rc_a.docked_at != "ceres" or b["rc"].docked_at != "ceres":
 		return "did not arrive: %s / %s" % [rc_a.docked_at, b["rc"].docked_at]
-	# Controller, bags and crisis deck must match exactly. The market is compared by what
-	# it shows (every ladder): its raw order ids depend on the order books are refilled in,
-	# which JSON reorders for any save, travelling or not (a pre-existing quirk of
-	# StationMarket.to_dict, outside this task).
+	# Controller, bags, crisis deck and the raw market (order ids included) must all
+	# match exactly: StationMarket saves and refills in canonical order, so a JSON
+	# save/load no longer changes which order gets which id.
 	var da: Dictionary = RunSave.capture(rc_a, lp_a.market, loaded["bags"])
 	var db: Dictionary = RunSave.capture(b["rc"], b["loop"].market, bags_a)
-	for key in ["controller", "bags", "crisis"]:
+	for key in ["controller", "bags", "crisis", "market"]:
 		if RunSave.canonical(da[key]) != RunSave.canonical(db[key]):
 			return "%s diverged between the saved-mid-voyage run and the one that kept flying" % key
-	if lp_a.market.books.keys().size() != b["loop"].market.books.keys().size():
-		return "book sets differ"
-	for key in b["loop"].market.books:
-		var parts: PackedStringArray = str(key).split(":")
-		if RunSave.canonical(lp_a.market.ladder(parts[0], parts[1])) != RunSave.canonical(b["loop"].market.ladder(parts[0], parts[1])):
-			return "ladder %s diverged" % key
 	return "ok"
 
 

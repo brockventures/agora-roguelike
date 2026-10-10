@@ -67,6 +67,9 @@ var cargo_capacity: int = DEFAULT_CARGO_CAPACITY
 ## a bare controller never draws or pauses for crises. Not part of to_dict()
 ## here; the deck has its own to_dict()/from_dict() for the save layer.
 var crisis_deck: CrisisDeck = null
+## The sector barons (Epic 3). Null until something attaches a world, so a bare
+## controller has none and saves no `world` key, exactly like crisis_deck.
+var world: Barons = null
 
 # --- Travel (Epic 3 task 0, #111) ---
 

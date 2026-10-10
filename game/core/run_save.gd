@@ -9,6 +9,8 @@ extends RefCounted
 ##   crisis      CrisisDeck (#12): active crises with their expiry rounds, the
 ##               unacknowledged list, and the deck's Bags/draw counters. Present
 ##               only when the controller carries a deck.
+##   world       Barons (Epic 3): every baron's state. Present only when the
+##               controller carries a world, so a run without barons hashes as before.
 ##   bags        Bags (streak counters, drawn/remaining marbles, forced queue),
 ##               so bad-luck protection is never wiped by a save/load cycle
 ##
@@ -25,6 +27,8 @@ static func capture(controller: RunController, market: StationMarket, bags: Bags
 	}
 	if controller.crisis_deck != null:
 		out["crisis"] = controller.crisis_deck.to_dict()
+	if controller.world != null:
+		out["world"] = controller.world.to_dict()
 	return out
 
 
@@ -44,6 +48,9 @@ static func restore(data: Dictionary) -> Dictionary:
 		# Books were saved already shaped by the active crises: restore the
 		# modifiers without reseeding them.
 		mkt.crisis_mods = rc.crisis_deck.market_mods()
+	var wd = data.get("world", null)
+	if wd is Dictionary:
+		rc.world = Barons.from_dict(wd)
 	return {
 		"ok": true,
 		"error": "",
