@@ -704,6 +704,7 @@ func enable_onboarding(model: Onboarding = null) -> Onboarding:
 	if onboarding != null:
 		return onboarding
 	onboarding = model if model != null else Onboarding.new(settings)
+	settings_menu.onboarding = onboarding
 	_onb_hold = ""
 	_onb_shown.clear()
 	if loop != null:

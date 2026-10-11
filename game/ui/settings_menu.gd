@@ -15,7 +15,7 @@ extends RefCounted
 
 signal closed
 
-enum Row { SCALE, PALETTE, LANGUAGE, CRT, ALERT_VOLUME, ALERT_MUTE, REDUCED_MOTION, ACTION, RESET, CLOSE }
+enum Row { SCALE, PALETTE, LANGUAGE, CRT, ALERT_VOLUME, ALERT_MUTE, REDUCED_MOTION, TUTORIAL, ACTION, RESET, CLOSE }
 
 var settings: AccessibilitySettings = null
 var is_open: bool = false
@@ -24,6 +24,9 @@ var cursor: int = 0
 var listening_action: String = ""
 ## Last result line as [translation key, args...]; shown under the list.
 var message: Array = []
+## The live first-hour tutorial model, set by Main (#36). Null in a bare menu, which then
+## builds a throwaway one over `settings` so the row works the same (the model only reads).
+var onboarding: Onboarding = null
 var _held: Dictionary = {}
 
 
@@ -48,7 +51,7 @@ func close() -> void:
 
 ## One entry per selectable row: {"kind": Row, "action": String}.
 func rows() -> Array:
-	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}, {"kind": Row.CRT}, {"kind": Row.ALERT_VOLUME}, {"kind": Row.ALERT_MUTE}, {"kind": Row.REDUCED_MOTION}]
+	var out: Array = [{"kind": Row.SCALE}, {"kind": Row.PALETTE}, {"kind": Row.LANGUAGE}, {"kind": Row.CRT}, {"kind": Row.ALERT_VOLUME}, {"kind": Row.ALERT_MUTE}, {"kind": Row.REDUCED_MOTION}, {"kind": Row.TUTORIAL}]
 	for a in InputRemap.actions():
 		out.append({"kind": Row.ACTION, "action": a})
 	out.append({"kind": Row.RESET})
@@ -79,6 +82,8 @@ func row_text(i: int, row: Dictionary) -> String:
 			return tr_row(mark, "SET_ALERT_MUTE", "< %s >" % Loc.t("SET_ON" if settings.alert_mute else "SET_OFF"))
 		Row.REDUCED_MOTION:
 			return tr_row(mark, "SET_REDUCED_MOTION", "< %s >" % Loc.t("SET_ON" if settings.reduced_motion else "SET_OFF"))
+		Row.TUTORIAL:
+			return tr_row(mark, "SET_TUTORIAL", "< %s >" % Loc.t("SET_ON" if settings.tutorial_enabled else "SET_OFF"))
 		Row.ACTION:
 			var a: String = str(row["action"])
 			var value: String = Loc.t("SET_LISTENING") if a == listening_action else InputRemap.binding_text(settings.bindings.get(a, {}))
@@ -189,12 +194,22 @@ func _change(dir: int) -> void:
 			settings.set_alert_mute(not settings.alert_mute)
 		Row.REDUCED_MOTION:
 			settings.set_reduced_motion(not settings.reduced_motion)
+		Row.TUTORIAL:
+			set_tutorial(not settings.tutorial_enabled)
+
+
+## The "Orientation program" row (#36, docs/design/onboarding.md section 6). OFF stops the
+## tutorial; ON again clears the core beats' seen marks, which replays it. Both go through
+## Onboarding.set_enabled so the live model and the saved settings never disagree.
+func set_tutorial(on: bool) -> void:
+	var model: Onboarding = onboarding if onboarding != null else Onboarding.new(settings)
+	model.set_enabled(on)
 
 
 func _activate() -> void:
 	var row: Dictionary = rows()[cursor]
 	match int(row["kind"]):
-		Row.SCALE, Row.PALETTE, Row.LANGUAGE, Row.CRT, Row.ALERT_MUTE, Row.REDUCED_MOTION:
+		Row.SCALE, Row.PALETTE, Row.LANGUAGE, Row.CRT, Row.ALERT_MUTE, Row.REDUCED_MOTION, Row.TUTORIAL:
 			_change(1)
 		Row.ALERT_VOLUME:
 			# A past the top wraps to silence, so A alone can reach every step.
