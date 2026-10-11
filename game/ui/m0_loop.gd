@@ -411,6 +411,9 @@ func _post_baron_headline(e: Dictionary) -> void:
 	if str(e.get("kind", "")).begins_with("rival_"):
 		_post_rival_headline(e)
 		return
+	if str(e.get("kind", "")).begins_with("corridor_"):
+		_post_corridor_headline(e)
+		return
 	var who: Dictionary = Loc.maker_arg(str(e.get("baron", "")))
 	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
 	match str(e.get("kind", "")):
@@ -523,13 +526,38 @@ func _post_rival_headline(e: Dictionary) -> void:
 		"rival_bounty_traced":
 			hud.post_headline_tr("HL_RIVAL_BOUNTY_TRACED", [fleet, int(e["rounds"])], "CRISIS", "WARNING")
 		"rival_raid":
-			if str(e.get("choice", "")) == "pay":
+			if int(e["ransom"]) > 0:
 				hud.post_headline_tr("HL_RIVAL_RAID_PAID", [fleet, int(e["ransom"])], "CRISIS", "CRITICAL")
-			else:
+			elif int(e["qty_taken"]) > 0:
 				hud.post_headline_tr("HL_RIVAL_RAID_TAKEN", [fleet, int(e["qty_taken"]), com], "CRISIS", "CRITICAL")
+			else:
+				hud.post_headline_tr("HL_RAID_SPARED", [], "CRISIS", "WARNING")
 		"rival_trade":
 			if here:
 				hud.post_headline_tr("HL_RIVAL_SELL", [fleet, int(e["qty"]), com, station, int(e["price"])], "MARKET", "INFO")
+
+
+## GalNet lines for a rated lane (#139): a raid by the lane's own pirates and a storm or hull
+## breach on departure. A raid the guard left nothing to take from posts its own line.
+func _post_corridor_headline(e: Dictionary) -> void:
+	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
+	match str(e.get("kind", "")):
+		"corridor_raid":
+			if int(e.get("ransom", 0)) > 0:
+				hud.post_headline_tr("HL_RAID_PAID", [int(e["ransom"])], "CRISIS", "CRITICAL")
+			elif int(e.get("qty_taken", 0)) > 0:
+				hud.post_headline_tr("HL_RAID_TAKEN", [int(e["qty_taken"]), com], "CRISIS", "CRITICAL")
+			else:
+				hud.post_headline_tr("HL_RAID_SPARED", [], "CRISIS", "WARNING")
+		"corridor_hazard":
+			var origin: Dictionary = Loc.station_arg(str(e.get("origin", "")))
+			var dest: Dictionary = Loc.station_arg(str(e.get("destination", "")))
+			if int(e.get("delay", 0)) > 0:
+				hud.post_headline_tr("HL_CORRIDOR_DELAY", [origin, dest, int(e["delay"])], "HAZARD", "WARNING")
+			if int(e.get("lost", 0)) > 0:
+				hud.post_headline_tr("HL_CORRIDOR_LOSS", [int(e["lost"])], "HAZARD", "CRITICAL")
+			elif int(e.get("requested", 0)) > 0:
+				hud.post_headline_tr("HL_CORRIDOR_HELD", [], "HAZARD", "WARNING")
 
 
 ## Rival tag for one book ("KESSLER BOUGHT 40", "EMBER SOLD 52"): the first fleet that
@@ -960,7 +988,7 @@ func sync_hud_to_ship() -> void:
 func depart_to_selected() -> bool:
 	if controller == null or hud == null:
 		return false
-	var res: Dictionary = controller.depart(hud.active_station, market)
+	var res: Dictionary = controller.depart(hud.active_station, market, hud.active_lane)
 	last_depart_reason = "" if bool(res["ok"]) else str(res["reason"])
 	last_depart_check = res
 	if not bool(res["ok"]) and hud.tactile_audio != null:

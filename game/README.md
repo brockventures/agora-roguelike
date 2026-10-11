@@ -98,7 +98,7 @@ by the normal `replenish()` after that; a run that never travels seeds no extra 
 and keeps its save hash. The in-transit state is saved in the controller dict only
 while a voyage is under way (older saves load unchanged). While in transit the second
 header line shows "IN TRANSIT to X, ETA n rounds" and the map draws the ship on its
-lane. Not yet in play: fuel burn, hazards and piracy, perishable decay on belt routes.
+lane. Not yet in play: perishable decay on belt routes. (Fuel burn is live from #138; hazards and piracy corridors from #139.)
 
 ## Accessibility (#37)
 

@@ -9,6 +9,14 @@ extends RefCounted
 ## (seed, round, world, player), a replay of the player's inputs alone must land on the same
 ## hash (design doc 6.3).
 ##
+## #139 (rated piracy and hazard corridors) moved both pins, because the bot now travels rated
+## lanes and every departure rolls a lane raid and a hazard (seed 7 takes a 1-round storm delay
+## on Mars -> Ceres at round 7, which costs its input stream 15 presses; seed 84 meets a lane
+## rating but no event). Regenerated with tools/regen_world_goldens.gd:
+##   seed 84: 0593ce3bcad5d26f3f58fb04af938bebaa4c91afd05131a209aa431a62b0e47b
+##         -> 15078dd7f1ad168d2a6843b571e30543e3a086dfbe297ce9287813d8a57eb8c1
+##   seed 7:  e2db1141da45eca6ef0c29ba7341e2f82b305e07a4d9a4b51943eb46af8450c0
+##         -> f36c233184d733378baa65ab7919b46e032e726d2475b1bc064b92477bdbad45
 ## A failure here means the world's behaviour changed. If that was meant, regenerate with
 ##   godot --headless --path game -s res://tools/regen_world_goldens.gd
 ## and put the old and new hashes in the PR. If not, you have a determinism bug.

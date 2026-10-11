@@ -203,7 +203,10 @@ func advance_rivals(round_num: int, rc: RunController, market: StationMarket) ->
 
 ## The player's departure, seen by idle fleets (decision 9.5). See Rivals.react.
 func react_to_departure(rc: RunController, market: StationMarket, info: Dictionary) -> Array:
-	return Rivals.react(self, rc, market, info)
+	var events: Array = Rivals.react(self, rc, market, info)
+	if market != null:
+		Corridors.hazard(self, rc, info, rc.get_current_round(), events)
+	return events
 
 
 ## The fills fleets made on a book this round: [{fleet, side, qty, price}].
@@ -617,6 +620,17 @@ func penalize(rc: RunController, amount: int, origin: String) -> Dictionary:
 		"clamped": applied < want,
 		"forced_ch11": not bool(pre["insolvent"]) and bool(post["insolvent"]),
 	}
+
+
+## How much liquidation value the player can lose to a random hit before the corp tips into
+## Chapter 11: liquidation value less debt, never below 0 (0 when already insolvent). The lethal
+## guard for raids and hazards on a rated lane (#139): a lane is the player's choice, so a hit
+## may be large, but it is clamped here so that it can never be the thing that forces Chapter
+## 11 (decision 9.4, and the "random" origin of penalize). Unlike penalize's `random_max_loss_bps`
+## it has no share cap, only solvency.
+func lethal_headroom(rc: RunController) -> int:
+	var a: Dictionary = rc.assess()
+	return maxi(0, int(a["liquidation_value"]) - int(a["total_debt"]))
 
 
 # --- Privileges (Epic 3 task 3, design doc 3.3) ---

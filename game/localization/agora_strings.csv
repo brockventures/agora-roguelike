@@ -474,3 +474,15 @@ MAP_CARD_FUEL,FUEL
 MAP_CARD_FUEL_HOLD,"%d units, in hold"
 MAP_CARD_FUEL_BUY,"%d units, %d CR"
 MAP_CARD_FUEL_HEDGED,FUEL HEDGE: -%d%% burn
+HL_RAID_PAID,RAID: pirates board your ship and take a %d CR ransom
+HL_RAID_TAKEN,RAID: pirates board your ship and seize %d %s
+HL_RAID_SPARED,RAID: pirates board your ship but find nothing left worth taking
+HL_CORRIDOR_DELAY,"STORM on the %s -> %s lane: arrival pushed back %d round(s)"
+HL_CORRIDOR_LOSS,HULL BREACH: %d units of cargo lost
+HL_CORRIDOR_HELD,HULL BREACH: the hold was sealed in time
+MAP_CARD_RISK,PIRACY %d%% · HAZARD %d%%
+MAP_CARD_BLACK_MARKET,BLACK MARKET: -%d%% piracy
+MAP_CARD_ALIGNED,ALIGNED: -%d%% hazard
+MAP_CARD_SMUGGLE,%s: NO BELT TOLL
+MAP_ROUTE_LANE,"Route to %s via %s: %s. A departs."
+LANE_DARK_RUN_NAME,Dark Run

@@ -257,7 +257,7 @@ func test_severance_idle_run_vs_active_trader() -> String:
 	return "ok"
 
 func test_dead_perks_roadmap_descriptions() -> String:
-	# D2 acceptance: keep corrupt_regulator, fuel_hedge, black_market_corridors in M0.
+	# D2 acceptance: keep corrupt_regulator, fuel_hedge, black_market_corridors in M0 (the last two are live now).
 	# Add a perk-status note to each one\'s description naming the follow-up roadmap system and issue number.
 	var t := _shipped()
 	var expected_issues := {
@@ -275,10 +275,10 @@ func test_dead_perks_roadmap_descriptions() -> String:
 		var issue_tag: String = expected_issues[id]
 		if not desc.contains(issue_tag):
 			return "perk %s description missing roadmap issue tag %s: %s" % [id, issue_tag, desc]
-		if id == "fuel_hedge":
-			# #138 landed: the effect is live, so the roadmap note is gone.
+		if id == "fuel_hedge" or id == "black_market_corridors":
+			# #138 and #139 landed: the effect is live, so the roadmap note is gone.
 			if "roadmap" in desc.to_lower() or "lands" in desc.to_lower():
-				return "fuel_hedge is live and must not carry a roadmap note: %s" % desc
+				return "%s is live and must not carry a roadmap note: %s" % [id, desc]
 			continue
 		if not ("roadmap" in desc.to_lower() or "lands" in desc.to_lower()):
 			return "perk %s description missing roadmap note: %s" % [id, desc]

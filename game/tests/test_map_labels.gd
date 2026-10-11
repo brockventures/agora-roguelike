@@ -90,6 +90,28 @@ func test_the_fuel_row_with_the_hedge_and_a_fuel_refusal_keeps_the_card_clear() 
 	return "ok" if found.is_empty() else "%d overlaps: %s" % [found.size(), "\n  ".join(PackedStringArray(found.slice(0, 12)))]
 
 
+func test_the_risk_card_with_the_perk_the_dark_run_and_a_window_keeps_the_card_clear() -> String:
+	# #139: the card gained the risk line, the Black Market line and (an open window) the Aligned line.
+	var found: Array = []
+	for sd in SEEDS:
+		for mode in [[1.0, "en"], [1.3, "en"]]:
+			var scene := _scene(sd, mode)
+			scene.controller.apply_modifiers({"piracy_odds_bps": {"add": 0, "mul_bps": 8000}})
+			scene.controller.cargo = {"MACHINERY": 60, "ORE": 30}
+			scene.hud.set_station("ceres")
+			scene.hud.cycle_station(1)
+			scene._refresh_readouts()
+			for r in [0, 5, 11, 23]:
+				var layout: Dictionary = scene.map_layout(r)
+				var tag: String = "seed %d x%s %s dark run round %d" % [sd, str(mode[0]), mode[1], r]
+				found.append_array(_problems(scene, layout, tag))
+				if layout["boxes"].has("card") and (layout["boxes"]["card"] as Rect2).intersects(Rect2(scene.map_label.position, scene.map_label.size)):
+					found.append("%s: the card covers the status text" % tag)
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if found.is_empty() else "%d overlaps: %s" % [found.size(), "\n  ".join(PackedStringArray(found.slice(0, 12)))]
+
+
 func test_no_two_map_labels_intersect_in_transit_across_rounds_both_seeds() -> String:
 	var found: Array = []
 	var tags: int = 0
