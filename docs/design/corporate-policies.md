@@ -4,7 +4,7 @@ Design proposal for #160 (Corporate policies: a run-only tech tree that resets e
 
 **Ryan's review, #lounge 2026-10-11 15:30:** policies reset at a Chapter 11 filing (section 7); the rest is approved as a starting point. Numbers will be tuned later, and the tree is expected to grow deeper, with more synergies between branches, after the first version plays.
 
-**Status: proposed, awaiting Ryan** (section 13). Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `5e4a9f8`) from what this doc invents (**Proposed**). Nothing here is game code. Every number marked "placeholder" is a tuning guess for Ryan.
+**Status: Decided, 2026-10-11** (section 14 records the decisions; implementation follows section 13). Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `5e4a9f8`) from what this doc invents (**Proposed**). Nothing here is game code. Every number marked "placeholder" is a tuning guess for Ryan.
 
 **Headline finding.** A policy is a perk that lives for one run. The perk machinery already does almost everything: `Parachutes.modifiers` folds effects into `{stat: {add, mul_bps}}` and `Parachutes.apply_stat` resolves them (`parachutes.gd:269,292`), and most of the ten stats it knows are already the levers Ryan listed (fuel burn, raid and hazard odds, takeover threshold, interest). So the design is **a second perk tree, `policies.json`, in the same shape, folded into the same modifiers dictionary**. Three things need care:
 
@@ -87,7 +87,7 @@ The hooks are all events the controller already sees: the round boundary (`_on_s
 | **First baron takeover** | 1 pick, once per run | Rewards the Epic 3 loop without letting a snowball earn unlimited picks; a baron the player loses and re-takes grants nothing. |
 | **Chapter 11 filing** | none | A filing already forfeits barons and writes off debt; paying a pick for it would reward failing on purpose. |
 
-That is **4 picks per run**, 3 certain and 1 earned. **Recommendation: milestones plus the first takeover (Question 1).** The alternatives, milestones only (simplest) or milestones plus every baron plus a consolation pick on each filing, are in section 13.
+That is **4 picks per run**, 3 certain and 1 earned. **Recommendation: milestones plus the first takeover (Question 1).** The alternatives, milestones only (simplest) or milestones plus every baron plus a consolation pick on each filing, are in section 14.
 
 A grant is a counter, not a draw: `earned += 1`. No randomness is introduced, so nothing about a grant depends on the run seed.
 
@@ -278,29 +278,33 @@ One Sonnet PR per row. Order: 1, then 2, then 3. Rows 4 and 5 can run in paralle
 
 Total about 1.8% of the weekly limit across six PRs (placeholder, sized from the shipped single-PR Sonnet builds).
 
-## 14. Questions for Ryan
+## 14. Decisions (Ryan, 2026-10-11)
 
-1. **What grants a pick?**
+Ryan, #lounge 2026-10-11: "After chapter 11 these should reset. You only keep your permanent perks, not these per run policies. Everything else sounds like a good start, it will need to be tuned later and probably fleshed out more to have deeper policy trees and synergies."
+
+Question 2 is decided as Ryan answered it (reset at Chapter 11, section 7). Every other question takes the recommendation. Every number in this doc is a placeholder that will be tuned later, and deeper policy trees and more synergies between branches are future work, not part of this first version.
+
+1. **What grants a pick?** Decided: (b) round milestones plus a pick for the first baron takeover, four picks per run. It rewards the barons loop without letting a snowball earn unlimited picks.
    - (a) Round milestones only: three picks, at rounds 20, 50 and 80.
-   - (b) Milestones plus a pick for the first baron takeover: four picks. **Recommended.** It rewards the barons loop without letting a snowball earn unlimited picks.
-   - (c) Milestones, a pick for every baron, and a consolation pick on each Chapter 11 filing: up to seven picks, more build, more snowball.
-2. **Do policies survive a Chapter 11 filing?** **Decided (Ryan, 2026-10-11): no, they reset; see section 7.**
-   - (a) Yes, all of them. **Recommended.** A filing is not a run end, and three nodes only pay off after one.
-   - (b) No, a filing resets the tree and refunds the picks.
+   - (b) Milestones plus a pick for the first baron takeover: four picks. **Chosen.**
+   - (c) Milestones, a pick for every baron, and a consolation pick on each Chapter 11 filing: up to seven picks.
+2. **Do policies survive a Chapter 11 filing?** Decided (Ryan): (b) no, a filing resets them; see section 7. As built in section 7, the filing is settled with the policies in force, then they are cleared and the picks are not refunded.
+   - (a) Yes, all of them.
+   - (b) No, a filing resets the tree. **Chosen.**
    - (c) Capstones are lost, roots are kept.
-3. **Tree shape: a fork or a chain?**
-   - (a) Each branch is a root plus a fork of two capstones that exclude each other. **Recommended.** Four picks, 12 nodes, 49 legal builds.
-   - (b) Each branch is a three-node chain, and the exclusivity is across branches (only two branches may be started).
-4. **Does the Compliance capstone "Exit Package Optimization" keep its Severance bonus?** Severance is the one thing a policy can add to the permanent profile.
-   - (a) Keep it at x1.25. **Recommended.** It is the price of skipping a safety net and Ryan listed Severance as a lever.
+3. **Tree shape: a fork or a chain?** Decided: (a) each branch is a root plus a fork of two capstones that exclude each other. Four picks, 12 nodes, 49 legal builds.
+   - (a) Root plus a fork of two exclusive capstones. **Chosen.**
+   - (b) Three-node chains, with exclusivity across branches.
+4. **Does "Exit Package Optimization" keep its Severance bonus?** Decided: (a) keep it at x1.25. It is the price of skipping a safety net and Ryan listed Severance as a lever.
+   - (a) Keep it at x1.25. **Chosen.**
    - (b) Keep it at a smaller x1.10.
-   - (c) Replace it with a run-only effect, so nothing a policy does reaches the permanent profile.
-5. **Can the player decline or defer a pick?**
-   - (a) No, every pick is taken when it is offered, as a crisis is acknowledged. **Recommended.** It is the simplest and it keeps the clock off for one decision only.
+   - (c) Replace it with a run-only effect.
+5. **Can the player decline or defer a pick?** Decided: (a) no, every pick is taken when it is offered, as a crisis is acknowledged.
+   - (a) No. **Chosen.**
    - (b) B defers the pick to the next dock, with a reminder chip.
-6. **How are the choices offered?**
-   - (a) The full list of nodes the player can take now. **Recommended.** Deterministic and replay-safe; variety comes from choosing among 12 nodes.
-   - (b) Three random eligible nodes per pick, Hades-style. More replay variety, but it adds a draw stream seeded by run seed and pick number, and the player may not see the one they planned for.
+6. **How are the choices offered?** Decided: (a) the full list of nodes the player can take now. Deterministic and replay-safe.
+   - (a) The full list of eligible nodes. **Chosen.**
+   - (b) Three random eligible nodes per pick, Hades-style.
 
 ## 15. Not in this doc
 
