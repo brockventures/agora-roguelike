@@ -12,6 +12,7 @@ extends RefCounted
 ## Binds to RunController (#10), SolTacticalMap (#21 PR 1), and TradingOverlay (#21 PR 1).
 
 signal station_changed(station_id: String)
+signal lane_changed(lane_id: String)
 signal commodity_changed(commodity_id: String)
 signal trading_overlay_toggled(is_open: bool)
 signal headline_emitted(headline: Dictionary)
@@ -60,6 +61,9 @@ var market: StationMarket = null:
 	set = set_market
 
 var active_station: String = "earth"
+## The smuggle lane picked to `active_station` ("" for the ordinary lane). Only the LT/RT
+## station list sets it (cycle_station): it adds one entry per smuggle lane leaving the dock.
+var active_lane: String = ""
 var active_commodity: String = "ORE"
 var galnet_headlines: Array = []
 var _crisis_deck: CrisisDeck = null
@@ -292,8 +296,10 @@ func set_station(p_station: String) -> bool:
 	if not Transit.STATIONS.has(s):
 		return false
 	if active_station == s:
+		active_lane = ""
 		return true
 	active_station = s
+	active_lane = ""
 	if tactical_map != null:
 		tactical_map.select_station(s)
 	if trading_overlay != null:
@@ -303,15 +309,41 @@ func set_station(p_station: String) -> bool:
 	station_changed.emit(active_station)
 	return true
 
+## The LT/RT list: every station, plus (#139) one extra entry straight after a station for
+## each smuggle lane that joins it to the dock. [[station, lane], ...], lane "" being ordinary.
+func station_entries() -> Array:
+	var out: Array = []
+	var docked: String = controller.docked_at if controller != null else ""
+	for st in Transit.STATIONS:
+		out.append([st, ""])
+		if docked != "" and docked != st:
+			for lane in Corridors.smuggle_lanes_between(docked, st):
+				out.append([st, lane])
+	return out
+
 func cycle_station(direction: int = 1) -> String:
-	var idx: int = Transit.STATIONS.find(active_station)
-	if idx == -1:
-		idx = 0
-	var count: int = Transit.STATIONS.size()
+	var entries: Array = station_entries()
+	var idx: int = 0
+	for i in entries.size():
+		if entries[i][0] == active_station and entries[i][1] == active_lane:
+			idx = i
+			break
+	var count: int = entries.size()
 	var new_idx: int = (idx + direction) % count
 	if new_idx < 0:
 		new_idx += count
-	set_station(Transit.STATIONS[new_idx])
+	var entry: Array = entries[new_idx]
+	if entry[0] == active_station:
+		# Same station, other lane: the book does not change, the route does.
+		active_lane = str(entry[1])
+		if tactile_audio != null:
+			tactile_audio.play_sfx(TactileAudio.TAB_SWOOSH)
+		lane_changed.emit(active_lane)
+		return active_station
+	set_station(str(entry[0]))
+	active_lane = str(entry[1])
+	if active_lane != "":
+		lane_changed.emit(active_lane)
 	return active_station
 
 func set_commodity(p_commodity: String) -> bool:

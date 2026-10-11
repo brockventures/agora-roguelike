@@ -102,7 +102,7 @@
           "value": 8000
         }
       ],
-      "description": "Multiplies piracy encounter odds by 0.8 (20% reduction). [M0 Roadmap: effect wired when hazard and piracy corridors system lands (#139)]"
+      "description": "Multiplies the raid odds on every lane by 0.8 (20% reduction), and makes the Dark Run smuggling lane (no belt toll, higher piracy) worth taking (#139)."
     },
     {
       "id": "corporate_shielding",

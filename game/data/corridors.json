@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "_placeholder": "Every number is a tuning guess, in bps (10000 = x1.0), CR or units. Read by core/corridors.gd (#139). A lane rating MULTIPLIES the base odds: piracy on top of Piracy.P_BELT / P_INNER (0.15 / 0.04) and the hold-value steps; hazard on top of the base delay and loss odds below. Lanes are listed once, the two station ids in sorted order, and apply both ways.",
+  "piracy": {
+    "min_hold_value": 500
+  },
+  "hazard": {
+    "delay_bps": 1500,
+    "loss_bps": 1000,
+    "aligned_bps": 5000
+  },
+  "lanes": {
+    "earth:luna":  {"piracy_bps": 6000,  "hazard_bps": 2000},
+    "earth:mars":  {"piracy_bps": 10000, "hazard_bps": 6000},
+    "luna:mars":   {"piracy_bps": 10000, "hazard_bps": 6000},
+    "ceres:mars":  {"piracy_bps": 10000, "hazard_bps": 10000},
+    "ceres:earth": {"piracy_bps": 12000, "hazard_bps": 15000},
+    "ceres:luna":  {"piracy_bps": 12000, "hazard_bps": 15000}
+  },
+  "smuggle_lanes": {
+    "dark_run": {"name": "Dark Run", "a": "mars", "b": "ceres", "piracy_bps": 15000, "hazard_bps": 12000, "toll_cr": 0}
+  }
+}

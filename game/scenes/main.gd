@@ -1111,7 +1111,7 @@ func _build_map_overlay() -> void:
 # --- Route preview card (Epic 6 #124): where the LT/RT selection would take the ship ---
 
 const ROUTE_CARD_MAX_W: float = 340.0
-const ROUTE_CARD_PAD: float = 12.0
+const ROUTE_CARD_PAD: float = 10.0
 const ROUTE_CARD_GAP: float = 8.0
 var _route_card: Dictionary = {}
 
@@ -1125,9 +1125,13 @@ func _build_route_card() -> void:
 	_route_card["title"] = kit.label(c, "RouteCardTitle", HudTheme.ROLE_LABEL, 12, HudTheme.RUST_DARK)
 	for k in ["from", "to", "eta", "fuel"]:
 		_route_card[k + "_cap"] = kit.label(c, "RouteCard_%s_cap" % k, HudTheme.ROLE_LABEL, 12, HudTheme.SLATE)
-		_route_card[k + "_val"] = kit.label(c, "RouteCard_%s_val" % k, HudTheme.ROLE_TITLE, 16 if k == "fuel" else 20, PAPER_TEXT_COLOR)
+		_route_card[k + "_val"] = kit.label(c, "RouteCard_%s_val" % k, HudTheme.ROLE_TITLE, 16 if k == "fuel" else 18, PAPER_TEXT_COLOR)
 	_route_card["belt"] = kit.tag(c, "RouteCardBelt")
 	_route_card["hedge"] = kit.label(c, "RouteCardHedge", HudTheme.ROLE_LABEL, 12, HudTheme.TEAL_DARK)
+	# #139: the lane's two risks as one line, then the black_market_corridors perk line and the open alignment window's hazard cut.
+	_route_card["risk"] = kit.label(c, "RouteCardRisk", HudTheme.ROLE_TITLE, 13, PAPER_TEXT_COLOR)
+	_route_card["market"] = kit.label(c, "RouteCardMarket", HudTheme.ROLE_LABEL, 12, HudTheme.TEAL_DARK)
+	_route_card["aligned"] = kit.label(c, "RouteCardAligned", HudTheme.ROLE_LABEL, 12, HudTheme.TEAL_DARK)
 
 
 ## The route the selection would take, when the card is up: {} otherwise. The card is up
@@ -1137,7 +1141,7 @@ func _route_card_plan() -> Dictionary:
 		return {}
 	if loop.tab != M0Loop.Tab.MAP or loop.overlay_state != M0Loop.OVERLAY_NONE or market_modal.visible:
 		return {}
-	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market)
+	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market, hud.active_lane)
 	if int(plan["rounds"]) <= 0:
 		return {}
 	return plan
@@ -1153,7 +1157,8 @@ func _refresh_route_card() -> void:
 	var dest: String = hud.active_station
 	var toll: int = int(plan["toll"])
 	var fuel_key: Array = [int(plan["fuel_units"]), int(plan["fuel_hold"]), int(plan["fuel_buy"]), int(plan["fuel_cr"]), int(plan["fuel_bps"]), str(plan["reason"])]
-	if not _changed("route_card", [origin, dest, int(plan["rounds"]), toll, fuel_key, Loc.current(), settings.text_scale]):
+	var risk: Dictionary = Corridors.quote(controller, origin, dest, str(plan.get("lane", "")))
+	if not _changed("route_card", [origin, dest, int(plan["rounds"]), toll, fuel_key, risk, Loc.current(), settings.text_scale]):
 		return
 	var pad: float = ROUTE_CARD_PAD
 	var inner_max: float = ROUTE_CARD_MAX_W - 2.0 * pad
@@ -1168,6 +1173,10 @@ func _refresh_route_card() -> void:
 	for k in ["fuel"]:
 		(_route_card[k + "_cap"] as Label).visible = has_fuel
 		(_route_card[k + "_val"] as Label).visible = has_fuel
+	# Piracy and hazard risk after perks, as percents (#139). A raid chance of 0 is real: an
+	# empty hold is not worth raiding.
+	var risk_line: Label = _route_card["risk"]
+	var risk_w: float = kit.fit_text(risk_line, tr("MAP_CARD_RISK") % [_risk_pct(int(risk["piracy_bps"])), _risk_pct(int(risk["hazard_bps"]))], inner_max)
 	var short_fuel: bool = str(plan["reason"]) == "INSUFFICIENT_FUEL"
 	(_route_card["fuel_val"] as Label).add_theme_color_override("font_color", HudTheme.RUST_DARK if short_fuel else PAPER_TEXT_COLOR)
 	var cap_w: float = 0.0
@@ -1187,9 +1196,15 @@ func _refresh_route_card() -> void:
 			h = HudKit.wrapped_height(vl, vals[k], val_max)
 		row_h[k] = maxf(h, HudKit.line_height(_route_card[k + "_cap"]))
 	var belt: HudKit.Plate = _route_card["belt"]
-	belt.visible = toll > 0
+	var smuggle: bool = bool(risk["smuggle"])
+	belt.visible = toll > 0 or smuggle
 	var belt_w: float = 0.0
-	if toll > 0:
+	if smuggle:
+		var lane_def: Dictionary = Corridors.smuggle_lane(origin, dest, str(plan.get("lane", "")))
+		var lane_name: String = Loc.data_text("LANE_%s_NAME" % str(plan["lane"]).to_upper(), str(lane_def.get("name", ""))).to_upper()
+		kit.set_tag(belt, tr("MAP_CARD_SMUGGLE") % lane_name, HudTheme.TEAL_DARK, HudTheme.BONE, inner_max)
+		belt_w = belt.size.x
+	elif toll > 0:
 		kit.set_tag(belt, tr("MAP_CARD_BELT") % toll, HudTheme.RUST, HudTheme.BONE, inner_max)
 		belt_w = belt.size.x
 	# The fuel_hedge perk, when owned: one small line under the fuel row.
@@ -1199,11 +1214,25 @@ func _refresh_route_card() -> void:
 	var hedge_w: float = 0.0
 	if hedge_on:
 		hedge_w = kit.fit_text(hedge, tr("MAP_CARD_FUEL_HEDGED") % (int(plan["fuel_bps"]) / 100), inner_max)
-	var inner_w: float = maxf(maxf(maxf(title_w, belt_w), hedge_w), cap_w + ROUTE_CARD_GAP + val_w)
+	# The black_market_corridors perk, when owned: its cut of the piracy odds, one line.
+	var market_line: Label = _route_card["market"]
+	var market_on: bool = bool(risk["perk"])
+	market_line.visible = market_on
+	var market_w: float = 0.0
+	if market_on:
+		market_w = kit.fit_text(market_line, tr("MAP_CARD_BLACK_MARKET") % ((Corridors.BPS - int(risk["perk_bps"])) / 100), inner_max)
+	# An open alignment window halves the lane's hazard odds (data: hazard.aligned_bps).
+	var aligned_line: Label = _route_card["aligned"]
+	var aligned_on: bool = bool(risk["aligned"])
+	aligned_line.visible = aligned_on
+	var aligned_w: float = 0.0
+	if aligned_on:
+		aligned_w = kit.fit_text(aligned_line, tr("MAP_CARD_ALIGNED") % ((Corridors.BPS - int((Corridors.data().get("hazard", {}) as Dictionary).get("aligned_bps", Corridors.BPS))) / 100), inner_max)
+	var inner_w: float = maxf(maxf(maxf(maxf(maxf(maxf(title_w, belt_w), hedge_w), market_w), aligned_w), risk_w), cap_w + ROUTE_CARD_GAP + val_w)
 	var y: float = pad
 	title.position = Vector2(pad, y)
 	title.size = Vector2(inner_w, HudKit.line_height(title))
-	y += title.size.y + 6.0
+	y += title.size.y + 4.0
 	for k in (["from", "to", "eta", "fuel"] if has_fuel else ["from", "to", "eta"]):
 		var cl: Label = _route_card[k + "_cap"]
 		var vl: Label = _route_card[k + "_val"]
@@ -1211,18 +1240,34 @@ func _refresh_route_card() -> void:
 		cl.size = Vector2(cap_w, row_h[k])
 		vl.position = Vector2(pad + cap_w + ROUTE_CARD_GAP, y)
 		vl.size = Vector2(inner_w - cap_w - ROUTE_CARD_GAP, row_h[k])
-		y += float(row_h[k]) + 2.0
+		y += float(row_h[k]) + 1.0
+	risk_line.position = Vector2(pad, y)
+	risk_line.size = Vector2(inner_w, HudKit.line_height(risk_line))
+	y += risk_line.size.y + 2.0
 	if hedge_on:
 		hedge.position = Vector2(pad, y)
 		hedge.size = Vector2(inner_w, HudKit.line_height(hedge))
 		y += hedge.size.y
-	if toll > 0:
-		y += 4.0
+	if market_on:
+		market_line.position = Vector2(pad, y)
+		market_line.size = Vector2(inner_w, HudKit.line_height(market_line))
+		y += market_line.size.y
+	if aligned_on:
+		aligned_line.position = Vector2(pad, y)
+		aligned_line.size = Vector2(inner_w, HudKit.line_height(aligned_line))
+		y += aligned_line.size.y
+	if belt.visible:
+		y += 2.0
 		belt.position = Vector2(pad, y)
 		y += belt.size.y
 	c.size = Vector2(inner_w + 2.0 * pad, y + pad)
 	c.queue_redraw()
 	tactical_map_panel.queue_redraw()
+
+
+## A risk in bps as a whole percent; a chance that exists never reads below 1%.
+static func _risk_pct(bps: int) -> int:
+	return 0 if bps <= 0 else maxi(1, (bps + 50) / 100)
 
 
 ## Where the card may sit, best first: bottom right (clear of the toasts), bottom left,
@@ -1237,6 +1282,13 @@ func _route_card_spots(discs: Dictionary) -> Array:
 	var below_status: float = map_label.position.y + map_label.size.y + 6.0
 	var corners: Array = [Vector2(panel.x - c.size.x - 16.0, limit.end.y - c.size.y - 8.0), Vector2(16.0, limit.end.y - c.size.y - 8.0),
 		Vector2(panel.x - c.size.x - 16.0, 12.0), Vector2(16.0, below_status)]
+	# Then, #139, along the foot of the map every 48 px: a taller card (the risk line) may find no
+	# corner clear of the orbiting discs, and a gap between them still takes it.
+	var x_end: float = panel.x - c.size.x - 16.0
+	var sx: float = 16.0 + 48.0
+	while sx < x_end - 48.0:
+		corners.append(Vector2(sx, limit.end.y - c.size.y - 8.0))
+		sx += 48.0
 	var status: Rect2 = Rect2(map_label.position, map_label.size)
 	var out: Array = []
 	var off_status: Array = []
@@ -1287,12 +1339,15 @@ func _map_text() -> String:
 		out.append(tr("MAP_TRANSIT_ETA") % _rounds_text(int(info["eta_rounds"])))
 		return "\n".join(out)
 	out.append(tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at))
-	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market)
+	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market, hud.active_lane)
 	var dest_name: String = Loc.station(hud.active_station)
 	if str(plan["reason"]) == "SAME_STATION":
 		out.append(tr("MAP_PICK"))
 	elif int(plan["rounds"]) > 0:
-		if int(plan["toll"]) > 0:
+		if hud.active_lane != "":
+			var lane_name: String = Loc.data_text("LANE_%s_NAME" % hud.active_lane.to_upper(), str(Corridors.smuggle_lane(controller.docked_at, hud.active_station, hud.active_lane).get("name", "")))
+			out.append(tr("MAP_ROUTE_LANE") % [dest_name, lane_name, _rounds_text(int(plan["rounds"]))])
+		elif int(plan["toll"]) > 0:
 			out.append(tr("MAP_ROUTE_TOLL") % [dest_name, _rounds_text(int(plan["rounds"])), int(plan["toll"])])
 		else:
 			out.append(tr("MAP_ROUTE") % [dest_name, _rounds_text(int(plan["rounds"]))])
@@ -3356,7 +3411,7 @@ func _draw_map() -> void:
 	var plan: Dictionary = _route_card_plan()
 	if not plan.is_empty() and discs.has(hud.active_station) and discs.has(controller.docked_at):
 		var belt_lane: bool = int(plan["toll"]) > 0
-		tactical_map_panel.draw_dashed_line(Vector2(discs[controller.docked_at]), Vector2(discs[hud.active_station]), HudTheme.RUST if belt_lane else HudTheme.INK, 3.0, 10.0, true)
+		tactical_map_panel.draw_dashed_line(Vector2(discs[controller.docked_at]), Vector2(discs[hud.active_station]), HudTheme.TEAL_DARK if hud.active_lane != "" else (HudTheme.RUST if belt_lane else HudTheme.INK), 3.0, 10.0, true)
 	var font: Font = HudTheme.role_font(HudTheme.ROLE_LABEL)
 	var fs: int = scaled_size(MAP_FONT_SIZE)
 	var docked: String = controller.docked_at if controller != null else ""

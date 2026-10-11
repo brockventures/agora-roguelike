@@ -91,10 +91,13 @@ func is_in_transit() -> bool:
 ## sweeping the book (fuel_cr, plus the audit fee fuel_fee). The departure is refused,
 ## never put into debt, when CR cannot cover toll + fuel_cr + fuel_fee or the book is
 ## too thin. With no `mkt` (a bare controller) no fuel is charged and the fuel_* are 0.
-func can_depart(destination: String, mkt: StationMarket = null) -> Dictionary:
+## `lane` (#139) names a smuggle lane (Corridors) to take instead of the ordinary lane: it
+## must join the docked station and `destination` or the reason is NO_ROUTE; it skips the
+## belt toll and rides the same route's rounds and fuel.
+func can_depart(destination: String, mkt: StationMarket = null, lane: String = "") -> Dictionary:
 	var dest: String = destination.to_lower().strip_edges()
 	var out: Dictionary = {
-		"ok": false, "reason": "", "rounds": 0, "ticks": 0, "toll": 0,
+		"ok": false, "reason": "", "rounds": 0, "ticks": 0, "toll": 0, "lane": lane,
 		"fuel_units": 0, "fuel_hold": 0, "fuel_buy": 0, "fuel_cr": 0, "fuel_fee": 0,
 		"fuel_bps": fuel_discount_bps(),
 	}
@@ -106,11 +109,15 @@ func can_depart(destination: String, mkt: StationMarket = null) -> Dictionary:
 		out["reason"] = "SAME_STATION"
 	elif not (dest in Transit.STATIONS) or Transit.get_route(docked_at, dest, get_current_round()) == null:
 		out["reason"] = "NO_ROUTE"
+	elif lane != "" and Corridors.smuggle_lane(docked_at, dest, lane).is_empty():
+		out["reason"] = "NO_ROUTE"
 	else:
 		var rounds: int = Transit.calculate_trip_rounds(docked_at, dest, get_current_round(), 0)
 		out["rounds"] = rounds
 		out["ticks"] = Transit.calculate_transit_ticks(rounds, ticks_per_round)
 		out["toll"] = Transit.calculate_toll(docked_at, dest)
+		if lane != "":
+			out["toll"] = int(Corridors.smuggle_lane(docked_at, dest, lane).get("toll_cr", 0))
 		if cr < int(out["toll"]):
 			out["reason"] = "INSUFFICIENT_CR"
 		else:
@@ -142,8 +149,8 @@ func can_depart(destination: String, mkt: StationMarket = null) -> Dictionary:
 ## (plus origin / destination when it worked); on failure nothing changes. With `mkt`
 ## the fuel is paid first from the hold, then by an immediate-or-cancel buy on the
 ## station's FUEL book, so the purchase dents the book like any other fill.
-func depart(destination: String, mkt: StationMarket = null) -> Dictionary:
-	var check: Dictionary = can_depart(destination, mkt)
+func depart(destination: String, mkt: StationMarket = null, lane: String = "") -> Dictionary:
+	var check: Dictionary = can_depart(destination, mkt, lane)
 	if not bool(check["ok"]):
 		return check
 	var dest: String = destination.to_lower().strip_edges()
@@ -172,6 +179,8 @@ func depart(destination: String, mkt: StationMarket = null) -> Dictionary:
 		"fuel_bought": int(check["fuel_buy"]),
 		"fuel_cr": int(check["fuel_cr"]) + int(check["fuel_fee"]),
 	}
+	if lane != "":
+		transit["lane"] = lane  # saved only for a smuggle lane, so an ordinary voyage saves as before
 	docked_at = ""
 	if world != null:
 		world.cancel_auctions()  # queued call-auction orders do not follow the ship
@@ -227,15 +236,23 @@ static func _sanitise_transit(raw, p_ticks_per_round: int) -> Dictionary:
 		return {}
 	var t0: int = int(raw["depart_tick"])
 	var t1: int = int(raw["arrive_tick"])
-	var max_span: int = 3 * p_ticks_per_round  # the longest route is 3 rounds
+	var max_span: int = (3 + Hazards.DELAY_ROUNDS[1]) * p_ticks_per_round  # the longest route, plus the worst storm delay (#139)
 	if t0 < 0 or t1 <= t0 or t1 - t0 > max_span:
 		return {}
-	return {
+	var out: Dictionary = {
 		"origin": o, "destination": d, "depart_tick": t0, "arrive_tick": t1,
 		"rounds": maxi(1, int(raw.get("rounds", 1))), "toll": maxi(0, int(raw.get("toll", 0))),
 		"fuel_burned": maxi(0, int(raw.get("fuel_burned", 0))), "fuel_hold": maxi(0, int(raw.get("fuel_hold", 0))),
 		"fuel_bought": maxi(0, int(raw.get("fuel_bought", 0))), "fuel_cr": maxi(0, int(raw.get("fuel_cr", 0))),
 	}
+	# Non-default keys only (#139): a smuggle lane the route really has, a storm delay of 1..3 rounds.
+	var lane: String = str(raw.get("lane", ""))
+	if lane != "" and not Corridors.smuggle_lane(o, d, lane).is_empty():
+		out["lane"] = lane
+	var delay: int = clampi(int(raw.get("delay_rounds", 0)), 0, Hazards.DELAY_ROUNDS[1])
+	if delay > 0:
+		out["delay_rounds"] = delay
+	return out
 
 func get_total_cargo() -> int:
 	var total: int = 0

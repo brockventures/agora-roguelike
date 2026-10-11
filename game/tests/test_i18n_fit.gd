@@ -472,6 +472,21 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 		add.call("card[%s]" % k, scene._route_card[k])
 	rc.apply_modifiers(saved_mods)
 	scene._refresh_readouts()
+	# #139: the risk line, the black_market_corridors perk line, and the Dark Run entry; then an open alignment window.
+	rc.cargo = {"MACHINERY": 60, "ORE": 30}
+	rc.apply_modifiers({"piracy_odds_bps": {"add": 0, "mul_bps": 8000}})
+	scene.hud.set_station("ceres")
+	scene.hud.cycle_station(1)
+	rc.sim_clock.total_ticks = 5 * rc.ticks_per_round  # mars:ceres opens at round 5
+	scene._refresh_readouts()
+	for k in ["risk", "market", "aligned"]:
+		add.call("card[%s]" % k, scene._route_card[k])
+	add.call("map[dark run]", scene.map_label)
+	rc.sim_clock.total_ticks = 0
+	rc.cargo = {}
+	rc.apply_modifiers(saved_mods)
+	scene.hud.set_station("ceres")
+	scene._refresh_readouts()
 	loop.last_depart_check = {"fuel_units": 30, "fuel_buy": 30, "fuel_cr": 9999, "fuel_fee": 99, "toll": 25}
 	for reason in ["INSUFFICIENT_CR", "INSUFFICIENT_FUEL", "SAME_STATION", "IN_TRANSIT", "NO_ROUTE", "OTHER"]:
 		loop.last_depart_reason = reason

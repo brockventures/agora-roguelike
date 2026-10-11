@@ -96,7 +96,7 @@ func test_every_csv_key_is_reachable() -> String:
 	var corpus: String = ""
 	for path in script_paths():
 		corpus += FileAccess.get_file_as_string(path)
-	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_"]
+	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_"]
 	var dead: Array = []
 	for k in rows:
 		var fam := false
@@ -141,6 +141,10 @@ func test_data_files_have_derived_keys_and_english_matches() -> String:
 		want.call("MAKER_" + Loc.slug(str(bd["id"])), str(bd["name"]).to_upper())
 		if not rows.has("MAKERTAG_" + Loc.slug(str(bd["id"]))):
 			problems.append("missing MAKERTAG_" + Loc.slug(str(bd["id"])))
+	# #139: every smuggle lane has a display name row.
+	var sl: Dictionary = Corridors.data().get("smuggle_lanes", {})
+	for lid in sl:
+		want.call("LANE_%s_NAME" % str(lid).to_upper(), str(sl[lid]["name"]))
 	for i in M0Loop.TAB_NAMES.size():
 		want.call("TAB_" + Loc.slug(M0Loop.TAB_NAMES[i]), M0Loop.TAB_NAMES[i])
 	for s in ["NORMAL", "UNSTABLE", "CRITICAL", "IMMINENT", "COLLAPSED"]:

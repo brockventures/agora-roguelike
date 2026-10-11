@@ -1012,7 +1012,9 @@ func test_a_haul_under_1500_cr_is_never_raided() -> String:
 	return "ok"
 
 
-func test_no_bounty_means_no_raid() -> String:
+func test_no_bounty_means_no_sponsored_raid() -> String:
+	# #139: a departure with a hold now rolls the lane's own base raid (kind corridor_raid, no sponsor);
+	# only a privateer contract makes a sponsored `rival_raid`.
 	for sd in range(1, 40):
 		var c := _ctx(sd, 50000, {"bounty_chance_bps": 0, "react_chance_bps": 0, "decide_chance_bps": 0})
 		(c["m"] as StationMarket).unlock_station("ceres")
