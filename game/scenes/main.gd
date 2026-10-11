@@ -2297,9 +2297,14 @@ func _refresh_card() -> void:
 		var art_h: float = 120.0 if settings.text_scale < 1.1 else (100.0 if settings.text_scale < 1.2 else 84.0)
 		art.position = Vector2(x0, y1)
 		art.size = Vector2(art_h * 4.0 / 3.0, art_h)
+		var cid: String = str(crisis.get("id", ""))
+		var tex: Texture2D = CardArt.texture(cid)
+		art.texture = tex
+		art.hatch = (tex == null)
 		art.queue_redraw()
 		var al: Label = _card["art_l"]
 		al.text = tr("HUD_CARD_ART")
+		al.visible = (tex == null)
 		al.position = Vector2.ZERO
 		al.size = art.size
 		var nx: float = x0 + art.size.x + 12.0

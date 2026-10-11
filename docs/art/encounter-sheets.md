@@ -88,14 +88,17 @@ Keyed to concrete hazard mechanics in `game/core/hazards.gd`:
 
 ### CME Relay Blackout (`card-cme-flare` - Sample Gate)
 - **Source:** `Hazards.check_cme_relay_interference` / `CME_RELAY_CORRIDORS`
+- **Status:** Approved Sample Gate
 - **Visual Anatomy:** A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler; radio relay dishes sparking electrical discharges; shock-front bands rippling through dark teal space.
 
-### Transit Storm Delay (`card-storm-delay`)
+### Transit Storm Delay (`card-storm-delay`) — [Proposed]
 - **Source:** `Hazards.P_DELAY` (`DELAY_ROUNDS: 1-3 rounds`)
+- **Status:** Proposed (future transit alert modal integration; not rendered on current baron crisis plate)
 - **Visual Anatomy:** A cargo vessel caught in a high-radiation solar storm: ion turbulence battering the hull; glowing static discharges along the radiator panels; a blown thruster coil glowing hot while crew race to repair propulsion.
 
-### Hull Breach & Cargo Loss (`card-hull-breach`)
+### Hull Breach & Cargo Loss (`card-hull-breach`) — [Proposed]
 - **Source:** `Hazards.P_LOSS` (`LOSS_FRACTION: 10-20% cargo`)
+- **Status:** Proposed (future hazard resolution screen; not rendered on current baron crisis plate)
 - **Visual Anatomy:** Micro-meteoroid puncture or containment breach: jagged tear along the container rack; frozen atmosphere venting into the void; container canisters spilling loose into zero-g.
 
 ---
@@ -104,10 +107,12 @@ Keyed to concrete hazard mechanics in `game/core/hazards.gd`:
 
 Keyed to rated corridors and smuggling lanes in `game/data/corridors.json`:
 
-### Asteroid Belt Corridor Raid (`card-pirate-raid`)
+### Asteroid Belt Corridor Raid (`card-pirate-raid`) — [Proposed]
 - **Source:** `Corridors.data().piracy` / `is_belt` raid odds
+- **Status:** Proposed (future intercept screen; not rendered on current baron crisis plate)
 - **Visual Anatomy:** A pirate raider ambush in the asteroid belt: a ragged raider swooping out of a rock shadow toward a lone hauler; grappling lines flying; dust and debris; rust-red running lights.
 
-### Dark Run Smuggle Lane (`card-dark-run`)
+### Dark Run Smuggle Lane (`card-dark-run`) — [Proposed]
 - **Source:** `Corridors.data().smuggle_lanes.dark_run` / `black_market_corridors` perk
+- **Status:** Proposed (future lane selection vignette; not rendered on current baron crisis plate)
 - **Visual Anatomy:** Running silent on the unmonitored Mars-Ceres Dark Run: a blacked-out hauler slipping through a craggy asteroid trench with running lights extinguished; illicit fluid canisters strapped to the keel; scanning sensors sweeping harmlessly overhead.
