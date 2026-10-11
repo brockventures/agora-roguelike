@@ -1,0 +1,17 @@
+/* line, shadow, space. Source: HudTheme OUTLINE_*, SHADOW_OFFSET */
+:root {
+  --ag-line-panel: 4px;
+  --ag-line-control: 3px;
+  --ag-line-rule: 2px;
+  --ag-shadow-offset: 4px;
+  --ag-shadow: 4px 4px 0 var(--ag-ink);
+  --ag-shadow-lift: 6px 6px 0 var(--ag-void);
+  --ag-shadow-modal: 8px 8px 0 var(--ag-void);
+  --ag-focus-ring: 0 0 0 3px var(--ag-ochre), 6px 6px 0 3px var(--ag-void);
+  --ag-cut-angle: 135deg; /* shadow cut always lower-right */
+  --ag-space-1: 4px; --ag-space-2: 8px; --ag-space-3: 12px; --ag-space-4: 16px;
+  --ag-space-5: 24px; --ag-space-6: 32px; --ag-space-7: 48px;
+  --ag-gutter: 8px;
+  --ag-radius: 0; /* frames are square; only nodes and pad glyphs are round */
+  --ag-viewport-w: 1280px; --ag-viewport-h: 800px;
+}

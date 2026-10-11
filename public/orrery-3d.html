@@ -5,54 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#08090e">
 <title>AGORA // Sol System 3D Orbital Orrery &middot; Astrodynamics Radar</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/css/agora.css">
 <style>
-  :root {
-    --bg-deep: #08090e;
-    --bg-surface: #0e111a;
-    --bg-card: #131724;
-    --bg-card-hover: #171d2e;
-    --line: #1c2233;
-    --line-subtle: #171c2b;
-    --line-highlight: #28334a;
-
-    --emerald: #10b981;
-    --emerald-bg: rgba(16, 185, 129, 0.08);
-    --emerald-border: rgba(16, 185, 129, 0.25);
-
-    --rose: #f43f5e;
-    --rose-bg: rgba(244, 63, 94, 0.08);
-    --rose-border: rgba(244, 63, 94, 0.25);
-
-    --amber: #f59e0b;
-    --amber-bg: rgba(245, 158, 11, 0.08);
-    --amber-border: rgba(245, 158, 11, 0.25);
-
-    --indigo: #6366f1;
-    --indigo-bg: rgba(99, 102, 241, 0.08);
-    --indigo-border: rgba(99, 102, 241, 0.25);
-
-    --cyan: #06b6d4;
-    --cyan-bg: rgba(6, 182, 212, 0.08);
-    --cyan-border: rgba(6, 182, 212, 0.25);
-
-    --purple: #a855f7;
-    --purple-bg: rgba(168, 85, 247, 0.08);
-    --purple-border: rgba(168, 85, 247, 0.25);
-
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --text-dim: #64748b;
-
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
-    --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", Menlo, Consolas, monospace;
-
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 12px;
-  }
-
-  * {
+    * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -89,7 +45,7 @@
     background: rgba(14, 17, 26, 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -109,7 +65,7 @@
     gap: 6px;
     padding: 5px 10px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 11px;
@@ -128,7 +84,7 @@
   .view-switch {
     display: flex;
     background: var(--bg-deep);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     padding: 2px;
     gap: 2px;
@@ -147,7 +103,7 @@
 
   .view-btn.active {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   .view-btn:hover:not(.active) {
@@ -158,7 +114,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
     padding-left: 12px;
   }
 
@@ -177,7 +133,7 @@
     padding: 2px 6px;
     border-radius: 3px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-muted);
   }
 
@@ -194,7 +150,7 @@
     gap: 4px;
     background: var(--bg-deep);
     padding: 3px 6px;
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
   }
 
@@ -228,11 +184,20 @@
 
   .focal-pill.active {
     background: var(--indigo-bg);
-    color: #818cf8;
+    color: #9a6f1c;
     border-color: var(--indigo-border);
   }
 
   /* --- Header Right Controls --- */
+
+  /* Keep the focus pills reachable when the header is crowded (#125 polish). */
+  .header-left, .header-center { min-width: 0; flex-shrink: 1; }
+  .header-center { overflow-x: auto; scrollbar-width: none; }
+  .header-center::-webkit-scrollbar { display: none; }
+  .header-right { flex-shrink: 0; }
+  .orrery-header { gap: 12px; }
+  @media (max-width: 1440px) { .header-title-group .header-badge { display: none; } }
+
   .header-right {
     display: flex;
     align-items: center;
@@ -246,7 +211,7 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 14px;
@@ -262,14 +227,14 @@
 
   .icon-btn.active {
     background: var(--indigo-bg);
-    color: #818cf8;
+    color: #9a6f1c;
     border-color: var(--indigo-border);
   }
 
   .dock-btn {
     padding: 5px 10px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-family: var(--font-mono);
@@ -288,12 +253,12 @@
   .dock-btn.primary {
     background: var(--indigo-bg);
     border-color: var(--indigo-border);
-    color: #818cf8;
+    color: #9a6f1c;
   }
 
   .dock-btn.primary:hover {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   /* --- Bottom Floating Simulation Dock --- */
@@ -305,7 +270,7 @@
     background: rgba(14, 17, 26, 0.88);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 6px 14px;
     display: flex;
@@ -356,7 +321,7 @@
     background: rgba(14, 17, 26, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
@@ -374,7 +339,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     background: var(--bg-surface);
   }
 
@@ -404,13 +369,13 @@
 
   .badge-station {
     background: var(--purple-bg);
-    color: #c084fc;
+    color: #7a2e14;
     border: 1px solid var(--purple-border);
   }
 
   .badge-fleet {
     background: var(--cyan-bg);
-    color: #22d3ee;
+    color: #1f4f4b;
     border: 1px solid var(--cyan-border);
   }
 
@@ -421,7 +386,7 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 16px;
@@ -460,7 +425,7 @@
 
   .data-card {
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
     padding: 12px;
     display: flex;
@@ -485,11 +450,11 @@
     color: var(--text);
   }
 
-  .data-val.cyan { color: #38bdf8; }
-  .data-val.amber { color: #fbbf24; }
-  .data-val.emerald { color: #34d399; }
-  .data-val.purple { color: #c084fc; }
-  .data-val.rose { color: #fb7185; }
+  .data-val.cyan { color: #2f6f6a; }
+  .data-val.amber { color: #9a6f1c; }
+  .data-val.emerald { color: #2f6f6a; }
+  .data-val.purple { color: #7a2e14; }
+  .data-val.rose { color: #a8431f; }
 
   /* Cargo Manifest Table */
   .manifest-table {
@@ -503,7 +468,7 @@
     text-align: left;
     padding: 6px 8px;
     color: var(--text-dim);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
@@ -517,7 +482,7 @@
 
   .manifest-table td {
     padding: 7px 8px;
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 2px solid var(--line-subtle);
     color: var(--text);
   }
 
@@ -532,12 +497,12 @@
     border-radius: 3px;
     overflow: hidden;
     position: relative;
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
   }
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    background: linear-gradient(90deg, #2f6f6a, #9a6f1c);
     border-radius: 3px;
     transition: width 0.3s ease;
   }
@@ -551,7 +516,7 @@
     background: var(--indigo-bg);
     border: 1px solid var(--indigo-border);
     border-radius: var(--radius-sm);
-    color: #818cf8;
+    color: #9a6f1c;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -563,7 +528,7 @@
 
   .action-link-btn:hover {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   #floating-tooltip {
@@ -571,7 +536,7 @@
     pointer-events: none;
     background: rgba(14, 17, 26, 0.95);
     backdrop-filter: blur(12px);
-    border: 1px solid var(--line-highlight);
+    border: 2px solid var(--line-highlight);
     border-radius: var(--radius-sm);
     padding: 6px 10px;
     font-size: 11px;
@@ -615,7 +580,7 @@
 }
 </script>
 </head>
-<body>
+<body class="page-orrery-3d">
 
 <div id="webgl-container"></div>
 
@@ -639,7 +604,7 @@
       <span class="header-badge">THREE.JS 3D</span>
       <span class="header-badge pulse">LIVE // 28ms</span>
       <span class="header-badge" id="stat-round">ROUND 42</span>
-      <span class="header-badge" id="stat-cam-mode" style="color: #818cf8;">FREE ORBIT</span>
+      <span class="header-badge" id="stat-cam-mode" style="color: var(--ag-ochre);">FREE ORBIT</span>
       <span class="header-badge" id="stat-windows" style="color: var(--cyan);">1 OPEN</span>
       <span class="header-badge" id="stat-fps">60 FPS</span>
     </div>
@@ -800,8 +765,8 @@ const CELESTIAL_DATA = {
   sun: {
     name: "SOL (STAR)",
     type: "STAR",
-    color: 0xffea75,
-    emissive: 0xffaa00,
+    color: 0xc99a2e,
+    emissive: 0x9a6f1c,
     radius: 7.0,
     au: 0,
     period: 0
@@ -809,8 +774,8 @@ const CELESTIAL_DATA = {
   earth: {
     name: "EARTH // LEO DEPOT",
     type: "STATION",
-    color: 0x38bdf8,
-    emissive: 0x0369a1,
+    color: 0x2f6f6a,
+    emissive: 0x1f4f4b,
     radius: 3.2,
     au: 1.00,
     period: 365.25,
@@ -819,8 +784,8 @@ const CELESTIAL_DATA = {
   luna: {
     name: "LUNA // SHACKLETON",
     type: "STATION",
-    color: 0xe2e8f0,
-    emissive: 0x64748b,
+    color: 0xe6dcc3,
+    emissive: 0xb8ad94,
     radius: 1.6,
     parent: "earth",
     orbitalDist: 9.0,
@@ -830,8 +795,8 @@ const CELESTIAL_DATA = {
   mars: {
     name: "MARS // ARCADIA DEPOT",
     type: "STATION",
-    color: 0xf87171,
-    emissive: 0x991b1b,
+    color: 0xa8431f,
+    emissive: 0x7a2e14,
     radius: 2.8,
     au: 1.524,
     period: 686.98,
@@ -840,8 +805,8 @@ const CELESTIAL_DATA = {
   ceres: {
     name: "CERES // PIAZZI DEPOT",
     type: "STATION",
-    color: 0xc084fc,
-    emissive: 0x6b21a8,
+    color: 0xc99a2e,
+    emissive: 0x9a6f1c,
     radius: 2.5,
     au: 2.767,
     period: 1681.6,
@@ -904,7 +869,7 @@ let circuitBreakerHalts = [];
 // Three.js Scene Setup
 const container = document.getElementById("webgl-container");
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x08090e, 0.0008);
+scene.fog = new THREE.FogExp2(0x1c1a17, 0.0008);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(0, 180, 240);
@@ -912,7 +877,7 @@ camera.position.set(0, 180, 240);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x08090e, 1);
+renderer.setClearColor(0x1c1a17, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 container.appendChild(renderer.domElement);
@@ -925,10 +890,10 @@ controls.minDistance = 8;
 controls.target.set(0, 0, 0);
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0x1c2233, 1.8);
+const ambientLight = new THREE.AmbientLight(0x2c353b, 1.8);
 scene.add(ambientLight);
 
-const sunLight = new THREE.PointLight(0xfffaed, 3.5, 3000, 0);
+const sunLight = new THREE.PointLight(0xe6dcc3, 3.5, 3000, 0);
 sunLight.position.set(0, 0, 0);
 scene.add(sunLight);
 
@@ -968,7 +933,7 @@ function createStarfield() {
 createStarfield();
 
 // Coordinate System Grid Plane (Ecliptic Plane)
-const gridHelper = new THREE.GridHelper(600, 40, 0x1e293b, 0x0e111a);
+const gridHelper = new THREE.GridHelper(600, 40, 0x2c353b, 0x2c353b);
 gridHelper.position.y = -0.5;
 scene.add(gridHelper);
 
@@ -985,8 +950,8 @@ function initCelestialBodies() {
 
   // 1. Sol (Center)
   const sunMat = new THREE.MeshStandardMaterial({
-    color: 0xffea75,
-    emissive: 0xffaa00,
+    color: 0xc99a2e,
+    emissive: 0x9a6f1c,
     emissiveIntensity: 1.8,
     roughness: 0.2
   });
@@ -997,7 +962,7 @@ function initCelestialBodies() {
 
   const haloGeo = new THREE.SphereGeometry(CELESTIAL_DATA.sun.radius * 1.35, 16, 16);
   const haloMat = new THREE.MeshBasicMaterial({
-    color: 0xffaa00,
+    color: 0x9a6f1c,
     transparent: true,
     opacity: 0.2,
     wireframe: true
@@ -1032,7 +997,7 @@ function initCelestialBodies() {
       }
       const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
       const orbitMat = new THREE.LineBasicMaterial({
-        color: 0x475569,
+        color: 0xb8ad94,
         transparent: true,
         opacity: 0.25
       });
@@ -1066,7 +1031,7 @@ const asteroidData = [];
 function initAsteroidBelt() {
   const rockGeo = new THREE.DodecahedronGeometry(0.5, 0);
   const rockMat = new THREE.MeshStandardMaterial({
-    color: 0x64748b,
+    color: 0xb8ad94,
     roughness: 0.9,
     metalness: 0.1
   });
@@ -1126,7 +1091,7 @@ function updateTransferArcs() {
     const pts = curve.getPoints(40);
     const geom = new THREE.BufferGeometry().setFromPoints(pts);
     const mat = new THREE.LineDashedMaterial({
-      color: 0x06b6d4,
+      color: 0xc99a2e,
       dashSize: 3,
       gapSize: 1.5,
       transparent: true,
@@ -1159,8 +1124,8 @@ function updateFleetPositions() {
 
       const shipGeo = new THREE.ConeGeometry(1.4, 3.8, 6);
       const shipMat = new THREE.MeshStandardMaterial({
-        color: 0x38bdf8,
-        emissive: 0x0284c7,
+        color: 0x2f6f6a,
+        emissive: 0x1f4f4b,
         emissiveIntensity: 0.8
       });
       const shipMesh = new THREE.Mesh(shipGeo, shipMat);
@@ -1356,7 +1321,7 @@ function updateInspector(targetKey, type = "body", fleetData = null) {
     grid.innerHTML = "";
     for (const [comm, price] of Object.entries(prices)) {
       const item = document.createElement("div");
-      item.style.cssText = "background: var(--bg-surface); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--line); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px;";
+      item.style.cssText = "background: var(--bg-surface); padding: 5px 8px; border-radius: 4px; border: 2px solid var(--line); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px;";
       item.innerHTML = `<span style="color: var(--text-dim);">${comm}</span><span style="color: var(--amber); font-weight: 600;">${Number(price).toFixed(0)} CR</span>`;
       grid.appendChild(item);
     }

@@ -1672,6 +1672,19 @@ class AgoraHTTPHandler(BaseHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        if path.startswith('/css/') and path.endswith('.css'):
+            css_root = os.path.realpath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public', 'css'))
+            css_path = os.path.realpath(os.path.join(css_root, path[len('/css/'):]))
+            if css_path.startswith(css_root + os.sep) and os.path.isfile(css_path):
+                with open(css_path, 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/css; charset=utf-8')
+                self.send_header('Content-Length', str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         if path.startswith('/images/'):
             img_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'public', path.lstrip('/'))
             if os.path.exists(img_path) and os.path.isfile(img_path):

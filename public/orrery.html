@@ -5,54 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#08090e">
 <title>AGORA // Sol System Orbital Orrery &middot; Astrodynamics Radar</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/css/agora.css">
 <style>
-  :root {
-    --bg-deep: #08090e;
-    --bg-surface: #0e111a;
-    --bg-card: #131724;
-    --bg-card-hover: #171d2e;
-    --line: #1c2233;
-    --line-subtle: #171c2b;
-    --line-highlight: #28334a;
-
-    --emerald: #10b981;
-    --emerald-bg: rgba(16, 185, 129, 0.08);
-    --emerald-border: rgba(16, 185, 129, 0.25);
-
-    --rose: #f43f5e;
-    --rose-bg: rgba(244, 63, 94, 0.08);
-    --rose-border: rgba(244, 63, 94, 0.25);
-
-    --amber: #f59e0b;
-    --amber-bg: rgba(245, 158, 11, 0.08);
-    --amber-border: rgba(245, 158, 11, 0.25);
-
-    --indigo: #6366f1;
-    --indigo-bg: rgba(99, 102, 241, 0.08);
-    --indigo-border: rgba(99, 102, 241, 0.25);
-
-    --cyan: #06b6d4;
-    --cyan-bg: rgba(6, 182, 212, 0.08);
-    --cyan-border: rgba(6, 182, 212, 0.25);
-
-    --purple: #a855f7;
-    --purple-bg: rgba(168, 85, 247, 0.08);
-    --purple-border: rgba(168, 85, 247, 0.25);
-
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --text-dim: #64748b;
-
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
-    --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", Menlo, Consolas, monospace;
-
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 12px;
-  }
-
-  * {
+    * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -100,7 +56,7 @@
     background: rgba(14, 17, 26, 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -120,7 +76,7 @@
     gap: 6px;
     padding: 5px 10px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 11px;
@@ -139,7 +95,7 @@
   .view-switch {
     display: flex;
     background: var(--bg-deep);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     padding: 2px;
     gap: 2px;
@@ -158,7 +114,7 @@
 
   .view-btn.active {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   .view-btn:hover:not(.active) {
@@ -169,7 +125,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
     padding-left: 12px;
   }
 
@@ -188,7 +144,7 @@
     padding: 2px 6px;
     border-radius: 3px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-muted);
   }
 
@@ -205,7 +161,7 @@
     gap: 4px;
     background: var(--bg-deep);
     padding: 3px 6px;
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
   }
 
@@ -239,7 +195,7 @@
 
   .focal-pill.active {
     background: var(--indigo-bg);
-    color: #818cf8;
+    color: #9a6f1c;
     border-color: var(--indigo-border);
   }
 
@@ -257,7 +213,7 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 14px;
@@ -273,7 +229,7 @@
 
   .icon-btn.active {
     background: var(--indigo-bg);
-    color: #818cf8;
+    color: #9a6f1c;
     border-color: var(--indigo-border);
   }
 
@@ -290,7 +246,7 @@
     background: rgba(14, 17, 26, 0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--line-highlight);
+    border: 2px solid var(--line-highlight);
     border-radius: var(--radius-md);
     padding: 6px;
     display: none;
@@ -361,7 +317,7 @@
     background: rgba(14, 17, 26, 0.88);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 6px 14px;
     display: flex;
@@ -380,7 +336,7 @@
   .dock-btn {
     padding: 5px 10px;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-family: var(--font-mono);
@@ -399,12 +355,12 @@
   .dock-btn.primary {
     background: var(--indigo-bg);
     border-color: var(--indigo-border);
-    color: #818cf8;
+    color: #9a6f1c;
   }
 
   .dock-btn.primary:hover {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   .speed-pill {
@@ -464,7 +420,7 @@
     background: rgba(14, 17, 26, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
@@ -482,7 +438,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     background: var(--bg-surface);
   }
 
@@ -512,19 +468,19 @@
 
   .badge-station {
     background: var(--purple-bg);
-    color: #c084fc;
+    color: #7a2e14;
     border: 1px solid var(--purple-border);
   }
 
   .badge-fleet {
     background: var(--cyan-bg);
-    color: #22d3ee;
+    color: #1f4f4b;
     border: 1px solid var(--cyan-border);
   }
 
   .badge-beacon {
     background: var(--rose-bg);
-    color: #fb7185;
+    color: #a8431f;
     border: 1px solid var(--rose-border);
   }
 
@@ -535,7 +491,7 @@
     align-items: center;
     justify-content: center;
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 16px;
@@ -574,7 +530,7 @@
 
   .data-card {
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
     padding: 12px;
     display: flex;
@@ -599,11 +555,11 @@
     color: var(--text);
   }
 
-  .data-val.cyan { color: #38bdf8; }
-  .data-val.amber { color: #fbbf24; }
-  .data-val.emerald { color: #34d399; }
-  .data-val.purple { color: #c084fc; }
-  .data-val.rose { color: #fb7185; }
+  .data-val.cyan { color: #2f6f6a; }
+  .data-val.amber { color: #9a6f1c; }
+  .data-val.emerald { color: #2f6f6a; }
+  .data-val.purple { color: #7a2e14; }
+  .data-val.rose { color: #a8431f; }
 
   /* Cargo Manifest Table (Progressive Disclosure) */
   .manifest-table {
@@ -617,7 +573,7 @@
     text-align: left;
     padding: 6px 8px;
     color: var(--text-dim);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
@@ -631,7 +587,7 @@
 
   .manifest-table td {
     padding: 7px 8px;
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 2px solid var(--line-subtle);
     color: var(--text);
   }
 
@@ -647,12 +603,12 @@
     border-radius: 3px;
     overflow: hidden;
     position: relative;
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
   }
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    background: linear-gradient(90deg, #2f6f6a, #9a6f1c);
     border-radius: 3px;
     transition: width 0.3s ease;
   }
@@ -666,7 +622,7 @@
     background: var(--indigo-bg);
     border: 1px solid var(--indigo-border);
     border-radius: var(--radius-sm);
-    color: #818cf8;
+    color: #9a6f1c;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -678,7 +634,7 @@
 
   .action-link-btn:hover {
     background: var(--indigo);
-    color: #ffffff;
+    color: var(--text);
   }
 
   /* Micro Tooltip */
@@ -687,7 +643,7 @@
     pointer-events: none;
     background: rgba(14, 17, 26, 0.95);
     backdrop-filter: blur(12px);
-    border: 1px solid var(--line-highlight);
+    border: 2px solid var(--line-highlight);
     border-radius: var(--radius-sm);
     padding: 6px 10px;
     font-size: 11px;
@@ -723,7 +679,7 @@
   }
 </style>
 </head>
-<body>
+<body class="page-orrery">
 
 <div id="canvas-container">
   <canvas id="orrery-canvas"></canvas>
@@ -749,7 +705,7 @@
       <span class="header-badge">HELIOCENTRIC J2000</span>
       <span class="header-badge pulse" id="stat-link">LIVE // 28ms</span>
       <span class="header-badge" id="stat-round">ROUND 42</span>
-      <span class="header-badge" id="stat-tracked-entity" style="color: #818cf8;">FREE CAM</span>
+      <span class="header-badge" id="stat-tracked-entity" style="color: var(--ag-ochre);">FREE CAM</span>
       <span id="stat-sim-mode" class="sr-compat">ROUND-LOCK</span>
     </div>
   </div>
@@ -990,16 +946,16 @@ const AU_PX = 180;
 const CELESTIAL_BODIES = {
   sun: {
     name: "SOL (STAR)",
-    color: "#fffbeb",
-    glow: "rgba(245, 158, 11, 0.45)",
+    color: "#c99a2e",
+    glow: "rgba(0,0,0,0)",
     size: 14,
     au: 0,
     period: 0
   },
   earth: {
     name: "EARTH // LEO",
-    color: "#38bdf8",
-    glow: "rgba(56, 189, 248, 0.35)",
+    color: "#2f6f6a",
+    glow: "rgba(0,0,0,0)",
     size: 6,
     au: 1.00,
     period: 365.25,
@@ -1007,8 +963,8 @@ const CELESTIAL_BODIES = {
   },
   luna: {
     name: "LUNA // SHACKLETON",
-    color: "#cbd5e1",
-    glow: "rgba(203, 213, 225, 0.25)",
+    color: "#e6dcc3",
+    glow: "rgba(0,0,0,0)",
     size: 3.5,
     parent: "earth",
     period: 27.32,
@@ -1016,8 +972,8 @@ const CELESTIAL_BODIES = {
   },
   mars: {
     name: "MARS // ARCADIA",
-    color: "#f87171",
-    glow: "rgba(248, 113, 113, 0.35)",
+    color: "#a8431f",
+    glow: "rgba(0,0,0,0)",
     size: 5.5,
     au: 1.524,
     period: 686.98,
@@ -1025,8 +981,8 @@ const CELESTIAL_BODIES = {
   },
   ceres: {
     name: "CERES // PIAZZI",
-    color: "#a78bfa",
-    glow: "rgba(167, 139, 250, 0.4)",
+    color: "#2c353b",
+    glow: "rgba(0,0,0,0)",
     size: 5,
     au: 2.767,
     period: 1681.6,
@@ -1173,7 +1129,7 @@ function updateTrackedBadge() {
   if (!el) return;
   if (camera.trackedEntity) {
     el.textContent = "TRACKING: " + camera.trackedEntity.toUpperCase();
-    el.style.color = "#818cf8";
+    el.style.color = "#c99a2e";
   } else {
     el.textContent = "FREE CAM";
     el.style.color = "var(--text-muted)";
@@ -1377,7 +1333,7 @@ function updateInspector(target) {
       grid.innerHTML = "";
       for (const [comm, price] of Object.entries(p)) {
         const item = document.createElement("div");
-        item.style.cssText = "background: var(--bg-surface); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--line); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px;";
+        item.style.cssText = "background: var(--bg-surface); padding: 5px 8px; border-radius: 4px; border: 2px solid var(--line); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px;";
         item.innerHTML = `<span style="color: var(--text-dim);">${comm}</span><span style="color: var(--amber); font-weight: 600;">${Number(price).toFixed(0)} CR</span>`;
         grid.appendChild(item);
       }
@@ -1616,7 +1572,7 @@ function render(timestamp) {
   if (layers.grid) {
     const gridAUs = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+    ctx.strokeStyle = "#cdbf9f";
     ctx.setLineDash([4, 6]);
     gridAUs.forEach(au => {
       const rScreen = au * AU_PX * camera.zoom;
@@ -1624,14 +1580,14 @@ function render(timestamp) {
       ctx.arc(cx, cy, rScreen, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.fillStyle = "rgba(148, 163, 184, 0.35)";
+      ctx.fillStyle = "#2c353b";
       ctx.font = "10px var(--font-mono)";
       ctx.textAlign = "left";
       ctx.fillText(au.toFixed(1) + " AU", cx + rScreen + 6, cy - 3);
     });
     ctx.setLineDash([]);
 
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.04)";
+    ctx.strokeStyle = "#cdbf9f";
     ctx.beginPath();
     ctx.moveTo(cx - 3000, cy); ctx.lineTo(cx + 3000, cy);
     ctx.moveTo(cx, cy - 3000); ctx.lineTo(cx, cy + 3000);
@@ -1643,8 +1599,8 @@ function render(timestamp) {
     for (const [key, conf] of Object.entries(CELESTIAL_BODIES)) {
       if (key === "sun" || key === "luna") continue;
       const rScreen = conf.au * AU_PX * camera.zoom;
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "#1c1a17";
+      ctx.lineWidth = 2;
       ctx.setLineDash([3, 5]);
       ctx.beginPath();
       ctx.arc(cx, cy, rScreen, 0, Math.PI * 2);
@@ -1660,7 +1616,7 @@ function render(timestamp) {
       const ax = cx + Math.cos(ast.theta) * ast.r * camera.zoom;
       const ay = cy + Math.sin(ast.theta) * ast.r * camera.zoom;
       if (ax >= -10 && ax <= w + 10 && ay >= -10 && ay <= h + 10) {
-        ctx.fillStyle = "rgba(148, 163, 184, " + ast.alpha + ")";
+        ctx.fillStyle = "rgba(122, 111, 88, " + (0.45 + ast.alpha) + ")";
         ctx.beginPath();
         ctx.arc(ax, ay, ast.size * Math.max(0.6, camera.zoom * 0.7), 0, Math.PI * 2);
         ctx.fill();
@@ -1683,7 +1639,7 @@ function render(timestamp) {
       const sM = worldToScreen(rMars.x, rMars.y);
 
       const pulse = 0.25 + Math.sin(timestamp * 0.003) * 0.15;
-      ctx.strokeStyle = "rgba(6, 182, 212, " + pulse + ")";
+      ctx.strokeStyle = "rgba(154, 111, 28, " + (0.6 + pulse) + ")";
       ctx.lineWidth = 2.0;
       ctx.setLineDash([6, 6]);
       ctx.beginPath();
@@ -1708,8 +1664,8 @@ function render(timestamp) {
       const cpX = (midX + cx) / 2;
       const cpY = (midY + cy) / 2;
 
-      ctx.strokeStyle = "rgba(99, 102, 241, 0.4)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#1c1a17";
+      ctx.lineWidth = 2.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(s1.x, s1.y);
@@ -1725,19 +1681,19 @@ function render(timestamp) {
       const shipX = invT * invT * s1.x + 2 * invT * fracT * cpX + fracT * fracT * s2.x;
       const shipY = invT * invT * s1.y + 2 * invT * fracT * cpY + fracT * fracT * s2.y;
 
-      ctx.fillStyle = "#38bdf8";
+      ctx.fillStyle = "#2f6f6a";
       ctx.beginPath();
       ctx.arc(shipX, shipY, 4.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle = "#1c1a17";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(shipX, shipY, 7.5, 0, Math.PI * 2);
       ctx.stroke();
 
       if (layers.labels) {
-        ctx.fillStyle = "#f1f5f9";
+        ctx.fillStyle = "#1c1a17";
         ctx.font = "600 10px var(--font-mono)";
         ctx.textAlign = "left";
         ctx.fillText("✈ " + f.agent_id.toUpperCase() + " [" + (t.cargo_qty || 0) + " " + (t.commodity || 'FRAG') + "]", shipX + 10, shipY - 4);
@@ -1761,19 +1717,19 @@ function render(timestamp) {
       const sBeacon = worldToScreen(bWorld.x, bWorld.y);
 
       const pulse = 4 + (Math.sin(timestamp * 0.008) + 1) * 5;
-      ctx.strokeStyle = "rgba(244, 63, 94, 0.7)";
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#1c1a17";
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(sBeacon.x, sBeacon.y, pulse * camera.zoom, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.fillStyle = "#f43f5e";
+      ctx.fillStyle = "#a8431f";
       ctx.beginPath();
       ctx.arc(sBeacon.x, sBeacon.y, 4 * camera.zoom, 0, Math.PI * 2);
       ctx.fill();
 
       if (layers.labels) {
-        ctx.fillStyle = "#fb7185";
+        ctx.fillStyle = "#7a2e14";
         ctx.font = "600 10px var(--font-mono)";
         ctx.textAlign = "left";
         ctx.fillText("⚠️ SOS: " + b.agent_id.toUpperCase() + " WRECK", sBeacon.x + 10, sBeacon.y + 3);
@@ -1783,22 +1739,25 @@ function render(timestamp) {
 
   // 7. Sol (Central Radiant Star)
   const sunGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 32 * camera.zoom);
-  sunGrad.addColorStop(0, "#ffffff");
-  sunGrad.addColorStop(0.2, "#fef08a");
-  sunGrad.addColorStop(0.5, "rgba(245, 158, 11, 0.35)");
+  sunGrad.addColorStop(0, "#c99a2e");
+  sunGrad.addColorStop(0.2, "#c99a2e");
+  sunGrad.addColorStop(0.5, "rgba(201, 154, 46, 0.25)");
   sunGrad.addColorStop(1, "transparent");
   ctx.fillStyle = sunGrad;
   ctx.beginPath();
   ctx.arc(cx, cy, 32 * camera.zoom, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fffbeb";
+  ctx.fillStyle = "#c99a2e";
   ctx.beginPath();
   ctx.arc(cx, cy, 8 * camera.zoom, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = "#1c1a17";
+  ctx.lineWidth = 3;
+  ctx.stroke();
 
   if (layers.labels) {
-    ctx.fillStyle = "#fef08a";
+    ctx.fillStyle = "#1c1a17";
     ctx.font = "700 10px var(--font-sans)";
     ctx.textAlign = "center";
     ctx.fillText("SOL", cx, cy + 22 * camera.zoom);
@@ -1824,11 +1783,14 @@ function render(timestamp) {
     ctx.beginPath();
     ctx.arc(sPos.x, sPos.y, conf.size * Math.max(0.6, camera.zoom * 0.85), 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#1c1a17";
+    ctx.lineWidth = 3;
+    ctx.stroke();
 
     // Active Tracking Selection Ring
     if (camera.trackedEntity === key || selectedEntity === key) {
-      ctx.strokeStyle = "#818cf8";
-      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = "#c99a2e";
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(sPos.x, sPos.y, (conf.size * 1.5 + 4) * Math.max(0.7, camera.zoom * 0.85), 0, Math.PI * 2);
       ctx.stroke();
@@ -1836,14 +1798,14 @@ function render(timestamp) {
 
     // Station Data Labels
     if (layers.labels) {
-      ctx.fillStyle = "#f1f5f9";
+      ctx.fillStyle = "#1c1a17";
       ctx.font = "600 11px var(--font-sans)";
       ctx.textAlign = "center";
       ctx.fillText(conf.name.split(" // ")[0], sPos.x, sPos.y + conf.size * camera.zoom + 14);
 
       if (conf.stationId && stationPrices[conf.stationId]) {
         const fragPrice = stationPrices[conf.stationId].FRAG;
-        ctx.fillStyle = "#fbbf24";
+        ctx.fillStyle = "#7a2e14";
         ctx.font = "500 10px var(--font-mono)";
         ctx.fillText(fragPrice ? Number(fragPrice).toFixed(0) + " CR" : "--", sPos.x, sPos.y + conf.size * camera.zoom + 26);
       }

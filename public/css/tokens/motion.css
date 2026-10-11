@@ -1,0 +1,20 @@
+/* Motion: animated "on twos". Stepped timing, hard cuts, no blur, no fades longer than a beat. */
+:root {
+  --ag-fps: 12;
+  --ag-dur-snap: 83ms;   /* 1 drawing */
+  --ag-dur-cut: 167ms;   /* 2 drawings */
+  --ag-dur-move: 250ms;  /* 3 drawings */
+  --ag-dur-scene: 417ms; /* 5 drawings */
+  --ag-ease-twos: steps(3, end);
+  --ag-ease-pop: cubic-bezier(.3, 1.7, .5, 1);
+  --ag-ease-slam: cubic-bezier(.7, 0, .9, .4);
+}
+@keyframes ag-boil { 0%{transform:translate(0,0)} 33%{transform:translate(.5px,-.5px)} 66%{transform:translate(-.5px,.5px)} 100%{transform:translate(0,0)} }
+@keyframes ag-pop { 0%{transform:scale(.86)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+@keyframes ag-drop { 0%{transform:translateY(-28px);box-shadow:0 0 0 #000} 60%{transform:translateY(3px);box-shadow:0 0 0 #000} 100%{transform:translateY(0);box-shadow:8px 8px 0 #000} }
+@keyframes ag-flash { 0%,49%{background-color:var(--ag-rust)} 50%,100%{background-color:var(--ag-rust-dark)} }
+@keyframes ag-wipe { from{clip-path:inset(0 100% 0 0)} to{clip-path:inset(0 0 0 0)} }
+@keyframes ag-crawl { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes ag-orbit { to{transform:rotate(360deg)} }
+@keyframes ag-shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+@media (prefers-reduced-motion: reduce) { *{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important} }

@@ -6,52 +6,10 @@
 <title>AGORA // Institutional Requisition Terminal</title>
 <meta name="description" content="Live multi-agent order book depth, continuous trade tape telemetry, and double-entry Mark-to-Market leaderboard for Station Agora.">
 
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/css/agora.css">
 <style>
-  :root {
-    --bg-deep: #08090e;
-    --bg-surface: #0e111a;
-    --bg-card: #131724;
-    --bg-card-hover: #171d2e;
-    --line: #1c2233;
-    --line-subtle: #171c2b;
-    --line-highlight: #28334a;
-
-    --emerald: #10b981;
-    --emerald-bg: rgba(16, 185, 129, 0.08);
-    --emerald-border: rgba(16, 185, 129, 0.25);
-
-    --rose: #f43f5e;
-    --rose-bg: rgba(244, 63, 94, 0.08);
-    --rose-border: rgba(244, 63, 94, 0.25);
-
-    --amber: #f59e0b;
-    --amber-bg: rgba(245, 158, 11, 0.08);
-    --amber-border: rgba(245, 158, 11, 0.25);
-
-    --indigo: #6366f1;
-    --indigo-bg: rgba(99, 102, 241, 0.08);
-    --indigo-border: rgba(99, 102, 241, 0.25);
-
-    --cyan: #06b6d4;
-    --cyan-bg: rgba(6, 182, 212, 0.08);
-    --cyan-border: rgba(6, 182, 212, 0.25);
-
-    --purple-neon: #a855f7;
-
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --text-dim: #64748b;
-
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", sans-serif;
-    --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", Menlo, Consolas, monospace;
-
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-xl: 12px;
-  }
-
-  * {
+    * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -80,10 +38,10 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(8, 9, 14, 0.88);
+    background: rgba(217, 205, 176, 0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
     padding: 10px 24px;
     display: flex;
     justify-content: space-between;
@@ -109,20 +67,20 @@
     width: 24px;
     height: 24px;
     border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, var(--emerald) 0%, #059669 100%);
+    background: linear-gradient(135deg, var(--emerald) 0%, #1f4f4b 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
     font-weight: 900;
-    color: #fff;
+    color: var(--text);
   }
 
   .brand-title {
     font-weight: 700;
     font-size: 15px;
     letter-spacing: 0.05em;
-    color: #fff;
+    color: var(--text);
   }
 
   .brand-subtitle {
@@ -130,7 +88,7 @@
     color: var(--text-dim);
     font-family: var(--font-mono);
     padding-left: 6px;
-    border-left: 1px solid var(--line);
+    border-left: 2px solid var(--line);
   }
 
   .nav-pills {
@@ -151,7 +109,7 @@
   }
 
   .nav-pill-link:hover {
-    color: #fff;
+    color: var(--text);
     background: var(--bg-surface);
     border-color: var(--line);
   }
@@ -200,7 +158,7 @@
     padding: 3px 8px;
     border-radius: var(--radius-sm);
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-dim);
     font-size: 11px;
   }
@@ -244,7 +202,7 @@
     align-items: center;
     gap: 10px;
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
     padding: 6px 12px;
     font-size: 12px;
@@ -284,7 +242,7 @@
     display: flex;
     align-items: center;
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-md);
     padding: 6px 12px;
     overflow: hidden;
@@ -308,12 +266,12 @@
     font-family: var(--font-mono);
     font-size: 12px;
     padding-right: 16px;
-    border-right: 1px solid var(--line);
+    border-right: 2px solid var(--line);
   }
 
   .commodity-ticker-sym {
     font-weight: 700;
-    color: #fff;
+    color: var(--text);
   }
 
   .commodity-ticker-price {
@@ -333,7 +291,7 @@
   }
 
   .commodity-ticker-delta.neutral {
-    background: rgba(100, 116, 139, 0.12);
+    background: rgba(44, 53, 59, 0.12);
     color: var(--text-dim);
   }
 
@@ -359,7 +317,7 @@
 
   .station-card {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 12px 14px;
     cursor: pointer;
@@ -390,7 +348,7 @@
   .station-card-title {
     font-weight: 600;
     font-size: 13px;
-    color: #fff;
+    color: var(--text);
   }
 
   .station-card-status {
@@ -423,7 +381,7 @@
     font-family: var(--font-mono);
     color: var(--text-muted);
     padding-top: 6px;
-    border-top: 1px solid var(--line);
+    border-top: 2px solid var(--line);
     margin-top: 2px;
   }
 
@@ -432,7 +390,7 @@
     display: flex;
     gap: 6px;
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 4px;
     margin-bottom: 20px;
@@ -466,10 +424,10 @@
 
   .hud-nav-btn.active {
     background: var(--bg-card);
-    color: #fff;
+    color: var(--text);
     font-weight: 600;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--line-highlight);
+    border: 2px solid var(--line-highlight);
   }
 
   .nav-btn-badge {
@@ -477,7 +435,7 @@
     font-size: 10px;
     padding: 1px 5px;
     border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(28, 26, 23, 0.08);
     color: var(--text-dim);
   }
 
@@ -517,7 +475,7 @@
   .section-title {
     font-size: 18px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text);
     letter-spacing: -0.01em;
   }
 
@@ -529,7 +487,7 @@
   /* Modern Card Container */
   .terminal-card {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-xl);
     padding: 20px;
     margin-bottom: 16px;
@@ -548,7 +506,7 @@
     gap: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: #fff;
+    color: var(--text);
   }
 
   .telemetry-indicator.cyan {
@@ -569,7 +527,7 @@
   /* Tactile Arbitrage Desk */
   .tactile-order-desk {
     background: var(--bg-card);
-    border: 1px solid var(--line-highlight);
+    border: 2px solid var(--line-highlight);
     border-radius: var(--radius-xl);
     padding: 20px 24px;
     margin-bottom: 20px;
@@ -600,7 +558,7 @@
 
   .order-chip, .order-station-chip, .size-chip {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-muted);
     border-radius: var(--radius-md);
     padding: 6px 12px;
@@ -613,7 +571,7 @@
 
   .order-chip:hover, .order-station-chip:hover, .size-chip:hover {
     background: var(--bg-card-hover);
-    color: #fff;
+    color: var(--text);
     border-color: var(--line-highlight);
   }
 
@@ -625,9 +583,9 @@
 
   .btn-tactile-send-it {
     flex: 1;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #ffffff;
-    border: 1px solid rgba(52, 211, 153, 0.4);
+    background: linear-gradient(135deg, #2f6f6a 0%, #1f4f4b 100%);
+    color: var(--text);
+    border: 1px solid rgba(47, 111, 106, 0.4);
     border-radius: var(--radius-lg);
     padding: 14px 20px;
     cursor: pointer;
@@ -637,12 +595,12 @@
     justify-content: center;
     gap: 4px;
     transition: all 0.15s ease;
-    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 2px 10px rgba(47, 111, 106, 0.25);
   }
 
   .btn-tactile-send-it:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 16px rgba(47, 111, 106, 0.4);
   }
 
   .btn-tactile-send-it:active {
@@ -651,9 +609,9 @@
 
   .btn-tactile-panic-dump {
     flex: 1;
-    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
-    color: #ffffff;
-    border: 1px solid rgba(251, 113, 133, 0.4);
+    background: linear-gradient(135deg, #a8431f 0%, #7a2e14 100%);
+    color: var(--text);
+    border: 1px solid rgba(168, 67, 31, 0.4);
     border-radius: var(--radius-lg);
     padding: 14px 20px;
     cursor: pointer;
@@ -663,12 +621,12 @@
     justify-content: center;
     gap: 4px;
     transition: all 0.15s ease;
-    box-shadow: 0 2px 10px rgba(244, 63, 94, 0.25);
+    box-shadow: 0 2px 10px rgba(168, 67, 31, 0.25);
   }
 
   .btn-tactile-panic-dump:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(244, 63, 94, 0.4);
+    box-shadow: 0 4px 16px rgba(168, 67, 31, 0.4);
   }
 
   .btn-tactile-panic-dump:active {
@@ -691,7 +649,7 @@
 
   .tab-btn {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-dim);
     padding: 6px 12px;
     border-radius: var(--radius-md);
@@ -709,7 +667,7 @@
 
   .tab-btn.active {
     background: var(--bg-card);
-    color: #fff;
+    color: var(--text);
     border-color: var(--line-highlight);
     font-weight: 600;
   }
@@ -723,7 +681,7 @@
   /* Progressive Disclosure Accordions */
   .drawer-container {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 12px 16px;
     margin-bottom: 16px;
@@ -739,7 +697,7 @@
 
   .drawer-toggle-btn {
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     color: var(--text-muted);
     font-size: 11px;
     font-family: var(--font-mono);
@@ -749,7 +707,7 @@
   }
 
   .drawer-toggle-btn:hover {
-    color: #fff;
+    color: var(--text);
     border-color: var(--line-highlight);
   }
 
@@ -790,12 +748,12 @@
     color: var(--text-dim);
     font-weight: 500;
     padding: 6px 8px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
   }
 
   .depth-table td {
     padding: 6px 8px;
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 2px solid var(--line-subtle);
   }
 
   .ask-row td {
@@ -808,7 +766,7 @@
 
   .spread-bar {
     background: var(--bg-card);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-sm);
     padding: 6px 12px;
     text-align: center;
@@ -835,7 +793,7 @@
     padding: 6px 10px;
     border-radius: var(--radius-sm);
     background: var(--bg-card);
-    border: 1px solid var(--line-subtle);
+    border: 2px solid var(--line-subtle);
     font-size: 12px;
     font-family: var(--font-mono);
   }
@@ -879,12 +837,12 @@
     letter-spacing: 0.05em;
     color: var(--text-dim);
     padding: 10px 14px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
   }
 
   .leaderboard-tbl td {
     padding: 14px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
   }
 
   .leaderboard-tbl tr:hover td {
@@ -901,7 +859,7 @@
   .agent-name {
     font-weight: 600;
     font-size: 14px;
-    color: #fff;
+    color: var(--text);
   }
 
   .agent-role {
@@ -939,7 +897,7 @@
 
   .equity-card {
     background: var(--bg-surface);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 16px;
     display: flex;
@@ -960,7 +918,7 @@
   .equity-card-name {
     font-weight: 700;
     font-size: 15px;
-    color: #fff;
+    color: var(--text);
   }
 
   .equity-status-badge {
@@ -992,7 +950,7 @@
   .equity-stat-val {
     font-size: 13px;
     font-weight: 600;
-    color: #fff;
+    color: var(--text);
   }
 
   .squeeze-meter-track {
@@ -1020,12 +978,12 @@
     text-align: left;
     padding: 8px 10px;
     color: var(--text-dim);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
   }
 
   .manifest-table td {
     padding: 8px 10px;
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 2px solid var(--line-subtle);
   }
 
   .arb-matrix-table {
@@ -1039,12 +997,12 @@
     text-align: left;
     padding: 8px 10px;
     color: var(--text-dim);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 2px solid var(--line);
   }
 
   .arb-matrix-table td {
     padding: 8px 10px;
-    border-bottom: 1px solid var(--line-subtle);
+    border-bottom: 2px solid var(--line-subtle);
   }
 
   /* Badges & Tags */
@@ -1056,7 +1014,7 @@
     font-family: var(--font-mono);
     background: var(--bg-card);
     color: var(--text-dim);
-    border: 1px solid var(--line);
+    border: 2px solid var(--line);
   }
 
   .status-tag.active {
@@ -1109,7 +1067,7 @@
 
 </head>
 
-<body>
+<body class="page-terminal">
   <!-- Top Navigation & Institutional App Bar -->
   <header class="top-app-bar">
     <div class="brand-group">
@@ -1182,7 +1140,7 @@
         </div>
         <div class="station-card-sub">Fuel Depot &amp; Ore Extraction Hub</div>
         <div class="station-card-footer">
-          <span>FRAG: <strong id="ceres-frag-price" style="color: #fff;">--</strong></span>
+          <span>FRAG: <strong id="ceres-frag-price" style="color: var(--text);">--</strong></span>
           <span>FUEL: <strong id="ceres-fuel-price" style="color: var(--amber);">--</strong></span>
         </div>
       </div>
@@ -1194,7 +1152,7 @@
         </div>
         <div class="station-card-sub">Orbital Shipyards &amp; Heavy Foundries</div>
         <div class="station-card-footer">
-          <span>FRAG: <strong id="mars-frag-price" style="color: #fff;">--</strong></span>
+          <span>FRAG: <strong id="mars-frag-price" style="color: var(--text);">--</strong></span>
           <span>FUEL: <strong id="mars-fuel-price" style="color: var(--amber);">--</strong></span>
         </div>
       </div>
@@ -1206,7 +1164,7 @@
         </div>
         <div class="station-card-sub">He-3 Collectors &amp; Volatiles Facility</div>
         <div class="station-card-footer">
-          <span>FRAG: <strong id="luna-frag-price" style="color: #fff;">--</strong></span>
+          <span>FRAG: <strong id="luna-frag-price" style="color: var(--text);">--</strong></span>
           <span>FUEL: <strong id="luna-fuel-price" style="color: var(--amber);">--</strong></span>
         </div>
       </div>
@@ -1218,7 +1176,7 @@
         </div>
         <div class="station-card-sub">Planetary Defense &amp; Salvage Depot</div>
         <div class="station-card-footer">
-          <span>FRAG: <strong id="earth-frag-price" style="color: #fff;">--</strong></span>
+          <span>FRAG: <strong id="earth-frag-price" style="color: var(--text);">--</strong></span>
           <span>FUEL: <strong id="earth-fuel-price" style="color: var(--amber);">--</strong></span>
         </div>
       </div>
@@ -1296,7 +1254,7 @@
       </div>
 
       <div class="terminal-card" style="padding: 12px;">
-        <canvas id="orbital-radar-canvas" width="1140" height="320" style="display: block; width: 100%; height: 320px; background: rgba(0,0,0,0.5); border-radius: var(--radius-lg);"></canvas>
+        <canvas id="orbital-radar-canvas" width="1140" height="320" style="display: block; width: 100%; height: 320px; background: var(--ag-paper-deep); border-radius: var(--radius-lg);"></canvas>
       </div>
 
       <!-- Orbital Windows & Transfer Corridors -->
@@ -1380,8 +1338,8 @@
       <!-- Tactile Order Desk -->
       <div class="tactile-order-desk" id="tactile-order-desk">
         <div class="terminal-card-meta" style="margin-bottom: 16px;">
-          <div class="telemetry-indicator" style="color: #10b981;">
-            <span class="pulse-node" style="background: #10b981;"></span>
+          <div class="telemetry-indicator" style="color: #2f6f6a;">
+            <span class="pulse-node" style="background: #2f6f6a;"></span>
             <span style="font-weight: 700; letter-spacing: 0.04em;">TACTILE ARBITRAGE DESK // IMMEDIATE ALLOCATION</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
@@ -1416,7 +1374,7 @@
               <button class="size-chip active" onclick="setQuickOrderSize(50, this)">50</button>
               <button class="size-chip" onclick="setQuickOrderSize(100, this)">100</button>
               <button class="size-chip" onclick="setQuickOrderSize(500, this)">ALL IN</button>
-              <input type="number" id="quick-order-custom-qty" value="50" min="1" max="10000" style="width: 80px; background: rgba(0,0,0,0.5); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text); padding: 5px 8px; font-family: var(--font-mono); font-size: 12px;" oninput="syncCustomOrderSize(this.value)">
+              <input type="number" id="quick-order-custom-qty" value="50" min="1" max="10000" style="width: 80px; background: var(--ag-paper-deep); border: 2px solid var(--line); border-radius: var(--radius-sm); color: var(--text); padding: 5px 8px; font-family: var(--font-mono); font-size: 12px;" oninput="syncCustomOrderSize(this.value)">
             </div>
             <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">
               EST. NOTIONAL: <strong id="quick-order-est-notional" style="color: var(--amber);">2,100.0 CR</strong> &middot; SLIPPAGE: <span style="color: var(--emerald);">0.0% (ZERO SLIPPAGE TOLERATED)</span>
@@ -1476,7 +1434,7 @@
           </div>
         </div>
         <div id="depth-mountain-drawer" class="progressive-drawer">
-          <canvas id="depth-mountain-canvas" width="1140" height="110" style="display: block; width: 100%; height: 110px; background: rgba(0,0,0,0.5); border-radius: var(--radius-sm);"></canvas>
+          <canvas id="depth-mountain-canvas" width="1140" height="110" style="display: block; width: 100%; height: 110px; background: var(--ag-paper-deep); border-radius: var(--radius-sm);"></canvas>
         </div>
       </div>
 
@@ -1585,7 +1543,7 @@
             </div>
           </div>
           <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); display: flex; justify-content: space-between;">
-            <span>FLOAT SHORTED: <strong id="eq-short-shares-zero" style="color: #fff;">0 / 1000</strong></span>
+            <span>FLOAT SHORTED: <strong id="eq-short-shares-zero" style="color: var(--text);">0 / 1000</strong></span>
             <span>LIQ MARK: <strong id="eq-liq-trigger-zero" style="color: var(--purple-neon);">24.0 CR</strong></span>
           </div>
         </div>
@@ -1624,7 +1582,7 @@
             </div>
           </div>
           <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); display: flex; justify-content: space-between;">
-            <span>FLOAT SHORTED: <strong id="eq-short-shares-amos" style="color: #fff;">0 / 1000</strong></span>
+            <span>FLOAT SHORTED: <strong id="eq-short-shares-amos" style="color: var(--text);">0 / 1000</strong></span>
             <span>LIQ MARK: <strong id="eq-liq-trigger-amos" style="color: var(--purple-neon);">24.0 CR</strong></span>
           </div>
         </div>
@@ -1663,7 +1621,7 @@
             </div>
           </div>
           <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); display: flex; justify-content: space-between;">
-            <span>FLOAT SHORTED: <strong id="eq-short-shares-marvin" style="color: #fff;">0 / 1000</strong></span>
+            <span>FLOAT SHORTED: <strong id="eq-short-shares-marvin" style="color: var(--text);">0 / 1000</strong></span>
             <span>LIQ MARK: <strong id="eq-liq-trigger-marvin" style="color: var(--purple-neon);">24.0 CR</strong></span>
           </div>
         </div>
@@ -1702,7 +1660,7 @@
             </div>
           </div>
           <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); display: flex; justify-content: space-between;">
-            <span>FLOAT SHORTED: <strong id="eq-short-shares-aerial" style="color: #fff;">0 / 1000</strong></span>
+            <span>FLOAT SHORTED: <strong id="eq-short-shares-aerial" style="color: var(--text);">0 / 1000</strong></span>
             <span>LIQ MARK: <strong id="eq-liq-trigger-aerial" style="color: var(--purple-neon);">24.0 CR</strong></span>
           </div>
         </div>
@@ -1724,7 +1682,7 @@
         </div>
         <div id="borrow-desk-drawer" class="progressive-drawer collapsed">
           <div style="display: flex; gap: 16px; margin-bottom: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
-            <span>ACTIVE LOANS: <strong id="borrow-desk-active-loans" style="color: #fff;">0</strong></span>
+            <span>ACTIVE LOANS: <strong id="borrow-desk-active-loans" style="color: var(--text);">0</strong></span>
             <span>TOTAL COLLATERAL: <strong id="borrow-desk-total-collateral" style="color: var(--emerald);">0 CR</strong></span>
           </div>
           <table class="manifest-table">
@@ -2561,7 +2519,7 @@
         btn.textContent = "MODE: SIMULATED MID-GAME (RND 42)";
         btn.style.borderColor = "var(--amber)";
         btn.style.color = "var(--amber)";
-        btn.style.background = "rgba(255, 184, 52, 0.15)";
+        btn.style.background = "rgba(154, 111, 28, 0.15)";
       }
       if (statusText) statusText.textContent = "REFEREE: SIMULATED (RND 42)";
       if (pulse) pulse.style.background = "var(--amber)";
@@ -2571,7 +2529,7 @@
         btn.textContent = "MODE: LIVE ENGINE";
         btn.style.borderColor = "var(--cyan)";
         btn.style.color = "var(--cyan)";
-        btn.style.background = "rgba(92, 225, 230, 0.1)";
+        btn.style.background = "rgba(31, 79, 75, 0.1)";
       }
       if (statusText) statusText.textContent = "REFEREE: LIVE POLLING";
       if (pulse) pulse.style.background = "var(--green)";
@@ -2730,7 +2688,7 @@
     }
 
     // Subtle CRT background grid
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.strokeStyle = "rgba(28, 26, 23, 0.05)";
     ctx.lineWidth = 1;
     for (let x = 80; x < w; x += 80) {
       ctx.beginPath();
@@ -2771,7 +2729,7 @@
     const graphH = h - paddingBottom - 22;
 
     if (rawBids.length === 0 && rawAsks.length === 0) {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      ctx.fillStyle = "rgba(28, 26, 23, 0.3)";
       ctx.font = "11px 'Space Mono', monospace";
       ctx.textAlign = "center";
       ctx.fillText(`NO RESTING LIQUIDITY AT ${currentStation.toUpperCase()} // ${currentCommodity}`, w / 2, h / 2 + 4);
@@ -2792,9 +2750,9 @@
         ctx.lineTo(midX - 10 - cumBids.length * stepW, h - paddingBottom);
         ctx.closePath();
 
-        ctx.fillStyle = "rgba(0, 230, 153, 0.16)";
+        ctx.fillStyle = "rgba(47, 111, 106, 0.16)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(0, 230, 153, 0.85)";
+        ctx.strokeStyle = "rgba(47, 111, 106, 0.85)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -2821,9 +2779,9 @@
         ctx.lineTo(midX + 10 + cumAsks.length * stepW, h - paddingBottom);
         ctx.closePath();
 
-        ctx.fillStyle = "rgba(255, 184, 52, 0.16)";
+        ctx.fillStyle = "rgba(154, 111, 28, 0.16)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255, 184, 52, 0.85)";
+        ctx.strokeStyle = "rgba(154, 111, 28, 0.85)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
@@ -2836,7 +2794,7 @@
     }
 
     // Midpoint spread gap indicator
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.strokeStyle = "rgba(28, 26, 23, 0.25)";
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
     ctx.moveTo(midX, 4);
@@ -2845,7 +2803,7 @@
     ctx.setLineDash([]);
 
     // Baseline
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.strokeStyle = "rgba(28, 26, 23, 0.15)";
     ctx.beginPath();
     ctx.moveTo(10, h - paddingBottom);
     ctx.lineTo(w - 10, h - paddingBottom);
@@ -2866,7 +2824,7 @@
       const lowerX = Math.max(70, Math.round(midX * 0.28));
       ctx.save();
       ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = "rgba(0, 230, 153, 0.75)";
+      ctx.strokeStyle = "rgba(47, 111, 106, 0.75)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(lowerX, 22);
@@ -2874,7 +2832,7 @@
       ctx.stroke();
 
       // Lower band warning zone tint
-      ctx.fillStyle = "rgba(0, 230, 153, 0.04)";
+      ctx.fillStyle = "rgba(47, 111, 106, 0.04)";
       ctx.fillRect(0, 22, lowerX, h - paddingBottom - 22);
 
       ctx.fillStyle = "var(--green)";
@@ -2887,7 +2845,7 @@
       const upperX = Math.min(w - 70, Math.round(midX + (w - midX) * 0.72));
       ctx.save();
       ctx.setLineDash([4, 3]);
-      ctx.strokeStyle = "rgba(255, 77, 77, 0.75)";
+      ctx.strokeStyle = "rgba(168, 67, 31, 0.75)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(upperX, 22);
@@ -2895,7 +2853,7 @@
       ctx.stroke();
 
       // Upper band warning zone tint
-      ctx.fillStyle = "rgba(255, 77, 77, 0.04)";
+      ctx.fillStyle = "rgba(168, 67, 31, 0.04)";
       ctx.fillRect(upperX, 22, w - upperX, h - paddingBottom - 22);
 
       ctx.fillStyle = "var(--red)";
@@ -2906,7 +2864,7 @@
 
       // Reference VWAP indicator
       ctx.save();
-      ctx.fillStyle = "rgba(92, 225, 230, 0.9)";
+      ctx.fillStyle = "rgba(31, 79, 75, 0.9)";
       ctx.font = "9px 'Space Mono', monospace";
       ctx.textAlign = "center";
       ctx.fillText(`LULD REF VWAP: ${Number(vwap).toFixed(1)} CR (±10%)`, midX, 14);
@@ -2916,21 +2874,21 @@
     // Render Trading Halt Warning Overlay if station is halted
     if (isHalted) {
       ctx.save();
-      ctx.fillStyle = "rgba(255, 77, 77, 0.16)";
+      ctx.fillStyle = "rgba(168, 67, 31, 0.16)";
       ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = "rgba(255, 77, 77, 0.85)";
+      ctx.strokeStyle = "rgba(168, 67, 31, 0.85)";
       ctx.lineWidth = 2;
       ctx.strokeRect(4, 4, w - 8, h - 8);
 
       const bannerW = 440;
       const bannerH = 46;
-      ctx.fillStyle = "rgba(18, 5, 5, 0.94)";
+      ctx.fillStyle = "rgba(205, 191, 159, 0.94)";
       ctx.fillRect(midX - (bannerW / 2), (h / 2) - (bannerH / 2), bannerW, bannerH);
       ctx.strokeStyle = "var(--red)";
       ctx.lineWidth = 1.5;
       ctx.strokeRect(midX - (bannerW / 2), (h / 2) - (bannerH / 2), bannerW, bannerH);
 
-      ctx.fillStyle = "#ff4d4d";
+      ctx.fillStyle = "#a8431f";
       ctx.font = "bold 11px 'Space Mono', monospace";
       ctx.textAlign = "center";
       ctx.fillText(`⚠️ TRADING HALTED // ${currentStation.toUpperCase()} ${currentCommodity}`, midX, (h / 2) - 4);
@@ -3096,11 +3054,11 @@
               const st = escapeHtml((p.station_id || "").toUpperCase());
               const comm = escapeHtml((p.commodity || "").toUpperCase());
               return `
-                <div class="tape-row" style="border-left: 2px solid var(--amber); background: rgba(255, 184, 52, 0.06);">
+                <div class="tape-row" style="border-left: 2px solid var(--amber); background: rgba(154, 111, 28, 0.06);">
                   <div>
                     <span class="badge-seq">#${escapeHtml(t.seq || 0)}</span>
                     <span style="font-weight: bold; margin-left: 6px; color: var(--amber);">WIRE</span>
-                    <span style="margin-left: 8px; color: #fff;">[${st} // ${comm}] ${headline}</span>
+                    <span style="margin-left: 8px; color: var(--text);">[${st} // ${comm}] ${headline}</span>
                   </div>
                   <div style="font-size: 0.75rem; color: var(--amber);">GALNET</div>
                 </div>
@@ -3173,7 +3131,7 @@
                 <span class="galnet-meta">[RND #${round} // ${st} // ${inst}]</span>
                 <span class="galnet-impact-badge ${impactClass}">${impact} IMPACT</span>
                 <span class="galnet-drift-badge ${biasClass}">${sign} DRIFT BIAS</span>
-                <strong style="color: #fff;">${headline}</strong> &mdash; 
+                <strong style="color: var(--text);">${headline}</strong> &mdash; 
                 <span style="color: var(--text-dim);">${body}</span>
               </span>
             `;
@@ -3206,15 +3164,15 @@
               statusEl.textContent = "SHOCK ACTIVE";
               statusEl.style.color = "var(--amber)";
               statusEl.style.borderColor = "var(--amber)";
-              statusEl.style.background = "rgba(255, 184, 52, 0.12)";
+              statusEl.style.background = "rgba(154, 111, 28, 0.12)";
             } else {
               valEl.textContent = "0.0%";
               valEl.style.color = "var(--text)";
               valEl.style.fontWeight = "normal";
               statusEl.textContent = "NOMINAL";
               statusEl.style.color = "var(--cyan)";
-              statusEl.style.borderColor = "rgba(92, 225, 230, 0.2)";
-              statusEl.style.background = "rgba(92, 225, 230, 0.08)";
+              statusEl.style.borderColor = "rgba(31, 79, 75, 0.2)";
+              statusEl.style.background = "rgba(31, 79, 75, 0.08)";
             }
           }
         });
@@ -3258,7 +3216,7 @@
       const statusText = document.getElementById("referee-status-text");
       if (statusText && statusText.textContent.includes("WS STREAM")) {
         statusText.textContent = `REFEREE: WS STREAM (FOGGED ±${Math.round((fog.noise || 0.15) * 100)}%)`;
-        statusText.style.color = "var(--amber, #ffb834)";
+        statusText.style.color = "var(--amber, #9a6f1c)";
       }
     }
   }
@@ -3360,13 +3318,13 @@
 
               let hazardBadges = [];
               if (isAligned) {
-                hazardBadges.push(`<span class="status-tag active" style="font-size: 0.65rem; background: rgba(92, 225, 230, 0.2); color: var(--cyan);">⚡ EXPEDITED CORRIDOR (-50% TIME)</span>`);
+                hazardBadges.push(`<span class="status-tag active" style="font-size: 0.65rem; background: rgba(31, 79, 75, 0.2); color: var(--cyan);">⚡ EXPEDITED CORRIDOR (-50% TIME)</span>`);
               }
               if (isBelt) {
-                hazardBadges.push(`<span class="status-tag" style="font-size: 0.65rem; background: rgba(255, 170, 0, 0.2); color: var(--amber);">☄️ BELT REBALANCING (25 CR)</span>`);
+                hazardBadges.push(`<span class="status-tag" style="font-size: 0.65rem; background: rgba(154, 111, 28, 0.2); color: var(--amber);">☄️ BELT REBALANCING (25 CR)</span>`);
               }
               if (isPerish) {
-                hazardBadges.push(`<span class="status-tag" style="font-size: 0.65rem; background: rgba(255, 77, 77, 0.2); color: var(--red);">🥩 VOLATILE DEPRECIATION (-5%)</span>`);
+                hazardBadges.push(`<span class="status-tag" style="font-size: 0.65rem; background: rgba(168, 67, 31, 0.2); color: var(--red);">🥩 VOLATILE DEPRECIATION (-5%)</span>`);
               }
               if (hazardBadges.length === 0) {
                 hazardBadges.push(`<span style="color: var(--text-dim); font-size: 0.7rem;">STANDARD ROUTE</span>`);
@@ -3376,7 +3334,7 @@
                 <tr>
                   <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyan);">${transitId}</td>
                   <td>
-                    <div style="font-weight: 600; color: #fff;">${agentDisp}</div>
+                    <div style="font-weight: 600; color: var(--text);">${agentDisp}</div>
                     <div style="font-size: 0.72rem; color: var(--text-dim);">${syndicate}</div>
                   </td>
                   <td>
@@ -3462,10 +3420,10 @@
 
     grid.innerHTML = windows.map(w => {
       const isActive = Boolean(w.is_active);
-      const borderStyle = isActive ? "border-color: var(--cyan); box-shadow: 0 0 12px rgba(92, 225, 230, 0.15);" : "";
+      const borderStyle = isActive ? "border-color: var(--cyan); box-shadow: 0 0 12px rgba(31, 79, 75, 0.15);" : "";
       const statusBadge = isActive
-        ? `<span class="status-tag active" style="font-size: 0.65rem; background: rgba(92, 225, 230, 0.2); color: var(--cyan); font-weight: 700;">ACTIVE RUSH (${w.rounds_remaining} RND REMAINING)</span>`
-        : `<span class="status-tag" style="font-size: 0.65rem; background: rgba(255, 255, 255, 0.05); color: var(--text-dim);">INACTIVE (NEXT: ${w.rounds_until_next} RNDS)</span>`;
+        ? `<span class="status-tag active" style="font-size: 0.65rem; background: rgba(31, 79, 75, 0.2); color: var(--cyan); font-weight: 700;">ACTIVE RUSH (${w.rounds_remaining} RND REMAINING)</span>`
+        : `<span class="status-tag" style="font-size: 0.65rem; background: rgba(28, 26, 23, 0.05); color: var(--text-dim);">INACTIVE (NEXT: ${w.rounds_until_next} RNDS)</span>`;
 
       const transitTag = isActive
         ? `<span style="color: var(--green); font-weight: 700;">-50% TIME (RUSH)</span>`
@@ -3477,7 +3435,7 @@
         <div class="equity-card" style="${borderStyle}">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
             <div>
-              <div style="font-weight: 700; color: #fff; font-size: 0.85rem;">${w.name}</div>
+              <div style="font-weight: 700; color: var(--text); font-size: 0.85rem;">${w.name}</div>
               <div style="font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono);">${routesFormatted}</div>
             </div>
             ${statusBadge}
@@ -3485,7 +3443,7 @@
           <div style="font-size: 0.72rem; color: var(--text-dim); line-height: 1.35; margin-bottom: 10px;">
             ${w.description}
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-family: var(--font-mono); font-size: 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-family: var(--font-mono); font-size: 0.75rem; border-top: 1px solid rgba(28, 26, 23, 0.06); padding-top: 8px;">
             <div>
               <span style="color: var(--text-dim); font-size: 0.68rem;">TRANSIT EFFECT:</span><br/>
               ${transitTag}
@@ -3545,7 +3503,7 @@
 
       return `
         <tr>
-          <td style="font-weight: 700; color: #fff;">${comm}</td>
+          <td style="font-weight: 700; color: var(--text);">${comm}</td>
           <td><span style="color: var(--cyan); font-weight: 600;">${lowSt.toUpperCase()}</span> @ ${lowPrice.toFixed(1)} CR</td>
           <td><span style="color: var(--amber); font-weight: 600;">${highSt.toUpperCase()}</span> @ ${highPrice.toFixed(1)} CR</td>
           <td>${grossSpread.toFixed(2)} CR</td>
@@ -3566,10 +3524,10 @@
     const ctx = canvas.getContext("2d");
 
     const STATIONS_CONF = {
-      earth: { name: "EARTH // LEO", color: "#4da6ff", r: 52, speed: 0.00025, base: 0.8, size: 5 },
-      luna:  { name: "LUNA // SHACKLETON", color: "#d0d8e0", r: 72, speed: 0.00030, base: 1.2, size: 3.5 },
-      mars:  { name: "MARS // ARCADIA", color: "#ff5e4d", r: 102, speed: 0.00015, base: 2.5, size: 5 },
-      ceres: { name: "CERES // PIAZZI", color: "#ffb834", r: 138, speed: 0.00008, base: 4.2, size: 4.5 }
+      earth: { name: "EARTH // LEO", color: "#2f6f6a", r: 52, speed: 0.00025, base: 0.8, size: 5 },
+      luna:  { name: "LUNA // SHACKLETON", color: "#2c353b", r: 72, speed: 0.00030, base: 1.2, size: 3.5 },
+      mars:  { name: "MARS // ARCADIA", color: "#a8431f", r: 102, speed: 0.00015, base: 2.5, size: 5 },
+      ceres: { name: "CERES // PIAZZI", color: "#9a6f1c", r: 138, speed: 0.00008, base: 4.2, size: 4.5 }
     };
 
     let sweepAngle = 0;
@@ -3619,41 +3577,41 @@
       ctx.lineWidth = 1;
       const rings = [52, 72, 102, 138];
       rings.forEach((r, idx) => {
-        ctx.strokeStyle = "rgba(92, 225, 230, 0.09)";
+        ctx.strokeStyle = "rgba(31, 79, 75, 0.09)";
         ctx.setLineDash([3, 5]);
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = "rgba(92, 225, 230, 0.25)";
+        ctx.fillStyle = "rgba(31, 79, 75, 0.25)";
         ctx.font = "8px 'Space Mono', monospace";
         ctx.textAlign = "left";
         ctx.fillText(`${(idx + 1) * 0.7} AU`, cx + r + 3, cy - 2);
       });
       ctx.setLineDash([]);
 
-      ctx.strokeStyle = "rgba(92, 225, 230, 0.06)";
+      ctx.strokeStyle = "rgba(31, 79, 75, 0.06)";
       ctx.beginPath();
       ctx.moveTo(cx - 150, cy); ctx.lineTo(cx + 150, cy);
       ctx.moveTo(cx, cy - 150); ctx.lineTo(cx, cy + 150);
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(92, 225, 230, 0.15)";
+      ctx.strokeStyle = "rgba(31, 79, 75, 0.15)";
       ctx.beginPath();
       ctx.arc(cx, cy, 150, 0, Math.PI * 2);
       ctx.stroke();
 
       // 2. Sol Gravitational Center
       const sunGrad = ctx.createRadialGradient(cx, cy, 1, cx, cy, 10);
-      sunGrad.addColorStop(0, "#ffffff");
-      sunGrad.addColorStop(0.3, "#ffe066");
-      sunGrad.addColorStop(1, "rgba(255, 180, 0, 0)");
+      sunGrad.addColorStop(0, "#1c1a17");
+      sunGrad.addColorStop(0.3, "#9a6f1c");
+      sunGrad.addColorStop(1, "rgba(154, 111, 28, 0)");
       ctx.fillStyle = sunGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, 10, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = "#ffd13b";
+      ctx.fillStyle = "#9a6f1c";
       ctx.beginPath();
       ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
       ctx.fill();
@@ -3677,7 +3635,7 @@
               const pA = stationCoords[stA];
               const pB = stationCoords[stB];
               const pulse = 0.25 + Math.sin(timestamp * 0.003) * 0.15;
-              ctx.strokeStyle = `rgba(92, 225, 230, ${pulse})`;
+              ctx.strokeStyle = `rgba(31, 79, 75, ${pulse})`;
               ctx.lineWidth = 2.5;
               ctx.setLineDash([8, 6]);
               ctx.beginPath();
@@ -3688,7 +3646,7 @@
 
               const mx = (pA.x + pB.x) / 2;
               const my = (pA.y + pB.y) / 2;
-              ctx.fillStyle = "#5ce1e6";
+              ctx.fillStyle = "#1f4f4b";
               ctx.font = "8px 'Space Mono', monospace";
               ctx.textAlign = "center";
               ctx.fillText("⚡ ALIGNMENT RUSH (-50% TIME)", mx, my - 6);
@@ -3713,7 +3671,7 @@
           const cpX = (midX + cx) / 2;
           const cpY = (midY + cy) / 2;
 
-          ctx.strokeStyle = "rgba(92, 225, 230, 0.4)";
+          ctx.strokeStyle = "rgba(31, 79, 75, 0.4)";
           ctx.lineWidth = 1.5;
           ctx.setLineDash([4, 4]);
           ctx.beginPath();
@@ -3737,13 +3695,13 @@
           ctx.arc(shipX, shipY, 4, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.strokeStyle = "#ffffff";
+          ctx.strokeStyle = "#1c1a17";
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(shipX, shipY, 6, 0, Math.PI * 2);
           ctx.stroke();
 
-          ctx.fillStyle = "#ffffff";
+          ctx.fillStyle = "#1c1a17";
           ctx.font = "9px 'Space Mono', monospace";
           ctx.textAlign = "left";
           ctx.fillText(`✈ ${(v.agent_id || '').toUpperCase()} [${t.cargo_qty || 0} ${t.commodity || 'FRAG'}]`, shipX + 8, shipY - 4);
@@ -3770,19 +3728,19 @@
 
           const pulse = 4 + (Math.sin(timestamp * 0.008) + 1) * 4;
           // Radiating hazard wave
-          ctx.strokeStyle = "rgba(248, 113, 113, 0.6)";
+          ctx.strokeStyle = "rgba(168, 67, 31, 0.6)";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.arc(beaconX, beaconY, pulse + 6, 0, Math.PI * 2);
           ctx.stroke();
 
           // Pulsing red beacon core
-          ctx.fillStyle = "#f87171";
+          ctx.fillStyle = "#a8431f";
           ctx.beginPath();
           ctx.arc(beaconX, beaconY, 5, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = "#ffffff";
+          ctx.fillStyle = "#1c1a17";
           ctx.font = "bold 9px 'Space Mono', monospace";
           ctx.textAlign = "left";
           const bountyText = Object.entries(b.cargo_bounty || {}).map(([c, q]) => `${q} ${c}`).join(", ") || "NO CARGO";
@@ -3799,7 +3757,7 @@
 
         if (isHalted) {
           const haltPulse = 7 + (Math.sin(timestamp * 0.008) + 1) * 5;
-          ctx.strokeStyle = "rgba(248, 113, 113, 0.85)";
+          ctx.strokeStyle = "rgba(168, 67, 31, 0.85)";
           ctx.lineWidth = 2;
           ctx.setLineDash([4, 3]);
           ctx.beginPath();
@@ -3807,14 +3765,14 @@
           ctx.stroke();
           ctx.setLineDash([]);
 
-          ctx.fillStyle = "#f87171";
+          ctx.fillStyle = "#a8431f";
           ctx.font = "bold 8px 'Space Mono', monospace";
           ctx.textAlign = "center";
           ctx.fillText("⚠️ [HALTED]", x, y - conf.size - 6);
         }
 
         if (isCurrent || isHovered) {
-          ctx.strokeStyle = isCurrent ? "var(--cyan)" : "rgba(255, 255, 255, 0.6)";
+          ctx.strokeStyle = isCurrent ? "var(--cyan)" : "rgba(28, 26, 23, 0.6)";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           const reticleR = conf.size + (isCurrent ? 7 : 5) + Math.sin(timestamp * 0.005) * 1.5;
@@ -3822,25 +3780,25 @@
           ctx.stroke();
 
           if (isCurrent) {
-            ctx.fillStyle = "rgba(92, 225, 230, 0.12)";
+            ctx.fillStyle = "rgba(31, 79, 75, 0.12)";
             ctx.beginPath();
             ctx.arc(x, y, reticleR, 0, Math.PI * 2);
             ctx.fill();
           }
         }
 
-        ctx.fillStyle = isHalted ? "#f87171" : conf.color;
+        ctx.fillStyle = isHalted ? "#a8431f" : conf.color;
         ctx.beginPath();
         ctx.arc(x, y, conf.size, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = isHalted ? "#f87171" : (isCurrent ? "#ffffff" : "var(--text-dim)");
+        ctx.fillStyle = isHalted ? "#a8431f" : (isCurrent ? "#1c1a17" : "var(--text-dim)");
         ctx.font = isCurrent ? "bold 10px 'Space Mono', monospace" : "9px 'Space Mono', monospace";
         ctx.textAlign = "center";
         ctx.fillText(conf.name.split(" // ")[0], x, y + conf.size + 11);
 
         const pFrag = (stationPrices[st] && stationPrices[st].FRAG !== undefined) ? Number(stationPrices[st].FRAG).toFixed(0) : "--";
-        ctx.fillStyle = isHalted ? "#f87171" : (isCurrent ? "var(--amber)" : "rgba(255, 184, 52, 0.65)");
+        ctx.fillStyle = isHalted ? "#a8431f" : (isCurrent ? "var(--amber)" : "rgba(154, 111, 28, 0.65)");
         ctx.font = "8px 'Space Mono', monospace";
         ctx.fillText(isHalted ? "LULD HALTED" : `${pFrag} CR`, x, y + conf.size + 20);
 
@@ -3856,7 +3814,7 @@
             ctx.arc(dx, dy, 2, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fillStyle = "rgba(28, 26, 23, 0.8)";
             ctx.font = "7px 'Space Mono', monospace";
             ctx.textAlign = "center";
             ctx.fillText((loc.agent_id || '?')[0].toUpperCase(), dx, dy - 3);
@@ -3872,7 +3830,7 @@
       const sweepX = cx + Math.cos(sweepAngle) * sweepLen;
       const sweepY = cy + Math.sin(sweepAngle) * sweepLen;
 
-      ctx.strokeStyle = "rgba(92, 225, 230, 0.6)";
+      ctx.strokeStyle = "rgba(31, 79, 75, 0.6)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -3880,7 +3838,7 @@
       ctx.stroke();
 
       const trailAngle = sweepAngle - 0.35;
-      ctx.fillStyle = "rgba(92, 225, 230, 0.03)";
+      ctx.fillStyle = "rgba(31, 79, 75, 0.03)";
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, sweepLen, trailAngle, sweepAngle);
@@ -4151,7 +4109,7 @@
             return `
               <tr>
                 <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber);">${loanId}</td>
-                <td style="font-weight: bold; color: #fff;">${borrower}</td>
+                <td style="font-weight: bold; color: var(--text);">${borrower}</td>
                 <td style="color: var(--cyan);">${lender}</td>
                 <td style="color: var(--purple-neon); font-weight: bold;">${shares} shs ${eqSym}</td>
                 <td style="color: var(--green);">${collateral.toLocaleString()} CR</td>
@@ -4220,7 +4178,7 @@
               return `
                 <tr>
                   <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber);">${beaconId}</td>
-                  <td style="font-weight: bold; color: #fff;">${agentId}</td>
+                  <td style="font-weight: bold; color: var(--text);">${agentId}</td>
                   <td style="color: var(--cyan);">${location}</td>
                   <td>${bountyText}</td>
                   <td style="font-family: var(--font-mono); font-size: 0.75rem;">RND #${escapeHtml(b.round_declared)}</td>
@@ -4263,7 +4221,7 @@
                 return `
                   <tr>
                     <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber);">${rfqId}</td>
-                    <td style="font-weight: bold; color: #fff;">${agentId}</td>
+                    <td style="font-weight: bold; color: var(--text);">${agentId}</td>
                     <td style="color: var(--cyan); font-weight: bold;">${fuelNeeded} FUEL</td>
                     <td style="color: var(--amber);">${maxReward}</td>
                     <td>${bestQuoteText}</td>
@@ -4333,7 +4291,7 @@
               : `<span class="status-tag active" style="font-size: 0.7rem;">● OPEN</span>`;
             return `
               <tr>
-                <td style="font-weight: bold; color: #fff;">${escapeHtml((b.station_id || '').toUpperCase())}</td>
+                <td style="font-weight: bold; color: var(--text);">${escapeHtml((b.station_id || '').toUpperCase())}</td>
                 <td style="color: var(--cyan); font-weight: bold;">${escapeHtml((b.instrument || '').toUpperCase())}</td>
                 <td style="font-family: var(--font-mono); color: var(--amber); font-weight: bold;">${Number(b.vwap).toFixed(2)} CR</td>
                 <td style="font-family: var(--font-mono); color: var(--green);">${Number(b.lower_limit).toFixed(2)} CR</td>
@@ -4409,7 +4367,7 @@
               return `
                 <tr>
                   <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber);">${haltId}</td>
-                  <td style="font-weight: bold; color: #fff;">${stInst}</td>
+                  <td style="font-weight: bold; color: var(--text);">${stInst}</td>
                   <td>
                     <span style="color: var(--red); font-weight: bold;">${Number(h.trigger_price).toFixed(1)} CR</span>
                     <span style="color: var(--text-dim); font-size: 0.75rem;"> (Ref: ${Number(h.reference_vwap).toFixed(1)})</span>
@@ -4478,7 +4436,7 @@
       const statusText = document.getElementById("referee-status-text");
       if (statusText) {
         statusText.textContent = "REFEREE: WS STREAM (LIVE)";
-        statusText.style.color = "var(--green-bright, #00ff66)";
+        statusText.style.color = "var(--green-bright, #2f6f6a)";
       }
       if (terminalWs && terminalWs.readyState === WebSocket.OPEN) {
         terminalWs.send(JSON.stringify({
@@ -4729,9 +4687,9 @@
         if (!res || !res.ok) {
           if (receiptEl) {
             receiptEl.style.display = 'block';
-            receiptEl.style.borderColor = 'rgba(244, 63, 94, 0.4)';
-            receiptEl.style.background = 'rgba(244, 63, 94, 0.12)';
-            receiptEl.style.color = '#f43f5e';
+            receiptEl.style.borderColor = 'rgba(168, 67, 31, 0.4)';
+            receiptEl.style.background = 'rgba(168, 67, 31, 0.12)';
+            receiptEl.style.color = '#a8431f';
             const statusMsg = res && res.status === 401 ? '401 UNAUTHORIZED (Bearer token required for live execution)' : (res && res.status ? `HTTP ${res.status}` : 'NETWORK ERROR');
             receiptEl.innerHTML = `⚠️ <strong>ORDER REJECTED // DISPATCH FAILED:</strong> ${statusMsg}. Toggle to SIMULATION mode for paper trading or provide authenticated credentials.`;
             setTimeout(() => {
@@ -4760,19 +4718,19 @@
       receiptEl.style.display = 'block';
       const modePrefix = isSimulationMode ? '[SIMULATED] ' : '';
       if (!isFill) {
-        receiptEl.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-        receiptEl.style.background = 'rgba(56, 189, 248, 0.12)';
-        receiptEl.style.color = '#38bdf8';
+        receiptEl.style.borderColor = 'rgba(47, 111, 106, 0.4)';
+        receiptEl.style.background = 'rgba(47, 111, 106, 0.12)';
+        receiptEl.style.color = '#2f6f6a';
         receiptEl.innerHTML = `⏳ <strong>ORDER RESTING // BOOK ENTRY POSTED:</strong> ${side.toUpperCase()} order for ${quickOrderQty} ${quickOrderCommodity} @ ${finalPrice} CR posted to ${quickOrderStation.toUpperCase()} order book. Order resting unfilled awaiting counterparty match.`;
       } else if (side === 'buy') {
-        receiptEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-        receiptEl.style.background = 'rgba(16, 185, 129, 0.12)';
-        receiptEl.style.color = '#10b981';
+        receiptEl.style.borderColor = 'rgba(47, 111, 106, 0.4)';
+        receiptEl.style.background = 'rgba(47, 111, 106, 0.12)';
+        receiptEl.style.color = '#2f6f6a';
         receiptEl.innerHTML = `🚀 <strong>${modePrefix}CAPITAL ALLOCATED // POSITION CONFIRMED:</strong> Acquired ${filledQty} ${quickOrderCommodity} @ ${finalPrice} CR (${Number(notional).toLocaleString()} CR) at ${quickOrderStation.toUpperCase()}. Fiduciary alignment achieved. Downstream risk successfully externalized.`;
       } else {
-        receiptEl.style.borderColor = 'rgba(244, 63, 94, 0.4)';
-        receiptEl.style.background = 'rgba(244, 63, 94, 0.12)';
-        receiptEl.style.color = '#f43f5e';
+        receiptEl.style.borderColor = 'rgba(168, 67, 31, 0.4)';
+        receiptEl.style.background = 'rgba(168, 67, 31, 0.12)';
+        receiptEl.style.color = '#a8431f';
         receiptEl.innerHTML = `💥 <strong>${modePrefix}EXPOSURE TERMINATED // POSITION LIQUIDATED:</strong> Divested ${filledQty} ${quickOrderCommodity} @ ${finalPrice} CR (${Number(notional).toLocaleString()} CR) at ${quickOrderStation.toUpperCase()}. Residual liability disclaimed. Corporate integrity preserved.`;
       }
       setTimeout(() => {
@@ -4791,7 +4749,7 @@
           <div class="tape-tick ${side === 'buy' ? 'tick-bid' : 'tick-ask'}" style="animation: fadeInTab 0.2s ease;">
             <span class="tape-time">${now} PT</span>
             <span class="tape-station">${quickOrderStation.toUpperCase()}</span>
-            <span class="tape-inst" style="color: ${side === 'buy' ? '#10b981' : '#f43f5e'}; font-weight: 700;">${side === 'buy' ? 'ALLOCATE' : 'DIVEST'}</span>
+            <span class="tape-inst" style="color: ${side === 'buy' ? '#2f6f6a' : '#a8431f'}; font-weight: 700;">${side === 'buy' ? 'ALLOCATE' : 'DIVEST'}</span>
             <span class="tape-price">${finalPrice} CR</span>
             <span class="tape-qty">${filledQty} ${quickOrderCommodity}</span>
             <span class="tape-agent">${deskLabel}</span>
