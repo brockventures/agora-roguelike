@@ -30,6 +30,12 @@ var alert_mute: bool = false
 ## Reduced motion (Motion.dc.html, "Cuts only"): the map ring holds still and ticker lines
 ## appear whole instead of wiping in. Off by default; saved with the other settings.
 var reduced_motion: bool = false
+## First-hour tutorial state (#36, docs/design/onboarding.md section 6-7): whether the core
+## beats run, and the sorted ids of the beats already done. A property of the player, so it
+## lives here (settings.json, in the Steam Cloud list) and never in a run save or the hash.
+## Reset by Onboarding.set_enabled, not by reset_defaults (like language).
+var tutorial_enabled: bool = true
+var tutorial_seen: Array[String] = []
 var bindings: Dictionary = {}
 
 
@@ -118,6 +124,33 @@ func set_reduced_motion(on: bool) -> void:
 	changed.emit()
 
 
+func set_tutorial_enabled(on: bool) -> void:
+	tutorial_enabled = on
+	changed.emit()
+
+
+## Records a finished beat. Unknown ids are refused; the list stays sorted and unique.
+func mark_tutorial_seen(id: String) -> bool:
+	if not Onboarding.beat_ids().has(id):
+		return false
+	if not tutorial_seen.has(id):
+		tutorial_seen.append(id)
+		tutorial_seen.sort()
+		changed.emit()
+	return true
+
+
+## Forgets the given beats (a replay). Emits only when something was removed.
+func clear_tutorial_seen(ids: Array) -> void:
+	var kept: Array[String] = []
+	for b in tutorial_seen:
+		if not ids.has(b):
+			kept.append(b)
+	if kept.size() != tutorial_seen.size():
+		tutorial_seen = kept
+		changed.emit()
+
+
 ## Back to the shipped bindings, palette, scale and look (CRT off). Language is left alone.
 func reset_defaults() -> void:
 	text_scale = 1.0
@@ -140,7 +173,7 @@ func apply_all(apply_locale: bool = true) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "alert_volume": alert_volume, "alert_mute": alert_mute, "reduced_motion": reduced_motion, "bindings": bindings.duplicate(true)}
+	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "alert_volume": alert_volume, "alert_mute": alert_mute, "reduced_motion": reduced_motion, "tutorial_enabled": tutorial_enabled, "tutorial_seen": tutorial_seen.duplicate(), "bindings": bindings.duplicate(true)}
 
 
 ## Restores from a stored dictionary; every field is validated and a bad or
@@ -165,6 +198,9 @@ static func from_dict(d: Dictionary) -> AccessibilitySettings:
 		s.alert_mute = d["alert_mute"]
 	if d.has("reduced_motion") and d["reduced_motion"] is bool:
 		s.reduced_motion = d["reduced_motion"]
+	if d.has("tutorial_enabled") and d["tutorial_enabled"] is bool:
+		s.tutorial_enabled = d["tutorial_enabled"]
+	s.tutorial_seen = Onboarding.sanitize_seen(d.get("tutorial_seen", []))
 	s.bindings = InputRemap.sanitize(d.get("bindings", {}))
 	return s
 
