@@ -29,6 +29,14 @@ Underneath the flavor text it's a real, fully working exchange: a double-entry l
 - Standings are ranked continuously by **net worth** — CR plus all goods valued at local spot prices, ships, upgrades and rival stock (§7). There is no scheduled "final round"; it's a running leaderboard (a burst measures a window by *change* in net worth).
 - Around that core loop sits a pile of systems that reward paying attention: stations with very different prices, fuel-burning transit routes, NPC depots, contracts, debt and takeovers, piracy and sabotage, circuit breakers, fog of war, and a synthetic stock market in each fleet (§14 has a short tour).
 
+### The tutorial in the roguelike
+
+The Godot roguelike opens with a short corporate orientation on the Desk Notes card. It covers the core loop in five beats: open the Market tab, place a first order, watch debt accrue over two rounds, leave the station with cargo, and sell it somewhere else. Later it adds one-time notes for a first raid or hazard, a first Chapter 11 filing and the perk screen.
+
+- **The hold.** When a beat that needs reading first appears, the game holds the clock so debt does not run while you read. The chip shows `HELD`, and the first line names the confirm button (`A: CONTINUE`). Confirm, Start, any modal, or opening settings (View or F1) ends the hold; the beat stays on the card until you do the thing, with the clock running.
+- **Turning it off or replaying it.** The tutorial turns itself off after your first sale or your first finished run. Open settings (View or F1) and use the **Orientation program** line: Off skips it, On replays the core beats.
+- **Steam.** Finishing the core loop unlocks the "Orientation Complete" achievement, and the `onboarding_step` stat (0 to 5) records how far a player got. Nothing is sent anywhere else.
+
 ## 3. The fleets
 
 | Syndicate (display name) | Agent ID | Archetype | Operator |

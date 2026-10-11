@@ -39,6 +39,11 @@ class SteamFiles(unittest.TestCase):
             else:
                 self.assertIn('hook', a)
 
+    def test_onboarding_stat_and_achievement(self):
+        d = json.loads((GAME / 'data' / 'achievements.json').read_text())
+        self.assertIn('onboarding_step', {s['id'] for s in d['stats']})
+        self.assertIn('ORIENTATION_COMPLETE', {a['id'] for a in d['achievements']})
+
     def test_manifest_covers_every_inputmap_action(self):
         vdf = (GAME / 'steam' / 'game_actions_480.vdf').read_text()
         declared = set(re.findall(r'^\s*"(m0_\w+)"\s+"#Action_', vdf, re.M))

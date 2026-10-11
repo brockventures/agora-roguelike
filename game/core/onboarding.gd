@@ -22,6 +22,10 @@ extends RefCounted
 ## beats ignore it. A beat with `holds` true is one whose text needs reading; a later Main-level
 ## freeze may hold the game while it is up. Nothing here implements that freeze.
 
+## Emitted once when a beat is marked done (after the settings changed). Read-only for
+## listeners: SteamHooks (the onboarding_step stat, the Orientation Complete achievement).
+signal beat_completed(id: String)
+
 const PATH := "res://data/onboarding.json"
 const VERSION: int = 1
 const KIND_CORE := "core"
@@ -256,6 +260,30 @@ func is_enabled() -> bool:
 	return settings.tutorial_enabled
 
 
+## The highest core beat completed, 1-based in table order (0 when none): the Steam
+## `onboarding_step` stat (design section 12). Beats can finish out of order, so this is the
+## highest seen, not a count.
+func core_step() -> int:
+	var step: int = 0
+	var n: int = 0
+	for b in beats:
+		if str((b as Dictionary)["kind"]) != KIND_CORE:
+			continue
+		n += 1
+		if is_seen(str((b as Dictionary)["id"])):
+			step = n
+	return step
+
+
+## The last core beat in the table (the one that finishes the core loop), "" with no table.
+func last_core_id() -> String:
+	var out: String = ""
+	for b in beats:
+		if str((b as Dictionary)["kind"]) == KIND_CORE:
+			out = str((b as Dictionary)["id"])
+	return out
+
+
 func is_seen(id: String) -> bool:
 	return settings.tutorial_seen.has(id)
 
@@ -364,6 +392,7 @@ func _complete(b: Dictionary) -> void:
 	settings.mark_tutorial_seen(id)
 	if bool(b.get("disables_on_done", false)) and settings.tutorial_enabled:
 		settings.set_tutorial_enabled(false)
+	beat_completed.emit(id)
 
 
 func _update_context(t: String, event: Dictionary) -> void:
