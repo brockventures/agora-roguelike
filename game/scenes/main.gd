@@ -849,8 +849,10 @@ func is_onboarding_held() -> bool:
 	return _onb_hold != ""
 
 
-## The active beat as desk-notes entries (a debug-grade chip and lines until the surface
-## task): hidden while a modal owns the screen, and after the tutorial has nothing to say.
+## The active beat as desk-notes entries: the chip, the A: CONTINUE line while held, the beat's
+## action headline, its detail lines and the permanent opt-out hint. Hidden while a modal owns
+## the screen, and after the tutorial has nothing to say. Stored as keys, rendered here, so a
+## language swap re-translates a live row.
 func _onb_notes() -> Array:
 	var out: Array = []
 	if onboarding == null or _modal_has_focus():
@@ -867,8 +869,32 @@ func _onb_notes() -> Array:
 	out.append({"kind": "chip", "text": chip, "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
 	if held:
 		out.append({"kind": "line", "text": tr("ONB_CONTINUE"), "color": HudTheme.INK})
-	out.append({"kind": "line", "text": str(b["id"]).to_upper(), "color": HudTheme.INK})
+	out.append({"kind": "line", "text": _onb_text(str(b["title_key"])), "color": HudTheme.INK})
+	for k in b["line_keys"]:
+		out.append({"kind": "line", "text": _onb_text(str(k)), "color": HudTheme.INK})
+	out.append({"kind": "line", "text": tr("ONB_HINT"), "color": HudTheme.TEAL_DARK})
 	return out
+
+
+## A beat string by key. The few that carry a number take it from values the HUD already shows.
+func _onb_text(key: String) -> String:
+	match key:
+		"ONB_CH11_2":
+			return tr(key) % (controller.profile.severance_points if controller != null else 0)
+		"ONB_PERKS_1":
+			return tr(key) % _onb_cheapest_perk()
+	return tr(key)
+
+
+## The lowest price on the perk screen (the rows the modal already lists), 0 with none.
+func _onb_cheapest_perk() -> int:
+	var best: int = 0
+	if loop == null:
+		return best
+	for row in loop.perk_rows():
+		var cost: int = int((row as Dictionary)["cost"])
+		best = cost if best == 0 else mini(best, cost)
+	return best
 
 
 func _onb_core_count() -> int:
@@ -1978,7 +2004,10 @@ func _build_ticket() -> void:
 func prompts() -> Array:
 	var out: Array = []
 	var in_transit: bool = controller != null and controller.is_in_transit()
-	if not in_transit:
+	if _onb_hold != "":
+		# A tutorial hold takes the A press (Main consumes it before M0Loop), so A is continue.
+		out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_NEXT")])
+	elif not in_transit:
 		var depart: bool = loop != null and loop.tab == M0Loop.Tab.MAP
 		out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_DEPART") if depart else tr("HUD_PROMPT_SUBMIT")])
 	out.append([tr("HUD_PAD_B"), tr("HUD_PROMPT_BACK")])
@@ -3032,6 +3061,8 @@ func _perks_model() -> Dictionary:
 		var tag: String = tr("PERK_OWNED") if bool(row["owned"]) else ("%d" % int(row["cost"]) if bool(row["can_buy"]) else tr("PERK_LOCKED") % int(row["cost"]))
 		rows.append({"kind": "perk", "cursor": i == loop.perk_cursor, "tier": tr("HUD_PERK_TIER") % int(row["tier"]), "name": Loc.perk_name(row), "branch": Loc.perk_branch(str(row["branch"])), "tag": tag})
 	rows.append({"kind": "start", "cursor": loop.perk_cursor >= perk_rows.size(), "text": tr("PERK_START")})
+	if onboarding != null and onboarding.active_id() == "perks":
+		rows.push_front({"kind": "text", "text": _onb_text("ONB_PERKS_1")})
 	return {"eyebrow": tr("PERKS_EYEBROW") % controller.profile.severance_points, "title": tr("PERKS_TITLE"), "band": "teal", "wide": true, "rows": rows,
 		"actions": [[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")], [tr("HUD_PAD_A"), tr("HUD_ACT_BUY")], [tr("HUD_PAD_B"), tr("HUD_ACT_BACK")]]}
 

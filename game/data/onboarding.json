@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_note": "Beat table for the first-hour onboarding flow (docs/design/onboarding.md section 3). Pure data: core.Onboarding validates and reads it. 'fires' = when a beat may become active (context equals, requires seen, optional trigger events latch it); 'done' = the event that completes it (count events, counted only while active). 'holds' = the beat's text needs reading, so a later Main-level freeze may hold the game while it is up. Copy is keys only (ONB_*), final strings land with the surface task.",
+  "_note": "Beat table for the first-hour onboarding flow (docs/design/onboarding.md section 3). Pure data: core.Onboarding validates and reads it. 'fires' = when a beat may become active (context equals, requires seen, optional trigger events latch it); 'done' = the event that completes it (count events, counted only while active). 'holds' = the beat's text needs reading, so a later Main-level freeze may hold the game while it is up. Copy is keys only (ONB_*); the English is in localization/agora_strings.csv. 'title_key' is the beat's action headline (the first line under the chip), 'line_keys' are its details.",
   "beats": [
     {
       "id": "tabs", "kind": "core", "holds": true,
@@ -22,7 +22,7 @@
     },
     {
       "id": "leave", "kind": "core", "holds": true,
-      "title_key": "ONB_LEAVE_TITLE", "line_keys": ["ONB_LEAVE_1", "ONB_LEAVE_2", "ONB_LEAVE_3"],
+      "title_key": "ONB_LEAVE_TITLE", "line_keys": ["ONB_LEAVE_1", "ONB_LEAVE_2"],
       "fires": {"context": {"tab": "MAP", "hold_empty": false, "route_card": true}},
       "done": {"on": ["transit_departed"]}
     },

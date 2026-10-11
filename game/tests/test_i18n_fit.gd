@@ -1042,3 +1042,107 @@ func test_desk_notes_never_clip_an_entry() -> String:
 	if overflowing < 3:
 		return "only %d staged notes overflowed their view: the test is not exercising the clip" % overflowing
 	return "ok" if bad.is_empty() else "desk notes clip an entry (%d of %d samples): %s" % [bad.size(), samples, "\n  ".join(PackedStringArray(bad.slice(0, 8)))]
+
+
+## The first-hour tutorial's desk notes (#36 First-Hour Onboarding Flow, task 3): every beat,
+## held and not, at every text scale in English and pseudo-localization. No entry of the card's
+## notes may show cut off at any point of the scroll cycle, no note line or footer prompt may
+## overflow its label, and the permanent opt-out hint is always the last entry.
+func test_onboarding_notes_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	var samples: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			scene.enable_onboarding()
+			for id in Onboarding.beat_ids():
+				for held in [false, true]:
+					scene.onboarding._active = id
+					scene._onb_hold = id if held else ""
+					scene._refresh_readouts()
+					var tag: String = "%s %.2fx %s held=%s" % [locale, scale, id, str(held)]
+					_seen = {}
+					var rows: Array = []
+					_snap(scene, tag, rows)
+					for row in rows:
+						var path: String = _node_path(row[1])
+						if not (path.contains("NoteLine") or path.contains("NoteChip") or path.contains("Prompt")):
+							continue
+						judged += 1
+						for f in row[5]:
+							bad.append(f)
+					var view: Dictionary = scene._card["notes"]["view"]
+					var clip: Control = view["clip"]
+					var entries: Array = view["entries"]
+					var want: int = 2 + (scene.onboarding.beat(id)["line_keys"] as Array).size() + (1 if held else 0)
+					if entries.size() < want:
+						bad.append("%s: %d entries, expected at least %d" % [tag, entries.size(), want])
+					var t: float = 0.0
+					while t < 30.0:
+						scene._scroll_t = t
+						scene._update_scrollers()
+						samples += 1
+						var off: float = -(view["content"] as Control).position.y
+						var cover: Control = view["hide"]
+						var limit: float = cover.position.y if cover.visible else clip.size.y
+						for sp in entries:
+							var top: float = float(sp[0]) - off
+							var bottom: float = float(sp[1]) - off
+							if bottom > 0.5 and top < limit - 0.5 and (top < -0.5 or bottom > limit + 0.5):
+								bad.append("%s t=%.1f: entry %.0f..%.0f shows cut off in 0..%.0f" % [tag, t, top, bottom, limit])
+								break
+						t += 1.0
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 300:
+		return "judged only %d tutorial labels: the test is not reaching the notes" % judged
+	return "ok" if bad.is_empty() else "tutorial notes overflow (%d of %d samples): %s" % [bad.size(), samples, "\n  ".join(PackedStringArray(bad.slice(0, 10)))]
+
+
+## Beat 8 is a single `text` row in the perk modal: it adds no overflow at any text scale in
+## either locale (what the perk modal already overflows, e.g. PerkBranch labels in pseudo above
+## 100%, is compared against the same modal without the row and is not this test's to fail).
+func test_onboarding_perk_row_fits_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			scene.enable_onboarding()
+			var loop: M0Loop = scene.loop
+			loop.overlay_state = M0Loop.OVERLAY_COLLAPSED
+			loop.collapse_phase = M0Loop.PHASE_PERKS
+			scene.controller.profile.severance_points = 999999
+			var base: Array = []
+			for on in [false, true]:
+				scene.onboarding._active = "perks" if on else ""
+				scene._refresh_readouts()
+				_seen = {}
+				var rows: Array = []
+				_snap(scene, "perk modal", rows)
+				var found: bool = false
+				for row in rows:
+					if not _node_path(row[1]).contains("ResolutionPanel"):
+						continue
+					judged += 1
+					if str(row[2]).contains(scene._onb_text("ONB_PERKS_1").substr(0, 20)):
+						found = true
+					for f in row[5]:
+						if not on:
+							base.append(f)
+						elif not base.has(f):
+							bad.append("%s %.2fx: %s" % [locale, scale, f])
+				if found != on:
+					bad.append("%s %.2fx: perk row shown=%s but beat active=%s" % [locale, scale, str(found), str(on)])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 20:
+		return "judged only %d perk modal labels" % judged
+	return "ok" if bad.is_empty() else "perk row overflows (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 10)))]
