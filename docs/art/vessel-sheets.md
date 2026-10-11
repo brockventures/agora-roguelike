@@ -36,7 +36,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Midsection:** Exposed structural keel with stacked cylindrical pressurized cargo pods slung underneath in steel truss rigging. Ochre armor plating across the dorsal spine.
   - **Stern:** Elevated aft engineering section tapering into a single massive conical thruster bell with slate-grey cowling and rust trim.
 - **Viewports:**
-  - *Profile Sheet (3:2 - `hull-hauler`):* Strict right-facing side profile highlighting stacked cylindrical pods and massive thruster.
+  - *Profile Sheet (3:2 - `hull-hauler`):* Strict right-facing side profile highlighting stacked cylindrical pods and massive thruster. [Sample Proof](../screens/vessel-samples/hull-hauler.png)
   - *Transit Marker (1:1 - `icon-hauler`):* Bold top-down rectangular silhouette with flared rear thruster bell.
 
 ---
@@ -49,7 +49,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Midsection:** Swept angular delta wings in bold rust-red with hard chisel-edged panel cuts and maneuvering thruster ports.
   - **Stern:** Compact twin-nozzle high-output propulsion block with active vector flaps.
 - **Viewports:**
-  - *Profile Sheet (3:2 - `hull-interceptor`):* Sleek, low-drag silhouette with swept rust wings and twin thrusters.
+  - *Profile Sheet (3:2 - `hull-interceptor`):* Sleek, low-drag silhouette with swept rust wings and twin thrusters. [Sample Proof](../screens/vessel-samples/hull-interceptor.png)
   - *Transit Marker (1:1 - `icon-interceptor`):* Sharp wedge/chevron silhouette pointing up.
 
 ---
@@ -62,7 +62,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Midsection:** Long, rigid structural truss spine in deep dark-teal, carrying multiple modular container blocks and heavy magnetic lock clamps.
   - **Stern:** Wide, industrial engine block with reinforced radiator panels and multi-chamber exhaust manifold.
 - **Viewports:**
-  - *Profile Sheet (3:2 - `hull-freighter`):* Extended length-to-beam ratio, visible container rows along the teal spine, wide aft block.
+  - *Profile Sheet (3:2 - `hull-freighter`):* Extended length-to-beam ratio, visible container rows along the teal spine, wide aft block. [Sample Proof](../screens/vessel-samples/hull-freighter.png)
   - *Transit Marker (1:1 - `icon-freighter`):* Long elongated bar silhouette with cross-struts and wide rear block.
 
 ---
@@ -75,7 +75,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Midsection:** Lightweight bone-white fuselage with low-profile auxiliary thruster nacelles and folded sensor arrays.
   - **Stern:** Slim, high-efficiency ion drive assembly with minimal heat signature.
 - **Viewports:**
-  - *Profile Sheet (3:2 - `hull-scout`):* Light, agile proportions with extended antenna mast and bubble canopy.
+  - *Profile Sheet (3:2 - `hull-scout`):* Light, agile proportions with extended antenna mast and bubble canopy. [Sample Proof](../screens/vessel-samples/hull-scout.png)
   - *Transit Marker (1:1 - `icon-scout`):* Dart-like silhouette with forward sensor spike.
 
 ---
@@ -88,7 +88,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Midsection:** Exposed dirty framework in dark ink-grey with mismatched rust-red patch plates, hydraulic crane booms, cutting rig booms, and an underslung magnetic grapple.
   - **Stern:** Over-clocked, mismatched salvage thrusters with exposed fuel lines and trailing conduit bundles.
 - **Viewports:**
-  - *Profile Sheet (3:2 - `hull-scrap_barge`):* Asymmetrical, heavily welded silhouette with cranes and magnetic grab slung underneath.
+  - *Profile Sheet (3:2 - `hull-scrap_barge`):* Asymmetrical, heavily welded silhouette with cranes and magnetic grab slung underneath. [Sample Proof](../screens/vessel-samples/hull-scrap_barge.png)
   - *Transit Marker (1:1 - `icon-scrap_barge`):* Irregular, blocky silhouette with crane booms extending outward.
 
 ---
@@ -96,6 +96,6 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
 ## 6. Hull Damage Overlays (3:2)
 
 Designed on flat pale paper ground for transparent compositing across any archetype profile:
-- **`damage-light`:** Scattered thermal scorch marks, small micrometeoroid impact pits, and fine ink hairline fracture stress cracks.
-- **`damage-heavy`:** Large torn exterior plating sections, exposed structural frame ribs, deep charcoal blast scoring, and active venting atmosphere plumes.
-- **`damage-breach`:** Catastrophic open hull rupture, bent internal bulkheads, shattered conduit rings, and frozen decompression debris shards.
+- **`damage-light`:** Scattered thermal scorch marks, small micrometeoroid impact pits, and fine ink hairline fracture stress cracks. [Overlay Proof](../screens/vessel-samples/damage-light.png)
+- **`damage-heavy`:** Large torn exterior plating sections, exposed structural frame ribs, deep charcoal blast scoring, and active venting atmosphere plumes. [Overlay Proof](../screens/vessel-samples/damage-heavy.png)
+- **`damage-breach`:** Catastrophic open hull rupture, bent internal bulkheads, shattered conduit rings, and frozen decompression debris shards. [Overlay Proof](../screens/vessel-samples/damage-breach.png)
