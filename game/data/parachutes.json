@@ -84,7 +84,7 @@
           "value": 1000
         }
       ],
-      "description": "Reduces travel fuel burn by 1,000 bps (10%). [M0 Roadmap: effect wired when fuel market system lands (#138)]"
+      "description": "Reduces the fuel every departure burns by 1,000 bps (10%). Fuel comes from your hold first, then the station's FUEL asks (#138)."
     },
     {
       "id": "black_market_corridors",

@@ -32,6 +32,7 @@ const TMP_ROOT := "user://test_tmp_wiring"
 ## injects a crisis and fines the player, so the run's state differs. Old values:
 ## seed 84 65d35e1895cf171203bccae83e812153d8509ad0d2fd5229814e440762738e48,
 ## seed 7 30308d02bb390ff4028cd037eb181f93f7386d3e93d51a5772584e8af7894563.
+## #138 (fuel market) re-checked these two pins: that run never departs, so neither moved.
 const WORLD_HASH_SEED_84 := "53e594560d64666eaef6c11c3e64ce49fa18355467edca367c614414d1aa2ec2"
 const WORLD_HASH_SEED_7 := "08ae8f4f9cfdd8d93f70829765246d0dd2a4c8eb573a9a925a06e619e13745d7"
 

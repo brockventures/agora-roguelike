@@ -25,7 +25,8 @@ extends RefCounted
 ##   starting_cr, fresh_start_cr, interest_bps, burn_rate, liquidation_haircut_bps:
 ##     applied by RunController.
 ##   fuel_discount_bps: Transit.calculate_fuel_burn(..., fuel_discount_bps), read
-##     via RunController.fuel_discount_bps() (0..10000).
+##     via RunController.fuel_discount_bps() (0..10000). Charged on every departure
+##     (RunController.depart, #138): hold FUEL first, then the station's FUEL asks.
 ##   hazard_odds_bps: Hazards.quote/roll(..., odds_bps), via
 ##     RunController.hazard_odds_bps() (base 10000 = x1.0).
 ##   bankruptcy_grace_ticks: RunController waits this many sim ticks of continued
@@ -49,7 +50,7 @@ const STATS: Dictionary = {
 	"interest_bps": "live",
 	"burn_rate": "live",
 	"liquidation_haircut_bps": "live",   # the share of asset value KEPT in liquidation (50% base)
-	"fuel_discount_bps": "live",
+	"fuel_discount_bps": "live",         # #138: RunController.depart burns fuel through Transit.calculate_fuel_burn
 	"hazard_odds_bps": "live",
 	"piracy_odds_bps": "live",
 	"bankruptcy_grace_ticks": "live",

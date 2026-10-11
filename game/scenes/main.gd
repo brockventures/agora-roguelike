@@ -1123,10 +1123,11 @@ func _build_route_card() -> void:
 	c.visible = false
 	_route_card["plate"] = c
 	_route_card["title"] = kit.label(c, "RouteCardTitle", HudTheme.ROLE_LABEL, 12, HudTheme.RUST_DARK)
-	for k in ["from", "to", "eta"]:
+	for k in ["from", "to", "eta", "fuel"]:
 		_route_card[k + "_cap"] = kit.label(c, "RouteCard_%s_cap" % k, HudTheme.ROLE_LABEL, 12, HudTheme.SLATE)
-		_route_card[k + "_val"] = kit.label(c, "RouteCard_%s_val" % k, HudTheme.ROLE_TITLE, 20, PAPER_TEXT_COLOR)
+		_route_card[k + "_val"] = kit.label(c, "RouteCard_%s_val" % k, HudTheme.ROLE_TITLE, 16 if k == "fuel" else 20, PAPER_TEXT_COLOR)
 	_route_card["belt"] = kit.tag(c, "RouteCardBelt")
+	_route_card["hedge"] = kit.label(c, "RouteCardHedge", HudTheme.ROLE_LABEL, 12, HudTheme.TEAL_DARK)
 
 
 ## The route the selection would take, when the card is up: {} otherwise. The card is up
@@ -1136,7 +1137,7 @@ func _route_card_plan() -> Dictionary:
 		return {}
 	if loop.tab != M0Loop.Tab.MAP or loop.overlay_state != M0Loop.OVERLAY_NONE or market_modal.visible:
 		return {}
-	var plan: Dictionary = controller.can_depart(hud.active_station)
+	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market)
 	if int(plan["rounds"]) <= 0:
 		return {}
 	return plan
@@ -1151,7 +1152,8 @@ func _refresh_route_card() -> void:
 	var origin: String = controller.docked_at
 	var dest: String = hud.active_station
 	var toll: int = int(plan["toll"])
-	if not _changed("route_card", [origin, dest, int(plan["rounds"]), toll, Loc.current(), settings.text_scale]):
+	var fuel_key: Array = [int(plan["fuel_units"]), int(plan["fuel_hold"]), int(plan["fuel_buy"]), int(plan["fuel_cr"]), int(plan["fuel_bps"]), str(plan["reason"])]
+	if not _changed("route_card", [origin, dest, int(plan["rounds"]), toll, fuel_key, Loc.current(), settings.text_scale]):
 		return
 	var pad: float = ROUTE_CARD_PAD
 	var inner_max: float = ROUTE_CARD_MAX_W - 2.0 * pad
@@ -1159,6 +1161,15 @@ func _refresh_route_card() -> void:
 	var title_w: float = kit.fit_text(title, tr("MAP_CARD_TITLE"), inner_max)
 	var caps: Dictionary = {"from": tr("MAP_CARD_FROM"), "to": tr("MAP_CARD_TO"), "eta": tr("MAP_CARD_ETA")}
 	var vals: Dictionary = {"from": Loc.station(origin).to_upper(), "to": Loc.station(dest).to_upper(), "eta": _rounds_text(int(plan["rounds"]))}
+	var has_fuel: bool = int(plan["fuel_units"]) > 0
+	if has_fuel:
+		caps["fuel"] = tr("MAP_CARD_FUEL")
+		vals["fuel"] = tr("MAP_CARD_FUEL_BUY") % [int(plan["fuel_units"]), int(plan["fuel_cr"])] if int(plan["fuel_buy"]) > 0 else tr("MAP_CARD_FUEL_HOLD") % int(plan["fuel_units"])
+	for k in ["fuel"]:
+		(_route_card[k + "_cap"] as Label).visible = has_fuel
+		(_route_card[k + "_val"] as Label).visible = has_fuel
+	var short_fuel: bool = str(plan["reason"]) == "INSUFFICIENT_FUEL"
+	(_route_card["fuel_val"] as Label).add_theme_color_override("font_color", HudTheme.RUST_DARK if short_fuel else PAPER_TEXT_COLOR)
 	var cap_w: float = 0.0
 	for k in caps:
 		var cl: Label = _route_card[k + "_cap"]
@@ -1181,12 +1192,19 @@ func _refresh_route_card() -> void:
 	if toll > 0:
 		kit.set_tag(belt, tr("MAP_CARD_BELT") % toll, HudTheme.RUST, HudTheme.BONE, inner_max)
 		belt_w = belt.size.x
-	var inner_w: float = maxf(maxf(title_w, belt_w), cap_w + ROUTE_CARD_GAP + val_w)
+	# The fuel_hedge perk, when owned: one small line under the fuel row.
+	var hedge: Label = _route_card["hedge"]
+	var hedge_on: bool = has_fuel and int(plan["fuel_bps"]) > 0
+	hedge.visible = hedge_on
+	var hedge_w: float = 0.0
+	if hedge_on:
+		hedge_w = kit.fit_text(hedge, tr("MAP_CARD_FUEL_HEDGED") % (int(plan["fuel_bps"]) / 100), inner_max)
+	var inner_w: float = maxf(maxf(maxf(title_w, belt_w), hedge_w), cap_w + ROUTE_CARD_GAP + val_w)
 	var y: float = pad
 	title.position = Vector2(pad, y)
 	title.size = Vector2(inner_w, HudKit.line_height(title))
 	y += title.size.y + 6.0
-	for k in ["from", "to", "eta"]:
+	for k in (["from", "to", "eta", "fuel"] if has_fuel else ["from", "to", "eta"]):
 		var cl: Label = _route_card[k + "_cap"]
 		var vl: Label = _route_card[k + "_val"]
 		cl.position = Vector2(pad, y)
@@ -1194,6 +1212,10 @@ func _refresh_route_card() -> void:
 		vl.position = Vector2(pad + cap_w + ROUTE_CARD_GAP, y)
 		vl.size = Vector2(inner_w - cap_w - ROUTE_CARD_GAP, row_h[k])
 		y += float(row_h[k]) + 2.0
+	if hedge_on:
+		hedge.position = Vector2(pad, y)
+		hedge.size = Vector2(inner_w, HudKit.line_height(hedge))
+		y += hedge.size.y
 	if toll > 0:
 		y += 4.0
 		belt.position = Vector2(pad, y)
@@ -1215,7 +1237,9 @@ func _route_card_spots(discs: Dictionary) -> Array:
 	var below_status: float = map_label.position.y + map_label.size.y + 6.0
 	var corners: Array = [Vector2(panel.x - c.size.x - 16.0, limit.end.y - c.size.y - 8.0), Vector2(16.0, limit.end.y - c.size.y - 8.0),
 		Vector2(panel.x - c.size.x - 16.0, 12.0), Vector2(16.0, below_status)]
+	var status: Rect2 = Rect2(map_label.position, map_label.size)
 	var out: Array = []
+	var off_status: Array = []
 	for spot in corners:
 		var r: Rect2 = _route_card_rect_at(spot)
 		if not limit.encloses(r):
@@ -1225,7 +1249,13 @@ func _route_card_spots(discs: Dictionary) -> Array:
 			if _circle_hits(Vector2(discs[st]), SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0 + 3.0, r):
 				clear = false
 		if clear:
-			out.append(spot)
+			# The status text grows a line per refusal (fuel, toll): prefer a corner off it,
+			# and only when every corner is on it let the card cover the text (the stress case).
+			if r.intersects(status):
+				off_status.append(spot)
+			else:
+				out.append(spot)
+	out.append_array(off_status)
 	if out.is_empty():
 		out.append(corners[0])
 	return out
@@ -1257,7 +1287,7 @@ func _map_text() -> String:
 		out.append(tr("MAP_TRANSIT_ETA") % _rounds_text(int(info["eta_rounds"])))
 		return "\n".join(out)
 	out.append(tr("HUD_MAP_DOCKED") % Loc.station(controller.docked_at))
-	var plan: Dictionary = controller.can_depart(hud.active_station)
+	var plan: Dictionary = controller.can_depart(hud.active_station, loop.market)
 	var dest_name: String = Loc.station(hud.active_station)
 	if str(plan["reason"]) == "SAME_STATION":
 		out.append(tr("MAP_PICK"))
