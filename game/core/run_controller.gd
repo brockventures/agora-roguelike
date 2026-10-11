@@ -75,6 +75,10 @@ var crisis_deck: CrisisDeck = null
 ## The sector barons (Epic 3). Null until something attaches a world, so a bare
 ## controller has none and saves no `world` key, exactly like crisis_deck.
 var world: Barons = null
+## The Sol System Rescue Project (#32). Null until the monopoly opens it, so a run that never
+## gets there has none and saves no `rescue` key (RunSave), exactly like `world`. It is Sol's,
+## not the corp's: a Chapter 11 filing leaves it alone (Ryan, #32 Q5 a).
+var rescue: RescueProject = null
 
 # --- Travel (Epic 3 task 0, #111) ---
 

@@ -11,6 +11,8 @@ extends RefCounted
 ##               only when the controller carries a deck.
 ##   world       Barons (Epic 3): every baron's state. Present only when the
 ##               controller carries a world, so a run without barons hashes as before.
+##   rescue      RescueProject (#32): the Sol System Rescue Project. Present only when the
+##               controller carries one, so a run that never opens it hashes as before.
 ##   bags        Bags (streak counters, drawn/remaining marbles, forced queue),
 ##               so bad-luck protection is never wiped by a save/load cycle
 ##
@@ -29,6 +31,8 @@ static func capture(controller: RunController, market: StationMarket, bags: Bags
 		out["crisis"] = controller.crisis_deck.to_dict()
 	if controller.world != null:
 		out["world"] = controller.world.to_dict()
+	if controller.rescue != null:
+		out["rescue"] = controller.rescue.to_dict()
 	return out
 
 
@@ -55,6 +59,9 @@ static func restore(data: Dictionary) -> Dictionary:
 		# wire the world in without reseeding.
 		mkt.world = rc.world
 		mkt.world_mods = rc.world.market_mods()
+	var rd = data.get("rescue", null)
+	if rd is Dictionary:
+		rc.rescue = RescueProject.from_dict(rd)
 	return {
 		"ok": true,
 		"error": "",
