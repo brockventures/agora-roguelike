@@ -27,8 +27,8 @@ extends RefCounted
 ##  - Recapture. The player tenders to a fleet holding shares; it sells at or above its own
 ##    valuation, premium included.
 ##  - Takeover. `threshold_shares` (501) in one hand takes the baron at once: the
-##    taker becomes `holder`, absorbs the treasury and the debt (a claim the taker
-##    itself held cancels), and the baron's archetype AI stops acting.
+##    taker becomes `holder`, absorbs the treasury and `player_assumed_debt_bps` of the
+##    debt (a claim the taker itself held cancels; the player's share is half, #32 Q1), and the baron's archetype AI stops acting.
 ##  - Bankruptcy. `bankrupt_rounds` (6) insolvent rounds with no treasury shares
 ##    left: inventory liquidates at the haircut, the proceeds pay creditors pro rata
 ##    by claim, and the largest claim holder (ties: sorted id) becomes holder.
@@ -56,6 +56,8 @@ const SYSTEM: String = "system"
 ## Defaults for takeover keys a barons.json may leave out (the shipped file sets them).
 const DEFAULT_PRICE_FLOOR: int = 10
 const DEFAULT_RESET_BPS: int = 4000
+## A custom barons file that omits the key keeps the old full-debt takeover.
+const DEFAULT_ASSUMED_DEBT_BPS: int = 10000
 const DEFAULT_RENT_UNITS: int = 100
 const DEFAULT_RENT_SPREAD_BPS: int = 600
 ## [stake_bps of the bidder's threshold, control premium bps]; barons.json overrides.
@@ -79,6 +81,7 @@ static func settings(w: Barons) -> Dictionary:
 		"rent_units": int(t.get("rent_units", DEFAULT_RENT_UNITS)),
 		"rent_spread_bps": int(t.get("rent_spread_bps", DEFAULT_RENT_SPREAD_BPS)),
 		"premium": t.get("control_premium", DEFAULT_PREMIUM),
+		"player_assumed_debt_bps": clampi(int(t.get("player_assumed_debt_bps", DEFAULT_ASSUMED_DEBT_BPS)), 0, 10000),
 		"bid_step_bps": clampi(int(t.get("bid_step_bps", 1500)), 0, 100000),
 	}
 
@@ -657,7 +660,10 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 		var pre: Dictionary = rc.assess()
 		ev["treasury"] = s.treasury_cr
 		rc.cr += s.treasury_cr
-		ev["debt"] = rc.doomsday.add_principal(debt)
+		# Q1 (a), #32: the player assumes only `player_assumed_debt_bps` of the debt (the
+		# shipped 5000 = half); the rest is written off with the baron's books.
+		var assumed: int = debt * int(settings(w)["player_assumed_debt_bps"]) / 10000
+		ev["debt"] = rc.doomsday.add_principal(assumed)
 		s.treasury_cr = 0
 		ev["forced_ch11"] = not bool(pre["insolvent"]) and bool(rc.assess()["insolvent"])
 	else:

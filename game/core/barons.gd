@@ -796,6 +796,8 @@ static func validate(d: Dictionary) -> Array:
 		for k in ["auction_price_floor", "rent_units", "rent_spread_bps"]:
 			if take.has(k) and (not _is_int(take[k]) or int(take[k]) < 0):
 				errs.append("takeover.%s must be a whole number >= 0" % k)
+		if take.has("player_assumed_debt_bps") and (not _is_int(take["player_assumed_debt_bps"]) or int(take["player_assumed_debt_bps"]) < 0 or int(take["player_assumed_debt_bps"]) > 10000):
+			errs.append("takeover.player_assumed_debt_bps must be 0..10000")
 		if take.has("reset_treasury_bps") and (not _is_int(take["reset_treasury_bps"]) or int(take["reset_treasury_bps"]) < 0 or int(take["reset_treasury_bps"]) > 10000):
 			errs.append("takeover.reset_treasury_bps must be 0..10000")
 		errs.append_array(_check_premium(take.get("control_premium", null)))

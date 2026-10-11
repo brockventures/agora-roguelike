@@ -298,8 +298,11 @@ func test_a_takeover_absorbs_treasury_and_debt_and_the_holder_gains_the_privileg
 		return "one share should have taken it: %s" % str(res)
 	if rc.cr != cr0 - 7 + (tr0 + 7) or int(tk["treasury"]) != tr0 + 7:
 		return "treasury not absorbed: cr %d (was %d), treasury %d" % [rc.cr, cr0, tr0]
-	if rc.doomsday.principal_debt != pr0 + debt or int(tk["debt"]) != debt:
-		return "debt not assumed: principal %d (was %d), debt %d" % [rc.doomsday.principal_debt, pr0, debt]
+	# #32 Q1 (a): the player assumes half the debt (takeover.player_assumed_debt_bps 5000).
+	# Moved from `pr0 + debt`; the other half is written off with the baron's books.
+	var assumed: int = debt * 5000 / 10000
+	if rc.doomsday.principal_debt != pr0 + assumed or int(tk["debt"]) != assumed:
+		return "debt not assumed: principal %d (was %d), debt %d, expected %d of %d" % [rc.doomsday.principal_debt, pr0, int(tk["debt"]), assumed, debt]
 	if s.treasury_cr != 0 or s.debt_cr != 0 or s.treasury_shares != 0 or s.strain != 0 or not w.distress_at("mars").is_empty():
 		return "the baron's books were not cleared: %s" % str(s.to_dict())
 	if not w.is_insider("player", ARES) or w.docking_toll_due("player", "mars") != 0:
@@ -534,8 +537,71 @@ func test_a_takeover_cancels_a_loan_the_taker_made() -> String:
 	w.add_debt(ARES, 10000)
 	var pr0: int = rc.doomsday.principal_debt
 	var ev: Dictionary = Takeover.take(w, ARES, "player", rc)
-	if rc.doomsday.principal_debt != pr0 + 10000 or int(ev["debt"]) != 10000:
+	# Moved from 10000 by #32 Q1 (a): the 10000 left after the taker's own loan cancels is
+	# halved (player_assumed_debt_bps 5000).
+	if rc.doomsday.principal_debt != pr0 + 5000 or int(ev["debt"]) != 5000:
 		return "the taker assumed its own loan: %s" % str(ev)
+	return "ok"
+
+
+# --- #32 Q1 (a): a player takeover assumes half of the baron's debt ---
+
+func test_the_shipped_data_sets_the_assumed_debt_share_to_half() -> String:
+	var t: Dictionary = Barons.load_data()["takeover"]
+	if int(t.get("player_assumed_debt_bps", -1)) != 5000:
+		return "barons.json takeover.player_assumed_debt_bps should be 5000"
+	if int(Takeover.settings(Barons.for_new_run())["player_assumed_debt_bps"]) != 5000:
+		return "settings() does not read it"
+	return "ok"
+
+
+func test_a_player_takeover_assumes_half_and_rounds_down() -> String:
+	var c := _ctx()
+	var rc: RunController = c["rc"]
+	var w: Barons = c["world"]
+	w.add_debt(ARES, 10001)
+	var pr0: int = rc.doomsday.principal_debt
+	var ev: Dictionary = Takeover.take(w, ARES, "player", rc)
+	if rc.doomsday.principal_debt != pr0 + 5000 or int(ev["debt"]) != 5000:
+		return "10001 of debt should land as 5000: %s" % str(ev)
+	if w.state(ARES).debt_cr != 0:
+		return "the baron's debt should be cleared"
+	return "ok"
+
+
+func test_the_assumed_share_is_data_and_100_percent_restores_the_old_rule() -> String:
+	var c := _ctx()
+	var w: Barons = c["world"]
+	w.data["takeover"]["player_assumed_debt_bps"] = 10000
+	w.add_debt(ARES, 20000)
+	var rc: RunController = c["rc"]
+	var pr0: int = rc.doomsday.principal_debt
+	Takeover.take(w, ARES, "player", rc)
+	if rc.doomsday.principal_debt != pr0 + 20000:
+		return "10000 bps should assume all of it"
+	var d: Dictionary = Barons.load_data()
+	d["takeover"]["player_assumed_debt_bps"] = 10001
+	if Barons.validate(d).is_empty():
+		return "validate accepted 10001"
+	d["takeover"]["player_assumed_debt_bps"] = "half"
+	if Barons.validate(d).is_empty():
+		return "validate accepted a string"
+	d["takeover"].erase("player_assumed_debt_bps")
+	if not Barons.validate(d).is_empty():
+		return "a file without the key must stay valid (full debt)"
+	return "ok"
+
+
+func test_a_rival_takeover_still_nets_the_full_debt() -> String:
+	var c := _ctx()
+	var rc: RunController = c["rc"]
+	var w: Barons = c["world"]
+	w.add_debt(ARES, 10000)
+	var tr0: int = w.state(ARES).treasury_cr
+	var pr0: int = rc.doomsday.principal_debt
+	var ev: Dictionary = Takeover.take(w, ARES, "rival_a", rc)
+	if int(ev["debt"]) != 10000 or w.state(ARES).treasury_cr != tr0 - 10000 or rc.doomsday.principal_debt != pr0:
+		return "the half-debt rule is the player's only: %s" % str(ev)
 	return "ok"
 
 

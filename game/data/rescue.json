@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "_placeholder": "Every number is a tuning guess for Ryan, in CR / units / bps / rounds. Task 5 of docs/design/rescue-project.md tunes them.",
+  "unlock": "monopoly",
+  "rent_multiplier_bps": 20000,
+  "phases": [
+    {"id": "anchor_yard", "name": "Anchor Yard", "site": "luna", "needs": {"MACHINERY": 100, "ORE": 100},
+     "cr": 4000, "keep_bps": 6000},
+    {"id": "coil_foundry", "name": "Coil Foundry", "site": "earth", "needs": {"FUEL": 100, "MACHINERY": 100},
+     "cr": 5000, "keep_bps": 3500},
+    {"id": "containment_shell", "name": "Containment Shell", "site": "mars", "needs": {"FOOD": 100, "FRAG": 100},
+     "cr": 7000, "keep_bps": 1500},
+    {"id": "ignition_array", "name": "Ignition Array", "site": "ceres",
+     "needs": {"MACHINERY": 100, "ORE": 100, "FUEL": 100}, "cr": 8000, "keep_bps": 0}
+  ],
+  "win": {"severance_base": 500, "severance_per_round_left": 10, "phase_consolation": 100}
+}

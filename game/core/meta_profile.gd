@@ -17,6 +17,8 @@ var severance_points: int = 0
 ## Barons broken (held by a corp when it ended), summed over every corp (Epic 3 task 9).
 ## Saved only when non-zero, so a profile that never broke one hashes as it always did.
 var barons_broken: int = 0
+## Sol System Rescue Projects completed (#32). Saved only when non-zero, like barons_broken.
+var rescues_completed: int = 0
 ## Runs (corps) finished under this profile, bumped when a corp ends.
 var runs_completed: int = 0
 
@@ -56,6 +58,8 @@ func to_dict() -> Dictionary:
 	}
 	if barons_broken > 0:
 		out["barons_broken"] = barons_broken
+	if rescues_completed > 0:
+		out["rescues_completed"] = rescues_completed
 	return out
 
 static func from_dict(d: Dictionary) -> MetaProfile:
@@ -71,6 +75,8 @@ static func from_dict(d: Dictionary) -> MetaProfile:
 	p.runs_completed = maxi(0, int(rc)) if (rc is int or rc is float) else 0
 	var bb = d.get("barons_broken", 0)
 	p.barons_broken = maxi(0, int(bb)) if (bb is int or bb is float) else 0
+	var rs = d.get("rescues_completed", 0)
+	p.rescues_completed = maxi(0, int(rs)) if (rs is int or rs is float) else 0
 	return p
 
 static func _sanitise_ids(raw) -> Array[String]:
