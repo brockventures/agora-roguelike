@@ -18,24 +18,25 @@ func test_station_screen_projection_bounds() -> String:
 		if pos.x < 0.0 or pos.x > 1280.0 or pos.y < 0.0 or pos.y > 800.0:
 			return "station %s out of 1280x800 bounds: %s" % [st, str(pos)]
 
-	# Ceres at 2.767 AU should be ~309.9 px from center
-	var ceres_r := m.get_orbit_radius_px("ceres")
-	if absf(ceres_r - (2.767 * 112.0)) > 0.01:
-		return "ceres orbit radius incorrect: %f" % ceres_r
+	# Display radii (SolTacticalMap.DISPLAY_RADIUS_PX), not AU-linear: Ceres keeps 310.
+	if absf(m.get_orbit_radius_px("ceres") - 310.0) > 0.01 or absf(m.get_orbit_radius_px("earth") - 165.0) > 0.01:
+		return "display orbit radii wrong"
+	for st in ["earth", "mars", "ceres"]:
+		var d: float = m.get_station_screen_pos(st, 0).distance_to(SolTacticalMap.MAP_CENTER)
+		if absf(d - m.get_orbit_radius_px(st)) > 0.01:
+			return "%s is not on its display ring: %f" % [st, d]
 
-	# Earth at 1.0 AU should be 112.0 px from center
-	var earth_r := m.get_orbit_radius_px("earth")
-	if absf(earth_r - 112.0) > 0.01:
-		return "earth orbit radius incorrect: %f" % earth_r
-
-	# Luna must have visual screen separation from Earth (32px) to prevent 14px node overlap
-	var earth_pos := m.get_station_screen_pos("earth", 0)
-	var luna_pos := m.get_station_screen_pos("luna", 0)
-	var luna_sep := earth_pos.distance_to(luna_pos)
-	if absf(luna_sep - SolTacticalMap.LUNA_SCREEN_SEPARATION_PX) > 0.01:
-		return "luna screen separation wrong: %f vs %f" % [luna_sep, SolTacticalMap.LUNA_SCREEN_SEPARATION_PX]
+	# Luna's orbit is a true circle in panel px, big enough to clear Earth's disc.
+	var luna_sep := _panel_dist(m.get_station_screen_pos("earth", 0), m.get_station_screen_pos("luna", 0))
+	if absf(luna_sep - SolTacticalMap.LUNA_ORBIT_PX) > 0.01:
+		return "luna panel separation wrong: %f vs %f" % [luna_sep, SolTacticalMap.LUNA_ORBIT_PX]
 
 	return "ok"
+
+
+func _panel_dist(a: Vector2, b: Vector2) -> float:
+	var d: Vector2 = a - b
+	return Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y).length()
 
 func test_orbital_motion_across_rounds() -> String:
 	var m := SolTacticalMap.new()
@@ -48,9 +49,9 @@ func test_orbital_motion_across_rounds() -> String:
 	if pos_r0.distance_to(pos_r24) > 0.01:
 		return "mars orbit period 24 failed to return to start: %s vs %s" % [str(pos_r0), str(pos_r24)]
 
-	# r0 and r12 are opposite sides of the orbit (distance ~ 2 * 1.524 * 130 = 341.4 px)
+	# r0 and r12 are opposite sides of the orbit (twice its display radius)
 	var opp_dist := pos_r0.distance_to(pos_r12)
-	if absf(opp_dist - (2.0 * 1.524 * 112.0)) > 0.1:
+	if absf(opp_dist - 2.0 * 237.5) > 0.1:
 		return "mars opposition distance wrong: %f" % opp_dist
 
 	# Luna orbits Earth with period 4, and Earth orbits Sol with period 12.
@@ -339,23 +340,55 @@ func test_body_sizes_order_sol_then_earth_and_mars_then_luna_and_ceres() -> Stri
 
 func test_display_phase_spreads_the_bodies_without_touching_the_simulation() -> String:
 	var m := SolTacticalMap.new()
-	var min_gap: float = 1e9
-	var round0_gap: float = m.get_station_screen_pos("earth", 0).distance_to(m.get_station_screen_pos("mars", 0))
-	if round0_gap < 100.0:
-		return "earth and mars still stack at round 0: %f px apart" % round0_gap
-	for r in 48:
-		var e := m.get_station_screen_pos("earth", r)
-		var l := m.get_station_screen_pos("luna", r)
-		var ma := m.get_station_screen_pos("mars", r)
-		min_gap = minf(min_gap, minf(e.distance_to(ma), e.distance_to(l)))
-		# Luna's foreshortened orbit (y x 0.56) still clears Earth's disc and its own.
-		var d: Vector2 = (l - e) * HudLayout.MAP_STRETCH
-		if d.length() < 0.5 * (MapIcons.disc_px("earth") + MapIcons.disc_px("luna")) + 4.0:
-			return "luna overlaps earth at round %d" % r
-	# The floor is the two orbits' own radial gap (0.524 AU = 58.7 px): they can never be closer.
-	if min_gap < 58.0:
-		return "earth, luna and mars still stack: closest %f px" % min_gap
-	# Transit (the simulation's positions) stays at its original round-0 angle 0.
+	if _panel_dist(m.get_station_screen_pos("earth", 0), m.get_station_screen_pos("mars", 0)) < 100.0:
+		return "earth and mars still stack at round 0"
+	# Transit (the simulation's positions) stays at its original round-0 angle 0 and AU radius.
 	if Transit.get_station_position("mars", 0.0) != Vector2(Transit.ORBITAL_RADII["mars"], 0.0):
 		return "Transit positions changed"
+	return "ok"
+
+
+## Panel-space ellipse distance from a point (relative to the Sun) to a display ring.
+func _ring_gap(panel_pos: Vector2, ring: String) -> float:
+	var r: float = SolTacticalMap.DISPLAY_RADIUS_PX[ring]
+	var a: float = r * HudLayout.MAP_STRETCH.x
+	var b: float = r * HudLayout.MAP_STRETCH.y
+	var f: float = panel_pos.x * panel_pos.x / (a * a) + panel_pos.y * panel_pos.y / (b * b) - 1.0
+	return absf(f) / (2.0 * Vector2(panel_pos.x / (a * a), panel_pos.y / (b * b)).length())
+
+
+func _panel(m: SolTacticalMap, st: String, r: float) -> Vector2:
+	var d: Vector2 = m.get_station_screen_pos(st, int(r)) - SolTacticalMap.MAP_CENTER
+	return Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y)
+
+
+func test_discs_and_luna_keep_clear_over_96_rounds() -> String:
+	var m := SolTacticalMap.new()
+	var radius := {"earth": 22.0, "mars": 22.0, "ceres": 15.0, "luna": 14.0}
+	var sun_r: float = 42.0
+	for r in 96:
+		var pos: Dictionary = {}
+		for st in ["earth", "mars", "ceres", "luna"]:
+			pos[st] = _panel(m, st, r)
+		for a in pos:
+			if (pos[a] as Vector2).length() < sun_r + float(radius[a]):
+				return "%s overlaps the Sun at round %d" % [a, r]
+			for b in pos:
+				if a < b and (pos[a] as Vector2).distance_to(pos[b]) < float(radius[a]) + float(radius[b]) + 2.0:
+					return "%s and %s discs overlap at round %d (%f px)" % [a, b, r, (pos[a] as Vector2).distance_to(pos[b])]
+		# Luna never touches Mars's drawn ring, at any angle (top and bottom included).
+		if _ring_gap(pos["luna"], "mars") < float(radius["luna"]):
+			return "luna touches Mars's ring at round %d (gap %f)" % [r, _ring_gap(pos["luna"], "mars")]
+		# Earth's ring clears the Sun's frame (about 70 px) plus Earth's disc.
+		if (pos["earth"] as Vector2).length() < 70.0 + float(radius["earth"]):
+			return "earth ring runs into the Sun's frame at round %d" % r
+	return "ok"
+
+
+func test_luna_never_draws_over_the_sun() -> String:
+	var m := SolTacticalMap.new()
+	for r in 96:
+		var d: Vector2 = m.get_station_screen_pos("luna", r) - SolTacticalMap.MAP_CENTER
+		if Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y).length() < SolTacticalMap.LUNA_SOL_CLEARANCE_PX - 0.01:
+			return "luna crosses the Sun at round %d" % r
 	return "ok"

@@ -38,21 +38,45 @@ const LABEL_SPOTS: Array[String] = ["right", "left", "above", "below", "above_ri
 const LABEL_EXTRA_ROWS: int = 5
 const LABEL_PAD_PX: float = 1.0
 
-## Luna's drawn orbit radius around Earth, in map-model px (the panel then foreshortens y by
-## HudLayout.MAP_STRETCH.y = 0.56, so Luna still clears Earth's disc at the top and bottom of its
-## ring: 72 * 0.56 = 40 px against Earth 22 + Luna 14 px of disc). Display only: the simulation's
-## Luna offset (Transit, 0.05 AU) is untouched.
-const LUNA_SCREEN_SEPARATION_PX: float = 72.0
+## Luna's drawn orbit around Earth is a true circle in panel px (not stretched by MAP_STRETCH):
+## Earth's disc 22 + Luna's 14 + 6 px of air = 42 px, so Luna clears Earth in every direction.
+## Display only: the simulation's Luna offset (Transit, 0.05 AU) is untouched.
+const LUNA_ORBIT_PX: float = 42.0
+const LUNA_DISC_R: float = 14.0
+const LUNA_AIR_PX: float = 4.0
+
+## Luna keeps at least this panel-px distance from the Sun's centre: the Sun's drawn frame
+## reaches about 72 px right of its centre, plus Luna's radius and air.
+const LUNA_SOL_CLEARANCE_PX: float = 108.0
+
+## Display radii of the three heliocentric bodies, model px (the panel then draws them as
+## ellipses, x by 1.34 and y by 0.56). Replaces the AU-linear radii (112 / 171 / 310) for drawing
+## only; Transit is untouched. Chosen from the constraints, not from AU:
+##  - Ceres 310 is unchanged: the largest ring that fits above the ticker (ry 174 of the 208 px
+##    under the Sun) and inside the panel, and no further under the Route Preview card.
+##  - Earth 165: its minor semi-axis (0.56 * 165 = 92.4 px) is the nearest it ever passes the Sun,
+##    and must clear the Sun's frame (about 70 px) plus Earth's disc (22): the binding lower bound.
+##  - Mars 237.5: the even midpoint. Its vertical gap to Earth's ring (40.6 px) is what Luna and
+##    Earth's disc (22 + 4 air) must fit in; Luna steers round it (see _luna_offset).
+const DISPLAY_RADIUS_PX: Dictionary = {
+	"earth": 165.0,
+	"mars": 237.5,
+	"ceres": 310.0,
+}
 
 ## Display-only starting phase of each body on the map, radians (counter-clockwise on screen).
 ## The simulation puts Earth, Mars and Ceres all at angle 0 on round 0, which stacks them in a
 ## row. Adding a constant to the drawn angle spreads them without touching Transit: ETAs, fuel,
-## alignment windows and every golden read Transit, never these. Distances between bodies are
-## not preserved by this, so the map is a schematic, as it already was.
+## alignment windows and every golden read Transit, never these. The phases were picked by a
+## sweep: the only angle at which a pair ever lines up (conjunction) is fixed by the phases
+## (Mars/Earth every 24 rounds at 2 * phase(Mars) - phase(Earth) = 180 degrees, the left side,
+## where the rings are widest apart; Ceres/Mars every 48 rounds at 270 degrees, the bottom, where
+## the squashed rings are 40 px apart: just enough for the two discs), and this choice is the one
+## that also leaves the 130% route card a clear spot in every round (test_map_labels).
 const DISPLAY_PHASE_RAD: Dictionary = {
-	"earth": -0.61,  # about -35 degrees: lower right, on the near side
-	"mars": 0.61,    # about +35 degrees: upper right, on the far side
-	"ceres": 2.62,   # about +150 degrees: upper left
+	"earth": -1.0472,  # -60 degrees: lower right, on the near side
+	"mars": 1.0472,    # 60 degrees: upper right, on the far side
+	"ceres": 2.8798,   # 165 degrees: left
 }
 
 var controller: RunController = null
@@ -117,18 +141,54 @@ func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
 	if st == "luna":
 		var earth_screen := get_station_screen_pos("earth", round_num)
 		var lunar_angle: float = (fposmod(effective_r, 4.0) / 4.0) * TAU
-		return earth_screen + Vector2(cos(lunar_angle), -sin(lunar_angle)) * LUNA_SCREEN_SEPARATION_PX
+		return earth_screen + _luna_offset(earth_screen, lunar_angle)
 
 	var au_pos := Transit.get_station_position(st, effective_r).rotated(float(DISPLAY_PHASE_RAD.get(st, 0.0)))
+	if DISPLAY_RADIUS_PX.has(st):
+		return MAP_CENTER + Vector2(au_pos.x, -au_pos.y).normalized() * float(DISPLAY_RADIUS_PX[st])
 	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
 
+## Panel-space (foreshortened) vector for a model-space delta.
+static func _panel_delta(d: Vector2) -> Vector2:
+	return Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y)
+
+
+## Luna's model-space offset from Earth: a panel-px circle (LUNA_ORBIT_PX) at its nominal angle,
+## or the nearest angle that keeps clear of the Sun's frame, Mars's ring and the other discs.
+## Display only. The ring distance is the first-order ellipse distance |f| / |grad f|.
+func _luna_offset(earth_pos: Vector2, angle: float) -> Vector2:
+	var sx: float = HudLayout.MAP_STRETCH.x
+	var sy: float = HudLayout.MAP_STRETCH.y
+	var mars_r: float = float(DISPLAY_RADIUS_PX["mars"])
+	var a_m: float = mars_r * sx
+	var b_m: float = mars_r * sy
+	var best: Vector2 = Vector2.ZERO
+	var best_slack: float = -1e9
+	for i in 33:
+		# 0, +step, -step, +2 step ...: the nearest clear angle to the nominal one wins.
+		var k: int = (i + 1) / 2 * (1 if i % 2 == 1 else -1)
+		var a: float = angle + float(k) * TAU / 32.0
+		var panel_off := Vector2(cos(a), -sin(a)) * LUNA_ORBIT_PX
+		var p: Vector2 = _panel_delta(earth_pos - MAP_CENTER) + panel_off
+		var slack: float = p.length() - LUNA_SOL_CLEARANCE_PX
+		var f: float = (p.x * p.x) / (a_m * a_m) + (p.y * p.y) / (b_m * b_m) - 1.0
+		var grad: float = 2.0 * Vector2(p.x / (a_m * a_m), p.y / (b_m * b_m)).length()
+		slack = minf(slack, absf(f) / maxf(grad, 1e-6) - (LUNA_DISC_R + LUNA_AIR_PX))
+		if slack >= 0.0:
+			return Vector2(panel_off.x / sx, panel_off.y / sy)
+		if slack > best_slack:
+			best_slack = slack
+			best = Vector2(panel_off.x / sx, panel_off.y / sy)
+	return best
+
+
 ## Offset from a station node to its label origin. At round 0 Luna sits one orbit (72 px)
-## right of Earth, so Earth's label goes to its left, Luna's and Ceres' to their right, and
+## right of Earth, so Earth's label goes below it, Luna's and Ceres' to their right, and
 ## Mars' two rows above its node, clear of Luna's ring.
 static func get_label_offset(station_id: String) -> Vector2:
 	match station_id.to_lower():
 		"earth":
-			return Vector2(-169.0, 5.0)
+			return Vector2(-69.0, 47.0)
 		"mars":
 			return Vector2(-8.0, -46.0)
 		_:
@@ -223,6 +283,9 @@ static func _circle_hits_rect(center: Vector2, radius: float, rect: Rect2) -> bo
 
 ## Returns orbital radius in screen pixels for drawing concentric orbital track rings.
 func get_orbit_radius_px(station_id: String) -> float:
+	var st: String = "earth" if station_id.to_lower() == "luna" else station_id.to_lower()
+	if DISPLAY_RADIUS_PX.has(st):
+		return float(DISPLAY_RADIUS_PX[st])
 	var au_radius := Transit.get_station_orbital_radius(station_id)
 	return au_radius * AU_SCALE_PX
 
