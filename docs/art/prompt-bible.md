@@ -41,70 +41,70 @@ Sample gates from #73: 6.3 Earth + Mars, 6.4 Hauler, 6.5 Audit + Flare.
 
 ## Batch 6.3: stations and Sol bodies
 
-Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 tactical orbital nodes; `card-*` are 4:3 vignettes; `body-*` are Sol map bodies.
+Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 tactical orbital nodes; `card-*` are 4:3 vignettes; `body-*` are Sol map bodies. Aligned with Ryan's #lounge sign-offs.
 
 ### station-earth
 - batch: 6.3
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: earth
-- prompt: Tactical map node icon: a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellowed atmospheric rim haze, and a thin orbital ring of docks hugging it. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellow-amber atmospheric rim haze, a thick shroud of dead satellites and orbital scrap, an orbital dock ring half-buried in the debris, and a horizontal space elevator tether ribbon at the 3 o'clock equator ending at a massive orbital shipyard hub. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-luna
 - batch: 6.3
 - aspect: 1:1
 - sample: no
 - source: Transit.STATIONS: luna
-- prompt: Tactical map node icon: a pale grey cratered moon with long flat shadow cuts across the craters and a small cluster of dome habitats on its rim. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a pale monochrome cratered moon with dark charcoal basalt maria, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical storage tanks and floodlit landing pads breaking the curved lunar limb. Zero rust, zero ochre, strictly monochrome greyscale. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-mars
 - batch: 6.3
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: mars
-- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white, and squat industrial foundries rooted firmly into the surface bedrock on the visible face by the edge of a basin. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a rust-red desert world with dark-teal terraformed basin seas, polar ice cap in bone white, surface dome habitats, and squat industrial foundries and spaceports rooted firmly into bedrock on the visible face along the basin rim. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts, clean outer limb. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-ceres
 - batch: 6.3
 - aspect: 1:1
 - sample: no
 - source: Transit.STATIONS: ceres
-- prompt: Tactical map node icon: a small dark rocky dwarf planet with pitted ochre mineral veins, a ragged mining platform clamped onto it and tethered ore sleds. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a small asymmetrical dark rocky potato asteroid with pitted ochre mineral veins, a ragged mining platform clamped onto it and tethered ore sleds trailing in zero-g. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### card-earth
 - batch: 6.3
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: earth
-- prompt: Card vignette illustration: wide view of a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellowed atmospheric rim haze, and a thin orbital ring of docks hugging it, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellow-amber atmospheric rim haze, a thick hazardous cloud of dead satellites and metallic scrap in low orbit, the orbital dock ring half-buried in the debris, and the horizontal space elevator tether connecting to a massive orbital shipyard hub. Zero free-flying cargo haulers. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### card-luna
 - batch: 6.3
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: luna
-- prompt: Card vignette illustration: wide view of a pale grey cratered moon with long flat shadow cuts across the craters and a small cluster of dome habitats on its rim, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a pale monochrome cratered moon with dark charcoal basalt maria, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical tanks and floodlit landing pads breaking the lunar horizon. Strictly monochrome greyscale, zero rust, zero ochre. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### card-mars
 - batch: 6.3
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: mars
-- prompt: Card vignette illustration: wide view of a rust-red desert world with a dark canyon scar, polar ice cap in bone white, and squat industrial foundries rooted firmly into the surface bedrock on the basin shore, with a small cargo hauler silhouette crossing in the foreground. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a rust-red desert world with dark-teal terraformed basin seas, polar ice cap in bone white, clustered dome habitats, and heavy industrial foundries and spaceport docks rooted firmly into bedrock along the basin shore. Zero canyon scars, zero cargo haulers. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### card-ceres
 - batch: 6.3
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: ceres
-- prompt: Card vignette illustration: wide view of a small dark rocky dwarf planet with pitted ochre mineral veins, a ragged mining platform clamped onto it and tethered ore sleds, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a small asymmetrical dark rocky potato asteroid with pitted ochre mineral veins, a ragged mining platform clamped onto it and tethered ore sleds trailing in zero-g. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### body-sol
 - batch: 6.3
 - aspect: 1:1
 - sample: no
 - source: Sol / planetary bodies
-- prompt: Sol system map body: the Sun as a flat ochre disc with a few clean concentric corona bands and bold black ink rim. Centered single subject, flat deep slate-black space behind, generous empty margin.
+- prompt: Sol system map body: the Sun as a flat ochre disc with a few clean concentric corona bands, flaring prominence loops, and the skeletal curved Stabiliser gantry truss scaffolding arc hugging the stellar limb. Centered single subject, flat deep slate-black space behind, generous empty margin.
 
 ### body-mercury
 - batch: 6.3
