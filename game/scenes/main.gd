@@ -1104,6 +1104,8 @@ func _build_map_overlay() -> void:
 	map_label.add_theme_constant_override("outline_size", 6)
 	map_label.add_theme_color_override("font_outline_color", HudTheme.PAPER)
 	tactical_map_panel.clip_contents = true
+	# Map icons are 256px art drawn at 40-68px; mipmaps keep the minified edges clean.
+	tactical_map_panel.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	tactical_map_panel.draw.connect(_draw_map)
 	_build_route_card()
 
@@ -3493,13 +3495,15 @@ func _draw_map() -> void:
 	var docked: String = controller.docked_at if controller != null else ""
 	# MapNode: Sol is ochre; a station is teal, rust when the ship is docked there, and
 	# wears the dashed ochre ring when docked or picked with LT/RT.
-	HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
+	if not MapIcons.draw_icon(tactical_map_panel, MapIcons.SOL_ID, center, MapIcons.SOL_DRAW_PX):
+		HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	for st in stations:
 		var pos: Vector2 = discs[st]
 		var is_docked: bool = st == docked
 		if is_docked or (docked != "" and st == hud.active_station):
 			_draw_dashed_ring(pos, SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0, HudTheme.OCHRE, 4.0, ring_march_px())
-		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
+		if not MapIcons.draw_icon(tactical_map_panel, st, pos, MapIcons.STATION_DRAW_PX):
+			HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
 	_draw_map_text(font, Vector2(layout["sol_pos"]), str(layout["sol_text"]), fs, HudTheme.INK)
 	for st in stations:
 		_draw_map_text(font, Vector2(discs[st]) + Vector2(offsets[st]), str(texts[st]), fs, HudTheme.RUST_DARK if st == docked else HudTheme.INK)
