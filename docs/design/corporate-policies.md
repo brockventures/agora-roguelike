@@ -2,6 +2,8 @@
 
 Design proposal for #160 (Corporate policies: a run-only tech tree that resets each run). It follows Ryan's answer to Question 7 in `docs/design/onboarding.md` (decided in PR #159, docs(design): first-hour onboarding and terminal tutorial): the permanent Golden Parachutes perks stay exactly as they are, and a second, run-scoped layer is added on top. Ryan, #lounge 2026-10-11: each run should feel different, "like build variety in *Hades*".
 
+**Ryan's review, #lounge 2026-10-11 15:30:** policies reset at a Chapter 11 filing (section 7); the rest is approved as a starting point. Numbers will be tuned later, and the tree is expected to grow deeper, with more synergies between branches, after the first version plays.
+
 **Status: proposed, awaiting Ryan** (section 13). Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `5e4a9f8`) from what this doc invents (**Proposed**). Nothing here is game code. Every number marked "placeholder" is a tuning guess for Ryan.
 
 **Headline finding.** A policy is a perk that lives for one run. The perk machinery already does almost everything: `Parachutes.modifiers` folds effects into `{stat: {add, mul_bps}}` and `Parachutes.apply_stat` resolves them (`parachutes.gd:269,292`), and most of the ten stats it knows are already the levers Ryan listed (fuel burn, raid and hazard odds, takeover threshold, interest). So the design is **a second perk tree, `policies.json`, in the same shape, folded into the same modifiers dictionary**. Three things need care:
@@ -156,7 +158,7 @@ Worked, with every perk and policy that touches the stat owned (a worst case):
 
 Rule for Ryan, in one line: **adds add, multipliers multiply, perks and policies are the same kind of thing.**
 
-**Two guards.** Policies must not unlock tender offers: `tender_unlocked` tests `rc.modifiers.has("takeover_threshold_shares")`, which a policy would now satisfy. It is changed to test `perk_modifiers`, so the Hostile Buyout Line perk keeps owning that unlock. And `_derive_modifiers` becomes the instance rebuild above, so `file_bankruptcy` (`run_controller.gd:684`) and `from_dict` (`:817`) keep the policies: section 7 explains why this is the first thing the tests pin.
+**Two guards.** Policies must not unlock tender offers: `tender_unlocked` tests `rc.modifiers.has("takeover_threshold_shares")`, which a policy would now satisfy. It is changed to test `perk_modifiers`, so the Hostile Buyout Line perk keeps owning that unlock. And `_derive_modifiers` becomes the instance rebuild above, so `from_dict` (`:817`) keeps the policies and `file_bankruptcy` (`run_controller.gd:684`) clears them after settling the filing (section 7). Both paths are the first thing the tests pin.
 
 ## 6. State and lifecycle (Proposed)
 
@@ -175,15 +177,17 @@ Rule for Ryan, in one line: **adds add, multipliers multiply, perks and policies
 
 **Attached by `Main`, not by default.** `Main.start_new_run` and `M0Loop.start_next_run` attach `policies` beside `world`. The `RunController` constructor does not, and `Replay.Session` does not unless asked (a new optional argument, default off). Section 8 explains why this matters.
 
-## 7. Chapter 11 (Proposed)
+## 7. Chapter 11 (Decided: policies reset)
 
-A filing is not a run end (`file_bankruptcy` founds a new corp inside the same controller). **Policies survive a filing**: they belong to the run, and the run continues. `PolicyState` is untouched by `file_bankruptcy`, and the modifier rebuild keeps them. Reasons:
+**Ryan, #lounge 2026-10-11 15:30:** "After chapter 11 these should reset. You only keep your permanent perks, not these per run policies." This answers Question 2 and replaces the earlier proposal that policies survive a filing.
 
-- The player is already punished: debt wiped but liquid assets forfeited, barons forfeited, a new corp on the fresh-start stake. Taking their build too would end most runs.
-- Two nodes only make sense after a filing (Pre-Packaged Reorganization, Managed Wind-Down Plan, Mandatory Training Module). If a filing dropped them they would be traps.
-- Severance is banked per corp, so Exit Package Optimization applies to the failed corp's award too. This is the intended price of that capstone.
+A filing founds a new corp inside the same controller (`file_bankruptcy`, `run_controller.gd:665-706`). The new corp starts with no policies:
 
-A pick granted by a takeover is **not** clawed back when the barons are forfeited (`takeover_granted` stays true). The pick for a baron the player loses a round later is the player's to keep; this is the same posture as the Rescue Project, whose progress is kept across a filing (`run_controller.gd:705`). **Question 2** asks Ryan whether he wants it harder.
+- **Order inside `file_bankruptcy`.** The filing itself is settled with the policies still in force, then they are cleared: grace before auto-filing (`bankruptcy_grace_ticks`), the liquidation haircut, the failed corp's Severance award, and the fresh-start stake for the new corp all read the pre-filing `modifiers`. After that, `policies.reset_for_new_corp()` runs and `modifiers` is rebuilt from the perk base alone. So the Compliance nodes (Mandatory Training Module, Pre-Packaged Reorganization, Managed Wind-Down Plan) pay off at the filing they protect, then are gone. They are insurance for one filing, not traps.
+- **What resets.** `picks` is emptied and `earned` is set to 0. `takeover_granted` is cleared, so the new corp can earn its own takeover pick.
+- **What does not.** `milestones_done` is kept: milestones are on the run clock, which a filing does not reset, so a milestone already passed does not fire again. A corp founded at round 85 therefore earns at most the takeover pick.
+- **A pending pick is lost.** A pick earned but not yet adopted when the filing lands is discarded with the rest.
+- **Headline.** The filing's GalNet line gains `HL_POLICIES_RESCINDED` ("All corporate policies have been rescinded pending restructuring."). The desk-notes chip returns to `POLICIES 0/n`.
 
 ## 8. Saves and the run hash (Proposed)
 
@@ -195,7 +199,7 @@ Policies are run state, so they change the hash when they exist.
 - **Which pins move.** None of the existing ones, because the goldens never attach policies: `tests/fixtures/world/world_goldens.json` (seeds 84 and 7, 40 rounds at 30 ticks, so rounds 20 and 40 are inside), `tests/fixtures/world/rescue_goldens.json`, `fold_order.json`, `embargo_fold_order.json`, and the hashes in `test_fleet_view.gd`, `test_travel.gd`, `test_rival_fleets.gd`, `test_market_wiring.gd`. `Replay.start_recording` gains `p_policies: bool = false`; the whole-world bot in `world_golden.gd` is unchanged and keeps answering only the overlays it already knows.
 - **What moves, on purpose.** A new fixture, `tests/fixtures/world/policy_goldens.json`, plays a scripted bot that takes the first listed offer at each pick. It pins the picks, the round each lands on and the final hash. A pick is a recorded input (`m0_submit`, with `m0_up` / `m0_down` for the cursor), so a replay lands on the same hash.
 - **Pending picks survive a save.** `pending()` is derived from the saved counters, `_sync_overlay_from_controller` re-raises the modal after a load, exactly as it does for a contract offer.
-- **Tests that must exist before the UI lands:** a run with no picks hashes identically to one without a `PolicyState`; a pick adds exactly the `policies` key; a filing keeps `modifiers` equal to `combine(perks, policies)`; a save round-trip keeps it; a hand-edited save with both capstones loads with only one.
+- **Tests that must exist before the UI lands:** a run with no picks hashes identically to one without a `PolicyState`; a pick adds exactly the `policies` key; a filing settles with `combine(perks, policies)` and leaves `modifiers` equal to the perk base with an empty `PolicyState`; a save round-trip keeps it; a hand-edited save with both capstones loads with only one.
 
 ## 9. The pick UI (Proposed)
 
@@ -250,7 +254,7 @@ A new player's first pick lands at round 20, after the five core beats are done,
 
 **Risks.**
 
-1. **The modifier rebuild is the riskiest change.** `modifiers` is re-derived at three sites. If one forgets the policies, a filing or a load silently drops the build, and the failure looks like "my perk stopped working", not an error. The section 8 tests pin all three paths before any other work lands.
+1. **The modifier rebuild is the riskiest change.** `modifiers` is re-derived at three sites. If the load path forgets the policies it silently drops the build, and if the filing path keeps them it breaks Ryan's reset rule, and the failure looks like "my perk stopped working", not an error. The section 8 tests pin all three paths before any other work lands.
 2. **Goldens crossing round 20.** If anyone attaches policies to `Replay.Session` by default, both world pins move. The default-off flag and a test that the shipped goldens contain no `policies` key guard it.
 3. **Severance feeds the permanent profile.** A +25% capstone is the one run-scoped effect that pays into permanent progression; it is also the one the player picks instead of a safety net. Question 4.
 4. **Hazard is the real value of Expedited Corridor Access.** The toll waiver saves 25 CR on a belt leg and 10 to 15 CR at a baron's dock, which is small next to a hold. The node is carried by the hazard cut; if Ryan wants tolls to matter, the toll is data (`BELT_TOLL_CR`, `docking_toll_cr`).
@@ -265,7 +269,7 @@ One Sonnet PR per row. Order: 1, then 2, then 3. Rows 4 and 5 can run in paralle
 
 | # | PR | Scope | Estimate |
 |---|---|---|---|
-| 1 | **Policy data and the stacking seam** | `policies.json` (12 nodes), `excludes` in `Parachutes` normalise and validate, `modifiers_for(ids)`, static `combine`, `perk_modifiers` plus the rebuilt effective `modifiers` in `RunController` (`apply_modifiers`, `_init`, `file_bankruptcy`, `from_dict`), `tender_unlocked` on the perk base. Tests: stacking table, filing and load keep policies, no-policy run byte-identical. | ~25 min agent time · ~0.4% of the weekly limit |
+| 1 | **Policy data and the stacking seam** | `policies.json` (12 nodes), `excludes` in `Parachutes` normalise and validate, `modifiers_for(ids)`, static `combine`, `perk_modifiers` plus the rebuilt effective `modifiers` in `RunController` (`apply_modifiers`, `_init`, `file_bankruptcy`, `from_dict`), `tender_unlocked` on the perk base. Tests: stacking table, a filing settles with policies then clears them (section 7), a load keeps them, no-policy run byte-identical. | ~25 min agent time · ~0.4% of the weekly limit |
 | 2 | **Three new stats** | `toll_discount_bps` (belt and docking), `assumed_debt_bps`, `severance_bps`, added to `STATS`, with consumers and focused tests; no perk changes. | ~10 min agent time · ~0.15% of the weekly limit |
 | 3 | **Grants, state and saves** | `PolicyState`, `on_round`, `on_takeover`, `offers`, `pick`, the `policies` capture key and sanitising restore, `_interrupt_check` trip, `policy_pending` / `policy_adopted` signals, `Replay.start_recording(..., p_policies)`, `policy_goldens.json` and its test. | ~25 min agent time · ~0.4% of the weekly limit |
 | 4 | **Pick modal, card chip, CSV** | `OVERLAY_POLICY`, `_raise_policy_if_pending`, `dispatch_action` branch, `_policy_model` on `perk` rows, desk-notes chip, `HL_POLICY_ADOPTED`, all CSV keys, `test_i18n_fit.gd` and localization tests, screenshots script. | ~30 min agent time · ~0.5% of the weekly limit |
@@ -280,7 +284,7 @@ Total about 1.8% of the weekly limit across six PRs (placeholder, sized from the
    - (a) Round milestones only: three picks, at rounds 20, 50 and 80.
    - (b) Milestones plus a pick for the first baron takeover: four picks. **Recommended.** It rewards the barons loop without letting a snowball earn unlimited picks.
    - (c) Milestones, a pick for every baron, and a consolation pick on each Chapter 11 filing: up to seven picks, more build, more snowball.
-2. **Do policies survive a Chapter 11 filing?**
+2. **Do policies survive a Chapter 11 filing?** **Decided (Ryan, 2026-10-11): no, they reset; see section 7.**
    - (a) Yes, all of them. **Recommended.** A filing is not a run end, and three nodes only pay off after one.
    - (b) No, a filing resets the tree and refunds the picks.
    - (c) Capstones are lost, roots are kept.
