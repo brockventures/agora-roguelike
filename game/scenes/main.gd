@@ -715,6 +715,9 @@ func enable_onboarding(model: Onboarding = null) -> Onboarding:
 		if hud.gamepad_focus != null:
 			hud.gamepad_focus.order_executed.connect(_onb_on_order_executed)
 	_onb_bind_controller()
+	if steam_hooks == null:
+		steam_hooks = SteamHooks.new()
+	steam_hooks.bind_onboarding(onboarding)
 	_onb_sync_context()
 	return onboarding
 

@@ -27,6 +27,7 @@ Defined in `game/data/achievements.json`. The achievement id doubles as the Stea
 | `RunController.bankruptcy_filed` | unlock `FIRST_CHAPTER_11`; stat `bankruptcies_filed` |
 | `RunController.run_collapsed` | unlock `WITNESS_COLLAPSE` |
 | `RunController.run_rescued` | unlock `SOL_RESCUED`; stat `rescues_completed` (max) |
+| `Onboarding.beat_completed` (#36) | stat `onboarding_step` (max, 0 to 5: the highest core tutorial beat done); unlock `ORIENTATION_COMPLETE` when the last core beat is done |
 | `corp_ended`, `round_advanced` | stat `peak_net_worth` (max), `runs_completed` |
 | `CrisisDeck.crisis_expired` | stat `crises_survived` + 1 |
 | stat thresholds | `SERIAL_FILER` (5 filings), `NET_WORTH_25K/100K/1M`, `CRISIS_FIRST/10/25` unlock automatically from the stat |
