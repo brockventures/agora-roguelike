@@ -28,7 +28,7 @@ signal corp_ended(summary: Dictionary)
 ## Emitted once per run when Severance is banked into the profile (#11).
 signal severance_awarded(points: int)
 ## The player holds every baron (Epic 3 phase 1 of the win, design doc 5.4). The run
-## win itself, the Sol System Rescue, is #32 and is not built here.
+## win itself, the Sol System Rescue, is #32; the loop opens it when the player continues from the monopoly summary.
 signal monopoly_achieved()
 ## The Sol System Rescue Project was finished and the run won (#32): end_run("rescued") has banked.
 signal run_rescued()
@@ -445,6 +445,11 @@ func open_rescue() -> bool:
 	rescue = p
 	sync_rent_bonus()
 	return true
+
+## Every book mod the world emits: the barons', then the rivals', then the open Rescue Project's
+## site embargo (#32). The one place the loop and RunSave ask, so the fold order is the same in both.
+func world_mods() -> Array:
+	return world.market_mods(rescue) if world != null else []
 
 ## Sets Barons.rent_bonus_bps from the saved state it derives from: the project's multiplier
 ## while a phase is open and the player still holds every baron, x1 otherwise. A Chapter 11

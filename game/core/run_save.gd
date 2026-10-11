@@ -58,10 +58,12 @@ static func restore(data: Dictionary) -> Dictionary:
 		# Like crisis_mods: the saved books are already made by their barons, so
 		# wire the world in without reseeding.
 		mkt.world = rc.world
-		mkt.world_mods = rc.world.market_mods()
 	var rd = data.get("rescue", null)
 	if rd is Dictionary:
 		rc.rescue = RescueProject.from_dict(rd)
+	# The world's mods include the open project's site embargo, so they are rebuilt only now.
+	if rc.world != null:
+		mkt.world_mods = rc.world_mods()
 	# Barons.rent_bonus_bps is derived, never saved: rebuild it from the project and the holdings.
 	rc.sync_rent_bonus()
 	return {

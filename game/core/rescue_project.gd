@@ -30,6 +30,15 @@ const R_NO_CARGO: String = "NO_CARGO"
 const R_NO_CR: String = "NO_CR"
 const R_WOULD_BANKRUPT: String = "WOULD_BANKRUPT"
 
+## The player-facing words for a refused delivery: the CSV key per deposit reason.
+const REASON_KEYS: Dictionary = {
+	"NOT_OPEN": "RESCUE_REASON_NOT_OPEN",
+	"WRONG_SITE": "RESCUE_REASON_WRONG_SITE",
+	"NO_CARGO": "RESCUE_REASON_NO_CARGO",
+	"NO_CR": "RESCUE_REASON_NO_CR",
+	"WOULD_BANKRUPT": "RESCUE_REASON_WOULD_BANKRUPT",
+}
+
 var data: Dictionary = {}
 ## Index of the open phase; phases.size() when every phase is finished.
 var phase: int = 0
@@ -46,6 +55,10 @@ var opened_round: int = 0
 
 func _init(p_data: Dictionary = {}) -> void:
 	data = p_data if not p_data.is_empty() else RescueProject.load_data()
+
+
+static func reason_key(reason: String) -> String:
+	return str(REASON_KEYS.get(reason, "RESCUE_REASON_NOT_OPEN"))
 
 
 ## Parses rescue.json; {} when missing or malformed.
@@ -155,6 +168,28 @@ func fee_left() -> int:
 ## 10000 counts every tick; 0 counts none.
 func counts_tick(total: int) -> bool:
 	return total * keep_bps / FULL_SPEED_BPS != (total - 1) * keep_bps / FULL_SPEED_BPS
+
+
+# --- The site embargo (task 3) ---
+
+## The book mods the open phase emits (design 3.3): the site yard has bought up the local stock,
+## so each commodity the phase needs gets `ask_depth_bps: 0` at the site. Asks only (bids and the
+## price are untouched), and a multiplier, so the seeder's floor of 1 unit a level keeps a mid.
+## Derived from saved phase state, sorted by commodity, [] once the project is done. Barons
+## .market_mods appends these AFTER every baron and rival mod.
+func embargo_mods() -> Array:
+	var out: Array = []
+	if not is_open():
+		return out
+	var ph: Dictionary = current()
+	var needs = ph.get("needs", {})
+	if not (needs is Dictionary):
+		return out
+	var keys: Array = needs.keys()
+	keys.sort()
+	for c in keys:
+		out.append({"station": str(ph.get("site", "")), "commodity": str(c), "ask_depth_bps": 0})
+	return out
 
 
 # --- Win, loss and the rent bonus (task 2) ---

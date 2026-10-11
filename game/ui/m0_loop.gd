@@ -51,7 +51,7 @@ const OVERLAY_CRISIS: String = "crisis"
 const OVERLAY_CONTRACT: String = "contract"
 ## The player holds every baron (Epic 3 task 9, design doc 5.4): a summary state that
 ## halts the clock until A continues. Phase 1 of the win; the Sol System Rescue that
-## finishes the run is #32 and is not built. Chapter 11, collapse and a crisis outrank it.
+## finishes the run is #32; A on this summary opens it (acknowledge_monopoly). Chapter 11, collapse and a crisis outrank it.
 const OVERLAY_MONOPOLY: String = "monopoly"
 
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
@@ -84,11 +84,14 @@ const ACT_LOCALE: String = "m0_locale"
 const ACT_SHARES: String = "m0_shares"
 ## Extends the standard credit line to the docked baron (Epic 3 task 8, lever c).
 const ACT_CREDIT: String = "m0_credit"
+## Delivers cargo to the open phase of the Sol System Rescue Project at the docked station (#32).
+const ACT_PROJECT: String = "m0_project"
 
 const ALL_ACTIONS: Array[String] = [
 	ACT_TAB_PREV, ACT_TAB_NEXT, ACT_STATION_PREV, ACT_STATION_NEXT,
 	ACT_COMMODITY_PREV, ACT_COMMODITY_NEXT, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
 	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE, ACT_SHARES, ACT_CREDIT,
+	ACT_PROJECT,
 ]
 
 ## Actions that stay live while a resolution overlay is up.
@@ -254,7 +257,7 @@ func _attach_world() -> void:
 	if market == null or controller == null:
 		return
 	market.set_world(controller.world)
-	market.set_world_mods(controller.world.market_mods() if controller.world != null else [])
+	market.set_world_mods(controller.world_mods())
 
 
 func _on_crisis_changed() -> void:
@@ -354,7 +357,7 @@ func decline_contract() -> bool:
 
 func _refresh_world_mods() -> void:
 	if market != null and controller != null and controller.world != null:
-		market.set_world_mods(controller.world.market_mods())
+		market.set_world_mods(controller.world_mods())
 
 
 ## Turns a world event (Barons.advance_round / accept / deliver) into its GalNet line.
@@ -393,10 +396,15 @@ func monopoly_summary() -> Dictionary:
 	}
 
 
-## A: carry on from the monopoly summary. The clock resumes.
+## A: carry on from the monopoly summary. The clock resumes, and the Sol System Rescue
+## Project opens (#32): phase 1 is live and its site's books are embargoed from now on. A
+## project that already exists (the player re-took the barons after a filing) stays as it is.
 func acknowledge_monopoly() -> bool:
 	if overlay_state != OVERLAY_MONOPOLY or controller == null:
 		return false
+	if controller.open_rescue():
+		_refresh_world_mods()
+		_post_rescue_open()
 	_set_overlay(OVERLAY_NONE)
 	_raise_crisis_if_pending()
 	_raise_contract_if_pending()
@@ -702,6 +710,66 @@ func buy_shares() -> bool:
 	if hud != null and hud.tactile_audio != null:
 		hud.tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
 	return true
+
+
+## Why the last project delivery was refused ("" when it worked); see deliver_to_project().
+var last_project_reason: String = ""
+
+
+## ACT_PROJECT (#32): deliver what the hold can give the open phase of the Rescue Project at
+## the docked station (RescueProject.deposit does the arithmetic). A refusal changes nothing and
+## says why on the ticker; a delivery posts its line, a finished phase moves the embargo to the
+## next site and re-derives the rent bonus, and the last phase wins the run. Returns true when
+## cargo was delivered.
+func deliver_to_project() -> bool:
+	if controller == null or controller.is_run_over():
+		return false
+	var rp: RescueProject = controller.rescue
+	var res: Dictionary
+	if rp == null:
+		res = {"ok": false, "reason": RescueProject.R_NOT_OPEN}
+	else:
+		res = rp.deposit(controller, controller.docked_at, controller.get_current_round())
+	last_project_reason = "" if bool(res["ok"]) else str(res["reason"])
+	if not bool(res["ok"]):
+		if hud != null:
+			hud.post_headline_tr("HL_RESCUE_REFUSED", [Loc.key_arg(RescueProject.reason_key(last_project_reason))], "MARKET", "WARNING")
+			if hud.tactile_audio != null:
+				hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
+		return false
+	var units: int = 0
+	for c in res["units"]:
+		units += int(res["units"][c])
+	if hud != null:
+		hud.post_headline_tr("HL_RESCUE_DELIVER", [units, Loc.station_arg(controller.docked_at), int(res["fee"])], "MARKET", "INFO")
+	if bool(res["phase_complete"]):
+		controller.sync_rent_bonus()
+		_refresh_world_mods()  # the embargo moves to the next site (or ends with the project)
+		_post_rescue_phase(res)
+		if bool(res["won"]):
+			controller.finish_rescue()
+	if hud != null and hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.MARKET_BELL)
+	return true
+
+
+func _post_rescue_open() -> void:
+	var rp: RescueProject = controller.rescue
+	if hud == null or rp == null or not rp.is_open():
+		return
+	hud.post_headline_tr("HL_RESCUE_OPEN", [rp.phase_count(), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
+
+
+## The GalNet lines for a phase that just finished: the phase, then the new clock speed or the win.
+func _post_rescue_phase(res: Dictionary) -> void:
+	var rp: RescueProject = controller.rescue
+	if hud == null or rp == null:
+		return
+	if bool(res["won"]):
+		hud.post_headline_tr("HL_RESCUE_DONE", [controller.get_current_round(), controller.doomsday.ticks_remaining / controller.ticks_per_round], "CRISIS", "INFO")
+		return
+	hud.post_headline_tr("HL_RESCUE_PHASE", [rp.phases_done(), rp.phase_count(), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
+	hud.post_headline_tr("HL_RESCUE_FIELD", [rp.keep_bps / 100], "CRISIS", "INFO")
 
 
 ## Why the last credit line was refused ("" when it was extended); see extend_credit().
@@ -1321,6 +1389,8 @@ func dispatch_action(action: String) -> bool:
 			handled = buy_shares()
 		ACT_CREDIT:
 			handled = extend_credit()
+		ACT_PROJECT:
+			handled = deliver_to_project()
 		ACT_SPEED:
 			cycle_speed()
 			handled = controller != null
@@ -1564,7 +1634,7 @@ func _on_round_advanced(round_num: int) -> void:
 	if controller != null and controller.world != null:
 		for e in controller.world.advance_round(round_num, controller, market):
 			_post_baron_event(e)
-		market.set_world_mods(controller.world.market_mods())
+		market.set_world_mods(controller.world_mods())
 	market.replenish()
 	# Rival fleets trade the fresh books (Epic 3 task 10), so their dent stays on the
 	# ladder for the round.

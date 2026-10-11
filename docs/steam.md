@@ -40,7 +40,7 @@ Partner site setup (needs #30): Application, Cloud, enable Steam Cloud, set a by
 
 ## Steam Deck input
 
-`game/steam/game_actions_480.vdf` is the Steam Input action manifest: one action set `InGame` with a digital action per `m0_*` InputMap action (17, kept in step with `project.godot` by `tests/test_steam_files.py`). `controller_steamdeck_default.vdf` is the default layout: A confirm, B cancel, X Chapter 11, Y speed, D-pad or left stick move, right stick X cycles commodity, triggers cycle station, bumpers cycle tab, Start pause, View settings. These match the existing joypad bindings in `project.godot`.
+`game/steam/game_actions_480.vdf` is the Steam Input action manifest: one action set `InGame` with a digital action per `m0_*` InputMap action (20, kept in step with `project.godot` by `tests/test_steam_files.py`). `controller_steamdeck_default.vdf` is the default layout: A confirm, B cancel, X Chapter 11, Y speed, D-pad or left stick move, right stick X cycles commodity, triggers cycle station, bumpers cycle tab, Start pause, View settings, left back grip deliver to the Rescue Project (PADDLE1 in Godot). These match the existing joypad bindings in `project.godot`.
 
 At run time `SteamHub` calls `input_init()` and each frame `poll_input()`; edges become `InputEventAction` for the InputMap names, so `Main`, `SettingsMenu` remapping and every test see the same actions as before. Without Steam, Godot's own joypad bindings are used unchanged.
 

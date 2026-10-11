@@ -1,0 +1,16 @@
+{
+ "case": "embargo_fold_order",
+ "description": "Rescue Project task 3 (#32): Barons.market_mods(rescue) emits the open phase's site embargo AFTER every baron mod and every rival front-run mod. 'tail' is the part of the list after the barons: the first rival's standing front-run on luna MACHINERY (depth 6000), then phase 1's embargo (ask_depth_bps 0) on luna MACHINERY and ORE, commodities sorted. 'ladder_luna_machinery' is the seeded five-level book ([price, qty]) for that fold: bids see only the front-run (15+8n scaled by 6000, floor 1), asks are cut to the seeder's one-unit floor per level. Checked by game/tests/test_rescue_loop.gd.",
+ "last_before_embargo": [
+  {"station": "luna", "commodity": "MACHINERY", "depth_bps": 6000, "price_bps": 0, "spread_bps": 10000}
+ ],
+ "tail": [
+  {"station": "luna", "commodity": "MACHINERY", "depth_bps": 6000, "price_bps": 0, "spread_bps": 10000},
+  {"station": "luna", "commodity": "MACHINERY", "ask_depth_bps": 0},
+  {"station": "luna", "commodity": "ORE", "ask_depth_bps": 0}
+ ],
+ "ladder_luna_machinery": {
+  "asks": [[24, 1], [25, 1], [26, 1], [27, 1], [28, 1]],
+  "bids": [[22, 13], [21, 18], [20, 23], [19, 28], [18, 33]]
+ }
+}
