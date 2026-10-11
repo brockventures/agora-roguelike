@@ -8,3 +8,4 @@ __pycache__/
 .godot/
 .godot-bin/
 build/
+art_out/
