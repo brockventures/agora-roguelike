@@ -28,7 +28,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   2. **The Space Elevator (Kennedy Elevator):** Leaves the planet at the 3 o'clock equatorial waist with a heavy base anchor structure on the limb. A straight, thick horizontal tension ribbon extends outward into the debris halo (~1 Earth radius long) without crossing in front of the planetary disk.
   3. **The Massive Orbital Station Hub:** Sprawling heavy industrial space station dock and counterweight hub at the outer head of the horizontal tether, distinctly massive and substantially wider than the ribbon.
 - **Camera Viewports:**
-  - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Full globe with recognizable continents, warm yellowed atmospheric rim haze, thick debris belt with half-buried dock ring, 3 o'clock horizontal elevator ribbon, and sprawling terminal orbital station hub.
+  - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Full globe with recognizable continents, warm yellowed atmospheric rim haze, thick debris belt with half-buried dock ring, 3 o'clock horizontal elevator ribbon, and sprawling terminal orbital station hub. [Sample Proof](../screens/station-samples/station-earth.png)
   - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista showing Earth's recognizable coastlines, yellowed atmospheric haze, the thick cloud of dead satellites and scrap with the dock ring half-buried in it, and the elevator hub. No cargo haulers.
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Low-orbit approach looking along the elevator ribbon into the orbital dock ring enveloped in scrap.
@@ -59,7 +59,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   1. **Arcadia Foundries & Spaceports:** Squat, heavy industrial manufacturing hubs, smelting stacks, dome habitats, and shipyard gantry towers rooted firmly onto the visible face of the planet along the shoreline/bedrock rim of the dark-teal basin sea. Foundries sit grounded on the planetary surface face, never projecting off or perched on the planet's outer limb.
   2. **Surface Domes:** Clustered pressurized dome habitats embedded in the bedrock near the basin sea.
 - **Camera Viewports:**
-  - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Mars globe showing dark-teal basin sea, polar cap, surface dome habitats, and foundries rooted onto the basin rim on the visible face. Clean outer limb.
+  - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Mars globe showing dark-teal basin sea, polar cap, surface dome habitats, and foundries rooted onto the basin rim on the visible face. Clean outer limb. [Sample Proof](../screens/station-samples/station-mars.png)
   - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista looking across the terraformed basin sea at the dome habitats, spaceports, and foundry complex rooted on the bedrock shore. No canyon scar, no cargo haulers.
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Atmospheric entry angle sweeping past the foundry exhaust stacks and heavy orbital shipyard moorings.
