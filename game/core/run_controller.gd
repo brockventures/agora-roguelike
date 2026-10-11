@@ -273,8 +273,18 @@ func get_total_cargo() -> int:
 func get_remaining_cargo_capacity() -> int:
 	return maxi(0, cargo_capacity - get_total_cargo())
 
-## Golden Parachutes modifiers (see Parachutes). Empty = no perks.
+## The EFFECTIVE modifiers every consumer reads (see Parachutes): `perk_modifiers` stacked with
+## the held run-only policies by Parachutes.combine (#160 section 5.3). Always derived, never
+## assigned by hand: apply_modifiers() and _refresh_modifiers() are the only writers. With no
+## policies held it equals `perk_modifiers`, byte for byte. Empty = no perks.
 var modifiers: Dictionary = {}
+## The permanent base: what `modifiers` was before policies (profile-derived, or the explicit
+## dict the caller passed). This is what to_dict() saves under "modifiers", so a load never
+## double counts a policy. tender_unlocked reads it, so a policy cannot unlock tender offers.
+var perk_modifiers: Dictionary = {}
+## Held run-only policy ids (#160). Interim holder until PolicyState (a later PR) replaces it;
+## not saved yet, so a save does not carry picks. Cleared by a Chapter 11 filing (section 7).
+var policy_picks: Array[String] = []
 
 ## Doomsday values before modifiers, captured at first apply so re-applying is
 ## idempotent instead of stacking.
@@ -344,7 +354,8 @@ func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayC
 ## fuel_discount_bps, hazard_odds_bps and piracy_odds_bps are consumed by the
 ## transit and encounter code through the accessors below.
 func apply_modifiers(mods: Dictionary) -> void:
-	modifiers = mods.duplicate(true)
+	perk_modifiers = mods.duplicate(true)
+	modifiers = _effective_modifiers()
 	if _doomsday_base.is_empty():
 		_doomsday_base = {
 			"interest": doomsday.interest_rate_bps_per_minute,
@@ -653,6 +664,17 @@ func reassess() -> bool:
 		pending_bankruptcy = false
 	return pending_bankruptcy
 
+## Re-apply the permanent base with the policies as they stand now (idempotent).
+func _refresh_modifiers() -> void:
+	apply_modifiers(perk_modifiers)
+
+## perk_modifiers stacked with the held policies. No policies: a plain copy, so the result is
+## identical to the pre-policy dictionary however odd the base is.
+func _effective_modifiers() -> Dictionary:
+	if policy_picks.is_empty():
+		return perk_modifiers.duplicate(true)
+	return Parachutes.combine(perk_modifiers, Parachutes.load_policies().modifiers_for(policy_picks))
+
 ## File for Chapter 11. Valid only when pending or currently insolvent (and the
 ## run has not collapsed); otherwise returns {} and changes nothing. Filing is
 ## NOT a game over: the corp fails and a new one is founded in place on this
@@ -683,7 +705,12 @@ func file_bankruptcy() -> Dictionary:
 	insolvent_ticks = 0
 	if not _modifiers_explicit:
 		apply_modifiers(_derive_modifiers(profile))
+	# The new corp's stake still reads the policies the failed corp held (Pre-Packaged
+	# Reorganization); they are rescinded right after (#160 section 7).
 	cr = fresh_start_cr()
+	if not policy_picks.is_empty():
+		policy_picks = []
+		_refresh_modifiers()
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
 	pending_bankruptcy = false
@@ -735,7 +762,7 @@ func to_dict() -> Dictionary:
 		"cargo": cargo.duplicate(true),
 		"ships": ships.duplicate(true),
 		"pending_bankruptcy": pending_bankruptcy,
-		"modifiers": modifiers.duplicate(true),
+		"modifiers": perk_modifiers.duplicate(true),
 		"doomsday_base": _doomsday_base.duplicate(),
 		"ticks_per_round": ticks_per_round,
 		"peak_net_worth": peak_net_worth,
@@ -812,11 +839,12 @@ static func from_dict(d: Dictionary) -> RunController:
 	# was started with explicit modifiers cannot be re-derived, so those are only
 	# bounded to known stats and sane values.
 	if rc._modifiers_explicit:
-		rc.modifiers = _sanitise_modifiers(d.get("modifiers", {}))
+		rc.perk_modifiers = _sanitise_modifiers(d.get("modifiers", {}))
 	else:
-		rc.modifiers = _derive_modifiers(rc.profile)
+		rc.perk_modifiers = _derive_modifiers(rc.profile)
+	rc.modifiers = rc._effective_modifiers()
 	if not rc._doomsday_base.is_empty():
-		rc.apply_modifiers(rc.modifiers)
+		rc._refresh_modifiers()
 	rc._wire()
 	return rc
 

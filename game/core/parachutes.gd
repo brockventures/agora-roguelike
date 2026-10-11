@@ -40,6 +40,8 @@ extends RefCounted
 ## passed, and banks Severance at run end (RunController.end_run).
 
 const DEFAULT_PATH := "res://data/parachutes.json"
+## #160: the run-only policy tree, in the same shape as the perk tree plus `excludes`.
+const POLICIES_PATH := "res://data/policies.json"
 const OPS: Array[String] = ["add", "mul_bps"]
 const BPS: int = 10000
 
@@ -55,6 +57,11 @@ const STATS: Dictionary = {
 	"piracy_odds_bps": "live",
 	"bankruptcy_grace_ticks": "live",
 	"takeover_threshold_shares": "live",  # Epic 3 task 8: Takeover.threshold_for (the player's 501 less the perk)
+	# #160 corporate policies, section 5.2. Known to the validator so policies.json loads; the
+	# consumers (belt and docking tolls, Takeover.take, award_severance) land in the next PR.
+	"toll_discount_bps": "pending",
+	"assumed_debt_bps": "pending",
+	"severance_bps": "pending",
 }
 
 ## Severance formula (#97, D1):
@@ -67,6 +74,10 @@ const SEVERANCE_PER_ROUND: int = 1        # 1 point per round survived
 const SEVERANCE_PER_BARON: int = 400
 
 var perks: Dictionary = {}          # id -> perk Dictionary (first occurrence wins)
+## Policy trees only (#160): the rounds that grant a pick, and whether the first takeover does.
+## Defaults leave a perk tree untouched.
+var milestones: Array[int] = []
+var takeover_pick: bool = false
 var _duplicate_ids: Array[String] = []
 var _load_errors: Array[String] = []
 
@@ -82,12 +93,27 @@ static func load(path: String = DEFAULT_PATH) -> Parachutes:
 		return tree
 	return load_from_dict(parsed)
 
-static func load_from_dict(d: Dictionary) -> Parachutes:
+## The run-only policy tree (#160): data/policies.json, read from its `policies` array.
+static func load_policies(path: String = POLICIES_PATH) -> Parachutes:
 	var tree := Parachutes.new()
-	var raw = d.get("perks", [])
-	if not (raw is Array):
-		tree._load_errors.append("perks is not an array")
+	if not FileAccess.file_exists(path):
+		tree._load_errors.append("file not found: %s" % path)
 		return tree
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not (parsed is Dictionary):
+		tree._load_errors.append("not a JSON object: %s" % path)
+		return tree
+	return load_from_dict(parsed, "policies")
+
+## `key` names the array of nodes: "perks" for the permanent tree, "policies" for #160.
+static func load_from_dict(d: Dictionary, key: String = "perks") -> Parachutes:
+	var tree := Parachutes.new()
+	var raw = d.get(key, [])
+	if not (raw is Array):
+		tree._load_errors.append("%s is not an array" % key)
+		return tree
+	if key == "policies":
+		tree._read_pick_rules(d)
 	for item in raw:
 		if not (item is Dictionary):
 			tree._load_errors.append("perk entry is not an object")
@@ -103,6 +129,33 @@ static func load_from_dict(d: Dictionary) -> Parachutes:
 			continue
 		tree.perks[id] = perk
 	return tree
+
+## `milestones` (positive, strictly ascending integer rounds) and `takeover_pick` (bool). Bad
+## values are reported by validate() and leave the defaults, so a broken file grants nothing.
+func _read_pick_rules(d: Dictionary) -> void:
+	var m = d.get("milestones", [])
+	if not (m is Array):
+		_load_errors.append("milestones is not an array")
+	else:
+		var last := 0
+		var ok := true
+		var rounds: Array[int] = []
+		for r in m:
+			var v = _int_or_self(r)
+			if not (v is int) or v <= last:
+				ok = false
+				break
+			last = v
+			rounds.append(v)
+		if ok:
+			milestones = rounds
+		else:
+			_load_errors.append("milestones must be positive integers in ascending order")
+	var tp = d.get("takeover_pick", false)
+	if tp is bool:
+		takeover_pick = tp
+	else:
+		_load_errors.append("takeover_pick is not a bool")
 
 ## JSON numbers parse as floats; integral floats become ints. Anything else
 ## non-integer is left as-is so validate() can report it.
@@ -128,6 +181,10 @@ static func _normalise(src: Dictionary) -> Dictionary:
 	var raw_any = src.get("requires_any", [])
 	if raw_any is Array:
 		req_any = raw_any.duplicate()
+	var excl: Array = []
+	var raw_excl = src.get("excludes", [])
+	if raw_excl is Array:
+		excl = raw_excl.duplicate()
 	var id = src.get("id", "")
 	return {
 		"id": id if id is String else "",
@@ -138,6 +195,9 @@ static func _normalise(src: Dictionary) -> Dictionary:
 		"cost": _int_or_self(src.get("cost", 0)),
 		"requires": req,
 		"requires_any": req_any,
+		"excludes": excl,
+		"name_key": str(src.get("name_key", "")),
+		"desc_key": str(src.get("desc_key", "")),
 		"enabled": bool(src.get("enabled", true)),
 		"effects": effects,
 		"placeholder": bool(src.get("placeholder", false)),
@@ -166,6 +226,16 @@ func validate() -> Array[String]:
 		for r in perk["requires_any"]:
 			if not (r is String) or not perks.has(r):
 				errors.append("%s: unknown requires_any id %s" % [id, str(r)])
+		for x in perk["excludes"]:
+			if not (x is String) or not perks.has(x):
+				errors.append("%s: unknown excludes id %s" % [id, str(x)])
+				continue
+			if x == id:
+				errors.append("%s: excludes itself" % id)
+			elif perk["requires"].has(x) or perk["requires_any"].has(x):
+				errors.append("%s: excludes %s, which it also requires" % [id, x])
+			elif not perks[x]["excludes"].has(id):
+				errors.append("%s: excludes %s but %s does not exclude %s back" % [id, x, x, id])
 		for e in perk["effects"]:
 			var stat = e["stat"]
 			var op = e["op"]
@@ -267,10 +337,16 @@ func buy(profile: MetaProfile, id: String) -> Dictionary:
 ## profile.unlocks (e.g. non-parachute unlocks) are ignored. Perks with invalid
 ## effects are skipped, so a broken tree never crashes a run.
 func modifiers(profile: MetaProfile) -> Dictionary:
+	return modifiers_for(profile.unlocks)
+
+## The same fold over any list of node ids (#160 policies pass their picks here). Ids not in
+## this tree or disabled are ignored, repeats count once, and the result never depends on the
+## order of `ids`. It does not check requires or excludes: that is the owner's job.
+func modifiers_for(ids: Array) -> Dictionary:
 	var out := {}
 	var owned: Array = []
-	for id in profile.unlocks:
-		if perks.has(id) and bool(perks[id]["enabled"]):
+	for id in ids:
+		if id is String and perks.has(id) and bool(perks[id]["enabled"]) and not owned.has(id):
 			owned.append(id)
 	owned.sort()
 	for id in owned:
@@ -286,6 +362,25 @@ func modifiers(profile: MetaProfile) -> Dictionary:
 				out[stat]["add"] += v
 			elif op == "mul_bps" and v >= 0:
 				out[stat]["mul_bps"] = out[stat]["mul_bps"] * v / BPS
+	return out
+
+## Stack two modifiers dictionaries (#160 section 5.3): per stat, `add` sums and `mul_bps`
+## multiplies as `a * b / 10000` (truncating, like the fold). A stat only one side touches comes
+## through unchanged. Pure: neither input is modified. Perks go first by convention.
+static func combine(a: Dictionary, b: Dictionary) -> Dictionary:
+	var out := {}
+	for src in [a, b]:
+		for stat in src:
+			var m = src[stat]
+			if not (m is Dictionary):
+				continue
+			var add: int = int(m.get("add", 0))
+			var mul: int = int(m.get("mul_bps", BPS))
+			if not out.has(stat):
+				out[stat] = {"add": add, "mul_bps": mul}
+			else:
+				out[stat]["add"] += add
+				out[stat]["mul_bps"] = out[stat]["mul_bps"] * mul / BPS
 	return out
 
 ## Resolve a base value through a modifiers dict. Missing stat returns base.
