@@ -45,6 +45,8 @@ const DEFAULT_CARGO_CAPACITY: int = 100
 ## Sanity ceilings applied to loaded saves (D12). Far above anything reachable
 ## in play; they exist so a tampered file cannot carry absurd values.
 const MAX_LOADED_CR: int = 1 << 40
+## Worst price a fuel purchase may pay: no cap, the player pays the whole ladder it eats.
+const FUEL_LIMIT_PX: float = 1000000000.0
 const MAX_LOADED_CARGO_CAPACITY: int = 100000
 const MAX_LOADED_MODIFIER_ADD: int = 1000000
 const MAX_LOADED_MODIFIER_MUL_BPS: int = 1000000
@@ -79,13 +81,23 @@ var world: Barons = null
 func is_in_transit() -> bool:
 	return not transit.is_empty()
 
-## Whether the ship could leave for `destination` now. {ok, reason, rounds, ticks, toll}:
-## reason is one of RUN_OVER, IN_TRANSIT, SAME_STATION, NO_ROUTE, INSUFFICIENT_CR.
-## Belt routes cost Transit.calculate_toll CR, payable up front. Fuel burn is not
-## charged yet (Transit.calculate_fuel_burn has no caller in play).
-func can_depart(destination: String) -> Dictionary:
+## Whether the ship could leave for `destination` now. {ok, reason, rounds, ticks, toll,
+## fuel_units, fuel_hold, fuel_buy, fuel_cr, fuel_fee, fuel_bps}: reason is one of
+## RUN_OVER, IN_TRANSIT, SAME_STATION, NO_ROUTE, INSUFFICIENT_CR, INSUFFICIENT_FUEL.
+## Belt routes cost Transit.calculate_toll CR, payable up front.
+## Fuel (#138): the trip burns Transit.calculate_fuel_burn units (corridor cut and the
+## fuel_hedge discount included). FUEL in the hold goes first (fuel_hold); the rest
+## (fuel_buy) is bought at the departure station's live FUEL asks in `mkt`, priced by
+## sweeping the book (fuel_cr, plus the audit fee fuel_fee). The departure is refused,
+## never put into debt, when CR cannot cover toll + fuel_cr + fuel_fee or the book is
+## too thin. With no `mkt` (a bare controller) no fuel is charged and the fuel_* are 0.
+func can_depart(destination: String, mkt: StationMarket = null) -> Dictionary:
 	var dest: String = destination.to_lower().strip_edges()
-	var out: Dictionary = {"ok": false, "reason": "", "rounds": 0, "ticks": 0, "toll": 0}
+	var out: Dictionary = {
+		"ok": false, "reason": "", "rounds": 0, "ticks": 0, "toll": 0,
+		"fuel_units": 0, "fuel_hold": 0, "fuel_buy": 0, "fuel_cr": 0, "fuel_fee": 0,
+		"fuel_bps": fuel_discount_bps(),
+	}
 	if is_collapsed() or pending_bankruptcy:
 		out["reason"] = "RUN_OVER"
 	elif is_in_transit():
@@ -102,17 +114,51 @@ func can_depart(destination: String) -> Dictionary:
 		if cr < int(out["toll"]):
 			out["reason"] = "INSUFFICIENT_CR"
 		else:
-			out["ok"] = true
+			var short_of_fuel: bool = false
+			if mkt != null:
+				var units: int = Transit.calculate_fuel_burn(docked_at, dest, get_current_round(), 0, false, 0.0, fuel_discount_bps())
+				var from_hold: int = mini(units, maxi(0, int(cargo.get("FUEL", 0))))
+				var to_buy: int = units - from_hold
+				var cost: int = 0
+				var supplied: bool = true
+				if to_buy > 0:
+					var q: Dictionary = mkt.sweep_quote(docked_at, "FUEL", "BUY", to_buy, FUEL_LIMIT_PX)
+					cost = int(q["cost"])
+					supplied = int(q["filled"]) >= to_buy
+				var fee: int = trade_fee(cost) if cost > 0 else 0
+				out["fuel_units"] = units
+				out["fuel_hold"] = from_hold
+				out["fuel_buy"] = to_buy
+				out["fuel_cr"] = cost
+				out["fuel_fee"] = fee
+				short_of_fuel = not supplied or cr < int(out["toll"]) + cost + fee
+			if short_of_fuel:
+				out["reason"] = "INSUFFICIENT_FUEL"
+			else:
+				out["ok"] = true
 	return out
 
 ## Leaves the docked station for `destination`. Returns can_depart()'s dictionary
-## (plus origin / destination when it worked); on failure nothing changes.
-func depart(destination: String) -> Dictionary:
-	var check: Dictionary = can_depart(destination)
+## (plus origin / destination when it worked); on failure nothing changes. With `mkt`
+## the fuel is paid first from the hold, then by an immediate-or-cancel buy on the
+## station's FUEL book, so the purchase dents the book like any other fill.
+func depart(destination: String, mkt: StationMarket = null) -> Dictionary:
+	var check: Dictionary = can_depart(destination, mkt)
 	if not bool(check["ok"]):
 		return check
 	var dest: String = destination.to_lower().strip_edges()
 	var now: int = sim_clock.total_ticks
+	var fuel_paid: int = 0
+	if int(check["fuel_units"]) > 0:
+		cargo["FUEL"] = int(cargo.get("FUEL", 0)) - int(check["fuel_hold"])
+		if int(cargo["FUEL"]) <= 0:
+			cargo.erase("FUEL")
+		if int(check["fuel_buy"]) > 0:
+			var fill: Dictionary = mkt.execute(docked_at, "FUEL", "BUY", int(check["fuel_buy"]), FUEL_LIMIT_PX)
+			fuel_paid = int(fill["cost"])
+			check["fuel_cr"] = fuel_paid
+			check["fuel_fee"] = trade_fee(fuel_paid)
+			cr -= fuel_paid + int(check["fuel_fee"])
 	cr -= int(check["toll"])
 	transit = {
 		"origin": docked_at,
@@ -121,6 +167,10 @@ func depart(destination: String) -> Dictionary:
 		"arrive_tick": now + int(check["ticks"]),
 		"rounds": int(check["rounds"]),
 		"toll": int(check["toll"]),
+		"fuel_burned": int(check["fuel_units"]),
+		"fuel_hold": int(check["fuel_hold"]),
+		"fuel_bought": int(check["fuel_buy"]),
+		"fuel_cr": int(check["fuel_cr"]) + int(check["fuel_fee"]),
 	}
 	docked_at = ""
 	if world != null:
@@ -183,6 +233,8 @@ static func _sanitise_transit(raw, p_ticks_per_round: int) -> Dictionary:
 	return {
 		"origin": o, "destination": d, "depart_tick": t0, "arrive_tick": t1,
 		"rounds": maxi(1, int(raw.get("rounds", 1))), "toll": maxi(0, int(raw.get("toll", 0))),
+		"fuel_burned": maxi(0, int(raw.get("fuel_burned", 0))), "fuel_hold": maxi(0, int(raw.get("fuel_hold", 0))),
+		"fuel_bought": maxi(0, int(raw.get("fuel_bought", 0))), "fuel_cr": maxi(0, int(raw.get("fuel_cr", 0))),
 	}
 
 func get_total_cargo() -> int:

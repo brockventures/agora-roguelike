@@ -21,8 +21,12 @@ const EMBER: String = "ember_haulage"
 ## were switched on (`consequence.random_event_bps` 0 -> 300 in barons.json). Old values:
 ## seed 84 7892044f12e33253d256227c836a81f886e8ee89f01b8c6a2cf655a9018932c4,
 ## seed 7 64af64b32b9201274720e65156cf4ecd1e632bb7c40f77efe912f40603b2a092.
-const RIVAL_WORLD_HASH_SEED_84 := "27f37cfb90a8bf2e6fc558aedadf3ee169230e24eab42d02ca8a52196fe24fdb"
-const RIVAL_WORLD_HASH_SEED_7 := "3af08a05e893569e342a1667b8c9c0e5ef8375f20ac4ffa9010d368838f9b654"
+## #138 (fuel market): departures burn fuel bought from the station book, and rival fleets refuel
+## from the same books. Moved: seed 84 27f37cfb90a8bf2e6fc558aedadf3ee169230e24eab42d02ca8a52196fe24fdb
+## -> 7ef4bf53f900f2238fddeb81f17641bc127570598c6e8740e8fb2485bf31dd5e, seed 7
+## 3af08a05e893569e342a1667b8c9c0e5ef8375f20ac4ffa9010d368838f9b654 -> c90599be6596dae566223d2197f7da5b59c80b8578ed680dd9357a03070c96d5.
+const RIVAL_WORLD_HASH_SEED_84 := "7ef4bf53f900f2238fddeb81f17641bc127570598c6e8740e8fb2485bf31dd5e"
+const RIVAL_WORLD_HASH_SEED_7 := "c90599be6596dae566223d2197f7da5b59c80b8578ed680dd9357a03070c96d5"
 
 
 func _json(d: Dictionary) -> Dictionary:

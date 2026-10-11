@@ -527,8 +527,10 @@ func test_gamepad_selects_a_station_and_departs_then_docks() -> String:
 	var cr0: int = rc.cr
 	if not m.handle_input(_btn(JOY_BUTTON_A)):
 		return "A on the Map tab did not depart (%s)" % m.loop.last_depart_reason
-	if not rc.is_in_transit() or rc.docked_at != "" or rc.cr != cr0 - Transit.BELT_TOLL_CR:
-		return "A did not put the ship under way with the toll paid"
+	if not rc.is_in_transit() or rc.docked_at != "" or rc.cr != cr0 - Transit.BELT_TOLL_CR - int(rc.transit["fuel_cr"]):
+		return "A did not put the ship under way with the toll and fuel paid"
+	if int(rc.transit["fuel_burned"]) != 20 or int(rc.transit["fuel_bought"]) != 20 or int(rc.transit["fuel_cr"]) <= 0:
+		return "Mars -> Ceres should burn and buy 20 FUEL, got %s" % str(rc.transit)
 	# Trading keys do nothing useful on the map; the Market tab refuses orders in transit.
 	m.handle_input(_btn(JOY_BUTTON_RIGHT_SHOULDER))
 	if m.loop.tab_name() != "MARKET":

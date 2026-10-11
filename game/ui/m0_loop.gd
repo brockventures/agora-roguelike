@@ -131,6 +131,8 @@ var wake_count: int = 0
 var total_fills: int = 0
 ## Why the last A-to-depart press did nothing ("" when it worked); see depart_message().
 var last_depart_reason: String = ""
+## The last depart() result, for the fuel figures in a refusal message.
+var last_depart_check: Dictionary = {}
 var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
@@ -958,8 +960,9 @@ func sync_hud_to_ship() -> void:
 func depart_to_selected() -> bool:
 	if controller == null or hud == null:
 		return false
-	var res: Dictionary = controller.depart(hud.active_station)
+	var res: Dictionary = controller.depart(hud.active_station, market)
 	last_depart_reason = "" if bool(res["ok"]) else str(res["reason"])
+	last_depart_check = res
 	if not bool(res["ok"]) and hud.tactile_audio != null:
 		hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
 	return bool(res["ok"])
@@ -977,6 +980,8 @@ func depart_message() -> String:
 			return Loc.t("DEPART_SAME_STATION")
 		"INSUFFICIENT_CR":
 			return Loc.t("DEPART_NO_TOLL") % Transit.calculate_toll(controller.docked_at, dest)
+		"INSUFFICIENT_FUEL":
+			return Loc.t("DEPART_NO_FUEL") % [int(last_depart_check.get("fuel_units", 0)), int(last_depart_check.get("fuel_buy", 0)), int(last_depart_check.get("fuel_cr", 0)) + int(last_depart_check.get("fuel_fee", 0)) + int(last_depart_check.get("toll", 0))]
 		"NO_ROUTE":
 			return Loc.t("DEPART_NO_ROUTE")
 	return Loc.t("DEPART_REFUSED")
@@ -1003,6 +1008,8 @@ func _on_transit_departed(info: Dictionary) -> void:
 		hud.post_headline_tr("HL_SHIP_DEPART_MANY", [origin, dest, rounds], "TRANSIT", "INFO")
 	if int(info["toll"]) > 0:
 		hud.post_headline_tr("HL_BELT_TOLL", [int(info["toll"]), origin, dest], "TRANSIT", "WARNING")
+	if int(info.get("fuel_burned", 0)) > 0:
+		hud.post_headline_tr("HL_FUEL_BURN", [int(info["fuel_burned"]), int(info["fuel_hold"]), int(info["fuel_bought"]), int(info["fuel_cr"])], "TRANSIT", "INFO")
 	for e in rival_events:
 		_post_baron_event(e)
 

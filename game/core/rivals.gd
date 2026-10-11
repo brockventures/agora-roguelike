@@ -114,7 +114,7 @@ static func _mid(market: StationMarket, station: String, commodity: String) -> i
 
 
 ## What a fleet would do from where it is: {} when no route clears its floor, else
-## {destination, commodity, qty, limit, score, fuel_cr, toll_cr, rounds}.
+## {destination, commodity, qty, limit, score, fuel_cr, fuel_units, toll_cr, rounds}.
 static func plan(w: Barons, f: RivalFleet, market: StationMarket, round_num: int) -> Dictionary:
 	var cfg: Dictionary = settings(w)
 	var space: int = int(cfg["capacity"]) - f.cargo_units()
@@ -163,7 +163,7 @@ static func plan(w: Barons, f: RivalFleet, market: StationMarket, round_num: int
 			if score < need:
 				continue
 			if best.is_empty() or score > int(best["score"]):
-				best = {"destination": dest, "commodity": c, "qty": filled, "limit": limit, "score": score, "fuel_cr": fuel_cr, "toll_cr": belt, "rounds": int(r["rounds"])}
+				best = {"destination": dest, "commodity": c, "qty": filled, "limit": limit, "score": score, "fuel_cr": fuel_cr, "fuel_units": int(r["fuel"]), "toll_cr": belt, "rounds": int(r["rounds"])}
 	return best
 
 
@@ -229,6 +229,18 @@ static func react(w: Barons, rc: RunController, market: StationMarket, info: Dic
 	return events
 
 
+## What a fleet pays for the fuel of a trip (#138): it buys `units` FUEL from the station's
+## own book, so the fill dents the ask ladder like any other. Units the book cannot supply
+## (or a station with no FUEL book) are charged at the planning mid price, `mid_cr / units`
+## each, as fuel always was. Returns the CR due; the caller deducts it.
+static func _buy_fuel(f: RivalFleet, market: StationMarket, units: int, mid_cr: int) -> int:
+	if units <= 0:
+		return mid_cr
+	var res: Dictionary = market.execute_as(f.id, f.at, "FUEL", "BUY", units, RunController.FUEL_LIMIT_PX)
+	var filled: int = int(res["filled"])
+	return int(res["cost"]) + (units - filled) * (mid_cr / units)
+
+
 static func _try_depart(w: Barons, f: RivalFleet, market: StationMarket, round_num: int, events: Array) -> void:
 	var p: Dictionary = plan(w, f, market, round_num)
 	if not p.is_empty():
@@ -242,7 +254,8 @@ static func _sail(w: Barons, f: RivalFleet, p: Dictionary, market: StationMarket
 	if filled <= 0:
 		return
 	var cost: int = int(res["cost"])
-	f.cr = maxi(0, f.cr - cost - int(p["fuel_cr"]) - int(p["toll_cr"]))
+	var fuel_paid: int = _buy_fuel(f, market, int(p.get("fuel_units", 0)), int(p["fuel_cr"]))
+	f.cr = maxi(0, f.cr - cost - fuel_paid - int(p["toll_cr"]))
 	f.cargo[c] = int(f.cargo.get(c, 0)) + filled
 	var origin: String = f.at
 	var price: int = cost / filled
@@ -447,6 +460,7 @@ static func _try_front_run(w: Barons, f: RivalFleet, rc: RunController, market: 
 	var trip: int = int(info.get("rounds", 0))
 	var rounds: int = 0
 	var fuel_cr: int = 0
+	var fuel_units: int = 0
 	var belt: int = 0
 	var dock: int = 0
 	if f.at != dest:
@@ -458,6 +472,7 @@ static func _try_front_run(w: Barons, f: RivalFleet, rc: RunController, market: 
 		if fuel_px <= 0:
 			fuel_px = int(round(float(Transit.BASE_PRICES.get(f.at, {}).get("FUEL", 0.0))))
 		fuel_cr = int(r["fuel"]) * fuel_px
+		fuel_units = int(r["fuel"])
 		belt = int(r["toll"])
 		dock = w.docking_toll_due(f.id, dest)
 	if f.cr - fuel_cr - belt - dock < int(cfg["front_run_min_cr"]):
@@ -466,7 +481,7 @@ static func _try_front_run(w: Barons, f: RivalFleet, rc: RunController, market: 
 		return false
 	if f.cargo_units() > 0:
 		_sell_cargo(f, market, round_num, events)
-	f.cr = maxi(0, f.cr - fuel_cr - belt)
+	f.cr = maxi(0, f.cr - _buy_fuel(f, market, fuel_units, fuel_cr) - belt)
 	var ev: Dictionary = {"kind": "rival_frontrun", "fleet": f.id, "station": dest, "commodity": com, "depth_bps": int(cfg["front_run_depth_bps"]), "rounds": int(cfg["front_run_rounds"]), "watched": str(info.get("origin", ""))}
 	if f.at == dest:
 		# Already docked there: the dent starts at the next boundary's reseed.
