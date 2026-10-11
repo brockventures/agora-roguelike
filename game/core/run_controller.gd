@@ -376,6 +376,30 @@ func hazard_odds_bps() -> int:
 func piracy_odds_bps() -> int:
 	return maxi(0, Parachutes.apply_stat(modifiers, "piracy_odds_bps", Parachutes.BPS))
 
+## Live doomsday interest rate in bps per minute after modifiers (#137).
+func interest_rate_bps() -> int:
+	return doomsday.interest_rate_bps_per_minute
+
+## Borrow liquid CR against the corporation's doomsday debt principal (#137).
+## Adds amount to liquid cr and adds amount to doomsday principal debt.
+## Returns the actual amount borrowed.
+func borrow_cr(amount: int) -> int:
+	var borrow_amt := maxi(0, amount)
+	if borrow_amt == 0:
+		return 0
+	var added := doomsday.add_principal(borrow_amt)
+	cr += added
+	return added
+
+## Service doomsday debt from liquid CR (#137).
+## Pays off accrued interest first, then accrued burn, then principal debt.
+## Returns the actual amount of debt paid.
+func service_debt(amount: int) -> int:
+	var payable := clampi(amount, 0, cr)
+	var paid := doomsday.service_debt(payable)
+	cr -= paid
+	return paid
+
 ## Unit cap per round while an antitrust audit is active, 0 = uncapped.
 func trade_cap_qty() -> int:
 	return crisis_deck.order_cap() if crisis_deck != null else 0
