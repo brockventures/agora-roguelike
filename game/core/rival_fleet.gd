@@ -20,6 +20,11 @@ var last: Dictionary = {}
 ## A standing front-run (Epic 3 task 11): {station, commodity, depth_bps, until_round}. {}
 ## when none, and then NOT saved, so a fleet that never front-runs hashes as before.
 var front: Dictionary = {}
+## Consecutive insolvent rounds (#134: Chapter11.assess against the fleet's debt). Saved only
+## while above 0, so a fleet that never struggles hashes as before.
+var strain: int = 0
+## True once the fleet has liquidated and left the run (#134). Saved only when true.
+var gone: bool = false
 
 
 func _init(p_id: String = "") -> void:
@@ -55,6 +60,10 @@ func to_dict() -> Dictionary:
 	}
 	if not front.is_empty():
 		d["front"] = _int_or_str_map(front)
+	if strain > 0:
+		d["strain"] = strain
+	if gone:
+		d["gone"] = true
 	return d
 
 
@@ -66,6 +75,8 @@ static func from_dict(d: Dictionary) -> RivalFleet:
 	f.route = _read_mixed_map(d.get("route", {}))
 	f.last = _read_mixed_map(d.get("last", {}))
 	f.front = _read_mixed_map(d.get("front", {}))
+	f.strain = int(d.get("strain", 0))
+	f.gone = bool(d.get("gone", false))
 	return f
 
 

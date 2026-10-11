@@ -3,7 +3,8 @@
   "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Read by Epic 3 tasks 2-8 (docs/design/epic3-barons.md).",
   "victory": {"barons_required": "all"},
   "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6,
-               "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600},
+               "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600,
+               "control_premium": [[0, 0], [5000, 2000], [8000, 9000], [10000, 10000]], "bid_step_bps": 1500},
   "heat": {"decay_per_round": 1, "retaliation_at": 6, "corner_round": 2, "margin_call": 3, "credit_open": 1,
            "credit_default": 3, "missed_contract": 4, "bounty_sponsored": 3, "reset_to": 0},
   "consequence": {"random_max_loss_bps": 1500, "random_event_bps": 300},
@@ -14,8 +15,8 @@
     "min_profit_cr": 60,
     "cautious_margin_bps": 1500,
     "bid_after_strain": 2,
-    "bid_chance_bps": 5000,
     "bid_cr_share_bps": 5000,
+    "fleet_bankrupt_rounds": 4,
     "front_run_min_value": 1000,
     "front_run_min_cr": 3000,
     "front_run_chance_bps": 7000,
@@ -26,9 +27,9 @@
     "bounty_chance_bps": 6000,
     "bounty_trace_bps": 1000,
     "fleets": [
-      {"id": "kessler_freight", "name": "Kessler Freight", "home": "earth", "cr": 24000, "trait": "front_runner", "stance": "bold"},
-      {"id": "blackwater_lines", "name": "Blackwater Lines", "home": "mars", "cr": 20000, "trait": "privateer_sponsor", "stance": "cautious"},
-      {"id": "ember_haulage", "name": "Ember Haulage", "home": "mars", "cr": 16000, "trait": "hauler", "stance": "bold"}
+      {"id": "kessler_freight", "name": "Kessler Freight", "home": "earth", "cr": 24000, "debt_cr": 10000, "trait": "front_runner", "stance": "bold"},
+      {"id": "blackwater_lines", "name": "Blackwater Lines", "home": "mars", "cr": 20000, "debt_cr": 8000, "trait": "privateer_sponsor", "stance": "cautious"},
+      {"id": "ember_haulage", "name": "Ember Haulage", "home": "mars", "cr": 16000, "debt_cr": 6000, "trait": "hauler", "stance": "bold"}
     ]
   },
   "levers": {

@@ -136,8 +136,11 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 	var events: Array = []
 	# Fleets that front-ran have landed (or their dent has run out) before the books are
 	# reseeded, and a standing bounty may be traced (task 11).
-	events.append_array(Rivals.front_arrivals(self, round_num))
+	events.append_array(Rivals.front_arrivals(self, round_num, rc))
 	events.append_array(Rivals.trace_bounties(self, round_num, rc))
+	# Fleet solvency (#134): a fleet insolvent for fleet_bankrupt_rounds liquidates here, so its
+	# shares are in the barons' lots this same boundary.
+	events.append_array(Rivals.advance_health(self, round_num))
 	for id in ids():
 		match str(def(id).get("archetype", "")):
 			"short_squeezer":
@@ -166,6 +169,16 @@ func advance_round(round_num: int, rc: RunController, market: StationMarket = nu
 
 ## Fleet ids in sorted order: the only order anything may iterate them in.
 func rival_ids() -> Array:
+	var out: Array = []
+	for id in rivals.keys():
+		if not (rivals[id] as RivalFleet).gone:
+			out.append(id)
+	out.sort()
+	return out
+
+
+## Every fleet id including the ones that liquidated and left the run (the save walks these).
+func all_rival_ids() -> Array:
 	var out: Array = rivals.keys()
 	out.sort()
 	return out
@@ -254,7 +267,7 @@ func mark_bounty_traced(contract_id: String) -> bool:
 ## corp insolvent. {ok, reason, heat}. Not bound to a key: Epic 4 controls are unchanged.
 func sponsor_bounty(rc: RunController, fleet_id: String) -> Dictionary:
 	var f: RivalFleet = rival(fleet_id)
-	if f == null:
+	if f == null or f.gone:
 		return {"ok": false, "reason": "NO_FLEET", "heat": 0}
 	var snap: Dictionary = rc.snapshot()
 	snap["cr"] = rc.cr - Piracy.PRIV_COST
@@ -357,19 +370,45 @@ func buy_shares(rc: RunController, station: String, n: int) -> Dictionary:
 	return Takeover.buy(self, id, rc, n)
 
 
-## The bids {buyer, qty} rival fleets make for a distress lot, in sorted fleet id order
-## (Rivals.bids). With no `rc` (no run seed to draw from) there are none.
+## The sealed bids {buyer, qty, max_price} rival fleets make for a lot of `qty` shares at
+## reserve `px`, in sorted fleet id order (Rivals.bids). With no `rc` there are none.
 func rival_bids(id: String, round_num: int, px: int, qty: int, rc: RunController = null) -> Array:
 	return Rivals.bids(self, id, round_num, px, qty, rc)
 
 
-## Sells `n` treasury shares of the standing offer to a buyer other than the player
-## (the stand-in a rival fleet will use). Capped at the lot; events as buy().
-func sell_auction_shares(id: String, buyer: String, n: int, rc: RunController = null) -> Array:
-	var o: Dictionary = Takeover.offer(self, id)
-	if o.is_empty() or n <= 0 or buyer == "" or buyer == Takeover.PLAYER:
-		return []
-	return Takeover._transfer(self, id, buyer, mini(n, int(o["qty"])), int(o["px"]), rc)
+## The player's sealed bid for the standing lot at `station`'s baron: `n` shares, paying
+## no more than `max_price` a share (the whole auction pays one uniform price). Replaces
+## an earlier bid. {ok, reason, n, max_price, cost, held, events}; see Takeover.bid.
+func submit_bid(rc: RunController, station: String, n: int, max_price: int) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {"ok": false, "reason": "NO_OFFER", "n": 0, "max_price": 0, "cost": 0, "held": 0, "events": []}
+	return Takeover.bid(self, id, rc, n, max_price)
+
+
+## What a share of `id` is worth to `bidder` ("player" or a fleet id): NAV per share with
+## the control premium for the bidder's own stake. The HUD's "your value".
+func share_value(id: String, bidder: String, rc: RunController = null) -> int:
+	return Takeover.value_per_share(self, id, bidder, rc)
+
+
+## The auction read model for `id`: see Takeover.auction_info.
+func auction_info(id: String, rc: RunController = null) -> Dictionary:
+	return Takeover.auction_info(self, id, rc)
+
+
+## The player tenders `offer_px` a share to fleet `fleet_id` for up to `n` of its shares in
+## the baron at `station`; it sells at or above its own valuation. See Takeover.recapture.
+func recapture_shares(rc: RunController, station: String, fleet_id: String, n: int, offer_px: int) -> Dictionary:
+	var id: String = baron_at(station)
+	if id == "":
+		return {"ok": false, "reason": "NO_OFFER", "n": 0, "cost": 0, "held": 0, "ask": 0, "events": []}
+	return Takeover.recapture(self, id, rc, fleet_id, n, offer_px)
+
+
+## A fleet's cash health: see Rivals.health.
+func fleet_health(fleet_id: String) -> Dictionary:
+	return Rivals.health(self, fleet_id)
 
 
 ## Adds debt to a baron, attributed to `creditor` ("" = the system). The door the
@@ -670,7 +709,7 @@ func to_dict() -> Dictionary:
 	# Fleets are saved only when the file lists any, so a world without `rivals` hashes as before.
 	if not rivals.is_empty():
 		var rv: Dictionary = {}
-		for id in rival_ids():
+		for id in all_rival_ids():
 			rv[id] = (rivals[id] as RivalFleet).to_dict()
 		d["rivals"] = rv
 	# Privateer contracts: only while any exist, so a world nobody hires against hashes as before.
@@ -745,6 +784,7 @@ static func validate(d: Dictionary) -> Array:
 				errs.append("takeover.%s must be a whole number >= 0" % k)
 		if take.has("reset_treasury_bps") and (not _is_int(take["reset_treasury_bps"]) or int(take["reset_treasury_bps"]) < 0 or int(take["reset_treasury_bps"]) > 10000):
 			errs.append("takeover.reset_treasury_bps must be 0..10000")
+		errs.append_array(_check_premium(take.get("control_premium", null)))
 	errs.append_array(_check_levers(d.get("levers", null)))
 	errs.append_array(_check_rivals(d.get("rivals", null), d.get("barons", []) if d.get("barons", []) is Array else []))
 	var heat = d.get("heat", null)
@@ -811,6 +851,33 @@ static func validate(d: Dictionary) -> Array:
 		_check_commodity_map(b.get("inventory", null), "%s: inventory" % where, errs)
 		_check_privileges(b.get("privileges", null), where, errs)
 		_check_params(b.get("params", null), arch, where, errs)
+	return errs
+
+
+## `takeover.control_premium` is optional (Takeover.DEFAULT_PREMIUM applies): a list of
+## [stake_bps, premium_bps] points, stake strictly rising from 0 to at most 10000 (a share
+## of the bidder's own takeover threshold), premium never falling.
+static func _check_premium(v: Variant) -> Array:
+	var errs: Array = []
+	if v == null:
+		return errs
+	if not (v is Array) or (v as Array).size() < 2:
+		return ["takeover.control_premium must be a list of at least two [stake_bps, premium_bps] points"]
+	var last_stake: int = -1
+	var last_prem: int = 0
+	for i in (v as Array).size():
+		var pt = v[i]
+		if not (pt is Array) or (pt as Array).size() != 2 or not _is_int(pt[0]) or not _is_int(pt[1]) or int(pt[0]) < 0 or int(pt[0]) > 10000 or int(pt[1]) < 0:
+			errs.append("takeover.control_premium[%d] must be [stake_bps 0..10000, premium_bps >= 0]" % i)
+			return errs
+		if i == 0 and int(pt[0]) != 0:
+			errs.append("takeover.control_premium must start at stake 0")
+		if int(pt[0]) <= last_stake:
+			errs.append("takeover.control_premium stakes must rise")
+		if int(pt[1]) < last_prem:
+			errs.append("takeover.control_premium must not fall")
+		last_stake = int(pt[0])
+		last_prem = int(pt[1])
 	return errs
 
 
@@ -888,6 +955,8 @@ static func _check_rivals(v: Variant, barons: Array) -> Array:
 			errs.append("%s: stance must be one of %s" % [where, ", ".join(Rivals.STANCES)])
 		if not _is_int(f.get("cr", null)) or int(f["cr"]) < 0:
 			errs.append("%s: cr must be a whole number >= 0" % where)
+		if f.has("debt_cr") and (not _is_int(f["debt_cr"]) or int(f["debt_cr"]) < 0):
+			errs.append("%s: debt_cr must be a whole number >= 0" % where)
 	return errs
 
 
