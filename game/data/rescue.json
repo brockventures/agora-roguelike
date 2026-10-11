@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan, in CR / units / bps / rounds. Task 5 of docs/design/rescue-project.md tunes them.",
+  "_placeholder": "Every number is a tuning guess for Ryan, in CR / units / bps / rounds. Task 5 (docs/design/rescue-project.md) measured them with tools/pacing_bot.gd and kept every value; they stay Ryan's to sign off.",
   "unlock": "monopoly",
   "rent_multiplier_bps": 20000,
   "phases": [
