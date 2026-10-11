@@ -1087,8 +1087,9 @@ func lever_notes(station: String) -> Array:
 		out.append({"kind": "chip", "text": Loc.t("TAG_CREDIT"), "tone": "credit"})
 		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_OPEN") % [int(cl["due"]), int(cl["due_round"])], "tone": "credit"})
 	elif docked and Levers.is_pressed(w, id):
+		var rate_bps: int = Levers.credit_rate_bps(w, controller)
 		out.append({"kind": "chip", "text": Loc.t("TAG_CREDIT_OFFER"), "tone": "credit"})
-		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_OFFER") % [int(cfg["credit"]["line_cr"]), int(cfg["credit"]["rate_bps"]) / 100, int(cfg["credit"]["term_rounds"])], "tone": "credit"})
+		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_OFFER") % [int(cfg["credit"]["line_cr"]), rate_bps / 100, int(cfg["credit"]["term_rounds"])], "tone": "credit"})
 		out.append({"kind": "line", "text": Loc.t("SIDE_CREDIT_HINT"), "tone": "credit"})
 	# tender (Hostile Buyout Line)
 	var to: Dictionary = Takeover.tender_offer(w, id, controller)

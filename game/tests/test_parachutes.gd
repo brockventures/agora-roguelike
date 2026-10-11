@@ -275,8 +275,8 @@ func test_dead_perks_roadmap_descriptions() -> String:
 		var issue_tag: String = expected_issues[id]
 		if not desc.contains(issue_tag):
 			return "perk %s description missing roadmap issue tag %s: %s" % [id, issue_tag, desc]
-		if id == "fuel_hedge" or id == "black_market_corridors":
-			# #138 and #139 landed: the effect is live, so the roadmap note is gone.
+		if id == "fuel_hedge" or id == "black_market_corridors" or id == "corrupt_regulator":
+			# #137, #138, and #139 landed: the effect is live, so the roadmap note is gone.
 			if "roadmap" in desc.to_lower() or "lands" in desc.to_lower():
 				return "%s is live and must not carry a roadmap note: %s" % [id, desc]
 			continue

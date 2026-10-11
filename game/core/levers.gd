@@ -413,6 +413,15 @@ static func _credit_maturity(w: Barons, id: String, round_num: int, rc: RunContr
 
 ## Extends the standard line to the baron anchoring `station`. {ok, reason, principal,
 ## due, due_round, events}. Refused: NO_BARON, HELD, OPEN, NOT_PRESSED, NO_CR, and
+## The credit line rate in bps after perk modifiers (base 2000 bps = 20%).
+## corrupt_regulator (-50 bps) reduces it via interest_bps (#137).
+static func credit_rate_bps(w: Barons, rc: RunController = null) -> int:
+	var base: int = int(settings(w)["credit"]["rate_bps"])
+	if rc != null and rc.modifiers != null and rc.modifiers.has("interest_bps"):
+		return maxi(0, Parachutes.apply_stat(rc.modifiers, "interest_bps", base))
+	return base
+
+
 ## WOULD_BANKRUPT (the lent CR would leave the corp insolvent: the receivable is not in
 ## the Chapter 11 snapshot).
 static func open_credit(w: Barons, station: String, rc: RunController) -> Dictionary:
@@ -441,17 +450,18 @@ static func open_credit(w: Barons, station: String, rc: RunController) -> Dictio
 	if bool(Chapter11.assess(snap, rc.haircut_bps())["insolvent"]):
 		out["reason"] = "WOULD_BANKRUPT"
 		return out
-	var due: int = principal * (10000 + int(cfg["rate_bps"])) / 10000
+	var rate_bps: int = credit_rate_bps(w, rc)
+	var due: int = principal * (10000 + rate_bps) / 10000
 	var due_round: int = rc.get_current_round() + int(cfg["term_rounds"])
 	rc.cr -= principal
 	s.treasury_cr += principal * (10000 - clampi(int(cfg["spend_bps"]), 0, 10000)) / 10000
-	s.scratch["credit"] = {"principal": principal, "due": due, "due_round": due_round, "rate_bps": int(cfg["rate_bps"])}
+	s.scratch["credit"] = {"principal": principal, "due": due, "due_round": due_round, "rate_bps": rate_bps}
 	out["ok"] = true
 	out["principal"] = principal
 	out["due"] = due
 	out["due_round"] = due_round
 	Heat.raise(w, id, int(Heat.settings(w)["credit_open"]))
-	out["events"] = [{"kind": "credit_open", "baron": id, "principal": principal, "due": due, "due_round": due_round, "rate_bps": int(cfg["rate_bps"])}]
+	out["events"] = [{"kind": "credit_open", "baron": id, "principal": principal, "due": due, "due_round": due_round, "rate_bps": rate_bps}]
 	return out
 
 

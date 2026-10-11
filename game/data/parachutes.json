@@ -16,7 +16,7 @@
           "value": -50
         }
       ],
-      "description": "Reduces debt interest by 50 bps. [M0 Roadmap: effect wired when loans and interest system lands (#137)]"
+      "description": "Reduces doomsday debt interest by 50 bps and lowers credit line borrowing rates by 50 bps (#137)."
     },
     {
       "id": "deferred_audit",
