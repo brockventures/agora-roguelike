@@ -48,7 +48,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: earth
-- prompt: Tactical map node icon: a blue-green ocean world with swirled white cloud bands and one dark continent mass, a thin orbital ring of docks hugging it. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellowed atmospheric rim haze, and a thin orbital ring of docks hugging it. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-luna
 - batch: 6.3
@@ -62,7 +62,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: mars
-- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white and a squat industrial dock tower rooted firmly into the surface bedrock. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white, and squat industrial foundries rooted firmly into the surface bedrock on the visible face by the edge of a basin. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-ceres
 - batch: 6.3
@@ -76,7 +76,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: earth
-- prompt: Card vignette illustration: wide view of a blue-green ocean world with swirled white cloud bands and one dark continent mass, a thin orbital ring of docks hugging it, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellowed atmospheric rim haze, and a thin orbital ring of docks hugging it, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### card-luna
 - batch: 6.3
@@ -90,7 +90,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 4:3
 - sample: no
 - source: Transit.STATIONS: mars
-- prompt: Card vignette illustration: wide view of a rust-red desert world with a dark canyon scar, polar ice cap in bone white and a squat industrial dock tower on the limb, with a small cargo hauler silhouette crossing in the foreground. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Card vignette illustration: wide view of a rust-red desert world with a dark canyon scar, polar ice cap in bone white, and squat industrial foundries rooted firmly into the surface bedrock on the basin shore, with a small cargo hauler silhouette crossing in the foreground. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Cinematic composition, low horizon, strong flat shadow cuts.
 
 ### card-ceres
 - batch: 6.3
