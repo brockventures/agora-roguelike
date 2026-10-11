@@ -54,7 +54,7 @@ class BibleTests(unittest.TestCase):
 
     def test_counts_and_cards_are_4x3(self):
         by = {b: [e for e in self.bible["entries"].values() if e["batch"] == b] for b in G.BATCHES}
-        self.assertEqual(len([e for e in by["6.5"]]), 12)
+        self.assertEqual(len([e for e in by["6.5"]]), 16)
         self.assertTrue(all(e["aspect"] == "4:3" for e in by["6.5"]))
         self.assertEqual(len([e for e in by["6.4"] if e["id"].startswith("hull-")]), 5)
         for st in ("earth", "luna", "mars", "ceres"):
