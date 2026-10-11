@@ -62,7 +62,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: mars
-- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white and a squat industrial dock tower on the limb. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white and a squat industrial dock tower rooted firmly into the surface bedrock. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-ceres
 - batch: 6.3
