@@ -27,9 +27,11 @@ DEPART_SAME_STATION,You are docked here. Pick another station.
 DEPART_NO_TOLL,"Cannot pay the %d CR belt toll."
 DEPART_NO_ROUTE,No route to that station.
 DEPART_REFUSED,Cannot depart right now.
+DEPART_NO_FUEL,"Cannot fuel the trip: %d FUEL burned, %d to buy, %d CR needed."
 HL_SHIP_DEPART_ONE,"YOUR SHIP DEPARTS %s for %s, ETA 1 round"
 HL_SHIP_DEPART_MANY,"YOUR SHIP DEPARTS %s for %s, ETA %d rounds"
 HL_BELT_TOLL,BELT AUTHORITY: %d CR toll charged on %s -> %s
+HL_FUEL_BURN,"FUEL BURNED: %d units (%d from the hold, %d bought for %d CR)"
 HL_SHIP_ARRIVED,YOUR SHIP DOCKED at %s from %s
 HL_DOCKING_TOLL,%s: %d CR docking toll charged at %s
 HL_DOCKING_TOLL_SHORT,%s: docking toll took your last %d CR at %s
@@ -468,3 +470,7 @@ MAP_CARD_FROM,DEPART
 MAP_CARD_TO,ARRIVE
 MAP_CARD_ETA,ETA
 MAP_CARD_BELT,BELT TOLL %d CR
+MAP_CARD_FUEL,FUEL
+MAP_CARD_FUEL_HOLD,"%d units, in hold"
+MAP_CARD_FUEL_BUY,"%d units, %d CR"
+MAP_CARD_FUEL_HEDGED,FUEL HEDGE: -%d%% burn

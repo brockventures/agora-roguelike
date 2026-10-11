@@ -464,7 +464,16 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 	add.call("header[route]", scene.wordmark_label)
 	add.call("tabs+hint[route]", scene.wordmark_label)
 	add.call("map[route]", scene.map_label)
-	for reason in ["INSUFFICIENT_CR", "SAME_STATION", "IN_TRANSIT", "NO_ROUTE", "OTHER"]:
+	# #138: the route card's FUEL row and the fuel_hedge line (the perk on, so both show).
+	var saved_mods: Dictionary = rc.modifiers.duplicate(true)
+	rc.apply_modifiers({"fuel_discount_bps": {"add": 1000, "mul_bps": 10000}})
+	scene._refresh_readouts()
+	for k in ["fuel_cap", "fuel_val", "hedge"]:
+		add.call("card[%s]" % k, scene._route_card[k])
+	rc.apply_modifiers(saved_mods)
+	scene._refresh_readouts()
+	loop.last_depart_check = {"fuel_units": 30, "fuel_buy": 30, "fuel_cr": 9999, "fuel_fee": 99, "toll": 25}
+	for reason in ["INSUFFICIENT_CR", "INSUFFICIENT_FUEL", "SAME_STATION", "IN_TRANSIT", "NO_ROUTE", "OTHER"]:
 		loop.last_depart_reason = reason
 		scene._refresh_readouts()
 		add.call("map[refused %s]" % reason, scene.map_label)
