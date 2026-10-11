@@ -48,7 +48,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: earth
-- prompt: Tactical map node icon: a blue-green ocean world with swirled white cloud bands and one dark continent mass, a thin orbital ring of docks hugging it. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: planet Earth, instantly recognisable by its real continents, Africa and Europe facing the viewer with the Atlantic to the west, but sickly: the oceans dulled to murky teal, the land browned, the whole atmosphere tinted a jaundiced smoggy yellow. A dense swarm of small satellites and orbital debris rings the planet like gnats, and many tiny cargo ships stream in and out along bright exhaust trails toward a crowded orbital dock ring. Overbuilt, congested, exhausted. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-luna
 - batch: 6.3
@@ -62,7 +62,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - aspect: 1:1
 - sample: yes
 - source: Transit.STATIONS: mars
-- prompt: Tactical map node icon: a rust-red desert world with a dark canyon scar, polar ice cap in bone white and a squat industrial dock tower on the limb. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
+- prompt: Tactical map node icon: a rust-red desert world mid-terraforming: patches of green lowland and a few small blue-grey lakes in the northern basins, thin wispy cloud, a dark canyon scar, a bone-white polar cap. Scattered pockets of civilisation sit on the surface itself: clusters of pressure domes, small spaceports with landing pads and tiny glowing lights, a few shuttles lifting off on short exhaust trails. Every structure sits on the ground at true planetary scale, tiny against the planet; nothing floats above the surface. Centered single subject, three-quarter view, generous empty margin, flat deep slate-black space behind, no stars beyond a few sparse dots.
 
 ### station-ceres
 - batch: 6.3
