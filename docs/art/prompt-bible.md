@@ -229,9 +229,9 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the scrap barge hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 
-## Batch 6.5: encounter deck (12 cards, 4:3)
+## Batch 6.5: encounter deck (16 cards, 4:3)
 
-Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard and 3 opportunistic crises); CME flare comes from `hazards.check_cme_relay_interference`.
+Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard and 3 opportunistic crises); CME flare, storm delay, and hull breach come from `hazards.gd`; pirate raid and dark run come from `corridors.gd`.
 
 ### card-antitrust-audit
 - batch: 6.5
@@ -316,3 +316,30 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - sample: yes
 - source: hazards.check_cme_relay_interference
 - prompt: Encounter card illustration, wide 4:3 composition: A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler, radio relay dishes sparking, shock-front bands rippling through space.
+### card-storm-delay
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: hazards.P_DELAY
+- prompt: Encounter card illustration, wide 4:3 composition: A cargo vessel caught in a high-radiation solar storm: ion turbulence battering the hull, glowing static discharges along radiator panels, a blown thruster coil glowing hot while crew race to repair propulsion in zero-g.
+
+### card-hull-breach
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: hazards.P_LOSS
+- prompt: Encounter card illustration, wide 4:3 composition: Micro-meteoroid puncture and containment breach: a jagged tear along a container rack, frozen atmosphere venting into the void in white vapor crystals, cargo canisters spilling loose into zero-g.
+
+### card-pirate-raid
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: corridors.piracy
+- prompt: Encounter card illustration, wide 4:3 composition: A pirate raider ambush in the asteroid belt: a ragged raider swooping out of a rock shadow toward a lone hauler, magnetic grappling lines flying, dust and debris, rust-red running lights.
+
+### card-dark-run
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: corridors.dark_run
+- prompt: Encounter card illustration, wide 4:3 composition: Running silent on the unmonitored Mars-Ceres Dark Run: a blacked-out hauler slipping through a craggy asteroid trench with running lights extinguished, illicit fluid canisters strapped to the keel, scanning sensors sweeping harmlessly overhead.
