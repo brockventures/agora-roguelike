@@ -199,6 +199,16 @@ func natural_width(l: Label, text: String) -> float:
 	return text_width(l, text)
 
 
+## Width of `text` at the narrowest width axis fit_text will try (the least a cell can need
+## before it must wrap). Leaves the label on that axis; fit_text or natural_width resets it.
+func narrowest_width(l: Label, text: String) -> float:
+	var role: String = str(l.get_meta(ROLE_META))
+	var wd: int = mini(int(HudTheme.TYPE_ROLES[role]["wdth"]), HudTheme.MIN_WDTH)
+	l.add_theme_font_override("font", HudTheme.role_font(role, wd))
+	refresh_theme(l)
+	return text_width(l, text)
+
+
 # --- Components ---
 
 ## PadGlyph: a 22 px disc with the button letter, then its label. Returns the node and

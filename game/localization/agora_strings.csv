@@ -276,6 +276,7 @@ SET_LANGUAGE,Language
 SET_CRT,Retro CRT filter
 SET_ALERT_VOLUME,Alert volume
 SET_ALERT_MUTE,Mute alerts
+SET_REDUCED_MOTION,Reduced motion
 SET_ON,On
 SET_OFF,Off
 SET_PALETTE_DEFAULT,Default

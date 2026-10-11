@@ -9,6 +9,8 @@ extends RefCounted
 ## it is checked for being scrollable, not for fitting.
 
 const SKIP_NOTE := "ticker"
+## Least clear px between the ladder title's right edge and its hint (it used to be 6).
+const MIN_TITLE_HINT_GAP := 16.0
 
 
 func _scene() -> Node:
@@ -730,3 +732,151 @@ func test_lever_rows_fit_at_every_text_scale() -> String:
 			scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
 	return "ok" if bad.is_empty() else "lever rows overflow: %s" % str(bad)
+
+
+
+# --- Epic 6 (#124) polish: header cells, ladder title gap, desk notes ---
+
+## The header's stat cells at every text scale, in English and under pseudo-localization (the
+## 130% pseudo-locale is the worst case), across the credit figures, speeds and doomsday
+## stages the bar can show: no cell label wraps or overflows its box, and the cells stay to the
+## right of the tabs.
+func test_header_cells_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rc: RunController = scene.controller
+			for cr in [0, 5000, 110000, 400000, 99999999]:
+				for paused in [true, false]:
+					for stage in [DoomsdayClock.Stage.NORMAL, DoomsdayClock.Stage.CRITICAL, DoomsdayClock.Stage.COLLAPSED]:
+						rc.cr = cr
+						rc.sim_clock.paused = paused
+						rc.doomsday.stage = stage
+						scene._refresh_readouts()
+						var tag: String = "%s %.2fx cr=%d paused=%s stage=%d" % [locale, scale, cr, str(paused), int(stage)]
+						var tabs_end: float = (scene._hdr["rb"] as Label).position.x + (scene._hdr["rb"] as Label).size.x
+						var right_of: float = tabs_end
+						var chips: Array = scene._hdr["chips"]
+						for c in chips:
+							var plate: Control = c["plate"]
+							if plate.position.x < right_of - 0.5:
+								bad.append("%s: cell %s starts at %.0f, inside the tabs/previous cell (%.0f)" % [tag, c["key"], plate.position.x, right_of])
+							right_of = plate.position.x + plate.size.x
+							for key in ["label", "value"]:
+								var l: Label = c[key]
+								judged += 1
+								if l.autowrap_mode != TextServer.AUTOWRAP_OFF:
+									bad.append("%s: %s %s wraps (%s)" % [tag, c["key"], key, l.text])
+									continue
+								var need: Vector2 = text_extent(l, l.text)
+								if need.x > l.size.x + 0.5 or need.y > l.size.y + 0.5:
+									bad.append("%s: %s %s '%s' needs %s in %s" % [tag, c["key"], key, l.text, str(need), str(l.size)])
+								var rect := Rect2(l.position, l.size)
+								if not (c["plate"] as Control).get_rect().encloses(rect):
+									bad.append("%s: %s %s rect %s leaves its cell %s" % [tag, c["key"], key, str(rect), str((c["plate"] as Control).get_rect())])
+						if right_of > 1276.5:
+							bad.append("%s: cells end at %.0f, past the bar" % [tag, right_of])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 1000:
+		return "judged only %d header labels" % judged
+	return "ok" if bad.is_empty() else "header cells overflow (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 12)))]
+
+
+## The market ladder's title keeps clear space (at least MIN_TITLE_HINT_GAP) before its R-STICK hint at
+## every text scale, in English and pseudo-localization, for every station and commodity
+## (the longest titles are the ones that used to touch the hint).
+func test_ladder_title_clears_its_hint_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			scene.controller.world = Barons.for_new_run()
+			scene.loop.market.set_world(scene.controller.world)
+			scene.loop.set_tab(M0Loop.Tab.MARKET)
+			for st in Transit.STATIONS:
+				scene.hud.set_station(st)
+				for com in Transit.COMMODITIES:
+					scene.hud.set_commodity(com)
+					scene._refresh_readouts()
+					var title: Label = scene._ladder["title"]
+					var hint: Label = scene._ladder["hint"]
+					# The title's drawn right edge: its box when it wraps, else its text.
+					var right: float = title.position.x + title.size.x
+					var gap: float = hint.position.x - right
+					judged += 1
+					if gap < MIN_TITLE_HINT_GAP:
+						bad.append("%s %.2fx %s/%s: title ends %.0f, hint starts %.0f (gap %.0f)" % [locale, scale, st, com, right, hint.position.x, gap])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 20 * 6:
+		return "judged only %d titles" % judged
+	return "ok" if bad.is_empty() else "ladder title touches its hint (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 10)))]
+
+
+## The card's desk notes never show an entry cut off: staged with a distress lot, a credit
+## line offer and every crisis, at every text scale, English and pseudo-localization, sampled
+## across the whole scroll cycle. An entry is either wholly in view or hidden by the plate
+## under the last whole one.
+func test_desk_notes_never_clip_an_entry() -> String:
+	var bad: Array = []
+	var overflowing: int = 0
+	var samples: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var loop: M0Loop = scene.loop
+			var rc: RunController = scene.controller
+			rc.world = Barons.new()
+			loop.market.set_world(rc.world)
+			rc.world.add_debt("ares_heavy", 200000)
+			rc.world.state("ares_heavy").treasury_cr = 1000
+			rc.docked_at = "mars"
+			rc.cargo = {"ORE": 30}
+			scene.hud.set_station("mars")
+			scene.hud.set_commodity("ORE")
+			loop.set_tab(M0Loop.Tab.MARKET)
+			for with_crises in [false, true]:
+				var deck: CrisisDeck = loop.crisis_deck
+				deck.active = []
+				if with_crises:
+					for def in deck.data["crises"]:
+						deck.active.append(_fake_crisis(def, deck))
+				scene._refresh_readouts()
+				var view: Dictionary = scene._card["notes"]["view"]
+				var clip: Control = view["clip"]
+				var over: float = scene.scroll_overflow(view)
+				if over > 0.0:
+					overflowing += 1
+				var t: float = 0.0
+				while t < 30.0:
+					scene._scroll_t = t
+					scene._update_scrollers()
+					samples += 1
+					var off: float = -(view["content"] as Control).position.y
+					var cover: Control = view["hide"]
+					var limit: float = cover.position.y if cover.visible else clip.size.y
+					for sp in view["entries"]:
+						var top: float = float(sp[0]) - off
+						var bottom: float = float(sp[1]) - off
+						if bottom > 0.5 and top < limit - 0.5 and (top < -0.5 or bottom > limit + 0.5):
+							bad.append("%s %.2fx crises=%s t=%.1f: entry %.0f..%.0f shows cut off in 0..%.0f" % [locale, scale, str(with_crises), t, top, bottom, limit])
+							break
+					t += 0.5
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if overflowing < 3:
+		return "only %d staged notes overflowed their view: the test is not exercising the clip" % overflowing
+	return "ok" if bad.is_empty() else "desk notes clip an entry (%d of %d samples): %s" % [bad.size(), samples, "\n  ".join(PackedStringArray(bad.slice(0, 8)))]

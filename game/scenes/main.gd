@@ -46,6 +46,8 @@ var kit: HudKit = HudKit.new()
 var wordmark_label: Label = null
 var ticker_labels: Array[Label] = []
 var ticker_chips: Array = []
+## Per row, the plate that hides the not-yet-wiped part of a fresh line.
+var ticker_wipes: Array = []
 var map_label: Label = null
 ## Shared readable palette: every HUD label and every opaque modal body uses these.
 const HUD_TEXT_COLOR := HudTheme.BONE
@@ -153,6 +155,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if loop == null:
 		return
+	# The map ring and the ticker wipe run on UI frame time alone: a pause, a modal, the
+	# settings screen and the sim speed never move them.
+	advance_motion(delta)
 	# Toasts age on UI time alone (a modal, the settings screen or a pause does not hold them).
 	# A toast waits (neither drawn nor aged) while a modal owns the screen, so it never
 	# covers the dialog and is still there when the dialog closes.
@@ -577,6 +582,93 @@ func _apply_drone(volume_db: float) -> void:
 	drone_player.volume_db = volume_db
 
 
+# --- UI motion (Epic 6 #124): the stepped ring march and the ticker wipe-in ---
+
+## Drawings a second ("animated on twos", Motion.dc.html) and the beats built from them.
+const MOTION_FPS: float = 12.0
+## Ring march (ag-ring): the dash pattern slides 28 px over 4 drawings, then loops.
+const RING_MARCH_DRAWINGS: int = 4
+const RING_MARCH_PX: float = 28.0
+## Ticker wipe (ag-wipe): three drawings (250 ms), a third of the row revealed per drawing.
+const WIPE_DRAWINGS: int = 3
+## Seconds of UI frame time since the scene came up. Only advance_motion() moves it, with
+## the raw frame delta, so it never depends on the sim clock, pause or game speed.
+var ui_time: float = 0.0
+## -1: decide from how the scene is driven; 0 / 1: forced off / on (see motion_live()).
+var _motion_mode: int = -1
+## UI time is held where set_ui_time() put it (a capture or a test of a chosen phase).
+var _motion_held: bool = false
+## Ticker row wipes: headline seq -> ui_time it first showed. A line seen on the very first
+## refresh counts as old; later ones wipe in.
+var _wipe_born: Dictionary = {}
+var _wipe_primed: bool = false
+
+
+## Whether the animations play. A scene driven by a script (the test runner and the shots
+## tools run as SceneTree scripts, and may build Main before the loop exists) is settled: a
+## capture or a test never meets a half-drawn frame. The game itself, run from the project's
+## main scene, plays. freeze_motion_at() and settle_motion() override either way.
+func motion_live() -> bool:
+	if _motion_mode >= 0:
+		return _motion_mode == 1
+	var ml: MainLoop = Engine.get_main_loop()
+	return ml != null and ml.get_script() == null
+
+
+## Advances UI time by a raw frame delta (a wake-sized one is dropped; a held clock stays).
+func advance_motion(delta: float) -> void:
+	if motion_live() and not _motion_held and not SimClock.is_wake_delta(delta):
+		ui_time += maxf(0.0, delta)
+
+
+## Plays the animations frozen at UI time `t` (tests and shots tools: capture a chosen phase).
+func freeze_motion_at(t: float) -> void:
+	_motion_mode = 1
+	_motion_held = true
+	ui_time = maxf(0.0, t)
+
+
+## Settled: ring still, every ticker line whole, the clock stopped.
+func settle_motion() -> void:
+	_motion_mode = 0
+	_motion_held = false
+	ui_time = 0.0
+
+
+## Lets UI time run again from `t` (a test of the live clock).
+func run_motion_from(t: float) -> void:
+	_motion_mode = 1
+	_motion_held = false
+	ui_time = maxf(0.0, t)
+
+
+## Whether the two animations play: UI time is live and the player has not asked for
+## reduced motion (Settings).
+func motion_active() -> bool:
+	return motion_live() and not settings.reduced_motion
+
+
+## The current drawing: UI time quantized to 12 per second.
+func motion_drawing() -> int:
+	return int(floor(ui_time * MOTION_FPS + 0.0001))
+
+
+## How far the map ring's dashes have marched, in px along the ring (0 when settled).
+func ring_march_px() -> float:
+	if not motion_active():
+		return 0.0
+	return float(motion_drawing() % RING_MARCH_DRAWINGS) * (RING_MARCH_PX / float(RING_MARCH_DRAWINGS))
+
+
+## Share of a ticker line revealed, in whole thirds: 0 on the line's first drawing, 1
+## once its three drawings have passed (always 1 when motion is off or the line is old).
+func wipe_fraction(seq: int) -> float:
+	if not motion_active() or not _wipe_born.has(seq):
+		return 1.0
+	var drawings: int = int(floor((ui_time - float(_wipe_born[seq])) * MOTION_FPS + 0.0001))
+	return clampf(float(drawings) / float(WIPE_DRAWINGS), 0.0, 1.0)
+
+
 # --- Accessibility settings (#37) ---
 
 ## Loads settings.json (defaults when absent) and applies them to InputMap,
@@ -590,6 +682,7 @@ func _load_settings() -> void:
 	settings.crt_filter = fresh.crt_filter
 	settings.alert_volume = fresh.alert_volume
 	settings.alert_mute = fresh.alert_mute
+	settings.reduced_motion = fresh.reduced_motion
 	settings.bindings = fresh.bindings
 	var env_locale: bool = OS.get_environment(Loc.PSEUDO_ENV) in ["1", "true", "yes"] or OS.get_environment(Loc.LOCALE_ENV) != ""
 	if env_locale:
@@ -683,7 +776,49 @@ func scroll_overflow(view: Dictionary) -> float:
 
 func _update_scrollers() -> void:
 	for view in _scrollers:
-		(view["content"] as Control).position.y = -marquee_offset(_scroll_t, scroll_overflow(view))
+		var over: float = scroll_overflow(view)
+		var off: float = marquee_offset(_scroll_t, over)
+		if view.has("entries"):
+			off = _step_offset(view, off, over)
+		(view["content"] as Control).position.y = -off
+
+
+## A view of whole entries (the desk notes) never shows one cut off. The marquee offset is
+## stepped down to the top of an entry; the last step is the first entry top that leaves
+## everything below it in view (the bottom may then run short, never cut); and `hide`
+## covers the sliver of a next entry that would show under the last whole one.
+func _step_offset(view: Dictionary, off: float, over: float) -> float:
+	var spans: Array = view["entries"]
+	var cover: HudKit.Plate = view["hide"]
+	var h: float = (view["clip"] as Control).size.y
+	var last: float = over
+	for sp in spans:
+		if float(sp[0]) >= over - 0.01:
+			last = float(sp[0])
+			break
+	var stepped: float = last
+	if off < over:
+		stepped = 0.0
+		for sp in spans:
+			if float(sp[0]) <= off + 0.01:
+				stepped = float(sp[0])
+		stepped = minf(stepped, last)
+	var whole: float = 0.0
+	var cut: bool = false
+	for sp in spans:
+		var bottom: float = float(sp[1]) - stepped
+		if bottom <= h + 0.01:
+			whole = maxf(whole, bottom)
+		elif float(sp[0]) - stepped < h - 0.5:
+			cut = true
+	cover.visible = over > 0.0 and cut
+	if cover.visible:
+		var sb: StyleBox = card_panel.get_theme_stylebox("panel")
+		cover.fill = (sb as StyleBoxFlat).bg_color if sb is StyleBoxFlat else HudTheme.PAPER
+		cover.position = Vector2(0.0, whole)
+		cover.size = Vector2((view["clip"] as Control).size.x, h - whole)
+		cover.queue_redraw()
+	return stepped
 
 
 ## Applies the text scale to every readout and re-lays the sections that grow with it.
@@ -892,17 +1027,20 @@ func _layout_header(tab_names: Array) -> void:
 	x += padw + 16.0
 	view.position = Vector2(x, 4.0 + (56.0 - view.size.y) * 0.5)
 	var free_from: float = x + (view.size.x if show_view else 0.0) + 16.0
-	# Chips fill from the right edge; narrow them on the width axis if they would meet the tabs.
+	# Chips fill from the right edge. When they would meet the tabs they give up padding first
+	# (16 px a side down to 8), then narrow on the width axis, each by its own slack: a cell never
+	# gets less than its text needs at the narrowest width axis, so no cell wraps or clips.
 	var budget: float = 1276.0 - free_from
-	var shrink: float = 1.0 if total <= budget else budget / total
+	var widths: Array = _header_chip_widths(chips, nat, total, budget)
 	var right: float = 1276.0
 	for k in range(chips.size() - 1, -1, -1):
 		var c: Dictionary = chips[k]
 		var cl: Label = c["label"]
 		var cv: Label = c["value"]
-		var w: float = float(nat[k]) * shrink
-		kit.fit_text(cl, cl.text, w - 32.0)
-		kit.fit_text(cv, cv.text, w - 32.0)
+		var w: float = float(widths[k][0])
+		var pad: float = float(widths[k][1])
+		kit.fit_text(cl, cl.text, w - 2.0 * pad)
+		kit.fit_text(cv, cv.text, w - 2.0 * pad)
 		var lh1: float = HudKit.line_height(cl)
 		var lh2: float = HudKit.line_height(cv)
 		var top: float = 4.0 + (56.0 - lh1 - lh2) * 0.5
@@ -913,11 +1051,46 @@ func _layout_header(tab_names: Array) -> void:
 		var edge: HudKit.Plate = c["edge"]
 		edge.position = Vector2(right - w, 4.0)
 		edge.size = Vector2(3.0 if k == chips.size() - 1 else 2.0, 56.0)
-		cl.position = Vector2(right - w + 16.0, top)
-		cl.size = Vector2(w - 32.0, lh1)
-		cv.position = Vector2(right - w + 16.0, top + lh1)
-		cv.size = Vector2(w - 32.0, lh2)
+		cl.position = Vector2(right - w + pad, top)
+		cl.size = Vector2(w - 2.0 * pad, lh1)
+		cv.position = Vector2(right - w + pad, top + lh1)
+		cv.size = Vector2(w - 2.0 * pad, lh2)
 		right -= w
+
+
+## Header stat cells as [width, side padding] each, for `budget` px. `nat` holds each cell's
+## natural width with 32 px of padding; `total` is their sum.
+func _header_chip_widths(chips: Array, nat: Array, total: float, budget: float) -> Array:
+	var out: Array = []
+	if total <= budget:
+		for w in nat:
+			out.append([float(w), 16.0])
+		return out
+	var n: int = chips.size()
+	var pad: float = 8.0
+	var content: Array = []
+	var least: Array = []
+	var sum_c: float = 0.0
+	var sum_l: float = 0.0
+	for k in n:
+		var cl: Label = chips[k]["label"]
+		var cv: Label = chips[k]["value"]
+		var c: float = float(nat[k]) - 32.0
+		var l: float = maxf(kit.narrowest_width(cl, cl.text), kit.narrowest_width(cv, cv.text))
+		content.append(c)
+		least.append(minf(c, l))
+		sum_c += c
+		sum_l += minf(c, l)
+	# Padding comes off first; what remains is shared by each cell's slack above its least width.
+	var room: float = budget - 2.0 * pad * float(n)
+	var t: float = clampf((room - sum_l) / maxf(0.001, sum_c - sum_l), 0.0, 1.0)
+	if room >= sum_c:
+		# Only the padding had to give: keep as much of it as fits.
+		pad = clampf((budget - sum_c) / (2.0 * float(n)), 8.0, 16.0)
+	for k in n:
+		var cw: float = float(least[k]) + (float(content[k]) - float(least[k])) * t
+		out.append([cw + 2.0 * pad, pad])
+	return out
 
 
 
@@ -1123,6 +1296,11 @@ func _build_ticker() -> void:
 		tl.size = Vector2(4096.0, 24.0)
 		ticker_labels.append(tl)
 		ticker_chips.append(chip)
+		# The wipe-in: a plate in the strip's own colour over the part of the row not yet revealed.
+		var cover: HudKit.Plate = kit.plate(ticker_panel, Rect2(), HudTheme.PAPER)
+		cover.name = "TickerWipe%d" % i
+		cover.visible = false
+		ticker_wipes.append(cover)
 
 
 ## Chip colours by severity: ochre for a warning, the dark plates carry bone text at 4.5:1.
@@ -1196,11 +1374,44 @@ func _refresh_ticker() -> void:
 		else:
 			tl.text = ""
 			tl.position.x = 0.0
+		_wipe_row(i, lines[i] if i < lines.size() else {}, y, row_h)
+	_wipe_primed = true
+
+
+## Hides the unrevealed part of ticker row `i` while its line wipes in (left to right, in
+## thirds); a line that is old, a row with no line, or reduced motion shows whole.
+func _wipe_row(i: int, line: Dictionary, y: float, row_h: float) -> void:
+	var cover: HudKit.Plate = ticker_wipes[i]
+	var seq: int = int(line.get("seq", -1))
+	if line.is_empty():
+		cover.visible = false
+		return
+	if not _wipe_born.has(seq):
+		_wipe_born[seq] = ui_time if _wipe_primed else -1.0e9
+		if _wipe_born.size() > 64:
+			for k in _wipe_born.keys():
+				if int(k) < seq - 32:
+					_wipe_born.erase(k)
+	var f: float = wipe_fraction(seq)
+	cover.visible = f < 1.0
+	if f >= 1.0:
+		return
+	var sb: StyleBox = ticker_panel.get_theme_stylebox("panel")
+	cover.fill = (sb as StyleBoxFlat).bg_color if sb is StyleBoxFlat else HudTheme.PAPER
+	var left: float = 12.0
+	var span: float = ticker_panel.size.x - 24.0
+	var edge: float = left + span * f
+	cover.position = Vector2(edge, y)
+	cover.size = Vector2(maxf(0.0, ticker_panel.size.x - 4.0 - edge), row_h)
+	cover.queue_redraw()
 
 
 # --- Order ladder: depth-bar rows with a glyph and a word (colour never alone) ---
 
 var _ladder: Dictionary = {}
+## Clear space between the ladder title and its R-STICK hint (the title wraps or narrows into
+## what is left, so the two never touch, even at the 130% pseudo-locale).
+const LADDER_TITLE_GAP: float = 24.0
 
 func _build_ladder() -> void:
 	var p: Panel = sidebar_panel
@@ -1283,12 +1494,12 @@ func _refresh_ladder() -> void:
 	var title_text: String = tr("HUD_LADDER_TITLE") % [Loc.commodity(hud.active_commodity).to_upper(), maker_name]
 	hint.text = tr("HUD_LADDER_HINT")
 	var hw: float = kit.natural_width(hint, hint.text)
-	var tw: float = kit.fit_text(title, title_text, inner_w - 2.0 * HudLayout.PAD - hw - 8.0)
+	var tw: float = kit.fit_text(title, title_text, inner_w - 2.0 * HudLayout.PAD - hw - LADDER_TITLE_GAP)
 	var title_h: float = maxf(36.0, HudKit.line_height(title) + 12.0)
 	title.position = Vector2(x0 + HudLayout.PAD, x0 + (title_h - HudKit.line_height(title)) * 0.5)
 	title.size = Vector2(tw + 2.0, HudKit.line_height(title))
 	if title.autowrap_mode != TextServer.AUTOWRAP_OFF:
-		var tbox: float = inner_w - 2.0 * HudLayout.PAD - hw - 8.0
+		var tbox: float = inner_w - 2.0 * HudLayout.PAD - hw - LADDER_TITLE_GAP
 		var twh: float = HudKit.wrapped_height(title, title_text, tbox)
 		title_h = maxf(title_h, twh + 12.0)
 		title.position = Vector2(x0 + HudLayout.PAD, x0 + (title_h - twh) * 0.5)
@@ -1627,7 +1838,15 @@ func _build_card() -> void:
 	body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	body.set_meta(SCROLLS_META, false)
 	_card["body"] = body
-	_card["notes"] = {"view": _make_scroller(p, "CardNotes"), "chips": [], "lines": []}
+	var notes_view: Dictionary = _make_scroller(p, "CardNotes")
+	# Entries are shown whole: the view steps from one entry to the next, and this plate (the
+	# card's own colour) hides the sliver of the next entry that would show under the last whole one.
+	var hide: HudKit.Plate = kit.plate(notes_view["clip"], Rect2(), HudTheme.PAPER)
+	hide.name = "CardNotesHide"
+	hide.visible = false
+	notes_view["hide"] = hide
+	notes_view["entries"] = []
+	_card["notes"] = {"view": notes_view, "chips": [], "lines": []}
 
 
 ## One desk-notes entry for the selected book: baron tags as chips, the rest as lines.
@@ -1700,7 +1919,9 @@ func _notes_fill(n: Dictionary, entries: Array, width: float) -> void:
 	var ci: int = 0
 	var li: int = 0
 	var y: float = 0.0
+	var spans: Array = []
 	for e in entries:
+		var top: float = y
 		if str(e["kind"]) == "chip":
 			if ci >= chips.size():
 				chips.append(kit.tag(content, "NoteChip%d" % ci))
@@ -1710,6 +1931,7 @@ func _notes_fill(n: Dictionary, entries: Array, width: float) -> void:
 			kit.set_tag(chip, str(e["text"]), e["bg"], e["fg"], width)
 			chip.position = Vector2(0.0, y)
 			y += chip.size.y + 4.0
+			spans.append([top, top + chip.size.y])
 		else:
 			if li >= lines.size():
 				var nl: Label = kit.label(content, "NoteLine%d" % li, HudTheme.ROLE_HINT, 14, PAPER_TEXT_COLOR)
@@ -1726,6 +1948,8 @@ func _notes_fill(n: Dictionary, entries: Array, width: float) -> void:
 			l.position = Vector2(0.0, y)
 			l.size = Vector2(width, h)
 			y += h + 4.0
+			spans.append([top, top + h])
+	n["view"]["entries"] = spans
 	for i in range(ci, chips.size()):
 		(chips[i] as CanvasItem).visible = false
 	for i in range(li, lines.size()):
@@ -2893,10 +3117,12 @@ func _draw_orbit(radius: float, color: Color, width: float) -> void:
 
 
 ## A dashed ring (the MapNode "docked" ring: 8 on, 6 off).
-func _draw_dashed_ring(center: Vector2, radius: float, color: Color, width: float) -> void:
+func _draw_dashed_ring(center: Vector2, radius: float, color: Color, width: float, march_px: float = 0.0) -> void:
 	var step: float = (8.0 + 6.0) / radius
 	var on: float = 8.0 / radius
-	var a: float = 0.0
+	# The march slides the pattern along the ring (stroke-dashoffset); one dash behind the
+	# start keeps the seam covered.
+	var a: float = march_px / radius - step if march_px > 0.0 else 0.0
 	while a < TAU:
 		tactical_map_panel.draw_arc(center, radius, a, minf(a + on, TAU), 6, color, width, true)
 		a += step
@@ -3111,7 +3337,7 @@ func _draw_map() -> void:
 		var pos: Vector2 = discs[st]
 		var is_docked: bool = st == docked
 		if is_docked or (docked != "" and st == hud.active_station):
-			_draw_dashed_ring(pos, SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0, HudTheme.OCHRE, 4.0)
+			_draw_dashed_ring(pos, SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0, HudTheme.OCHRE, 4.0, ring_march_px())
 		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
 	_draw_map_text(font, Vector2(layout["sol_pos"]), str(layout["sol_text"]), fs, HudTheme.INK)
 	for st in stations:

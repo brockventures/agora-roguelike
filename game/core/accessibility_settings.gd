@@ -1,7 +1,7 @@
 class_name AccessibilitySettings
 extends RefCounted
 ## Player accessibility settings (#37): text scale, colorblind palette, control
-## bindings, language, and the alert volume / mute (Epic 4 follow-ups, #104). Persisted to <save dir>/settings.json through SaveStore
+## bindings, language, and the alert volume / mute (Epic 4 follow-ups, #104), and reduced motion (Epic 6, #124). Persisted to <save dir>/settings.json through SaveStore
 ## (same atomic envelope as the profile and run slot), so a test pointed at a temp
 ## directory never touches the real user://.
 ##
@@ -27,6 +27,9 @@ const ALERT_VOLUME_STEP: float = 0.1
 const ALERT_VOLUME_DEFAULT: float = 1.0
 var alert_volume: float = ALERT_VOLUME_DEFAULT
 var alert_mute: bool = false
+## Reduced motion (Motion.dc.html, "Cuts only"): the map ring holds still and ticker lines
+## appear whole instead of wiping in. Off by default; saved with the other settings.
+var reduced_motion: bool = false
 var bindings: Dictionary = {}
 
 
@@ -110,12 +113,18 @@ func set_alert_mute(on: bool) -> void:
 	changed.emit()
 
 
+func set_reduced_motion(on: bool) -> void:
+	reduced_motion = on
+	changed.emit()
+
+
 ## Back to the shipped bindings, palette, scale and look (CRT off). Language is left alone.
 func reset_defaults() -> void:
 	text_scale = 1.0
 	crt_filter = false
 	alert_volume = ALERT_VOLUME_DEFAULT
 	alert_mute = false
+	reduced_motion = false
 	set_palette(Palette.DEFAULT)
 	bindings = InputRemap.defaults()
 	InputRemap.apply(bindings)
@@ -131,7 +140,7 @@ func apply_all(apply_locale: bool = true) -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "alert_volume": alert_volume, "alert_mute": alert_mute, "bindings": bindings.duplicate(true)}
+	return {"text_scale": text_scale, "palette": palette, "locale": locale, "crt_filter": crt_filter, "alert_volume": alert_volume, "alert_mute": alert_mute, "reduced_motion": reduced_motion, "bindings": bindings.duplicate(true)}
 
 
 ## Restores from a stored dictionary; every field is validated and a bad or
@@ -154,6 +163,8 @@ static func from_dict(d: Dictionary) -> AccessibilitySettings:
 		s.alert_volume = snappedf(clampf(float(av), 0.0, 1.0), ALERT_VOLUME_STEP)
 	if d.has("alert_mute") and d["alert_mute"] is bool:
 		s.alert_mute = d["alert_mute"]
+	if d.has("reduced_motion") and d["reduced_motion"] is bool:
+		s.reduced_motion = d["reduced_motion"]
 	s.bindings = InputRemap.sanitize(d.get("bindings", {}))
 	return s
 
