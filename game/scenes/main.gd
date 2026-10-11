@@ -932,6 +932,136 @@ func _build_map_overlay() -> void:
 	map_label.add_theme_color_override("font_outline_color", HudTheme.PAPER)
 	tactical_map_panel.clip_contents = true
 	tactical_map_panel.draw.connect(_draw_map)
+	_build_route_card()
+
+
+# --- Route preview card (Epic 6 #124): where the LT/RT selection would take the ship ---
+
+const ROUTE_CARD_MAX_W: float = 340.0
+const ROUTE_CARD_PAD: float = 12.0
+const ROUTE_CARD_GAP: float = 8.0
+var _route_card: Dictionary = {}
+
+
+func _build_route_card() -> void:
+	var c: HudKit.Plate = kit.plate(tactical_map_panel, Rect2(), HudTheme.PAPER, HudTheme.INK, HudTheme.OUTLINE_CONTROL)
+	c.name = "RouteCard"
+	c.shadow = true
+	c.visible = false
+	_route_card["plate"] = c
+	_route_card["title"] = kit.label(c, "RouteCardTitle", HudTheme.ROLE_LABEL, 12, HudTheme.RUST_DARK)
+	for k in ["from", "to", "eta"]:
+		_route_card[k + "_cap"] = kit.label(c, "RouteCard_%s_cap" % k, HudTheme.ROLE_LABEL, 12, HudTheme.SLATE)
+		_route_card[k + "_val"] = kit.label(c, "RouteCard_%s_val" % k, HudTheme.ROLE_TITLE, 20, PAPER_TEXT_COLOR)
+	_route_card["belt"] = kit.tag(c, "RouteCardBelt")
+
+
+## The route the selection would take, when the card is up: {} otherwise. The card is up
+## on the Map tab while docked with another station picked (LT/RT) and a lane to it.
+func _route_card_plan() -> Dictionary:
+	if controller == null or loop == null or hud == null or controller.is_in_transit() or controller.docked_at == "":
+		return {}
+	if loop.tab != M0Loop.Tab.MAP or loop.overlay_state != M0Loop.OVERLAY_NONE or market_modal.visible:
+		return {}
+	var plan: Dictionary = controller.can_depart(hud.active_station)
+	if int(plan["rounds"]) <= 0:
+		return {}
+	return plan
+
+
+func _refresh_route_card() -> void:
+	var c: HudKit.Plate = _route_card["plate"]
+	var plan: Dictionary = _route_card_plan()
+	c.visible = not plan.is_empty()
+	if plan.is_empty():
+		return
+	var origin: String = controller.docked_at
+	var dest: String = hud.active_station
+	var toll: int = int(plan["toll"])
+	if not _changed("route_card", [origin, dest, int(plan["rounds"]), toll, Loc.current(), settings.text_scale]):
+		return
+	var pad: float = ROUTE_CARD_PAD
+	var inner_max: float = ROUTE_CARD_MAX_W - 2.0 * pad
+	var title: Label = _route_card["title"]
+	var title_w: float = kit.fit_text(title, tr("MAP_CARD_TITLE"), inner_max)
+	var caps: Dictionary = {"from": tr("MAP_CARD_FROM"), "to": tr("MAP_CARD_TO"), "eta": tr("MAP_CARD_ETA")}
+	var vals: Dictionary = {"from": Loc.station(origin).to_upper(), "to": Loc.station(dest).to_upper(), "eta": _rounds_text(int(plan["rounds"]))}
+	var cap_w: float = 0.0
+	for k in caps:
+		var cl: Label = _route_card[k + "_cap"]
+		cl.text = caps[k]
+		cap_w = maxf(cap_w, kit.natural_width(cl, caps[k]))
+	var val_max: float = inner_max - cap_w - ROUTE_CARD_GAP
+	var val_w: float = 0.0
+	var row_h: Dictionary = {}
+	for k in vals:
+		var vl: Label = _route_card[k + "_val"]
+		var w: float = kit.fit_text(vl, vals[k], val_max)
+		val_w = maxf(val_w, w)
+		var h: float = HudKit.line_height(vl)
+		if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			h = HudKit.wrapped_height(vl, vals[k], val_max)
+		row_h[k] = maxf(h, HudKit.line_height(_route_card[k + "_cap"]))
+	var belt: HudKit.Plate = _route_card["belt"]
+	belt.visible = toll > 0
+	var belt_w: float = 0.0
+	if toll > 0:
+		kit.set_tag(belt, tr("MAP_CARD_BELT") % toll, HudTheme.RUST, HudTheme.BONE, inner_max)
+		belt_w = belt.size.x
+	var inner_w: float = maxf(maxf(title_w, belt_w), cap_w + ROUTE_CARD_GAP + val_w)
+	var y: float = pad
+	title.position = Vector2(pad, y)
+	title.size = Vector2(inner_w, HudKit.line_height(title))
+	y += title.size.y + 6.0
+	for k in ["from", "to", "eta"]:
+		var cl: Label = _route_card[k + "_cap"]
+		var vl: Label = _route_card[k + "_val"]
+		cl.position = Vector2(pad, y)
+		cl.size = Vector2(cap_w, row_h[k])
+		vl.position = Vector2(pad + cap_w + ROUTE_CARD_GAP, y)
+		vl.size = Vector2(inner_w - cap_w - ROUTE_CARD_GAP, row_h[k])
+		y += float(row_h[k]) + 2.0
+	if toll > 0:
+		y += 4.0
+		belt.position = Vector2(pad, y)
+		y += belt.size.y
+	c.size = Vector2(inner_w + 2.0 * pad, y + pad)
+	c.queue_redraw()
+	tactical_map_panel.queue_redraw()
+
+
+## Where the card may sit, best first: bottom right (clear of the toasts), bottom left,
+## top right, then under the status text; only corners where it covers no node and stays on
+## the map. [] when the card is down. A fixed order, so a round gives the same answer.
+func _route_card_spots(discs: Dictionary) -> Array:
+	var c: HudKit.Plate = _route_card.get("plate")
+	if c == null or not c.visible:
+		return []
+	var panel: Vector2 = tactical_map_panel.size
+	var limit: Rect2 = _map_label_bounds()
+	var below_status: float = map_label.position.y + map_label.size.y + 6.0
+	var corners: Array = [Vector2(panel.x - c.size.x - 16.0, limit.end.y - c.size.y - 8.0), Vector2(16.0, limit.end.y - c.size.y - 8.0),
+		Vector2(panel.x - c.size.x - 16.0, 12.0), Vector2(16.0, below_status)]
+	var out: Array = []
+	for spot in corners:
+		var r: Rect2 = _route_card_rect_at(spot)
+		if not limit.encloses(r):
+			continue
+		var clear: bool = not _circle_hits(_map_center(), SolTacticalMap.SOL_NODE_RADIUS_PX + 4.0, r)
+		for st in discs:
+			if _circle_hits(Vector2(discs[st]), SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0 + 3.0, r):
+				clear = false
+		if clear:
+			out.append(spot)
+	if out.is_empty():
+		out.append(corners[0])
+	return out
+
+
+## The card's rect at `spot` in map-panel px: its hard shadow and a margin included.
+func _route_card_rect_at(spot: Vector2) -> Rect2:
+	var c: HudKit.Plate = _route_card["plate"]
+	return Rect2(spot, c.size + Vector2(4.0, 4.0)).grow(2.0)
 
 
 func _refresh_map_status() -> void:
@@ -988,7 +1118,7 @@ func _build_ticker() -> void:
 		clip.clip_contents = true
 		clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ticker_panel.add_child(clip)
-		var tl: Label = kit.label(clip, "TickerText%d" % i, HudTheme.ROLE_BODY, 14, HudTheme.INK)
+		var tl: Label = kit.label(clip, "TickerText%d" % i, HudTheme.ROLE_BODY, 16, HudTheme.INK)
 		tl.autowrap_mode = TextServer.AUTOWRAP_OFF
 		tl.size = Vector2(4096.0, 24.0)
 		ticker_labels.append(tl)
@@ -1005,6 +1135,27 @@ static func _severity_chip(severity: String) -> Array:
 	return [HudTheme.TEAL_DARK, HudTheme.BONE]
 
 
+## TickerLine tones by category (TickerLine.dc.html): [chip fill, chip text]. A category
+## the design does not name (INSOLVENCY, SECURITY...) falls back to the severity chip.
+const TICKER_TONES: Dictionary = {
+	"MARKET": [HudTheme.TEAL, HudTheme.BONE],
+	"REGULATION": [HudTheme.OCHRE, HudTheme.INK],
+	"TRANSIT": [HudTheme.BONE, HudTheme.INK],
+	"PIRACY": [HudTheme.RUST, HudTheme.BONE],
+	"HAZARD": [HudTheme.RUST, HudTheme.BONE],
+	"CRISIS": [HudTheme.RUST, HudTheme.BONE],
+	"DEBT": [HudTheme.INK, HudTheme.BONE],
+	"FILL": [HudTheme.OCHRE, HudTheme.INK],
+}
+
+
+static func _ticker_tone(category_id: String, severity: String) -> Array:
+	var cat: String = category_id.to_upper()
+	if TICKER_TONES.has(cat):
+		return TICKER_TONES[cat]
+	return _severity_chip(severity)
+
+
 func _refresh_ticker() -> void:
 	if ticker_labels.is_empty():
 		return
@@ -1016,7 +1167,7 @@ func _refresh_ticker() -> void:
 	for i in ticker_chips.size():
 		var chip: HudKit.Plate = ticker_chips[i]
 		var line: Dictionary = raw[i] if i < raw.size() else {}
-		var colors: Array = _severity_chip(str(line.get("severity", "INFO")))
+		var colors: Array = _ticker_tone(str(line.get("category_id", "")), str(line.get("severity", "INFO")))
 		kit.set_tag(chip, str(line.get("category", "")), colors[0], colors[1], 220.0)
 		chip_w = maxf(chip_w, chip.size.x)
 	var row_h: float = maxf(26.0, HudKit.line_height(tl0) + 4.0)
@@ -2726,13 +2877,6 @@ func _map_point(model: Vector2) -> Vector2:
 	return HudLayout.MAP_ORIGIN - HudLayout.MAP_RECT.position + Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y)
 
 
-## The station label boxes the last _map_label_offsets() placed: the ship and fleet tags
-## are placed around them.
-var _map_placed: Array = []
-## Where _draw_map reserved the player's YOU tag this frame.
-var _player_tag_pos: Vector2 = Vector2.ZERO
-
-
 func _map_center() -> Vector2:
 	return _map_point(SolTacticalMap.MAP_CENTER)
 
@@ -2759,34 +2903,67 @@ func _draw_dashed_ring(center: Vector2, radius: float, color: Color, width: floa
 
 
 ## Label boxes for the station names on the foreshortened map: the first of eight spots
-## around each node that stays inside the panel and clear of every node and earlier label.
-func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: int) -> Dictionary:
+## around each node (then rows further out) that stays inside the panel and clear of every
+## node, the Sun, the route card and earlier labels. `placed` starts with the boxes already
+## taken (the SOL tag, the card) and gains each label's box. Fixed spot order and station
+## order, no randomness: the same round always draws the same labels.
+func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: int, placed: Array, texts: Dictionary = {}, short_texts: Dictionary = {}, failed: Array = []) -> Dictionary:
 	var ascent: float = font.get_ascent(fs)
 	var height: float = ascent + font.get_descent(fs)
-	var bounds := Rect2(Vector2(8.0, 8.0), tactical_map_panel.size - Vector2(16.0, 16.0 + HudLayout.TICKER_RECT.size.y))
-	var near: float = SolTacticalMap.STATION_NODE_RADIUS_PX + 4.0
-	var placed: Array = []
+	var bounds: Rect2 = _map_label_bounds()
 	var out: Dictionary = {}
 	for st in discs:
-		var wd: float = float(widths[st])
-		var spots: Array = [Vector2(near, 5.0), Vector2(-near - wd, 5.0), Vector2(-wd * 0.5, -near - 6.0), Vector2(-wd * 0.5, near + 16.0),
-			Vector2(near - 4.0, -near), Vector2(near - 4.0, near + 14.0), Vector2(-near + 4.0 - wd, -near), Vector2(-near + 4.0 - wd, near + 14.0)]
-		for lift in [1, 2, 3]:
-			spots.append(Vector2(-wd * 0.5, -near - 6.0 - (height + 2.0) * float(lift)))
-			spots.append(Vector2(-wd * 0.5, near + 16.0 + (height + 2.0) * float(lift)))
-		out[st] = spots[0]
 		var chosen: Rect2 = Rect2()
-		for off in spots:
-			var b := Rect2(Vector2(discs[st]) + off + Vector2(0.0, -ascent), Vector2(wd, height)).grow(1.0)
-			if _map_label_fits(b, st, discs, placed, bounds):
-				out[st] = off
-				chosen = b
+		var tries: Array = [str(texts.get(st, ""))]
+		if short_texts.has(st):
+			tries.append(str(short_texts[st]))  # the bare name, when the long tag fits nowhere
+		for attempt in tries.size():
+			if attempt > 0:
+				texts[st] = tries[attempt]
+				widths[st] = font.get_string_size(tries[attempt], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var wd: float = float(widths[st])
+			var spots: Array = _map_label_spots(wd, height)
+			if attempt == 0:
+				out[st] = spots[0]
+			for off in spots:
+				var b := Rect2(Vector2(discs[st]) + off + Vector2(0.0, -ascent), Vector2(wd, height)).grow(1.0)
+				if _map_label_fits(b, st, discs, placed, bounds):
+					out[st] = off
+					chosen = b
+					break
+			if chosen.size != Vector2.ZERO:
 				break
 		if chosen.size == Vector2.ZERO:
-			chosen = Rect2(Vector2(discs[st]) + Vector2(out[st]) + Vector2(0.0, -ascent), Vector2(wd, height)).grow(1.0)
+			failed.append(st)
+			chosen = Rect2(Vector2(discs[st]) + Vector2(out[st]) + Vector2(0.0, -ascent), Vector2(float(widths[st]), height)).grow(1.0)
 		placed.append(chosen)
-	_map_placed = placed.duplicate()
 	return out
+
+
+## The spots tried around a node for a label of width `wd`, in order: the eight around it,
+## then rows further above and below, then stepped out sideways (leader offsets).
+func _map_label_spots(wd: float, height: float) -> Array:
+	var near: float = SolTacticalMap.STATION_NODE_RADIUS_PX + 4.0
+	var spots: Array = [Vector2(near, 5.0), Vector2(-near - wd, 5.0), Vector2(-wd * 0.5, -near - 6.0), Vector2(-wd * 0.5, near + 16.0),
+		Vector2(near - 4.0, -near), Vector2(near - 4.0, near + 14.0), Vector2(-near + 4.0 - wd, -near), Vector2(-near + 4.0 - wd, near + 14.0)]
+	for lift in [1, 2, 3]:
+		spots.append(Vector2(-wd * 0.5, -near - 6.0 - (height + 2.0) * float(lift)))
+		spots.append(Vector2(-wd * 0.5, near + 16.0 + (height + 2.0) * float(lift)))
+	for lift in [1, 2]:
+		spots.append(Vector2(near + 10.0, 5.0 - (height + 2.0) * float(lift)))
+		spots.append(Vector2(near + 10.0, 5.0 + (height + 2.0) * float(lift)))
+		spots.append(Vector2(-near - 10.0 - wd, 5.0 - (height + 2.0) * float(lift)))
+		spots.append(Vector2(-near - 10.0 - wd, 5.0 + (height + 2.0) * float(lift)))
+	return spots
+
+
+## The part of the map panel labels may use: inside a margin, above the ticker strip.
+func _map_label_bounds() -> Rect2:
+	var bottom: float = tactical_map_panel.size.y - 8.0 - HudLayout.TICKER_RECT.size.y
+	if ticker_panel != null and ticker_panel.size.y > HudLayout.TICKER_RECT.size.y:
+		# At larger text sizes the ticker strip grows upward over the map's foot.
+		bottom = minf(bottom, ticker_panel.position.y - tactical_map_panel.position.y - 6.0)
+	return Rect2(Vector2(8.0, 8.0), Vector2(tactical_map_panel.size.x - 16.0, bottom - 8.0))
 
 
 func _map_label_fits(box: Rect2, own: String, discs: Dictionary, placed: Array, bounds: Rect2) -> bool:
@@ -2809,45 +2986,143 @@ static func _circle_hits(center: Vector2, radius: float, rect: Rect2) -> bool:
 	return nearest.distance_squared_to(center) < radius * radius
 
 
-func _draw_map() -> void:
-	if tactical_map == null or tactical_map_panel == null:
-		return
-	var round_num: int = controller.get_current_round() if controller != null else 0
-	var center: Vector2 = _map_center()
-	# Flat ligne claire: ink orbit rings, then flat filled nodes with ink contours and a hard shadow cut.
-	var stations: Array = tactical_map.get_stations()
-	for st in stations:
-		var pos_m: Vector2 = tactical_map.get_station_screen_pos(st, round_num)
-		var ring_active: bool = st == hud.active_station
-		_draw_orbit(pos_m.distance_to(SolTacticalMap.MAP_CENTER), HudTheme.RUST if ring_active else HudTheme.INK, HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0))
-	HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
+## Everything the map prints on one frame, placed and ready to draw (and to test): the
+## station discs and names, the SOL tag, the player's YOU tag and the rival fleet tags,
+## every box kept apart from every other. {discs, texts, offsets, sol_pos, ship_tag,
+## rivals: [{hull, tag, spot (Vector2 or null)}], boxes: {key: Rect2}}. `round_num` is the
+## round the bodies are drawn at.
+func map_layout(round_num: int) -> Dictionary:
 	var font: Font = HudTheme.role_font(HudTheme.ROLE_LABEL)
 	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var ascent: float = font.get_ascent(fs)
+	var height: float = ascent + font.get_descent(fs)
 	var docked: String = controller.docked_at if controller != null else ""
 	var discs: Dictionary = {}
 	var texts: Dictionary = {}
 	var widths: Dictionary = {}
-	for st in stations:
+	for st in tactical_map.get_stations():
 		discs[st] = _map_point(tactical_map.get_station_screen_pos(st, round_num))
 		var t: String = Loc.station(st).to_upper()
 		if st == docked:
 			t = tr("MAP_DOCKED_TAG") % t
 		texts[st] = t
 		widths[st] = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var offsets: Dictionary = _map_label_offsets(discs, widths, font, fs)
+	# The route card takes the first corner that leaves every label a place; the docked tag
+	# is long (pseudo-locale, 130%), so it may fall back to the bare name, since the rust
+	# node, its dashed ring and the rust ink already say docked.
+	var short_texts: Dictionary = {}
+	if docked != "" and texts.has(docked):
+		short_texts[docked] = Loc.station(docked).to_upper()
+	var spots: Array = _route_card_spots(discs)
+	if spots.is_empty():
+		spots = [null]
+	var placed: Array = []
+	var boxes: Dictionary = {}
+	var offsets: Dictionary = {}
+	var final_texts: Dictionary = texts
+	var sol_pos: Vector2 = Vector2.ZERO
+	var sol_text: String = tr("MAP_SOL_TAG")
+	var bounds: Rect2 = _map_label_bounds()
+	var center: Vector2 = _map_center()
+	var sol_r: float = SolTacticalMap.SOL_NODE_RADIUS_PX
+	var sol_w: float = font.get_string_size(sol_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	for spot in spots:
+		placed = []
+		boxes = {}
+		if spot != null:
+			var card_rect: Rect2 = _route_card_rect_at(spot)
+			(_route_card["plate"] as Control).position = spot
+			placed.append(card_rect)
+			boxes["card"] = card_rect
+		# The SOL tag: under the Sun, else above, else beside it.
+		sol_pos = center + Vector2(-sol_w * 0.5, sol_r + 18.0)
+		for off in [Vector2(-sol_w * 0.5, sol_r + 18.0), Vector2(-sol_w * 0.5, -sol_r - 8.0), Vector2(sol_r + 8.0, 5.0), Vector2(-sol_r - 8.0 - sol_w, 5.0)]:
+			var b := Rect2(center + off + Vector2(0.0, -ascent), Vector2(sol_w, height)).grow(1.0)
+			if _map_label_fits(b, "", discs, placed, bounds):
+				sol_pos = center + off
+				break
+		var sol_box: Rect2 = Rect2(sol_pos + Vector2(0.0, -ascent), Vector2(sol_w, height)).grow(1.0)
+		placed.append(sol_box)
+		boxes["sol"] = sol_box
+		var try_texts: Dictionary = texts.duplicate()
+		var try_widths: Dictionary = widths.duplicate()
+		var failed: Array = []
+		offsets = _map_label_offsets(discs, try_widths, font, fs, placed, try_texts, short_texts, failed)
+		for st in discs:
+			boxes[st] = Rect2(Vector2(discs[st]) + Vector2(offsets[st]) + Vector2(0.0, -ascent), Vector2(try_widths[st], height)).grow(1.0)
+		final_texts = try_texts
+		if failed.is_empty():
+			break
+	# Tags go where they clear every node and label: the player's YOU first, then the fleets.
+	var ship_tag: Vector2 = Vector2.ZERO
+	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
+	if not voyage.is_empty():
+		var ship: Vector2 = _map_point(Vector2(voyage["pos"]))
+		var tag: String = tr("MAP_SHIP_TAG")
+		var spot = _free_tag_pos(ship, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
+		placed.append(Rect2(ship - Vector2(10.0, 10.0), Vector2(20.0, 20.0)))  # the hull itself
+		ship_tag = Vector2(spot) if spot != null else ship + Vector2(-12.0, 28.0)
+		if spot != null:
+			boxes["you"] = placed[placed.size() - 2]
+	var rivals: Array = []
+	if controller != null and controller.world != null:
+		var fleets: Array = tactical_map.get_rival_transits(round_num)
+		for v in fleets:  # every hull first, so no tag lands on another fleet
+			var h: Vector2 = _map_point(Vector2(v["pos"]))
+			placed.append(Rect2(h - Vector2(7.0, 7.0), Vector2(14.0, 14.0)))
+		for v in fleets:
+			var hull: Vector2 = _map_point(Vector2(v["pos"]))
+			var id: String = str(v["fleet"])
+			var tag: String = Loc.maker_tag(id, str(controller.world.rival_def(id).get("name", "")).split(" ")[0].to_upper())
+			var spot = _free_tag_pos(hull, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
+			rivals.append({"fleet": id, "hull": hull, "tag": tag, "spot": spot, "start": _map_point(Vector2(v["start_pos"])), "end": _map_point(Vector2(v["end_pos"]))})
+			if spot != null:
+				boxes["fleet_" + id] = placed[placed.size() - 1]
+	return {"discs": discs, "texts": final_texts, "offsets": offsets, "sol_pos": sol_pos, "sol_text": sol_text, "ship_tag": ship_tag, "rivals": rivals, "boxes": boxes}
+
+
+func _draw_map() -> void:
+	if tactical_map == null or tactical_map_panel == null:
+		return
+	var round_num: int = controller.get_current_round() if controller != null else 0
+	var center: Vector2 = _map_center()
+	var layout: Dictionary = map_layout(round_num)
+	var discs: Dictionary = layout["discs"]
+	var texts: Dictionary = layout["texts"]
+	var offsets: Dictionary = layout["offsets"]
+	# Flat ligne claire: ink orbit rings, then flat filled nodes with ink contours and a hard shadow cut.
+	var stations: Array = tactical_map.get_stations()
+	for st in stations:
+		var pos_m: Vector2 = tactical_map.get_station_screen_pos(st, round_num)
+		var ring_active: bool = st == hud.active_station
+		_draw_orbit(pos_m.distance_to(SolTacticalMap.MAP_CENTER), HudTheme.RUST if ring_active else HudTheme.INK, HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0))
+	# The lane the route card describes: dashed from home to the pick, rust across the belt.
+	var plan: Dictionary = _route_card_plan()
+	if not plan.is_empty() and discs.has(hud.active_station) and discs.has(controller.docked_at):
+		var belt_lane: bool = int(plan["toll"]) > 0
+		tactical_map_panel.draw_dashed_line(Vector2(discs[controller.docked_at]), Vector2(discs[hud.active_station]), HudTheme.RUST if belt_lane else HudTheme.INK, 3.0, 10.0, true)
+	var font: Font = HudTheme.role_font(HudTheme.ROLE_LABEL)
+	var fs: int = scaled_size(MAP_FONT_SIZE)
+	var docked: String = controller.docked_at if controller != null else ""
+	# MapNode: Sol is ochre; a station is teal, rust when the ship is docked there, and
+	# wears the dashed ochre ring when docked or picked with LT/RT.
+	HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	for st in stations:
 		var pos: Vector2 = discs[st]
-		var active: bool = st == hud.active_station
-		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if active else HudTheme.TEAL, HudTheme.RUST_DARK if active else HudTheme.TEAL_DARK)
-		var label_pos: Vector2 = pos + Vector2(offsets[st])
-		var text: String = str(texts[st])
-		tactical_map_panel.draw_string_outline(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
-		tactical_map_panel.draw_string(font, label_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK if st == docked or active else HudTheme.INK)
-	# Tags go where they clear every node and label: the player's YOU first, then the fleets.
-	var placed: Array = _map_placed.duplicate()
-	_player_tag_pos = _reserve_player_tag(round_num, font, discs, placed)
-	_draw_rival_fleets(round_num, font, discs, placed)
-	_draw_player_ship(round_num, font, discs)
+		var is_docked: bool = st == docked
+		if is_docked or (docked != "" and st == hud.active_station):
+			_draw_dashed_ring(pos, SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0, HudTheme.OCHRE, 4.0)
+		HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
+	_draw_map_text(font, Vector2(layout["sol_pos"]), str(layout["sol_text"]), fs, HudTheme.INK)
+	for st in stations:
+		_draw_map_text(font, Vector2(discs[st]) + Vector2(offsets[st]), str(texts[st]), fs, HudTheme.RUST_DARK if st == docked else HudTheme.INK)
+	_draw_rival_fleets(layout)
+	_draw_player_ship(round_num, font, discs, layout)
+
+
+func _draw_map_text(font: Font, at: Vector2, text: String, fs: int, color: Color) -> void:
+	tactical_map_panel.draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
+	tactical_map_panel.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, color)
 
 
 ## A free spot for a small map tag of width `w` beside `hull`: the first of eight around
@@ -2857,7 +3132,7 @@ func _draw_map() -> void:
 func _free_tag_pos(hull: Vector2, w: float, font: Font, fs: int, discs: Dictionary, placed: Array) -> Variant:
 	var ascent: float = font.get_ascent(fs)
 	var height: float = ascent + font.get_descent(fs)
-	var bounds := Rect2(Vector2(8.0, 8.0), tactical_map_panel.size - Vector2(16.0, 16.0 + HudLayout.TICKER_RECT.size.y))
+	var bounds: Rect2 = _map_label_bounds()
 	var gap: float = 10.0
 	for off in [Vector2(-w * 0.5, -gap - 2.0), Vector2(-w * 0.5, gap + height), Vector2(gap, height * 0.35), Vector2(-gap - w, height * 0.35),
 			Vector2(gap, -gap), Vector2(-gap - w, -gap), Vector2(gap, gap + height), Vector2(-gap - w, gap + height)]:
@@ -2868,52 +3143,30 @@ func _free_tag_pos(hull: Vector2, w: float, font: Font, fs: int, discs: Dictiona
 	return null
 
 
-## Reserves the player's YOU tag before the fleets pick theirs; the fallback is the old
-## fixed spot under the hull.
-func _reserve_player_tag(round_num: int, font: Font, discs: Dictionary, placed: Array) -> Vector2:
-	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
-	if voyage.is_empty():
-		return Vector2.ZERO
-	var ship: Vector2 = _map_point(Vector2(voyage["pos"]))
-	var fs: int = scaled_size(MAP_FONT_SIZE)
-	var tag: String = tr("MAP_SHIP_TAG")
-	var spot = _free_tag_pos(ship, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
-	placed.append(Rect2(ship - Vector2(10.0, 10.0), Vector2(20.0, 20.0)))  # the hull itself
-	return Vector2(spot) if spot != null else ship + Vector2(-12.0, 28.0)
-
-
 ## Rival fleets in flight (Epic 3 task 10): a thin dashed slate lane, a small bone hull
-## with an ink contour, and the fleet's short tag when the map has room for it. The
+## with an ink contour, and the fleet's short tag where the layout found room for it. The
 ## player's own ship is drawn after, so it stays on top where lanes cross.
-func _draw_rival_fleets(round_num: int, font: Font, discs: Dictionary, placed: Array) -> void:
-	if controller == null or controller.world == null:
-		return
+func _draw_rival_fleets(layout: Dictionary) -> void:
+	var font: Font = HudTheme.role_font(HudTheme.ROLE_LABEL)
 	var fs: int = scaled_size(MAP_FONT_SIZE)
-	var fleets: Array = tactical_map.get_rival_transits(round_num)
-	for v in fleets:
-		tactical_map_panel.draw_dashed_line(_map_point(Vector2(v["start_pos"])), _map_point(Vector2(v["end_pos"])), HudTheme.SLATE, 2.0, 8.0, true)
-	for v in fleets:  # every hull first, so no tag lands on another fleet
-		var h: Vector2 = _map_point(Vector2(v["pos"]))
-		placed.append(Rect2(h - Vector2(7.0, 7.0), Vector2(14.0, 14.0)))
-	for v in fleets:
-		var hull: Vector2 = _map_point(Vector2(v["pos"]))
-		HudTheme.draw_flat_disc(tactical_map_panel, hull, 6.0, HudTheme.BONE, HudTheme.INK)
-		var id: String = str(v["fleet"])
-		var tag: String = Loc.maker_tag(id, str(controller.world.rival_def(id).get("name", "")).split(" ")[0].to_upper())
-		var spot = _free_tag_pos(hull, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font, fs, discs, placed)
-		if spot != null:
-			tactical_map_panel.draw_string_outline(font, Vector2(spot), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
-			tactical_map_panel.draw_string(font, Vector2(spot), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.SLATE)
+	var rivals: Array = layout["rivals"]
+	for v in rivals:
+		tactical_map_panel.draw_dashed_line(Vector2(v["start"]), Vector2(v["end"]), HudTheme.SLATE, 2.0, 8.0, true)
+	for v in rivals:
+		HudTheme.draw_flat_disc(tactical_map_panel, Vector2(v["hull"]), 6.0, HudTheme.BONE, HudTheme.INK)
+		if v["spot"] != null:
+			var spot: Vector2 = v["spot"]
+			var tag: String = str(v["tag"])
+			tactical_map_panel.draw_string_outline(font, spot, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
+			tactical_map_panel.draw_string(font, spot, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.SLATE)
 
 
 ## The player's ship on its lane, drawn over the stations: a dashed ink lane
-## (rust across the belt), a small ochre hull and a YOU tag. While docked, a dashed
-## ochre ring marks the home station.
-func _draw_player_ship(round_num: int, font: Font, discs: Dictionary) -> void:
+## (rust across the belt), a small ochre hull and a YOU tag. (The home station's dashed
+## ring is drawn with the nodes.)
+func _draw_player_ship(round_num: int, font: Font, _discs: Dictionary, layout: Dictionary) -> void:
 	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
 	if voyage.is_empty():
-		if controller != null and controller.docked_at != "" and discs.has(controller.docked_at):
-			_draw_dashed_ring(Vector2(discs[controller.docked_at]), SolTacticalMap.STATION_NODE_RADIUS_PX + 10.0, HudTheme.OCHRE, 4.0)
 		return
 	var a: Vector2 = _map_point(Vector2(voyage["start_pos"]))
 	var b: Vector2 = _map_point(Vector2(voyage["end_pos"]))
@@ -2921,11 +3174,7 @@ func _draw_player_ship(round_num: int, font: Font, discs: Dictionary) -> void:
 	tactical_map_panel.draw_dashed_line(a, b, lane, 3.0, 10.0, true)
 	var ship: Vector2 = _map_point(Vector2(voyage["pos"]))
 	HudTheme.draw_flat_disc(tactical_map_panel, ship, 9.0, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
-	var fs: int = scaled_size(MAP_FONT_SIZE)
-	var tag: String = tr("MAP_SHIP_TAG")
-	var tag_pos: Vector2 = _player_tag_pos
-	tactical_map_panel.draw_string_outline(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, HudTheme.PAPER)
-	tactical_map_panel.draw_string(font, tag_pos, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HudTheme.RUST_DARK)
+	_draw_map_text(font, Vector2(layout["ship_tag"]), tr("MAP_SHIP_TAG"), scaled_size(MAP_FONT_SIZE), HudTheme.RUST_DARK)
 
 
 # --- Refresh ---
@@ -2938,6 +3187,7 @@ func _refresh_readouts() -> void:
 	market_modal.visible = hud.is_trading_overlay_open() and overlay_none
 	fleet_panel.visible = loop.tab == M0Loop.Tab.FLEET and overlay_none and not market_modal.visible
 	_refresh_map_status()
+	_refresh_route_card()
 	_refresh_ladder()
 	_refresh_ticket()
 	_refresh_card()
