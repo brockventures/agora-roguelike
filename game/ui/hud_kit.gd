@@ -38,6 +38,7 @@ class Plate extends Control:
 	## 0..1 share of the inner width painted with bar_color (-1 = no bar).
 	var bar_frac: float = -1.0
 	var bar_color: Color = Color.WHITE
+	var texture: Texture2D = null
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -63,7 +64,9 @@ class Plate extends Control:
 			draw_rect(r, edge)
 		if fill.a > 0.0:
 			draw_rect(inner, fill)
-		if hatch:
+		if texture != null:
+			draw_texture_rect(texture, inner, false)
+		elif hatch:
 			# 135 degree hatch, clipped to the inner rect by the node's own clip.
 			var x: float = inner.position.x - inner.size.y
 			while x < inner.end.x:
