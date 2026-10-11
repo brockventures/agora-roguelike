@@ -1538,7 +1538,8 @@ func _route_card_spots(discs: Dictionary) -> Array:
 			continue
 		var clear: bool = not _circle_hits(_map_center(), SolTacticalMap.SOL_NODE_RADIUS_PX + 4.0, r)
 		for st in discs:
-			if _circle_hits(Vector2(discs[st]), SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0 + 3.0, r):
+			# Discs only need air (the dashed ring may sit under the card in the worst, 130% pseudo case).
+			if _circle_hits(Vector2(discs[st]), SolTacticalMap.STATION_NODE_RADIUS_PX + 1.0, r):
 				clear = false
 		if clear:
 			# The status text grows a line per refusal (fuel, toll): prefer a corner off it,
