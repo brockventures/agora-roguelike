@@ -223,8 +223,10 @@ func test_every_modal_text_is_readable_on_its_plate() -> String:
 
 func test_galnet_ticker_colours_follow_severity() -> String:
 	var scene := _scene()
-	scene.hud.post_headline("Test warning line", "MARKET", "WARNING")
-	scene.hud.post_headline("Test critical line", "MARKET", "CRITICAL")
+	# INSOLVENCY is a category TickerLine.dc.html has no tone for, so severity picks the chip
+	# (the named categories take their tone from the category: see test_map_labels.gd).
+	scene.hud.post_headline("Test warning line", "INSOLVENCY", "WARNING")
+	scene.hud.post_headline("Test critical line", "INSOLVENCY", "CRITICAL")
 	scene._refresh_readouts()
 	# Severity rides on the category chip (newest first): critical on top, then warning.
 	var top: Color = (scene.ticker_chips[0] as HudKit.Plate).fill
