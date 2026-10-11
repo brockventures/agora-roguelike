@@ -53,6 +53,9 @@ const OVERLAY_CONTRACT: String = "contract"
 ## halts the clock until A continues. Phase 1 of the win; the Sol System Rescue that
 ## finishes the run is #32; A on this summary opens it (acknowledge_monopoly). Chapter 11, collapse and a crisis outrank it.
 const OVERLAY_MONOPOLY: String = "monopoly"
+## The Sol System Rescue Project was finished (#32): the clock is paused and the run is won. A
+## continues to the run summary (OVERLAY_COLLAPSED at PHASE_SUMMARY), then perks and a new run.
+const OVERLAY_RESCUED: String = "rescued"
 
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
@@ -182,6 +185,7 @@ func _connect_all() -> void:
 		controller.bankruptcy_pending.connect(_on_bankruptcy_pending)
 		controller.bankruptcy_filed.connect(_on_bankruptcy_filed)
 		controller.run_collapsed.connect(_on_collapsed)
+		controller.run_rescued.connect(_on_rescued)
 		controller.round_advanced.connect(_on_round_advanced)
 		controller.margin_call_applied.connect(_on_margin_call)
 		controller.transit_departed.connect(_on_transit_departed)
@@ -206,6 +210,8 @@ func _disconnect_all() -> void:
 			controller.bankruptcy_filed.disconnect(_on_bankruptcy_filed)
 		if controller.run_collapsed.is_connected(_on_collapsed):
 			controller.run_collapsed.disconnect(_on_collapsed)
+		if controller.run_rescued.is_connected(_on_rescued):
+			controller.run_rescued.disconnect(_on_rescued)
 		if controller.round_advanced.is_connected(_on_round_advanced):
 			controller.round_advanced.disconnect(_on_round_advanced)
 		if controller.margin_call_applied.is_connected(_on_margin_call):
@@ -393,6 +399,7 @@ func monopoly_summary() -> Dictionary:
 		"rounds": controller.get_current_round(),
 		"corp_number": controller.corp_number,
 		"severance_pending": held * Parachutes.SEVERANCE_PER_BARON,
+		"first_site": rescue_first_site(),
 	}
 
 
@@ -753,11 +760,136 @@ func deliver_to_project() -> bool:
 	return true
 
 
+# --- The Rescue Project's surfaces (#32 task 4): the Stabiliser card, chips, header, summary ---
+
+var _first_site: String = ""
+
+
+## Where phase 1 of the Rescue Project is built (the open project's, else the shipped data's).
+func rescue_first_site() -> String:
+	if controller != null and controller.rescue != null and controller.rescue.is_open():
+		return str(controller.rescue.current().get("site", ""))
+	if _first_site == "":
+		var ph: Array = RescueProject.new().phases()
+		_first_site = str((ph[0] as Dictionary).get("site", "")) if not ph.is_empty() else ""
+	return _first_site
+
+
+## The player-facing name of a phase: its `RESCUE_PHASE_<ID>_NAME` row, else the data's own name.
+func rescue_phase_name(ph: Dictionary) -> String:
+	return Loc.rescue_phase_name(ph)
+
+
+## The open phase's bill as the card prints it, "MACHINERY 40 / 100" a row, sorted by commodity.
+func rescue_need_rows() -> Array:
+	var out: Array = []
+	var rp: RescueProject = controller.rescue if controller != null else null
+	if rp == null or not rp.is_open():
+		return out
+	var needs: Dictionary = rp.current().get("needs", {})
+	var keys: Array = needs.keys()
+	keys.sort()
+	for c in keys:
+		out.append({"commodity": str(c), "have": int(rp.deposits.get(c, 0)), "need": int(needs[c])})
+	return out
+
+
+## "100 MACHINERY + 40 ORE" for a preview's units (sorted), the words of the delivery prompt.
+func _rescue_units_text(units: Dictionary) -> String:
+	var keys: Array = units.keys()
+	keys.sort()
+	var parts: PackedStringArray = []
+	for c in keys:
+		parts.append("%d %s" % [int(units[c]), Loc.commodity(str(c))])
+	return " + ".join(parts)
+
+
+## Sidebar rows for the Stabiliser card, {kind: "chip"|"line", text, tone} with tone "rescue"
+## (teal) or "bad" (a refusal in plain sight). Shown at every station while a phase is open: the
+## phase title and site, one row per need, the fee left, the clock speed once a phase is done,
+## and docked at the site with something the phase wants, what A-equivalent key would deliver.
+## Empty with no project or once it is finished. `station` is the station the card is for.
+func rescue_lines(station: String) -> Array:
+	var out: Array = []
+	var rp: RescueProject = controller.rescue if controller != null else null
+	if rp == null or not rp.is_open():
+		return out
+	var ph: Dictionary = rp.current()
+	var site: String = str(ph.get("site", ""))
+	out.append({"kind": "chip", "text": Loc.t("TAG_RESCUE_PHASE") % [rp.phase + 1, rp.phase_count(), rescue_phase_name(ph).to_upper(), Loc.station(site).to_upper()], "tone": "rescue"})
+	for r in rescue_need_rows():
+		out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_NEED") % [Loc.commodity(str(r["commodity"])), int(r["have"]), int(r["need"])], "tone": "rescue"})
+	out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_FEE") % rp.fee_left(), "tone": "rescue"})
+	if rp.keep_bps < RescueProject.FULL_SPEED_BPS:
+		out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_CLOCK") % (rp.keep_bps / 100), "tone": "rescue"})
+	var docked: bool = not controller.is_in_transit() and controller.docked_at == station.to_lower() and station.to_lower() == site
+	if docked:
+		var pv: Dictionary = rp.preview(controller, site)
+		if bool(pv["ok"]):
+			out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_DELIVER") % [_rescue_units_text(pv["units"]), int(pv["fee"])], "tone": "rescue"})
+		elif str(pv["reason"]) == RescueProject.R_NO_CARGO:
+			out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_BRING"), "tone": "rescue"})
+		else:
+			out.append({"kind": "line", "text": Loc.t("SIDE_RESCUE_BLOCKED") % [Loc.t(RescueProject.reason_key(str(pv["reason"]))).to_upper(), int(pv["fee"])], "tone": "bad"})
+	return out
+
+
+## Delivery chip for one book: "SITE: NO ASK" on an embargoed book at the open phase's site,
+## "NEEDED: ORE" on a book elsewhere whose commodity the phase still wants. "" otherwise.
+func rescue_tag(station: String, commodity: String) -> String:
+	var rp: RescueProject = controller.rescue if controller != null else null
+	if rp == null or not rp.is_open():
+		return ""
+	var c: String = commodity.to_upper()
+	var needs: Dictionary = rp.current().get("needs", {})
+	if not needs.has(c):
+		return ""
+	if station.to_lower() == str(rp.current().get("site", "")):
+		return Loc.t("TAG_RESCUE_NO_ASK")
+	if int(rp.remaining().get(c, 0)) > 0:
+		return Loc.t("TAG_RESCUE_NEEDED") % Loc.commodity(c)
+	return ""
+
+
+## The Stabiliser Field's share of clock speed as a percent while a finished phase slows it, else 100.
+func rescue_clock_pct() -> int:
+	var rp: RescueProject = controller.rescue if controller != null else null
+	return rp.keep_bps / 100 if rp != null else 100
+
+
+## Numbers for the rescued modal and the run summary (the win's own stats). All derived from the
+## saved project and the clock, so nothing new is saved: {} with no project.
+func rescue_stats() -> Dictionary:
+	var rp: RescueProject = controller.rescue if controller != null else null
+	if rp == null:
+		return {}
+	var units: int = rp.units_delivered()
+	var cr_paid: int = rp.fee_paid
+	var by_id: Dictionary = {}
+	for ph in rp.phases():
+		by_id[str(ph.get("id", ""))] = ph
+	for e in rp.completed:
+		var ph: Dictionary = by_id.get(str(e[0]), {})
+		units += RescueProject.phase_units(ph)
+		cr_paid += int(ph.get("cr", 0))
+	var done_round: int = int(rp.completed[rp.completed.size() - 1][1]) if not rp.completed.is_empty() else 0
+	return {
+		"rescued": rp.is_complete(),
+		"round": done_round,
+		"clock_rounds_left": int(controller.doomsday.ticks_remaining / controller.ticks_per_round) if controller.ticks_per_round > 0 else 0,
+		"phases_done": rp.phases_done(),
+		"phases_total": rp.phase_count(),
+		"units": units,
+		"cr_paid": cr_paid,
+		"rescues_completed": controller.profile.rescues_completed,
+	}
+
+
 func _post_rescue_open() -> void:
 	var rp: RescueProject = controller.rescue
 	if hud == null or rp == null or not rp.is_open():
 		return
-	hud.post_headline_tr("HL_RESCUE_OPEN", [rp.phase_count(), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
+	hud.post_headline_tr("HL_RESCUE_OPEN", [rp.phase_count(), Loc.rescue_phase_arg(rp.current()), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
 
 
 ## The GalNet lines for a phase that just finished: the phase, then the new clock speed or the win.
@@ -768,7 +900,7 @@ func _post_rescue_phase(res: Dictionary) -> void:
 	if bool(res["won"]):
 		hud.post_headline_tr("HL_RESCUE_DONE", [controller.get_current_round(), controller.doomsday.ticks_remaining / controller.ticks_per_round], "CRISIS", "INFO")
 		return
-	hud.post_headline_tr("HL_RESCUE_PHASE", [rp.phases_done(), rp.phase_count(), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
+	hud.post_headline_tr("HL_RESCUE_PHASE", [rp.phases_done(), rp.phase_count(), Loc.rescue_phase_arg(rp.current()), Loc.station_arg(str(rp.current().get("site", "")))], "CRISIS", "INFO")
 	hud.post_headline_tr("HL_RESCUE_FIELD", [rp.keep_bps / 100], "CRISIS", "INFO")
 
 
@@ -1332,6 +1464,13 @@ func dispatch_action(action: String) -> bool:
 		return false  # the sleep banner: Start resumes, nothing behind it is live
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
+	if overlay_state == OVERLAY_RESCUED:
+		# A continues to the run summary; the run is won, so nothing else is live behind it.
+		var won: bool = action == ACT_SUBMIT and acknowledge_rescued()
+		if won:
+			_click()
+			action_handled.emit(action)
+		return won
 	if overlay_state == OVERLAY_CRISIS and action != ACT_CHAPTER_11:
 		# A acknowledges; nothing else is live behind the modal.
 		var acked: bool = action == ACT_SUBMIT and acknowledge_crisis()
@@ -1462,6 +1601,7 @@ func run_summary() -> Dictionary:
 		"severance_consolation_pts": consolation_pts,
 		"rescue_phases_done": controller.rescue.phases_done() if controller.rescue != null else 0,
 		"rescue_phases_total": controller.rescue.phase_count() if controller.rescue != null else 0,
+		"rescue": rescue_stats(),
 		"broken_ids": _broken_baron_ids(broken),
 		"runs_completed": controller.profile.runs_completed,
 	}
@@ -1627,6 +1767,23 @@ func _on_collapsed() -> void:
 	_set_overlay(OVERLAY_COLLAPSED)
 
 
+## The last phase was delivered (RunController.finish_rescue banked the corp): raise the win modal.
+func _on_rescued() -> void:
+	_broken_ids = controller.world.held_by(Takeover.PLAYER) if controller.world != null else []
+	controller.sim_clock.pause()
+	_set_phase(PHASE_NONE)
+	_set_overlay(OVERLAY_RESCUED)
+
+
+## A on the rescued modal: on to the run summary, the same flow a collapse follows.
+func acknowledge_rescued() -> bool:
+	if overlay_state != OVERLAY_RESCUED or controller == null:
+		return false
+	_set_phase(PHASE_SUMMARY)
+	_set_overlay(OVERLAY_COLLAPSED)
+	return true
+
+
 func _on_round_advanced(round_num: int) -> void:
 	# World first, then replenish (design doc 2.2); the crisis deck already ran.
 	# advance_round decides the baron behaviours and writes them into world state;
@@ -1657,6 +1814,8 @@ func _sync_overlay_from_controller() -> void:
 	elif controller.is_collapsed():
 		_set_phase(PHASE_SUMMARY)
 		_set_overlay(OVERLAY_COLLAPSED)
+	elif controller.is_rescued():
+		_set_overlay(OVERLAY_COLLAPSED if collapse_phase != PHASE_NONE else OVERLAY_RESCUED)
 	elif controller.pending_bankruptcy:
 		_set_overlay(OVERLAY_CHAPTER_11)
 	else:

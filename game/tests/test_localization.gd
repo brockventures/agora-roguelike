@@ -106,6 +106,8 @@ func test_every_csv_key_is_reachable() -> String:
 			fam = true
 		if str(k).begins_with("PERK_") and str(k).ends_with("_NAME"):
 			fam = true
+		if str(k).begins_with("RESCUE_PHASE_") and str(k).ends_with("_NAME"):
+			fam = true
 		if ["ORDER_BUY", "ORDER_SELL"].has(k):
 			fam = true
 		if not fam and not corpus.contains("\"%s\"" % k):
@@ -141,6 +143,9 @@ func test_data_files_have_derived_keys_and_english_matches() -> String:
 		want.call("MAKER_" + Loc.slug(str(bd["id"])), str(bd["name"]).to_upper())
 		if not rows.has("MAKERTAG_" + Loc.slug(str(bd["id"]))):
 			problems.append("missing MAKERTAG_" + Loc.slug(str(bd["id"])))
+	# #32: every Rescue Project phase has a name row.
+	for ph in RescueProject.load_data().get("phases", []):
+		want.call("RESCUE_PHASE_%s_NAME" % Loc.slug(str(ph["id"])), str(ph["name"]))
 	# #139: every smuggle lane has a display name row.
 	var sl: Dictionary = Corridors.data().get("smuggle_lanes", {})
 	for lid in sl:

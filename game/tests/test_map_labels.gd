@@ -66,6 +66,32 @@ func test_no_two_map_labels_intersect_docked_across_rounds_both_seeds() -> Strin
 	return "ok" if found.is_empty() else "%d overlaps: %s" % [found.size(), "\n  ".join(PackedStringArray(found.slice(0, 12)))]
 
 
+func test_the_build_site_tag_keeps_the_map_labels_clear() -> String:
+	# #32: the open Rescue Project phase's site carries a "SITE" tag (it falls back to the bare name).
+	var found: Array = []
+	var tagged: int = 0
+	for sd in SEEDS:
+		for mode in MODES:
+			for phase in 4:
+				var scene := _scene(sd, mode)
+				scene.controller.rescue = RescueProject.open_new(1)
+				scene.controller.rescue.phase = phase
+				var site: String = str(scene.controller.rescue.current()["site"])
+				for dest in ["mars", "ceres", "luna", "earth"]:
+					scene.hud.set_station(dest)
+					scene._refresh_readouts()
+					for r in [0, 7, 23, 47]:
+						var layout: Dictionary = scene.map_layout(r)
+						var tag: String = "seed %d x%s %s site %s pick %s round %d" % [sd, str(mode[0]), mode[1], site, dest, r]
+						found.append_array(_problems(scene, layout, tag))
+						tagged += 1 if str(layout["texts"][site]).contains("· SITE") else 0
+				scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if tagged == 0:
+		return "the build site was never tagged"
+	return "ok" if found.is_empty() else "%d overlaps: %s" % [found.size(), "\n  ".join(PackedStringArray(found.slice(0, 12)))]
+
+
 func test_the_fuel_row_with_the_hedge_and_a_fuel_refusal_keeps_the_card_clear() -> String:
 	# #138 (the pseudo-locale at 130% is covered by the tests above, which now carry the FUEL row): the card gained a FUEL row (with the fuel_hedge caption) and a refusal adds a status line.
 	var found: Array = []

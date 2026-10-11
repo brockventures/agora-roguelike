@@ -409,7 +409,7 @@ MAP_DOCKED_TAG,%s · DOCKED
 HUD_ACT_CONTINUE,Continue
 MONO_EYEBROW,MONOPOLY
 MONO_TITLE,EVERY BARON IS YOURS
-MONO_BODY,"Every sector baron and station answers to you. The Sol System Rescue Project is the last step."
+MONO_BODY,"Every sector baron and station answers to you. The Sol System Rescue Project is the last step. Phase 1 is built at %s."
 MONO_HELD,BARONS HELD
 MONO_HELD_VALUE,%d of %d
 MONO_SEVERANCE,SEVERANCE IF THE CORP ENDS
@@ -489,9 +489,9 @@ MAP_CARD_ALIGNED,ALIGNED: -%d%% hazard
 MAP_CARD_SMUGGLE,%s: NO BELT TOLL
 MAP_ROUTE_LANE,"Route to %s via %s: %s. A departs."
 LANE_DARK_RUN_NAME,Dark Run
-HL_RESCUE_OPEN,"Sol System Rescue Project open: build the Stabiliser in %d phases. Phase 1 is at %s"
+HL_RESCUE_OPEN,"Sol System Rescue Project open: build the Stabiliser in %d phases. Phase 1, %s, is at %s"
 HL_RESCUE_DELIVER,"Stabiliser: %d units delivered at %s for %d CR"
-HL_RESCUE_PHASE,"Stabiliser phase %d of %d complete. Next build site: %s"
+HL_RESCUE_PHASE,"Stabiliser phase %d of %d complete. Next: %s at %s"
 HL_RESCUE_FIELD,Stabiliser field up: doomsday clock at %d%% speed
 HL_RESCUE_DONE,"SOL SYSTEM RESCUED in round %d with %d rounds of clock to spare"
 HL_RESCUE_REFUSED,"Delivery refused: %s"
@@ -501,3 +501,33 @@ RESCUE_REASON_NO_CARGO,your hold has nothing the phase needs
 RESCUE_REASON_NO_CR,not enough CR for the fee
 RESCUE_REASON_WOULD_BANKRUPT,the fee would leave you insolvent
 SET_ACT_PROJECT,Deliver to the Rescue Project
+TAG_RESCUE_PHASE,PHASE %d OF %d  %s  %s
+SIDE_RESCUE_NEED,%s %d / %d
+SIDE_RESCUE_FEE,FEE %d CR LEFT
+SIDE_RESCUE_CLOCK,CLOCK %d%%
+SIDE_RESCUE_DELIVER,H / PADDLE 1 DELIVERS %s  -%d CR
+SIDE_RESCUE_BRING,BRING WHAT THE PHASE NEEDS
+SIDE_RESCUE_BLOCKED,CANNOT DELIVER: %s (FEE %d CR)
+TAG_RESCUE_NO_ASK,SITE: NO ASK
+TAG_RESCUE_NEEDED,NEEDED: %s
+HUD_CLOCK_SPEED,CLOCK %d%%
+MAP_RESCUE_TAG,%s · SITE
+RESCUE_PHASE_ANCHOR_YARD_NAME,Anchor Yard
+RESCUE_PHASE_COIL_FOUNDRY_NAME,Coil Foundry
+RESCUE_PHASE_CONTAINMENT_SHELL_NAME,Containment Shell
+RESCUE_PHASE_IGNITION_ARRAY_NAME,Ignition Array
+RESC_EYEBROW,SOL SYSTEM RESCUED
+RESC_TITLE,THE STABILISER IS LIT
+RESC_SUM_EYEBROW,RUN COMPLETE
+RESC_SUM_TITLE,SOL SAVED
+RESC_BODY,"The last phase is built. The flare cycle holds, the Doomsday Clock stops, and Sol is saved."
+SUM_RESC_ROUND,RESCUED IN ROUND
+SUM_RESC_CLOCK,ROUNDS OF CLOCK LEFT
+SUM_RESC_PHASES,PHASES
+SUM_RESC_PHASES_VALUE,%d / %d
+SUM_RESC_UNITS,UNITS HAULED
+SUM_RESC_CR,PROJECT CR PAID
+SUM_RESC_COUNT,SOL RESCUED
+SUM_RESC_COUNT_VALUE,x %d
+SUM_STAB_PHASE,STABILISER
+SUM_STAB_PHASE_VALUE,PHASE %d OF %d

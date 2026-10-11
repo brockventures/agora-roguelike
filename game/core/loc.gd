@@ -114,6 +114,11 @@ static func perk_branch(branch: String) -> String:
 	return data_text("PERK_BRANCH_" + slug(branch), branch)
 
 
+## A Rescue Project phase's name: its `RESCUE_PHASE_<ID>_NAME` row, else the data's own name.
+static func rescue_phase_name(ph: Dictionary) -> String:
+	return data_text("RESCUE_PHASE_%s_NAME" % slug(str(ph.get("id", ""))), str(ph.get("name", "")))
+
+
 # --- Deferred arguments (ticker headlines re-render on a language swap) ---
 
 ## A headline argument that must be localized at render time, not at post time.
@@ -127,6 +132,11 @@ static func commodity_arg(id: String, upper: bool = true) -> Dictionary:
 
 static func maker_arg(id: String, upper: bool = true) -> Dictionary:
 	return {"loc": "maker", "id": id, "upper": upper}
+
+
+## A phase name as a deferred key argument (the ticker re-renders on a language swap).
+static func rescue_phase_arg(ph: Dictionary) -> Dictionary:
+	return key_arg("RESCUE_PHASE_%s_NAME" % slug(str(ph.get("id", ""))))
 
 
 static func key_arg(key: String) -> Dictionary:

@@ -139,6 +139,7 @@ func _collect(scene: Node) -> Array:
 	_collect_titan(scene, add)
 	_collect_sol(scene, add)
 	_collect_takeover(scene, add)
+	_collect_rescue(scene, add)
 	_collect_levers(scene, add)
 	_collect_rivals(scene, add)
 	_collect_fleet(scene, add)
@@ -219,11 +220,13 @@ func _collect_modals(scene: Node, add: Callable) -> void:
 	rc.severance_award = 0
 	rc.barons_broken_award = 0
 	rc.peak_net_worth = 0
+	_collect_rescue_modals(scene, add)
 	loop.overlay_state = M0Loop.OVERLAY_NONE
 	loop.collapse_phase = M0Loop.PHASE_NONE
 	# Toasts: a fill, a rejection and an alert, each with a long line.
 	scene.toasts.push(ToastTray.KIND_FILLED, "BUY 999 MACHINERY @ 99999.9 at Arcadia Foundries vs Ares Heavy Syndicate")
 	scene.toasts.push(ToastTray.KIND_REJECTED, "Orders capped at 20 units while the audit lasts")
+	scene.toasts.push(ToastTray.KIND_REJECTED, Loc.format("HL_RESCUE_REFUSED", [Loc.t("RESCUE_REASON_WOULD_BANKRUPT")]))
 	scene.toasts.push(ToastTray.KIND_INFO, "Ares Heavy squeezes the machinery lanes: bids climbing across the sector")
 	scene._refresh_readouts()
 	add.call("toasts", scene.wordmark_label)
@@ -565,6 +568,106 @@ func _collect_rivals(scene: Node, add: Callable) -> void:
 	scene._refresh_readouts()
 
 
+## The Rescue Project (#32 task 4): the Stabiliser card at its fullest on the Luna and Mars
+## boards (a prompt, a blocked prompt, a clock row, two-commodity deliveries) and the delivery
+## chips on the books the phase needs. Headlines: findings().
+func _collect_rescue(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.world = Barons.new()
+	loop.market.set_world(rc.world)
+	for st in ["luna", "earth", "mars", "ceres"]:
+		loop.market.unlock_station(st)
+	rc.rescue = RescueProject.open_new(1)
+	loop.market.set_world_mods(rc.world_mods())
+	var cr0: int = rc.cr
+	loop.set_tab(M0Loop.Tab.MARKET)
+	for state in ["luna prompt", "luna two goods", "luna blocked", "mars chips", "late phase", "ceres site"]:
+		match state:
+			"luna prompt":
+				rc.docked_at = "luna"
+				rc.cargo = {"MACHINERY": 100, "ORE": 100}
+				scene.hud.set_station("luna")
+				scene.hud.set_commodity("ORE")
+			"luna two goods":
+				rc.rescue.deposits = {"MACHINERY": 36}
+				rc.rescue.fee_paid = 1440
+			"luna blocked":
+				rc.cr = 3
+			"mars chips":
+				rc.cr = cr0
+				rc.docked_at = "mars"
+				scene.hud.set_station("mars")
+				scene.hud.set_commodity("MACHINERY")
+			"late phase":
+				rc.rescue.phase = 3
+				rc.rescue.deposits = {"MACHINERY": 100, "ORE": 100, "FUEL": 99}
+				rc.rescue.fee_paid = 7900
+				rc.rescue.keep_bps = 1500
+				rc.docked_at = "ceres"
+				rc.cargo = {"FUEL": 12}
+				scene.hud.set_station("ceres")
+				scene.hud.set_commodity("FUEL")
+			"ceres site":
+				scene.hud.set_commodity("ORE")
+		loop.market.set_world_mods(rc.world_mods())
+		scene._refresh_readouts()
+		add.call("market board[rescue %s]" % state, scene.wordmark_label)
+		add.call("sidebar[rescue %s]" % state, scene.wordmark_label)
+		add.call("map[rescue %s]" % state, scene.map_label)
+		add.call("header[rescue %s]" % state, scene.wordmark_label)
+	rc.rescue = null
+	rc.cr = cr0
+	rc.world = null
+	loop.market.set_world(null)
+	loop.market.set_world_mods([])
+	rc.docked_at = "mars"
+	scene.hud.set_station("mars")
+	scene.hud.set_commodity("FRAG")
+	scene._refresh_readouts()
+
+
+## The rescued modal and the run summary of a won run and of a lost run with phases built.
+func _collect_rescue_modals(scene: Node, add: Callable) -> void:
+	var loop: M0Loop = scene.loop
+	var rc: RunController = scene.controller
+	rc.rescue = RescueProject.open_new(1)
+	for ph in rc.rescue.phases():
+		rc.rescue.completed.append([str(ph["id"]), 99])
+	rc.rescue.phase = rc.rescue.phase_count()
+	rc.profile.rescues_completed = 12
+	rc.end_reason = "rescued"
+	rc.rescue_severance_award = 99999
+	rc.severance_award = 99999
+	rc.barons_broken_award = 3
+	loop._broken_ids = ["ares_heavy", "titan_cryo_hydro", "blackwater_lines"]
+	loop.overlay_state = M0Loop.OVERLAY_RESCUED
+	scene._refresh_readouts()
+	add.call("rescued modal", scene.resolution_label)
+	loop.overlay_state = M0Loop.OVERLAY_COLLAPSED
+	loop.collapse_phase = M0Loop.PHASE_SUMMARY
+	scene._refresh_readouts()
+	add.call("run summary[rescued]", scene.resolution_label)
+	rc.rescue.phase = 2
+	rc.rescue.completed = rc.rescue.completed.slice(0, 2)
+	rc.end_reason = "collapse"
+	rc.rescue_severance_award = 0
+	rc.consolation_severance_award = 200
+	scene._refresh_readouts()
+	add.call("run summary[lost with phases]", scene.resolution_label)
+	rc.rescue = null
+	rc.end_reason = ""
+	rc.profile.rescues_completed = 0
+	rc.rescue_severance_award = 0
+	rc.consolation_severance_award = 0
+	rc.severance_award = 0
+	rc.barons_broken_award = 0
+	loop._broken_ids = []
+	loop.overlay_state = M0Loop.OVERLAY_NONE
+	loop.collapse_phase = M0Loop.PHASE_NONE
+	scene._refresh_readouts()
+
+
 ## All findings for the scene under the current locale.
 func findings(scene: Node) -> Array:
 	var out: Array = []
@@ -610,6 +713,14 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_BANKRUPT_NONE", [ares, 999999, 999999])]),
 		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_FORFEIT", [ares])]),
 	]
+	var rescue_lines: Array = [
+		Loc.format("TICKER_LINE", [Loc.category("CRISIS"), Loc.format("HL_RESCUE_OPEN", [4, Loc.key_arg("RESCUE_PHASE_CONTAINMENT_SHELL_NAME"), Loc.station_arg("ceres")])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RESCUE_DELIVER", [99999, Loc.station_arg("ceres"), 99999])]),
+		Loc.format("TICKER_LINE", [Loc.category("CRISIS"), Loc.format("HL_RESCUE_PHASE", [3, 4, Loc.key_arg("RESCUE_PHASE_CONTAINMENT_SHELL_NAME"), Loc.station_arg("ceres")])]),
+		Loc.format("TICKER_LINE", [Loc.category("CRISIS"), Loc.format("HL_RESCUE_FIELD", [60])]),
+		Loc.format("TICKER_LINE", [Loc.category("CRISIS"), Loc.format("HL_RESCUE_DONE", [120, 99])]),
+		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RESCUE_REFUSED", [Loc.key_arg("RESCUE_REASON_WOULD_BANKRUPT")])]),
+	]
 	var lever_lines: Array = [
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_CORNER", [ares, Loc.commodity_arg("MACHINERY"), 99999, 99999])]),
 		Loc.format("TICKER_LINE", [Loc.category("INSOLVENCY"), Loc.format("HL_CORNER_UNPAID", [ares, 99999])]),
@@ -628,7 +739,7 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_DEPART", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), Loc.station_arg("mars")])]),
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_SELL", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), 99999])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + lever_lines + rival_lines:
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + rescue_lines + lever_lines + rival_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:
@@ -732,6 +843,33 @@ func test_takeover_rows_fit_at_every_text_scale() -> String:
 			scene.free()
 	Loc.set_locale(Loc.LOCALE_EN)
 	return "ok" if bad.is_empty() else "takeover rows overflow: %s" % str(bad)
+
+
+## The Stabiliser card, delivery chips, map line and header suffix at every text scale,
+## English and pseudo-localization (#32).
+func test_rescue_rows_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rows: Array = []
+			_seen = {}
+			var add := func(name: String, _label: Label) -> void:
+				_snap(scene, name, rows)
+			scene.controller.cargo = {"FRAG": 12, "FUEL": 12, "FOOD": 12, "ORE": 12, "MACHINERY": 12}
+			scene.controller.cr = 99999999
+			_collect_rescue(scene, add)
+			if rows.size() < 10:
+				bad.append("%s %.2fx: collected %d rows" % [locale, scale, rows.size()])
+			for row in rows:
+				for f in (row[5] if row.size() > 5 else overflow_of(row[0], row[1], row[2], row[3], row[4])):
+					bad.append("%s %.2fx: %s" % [locale, scale, f])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if bad.is_empty() else "rescue rows overflow: %s" % str(bad)
 
 
 ## The lever rows at every text scale, English and pseudo-localization.

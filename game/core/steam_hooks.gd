@@ -7,7 +7,8 @@ extends RefCounted
 const ACH_FIRST_CHAPTER_11: String = "FIRST_CHAPTER_11"
 const ACH_WITNESS_COLLAPSE: String = "WITNESS_COLLAPSE"
 ## Event-hook achievements this class unlocks directly (the rest are stat thresholds).
-const EVENT_ACHIEVEMENTS: Array[String] = [ACH_FIRST_CHAPTER_11, ACH_WITNESS_COLLAPSE]
+const ACH_SOL_RESCUED: String = "SOL_RESCUED"
+const EVENT_ACHIEVEMENTS: Array[String] = [ACH_FIRST_CHAPTER_11, ACH_WITNESS_COLLAPSE, ACH_SOL_RESCUED]
 
 var service: SteamService = null
 var _rc: RunController = null
@@ -25,6 +26,7 @@ func bind(rc: RunController) -> void:
 		return
 	rc.bankruptcy_filed.connect(_on_filed)
 	rc.run_collapsed.connect(_on_collapsed)
+	rc.run_rescued.connect(_on_rescued)
 	rc.corp_ended.connect(_on_corp_ended)
 	rc.round_advanced.connect(_on_round)
 	_deck = rc.crisis_deck
@@ -36,6 +38,7 @@ func unbind() -> void:
 	if _rc != null:
 		_disconnect(_rc.bankruptcy_filed, _on_filed)
 		_disconnect(_rc.run_collapsed, _on_collapsed)
+		_disconnect(_rc.run_rescued, _on_rescued)
 		_disconnect(_rc.corp_ended, _on_corp_ended)
 		_disconnect(_rc.round_advanced, _on_round)
 	if _deck != null:
@@ -57,6 +60,13 @@ func _on_filed(_report: Dictionary) -> void:
 
 func _on_collapsed() -> void:
 	service.unlock(ACH_WITNESS_COLLAPSE)
+
+
+## The Rescue Project was finished (#32): the win achievement and its stat.
+func _on_rescued() -> void:
+	service.unlock(ACH_SOL_RESCUED)
+	if _rc != null:
+		service.max_stat("rescues_completed", _rc.profile.rescues_completed)
 
 
 ## A corp ended (filing or collapse): its peak is final and the profile counts moved.
