@@ -1,0 +1,62 @@
+# Banned terms for AGORA art prompts. One per line, case-insensitive, matched
+# on word boundaries against the final positive prompt (style + entry + suffix).
+# Invariant 2 of #73: no real-world brands, trademarks, logos, or signatures.
+# Influences (the show and artist named in the prompt bible) are also banned
+# here so they can never be sent to the API: they are influence only.
+scavengers reign
+luke humphris
+moebius
+hergé
+herge
+tintin
+# space agencies and aerospace brands
+nasa
+spacex
+blue origin
+boeing
+lockheed
+virgin galactic
+roscosmos
+# media franchises
+star wars
+star trek
+battlestar
+firefly
+the expanse
+blade runner
+mass effect
+elite dangerous
+eve online
+cowboy bebop
+disney
+pixar
+marvel
+dc comics
+ghibli
+studio ghibli
+warhammer
+# tech and consumer brands
+google
+microsoft
+amazon
+tesla
+nike
+coca-cola
+pepsi
+ikea
+toyota
+# marks that must not be requested
+logo
+logotype
+trademark
+watermark
+signature
+signed by
+copyright
+brand name
+# text requests (invariant 1: rasters are text-free)
+caption
+lettering
+typography
+the words
+reading "
