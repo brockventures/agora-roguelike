@@ -183,7 +183,7 @@ A filing is not a run end (`file_bankruptcy` founds a new corp inside the same c
 - Two nodes only make sense after a filing (Pre-Packaged Reorganization, Managed Wind-Down Plan, Mandatory Training Module). If a filing dropped them they would be traps.
 - Severance is banked per corp, so Exit Package Optimization applies to the failed corp's award too. This is the intended price of that capstone.
 
-A pick granted by a takeover is **not** clawed back when the barons are forfeited (`takeover_granted` stays true). The pick for a baron the player loses a round later is the player's to keep; this is the same posture as the Rescue Project, whose progress is kept across a filing (`run_controller.gd:703`). **Question 2** asks Ryan whether he wants it harder.
+A pick granted by a takeover is **not** clawed back when the barons are forfeited (`takeover_granted` stays true). The pick for a baron the player loses a round later is the player's to keep; this is the same posture as the Rescue Project, whose progress is kept across a filing (`run_controller.gd:705`). **Question 2** asks Ryan whether he wants it harder.
 
 ## 8. Saves and the run hash (Proposed)
 
