@@ -36,6 +36,11 @@ const PARAM_KINDS: Dictionary = {
 }
 
 var data: Dictionary = {}
+## Rent multiplier in bps while the Rescue Project is open (#32): 10000 = none. DERIVED, never
+## saved and never in to_dict (so no hash moves): RunController.sync_rent_bonus() sets it from
+## the project and the holdings, and RunSave.restore re-derives it. Takeover.rent applies it,
+## so the previews and the round-boundary payout stay one pure function of saved state.
+var rent_bonus_bps: int = 10000
 ## BaronState by baron id.
 var states: Dictionary = {}
 ## RivalFleet by fleet id (Epic 3 task 10); empty when barons.json lists no `rivals`.

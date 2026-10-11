@@ -157,6 +157,34 @@ func counts_tick(total: int) -> bool:
 	return total * keep_bps / FULL_SPEED_BPS != (total - 1) * keep_bps / FULL_SPEED_BPS
 
 
+# --- Win, loss and the rent bonus (task 2) ---
+
+## Rent multiplier in bps while a phase is open (rent_multiplier_bps), 10000 once the project is
+## done. Barons.rent_bonus_bps carries it; RunController.sync_rent_bonus decides when it applies.
+func rent_bonus_bps() -> int:
+	return maxi(FULL_SPEED_BPS, int(data.get("rent_multiplier_bps", FULL_SPEED_BPS))) if is_open() else FULL_SPEED_BPS
+
+
+## Severance a won run adds: win.severance_base + win.severance_per_round_left x clock-rounds left.
+func win_severance(clock_rounds_left: int) -> int:
+	var win: Dictionary = data.get("win", {})
+	return maxi(0, int(win.get("severance_base", 0))) + maxi(0, int(win.get("severance_per_round_left", 0))) * maxi(0, clock_rounds_left)
+
+
+## Severance a lost run adds for what was built: win.phase_consolation per finished phase (Q3 b).
+func consolation_severance() -> int:
+	return maxi(0, int(data.get("win", {}).get("phase_consolation", 0))) * phases_done()
+
+
+## Does the hold carry goods the open phase still wants (design 8, the raid rule)? Sorted keys,
+## integer only. Always false once the project is complete.
+func hold_carries_project_goods(rc: RunController) -> bool:
+	for c in remaining():
+		if int(rc.cargo.get(c, 0)) > 0:
+			return true
+	return false
+
+
 # --- Deposit ---
 
 ## What a deposit from this hold at `site` would do, without doing it:

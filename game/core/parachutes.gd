@@ -299,10 +299,13 @@ static func apply_stat(mods: Dictionary, stat: String, base: int) -> int:
 ## Negative inputs count as zero.
 ## `barons_broken` adds SEVERANCE_PER_BARON each and is counted on the profile; it
 ## never enters peak_net_worth.
-static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0, rounds_survived: int = 0) -> int:
+## `rescue_pts` (a won Sol System Rescue, #32) and `consolation_pts` (a lost one, per finished
+## phase) are whole points worked out by RescueProject from rescue.json; both default to 0 so a
+## run without a project is exactly the award it always was.
+static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0, rounds_survived: int = 0, rescue_pts: int = 0, consolation_pts: int = 0) -> int:
 	var broken: int = maxi(0, barons_broken)
 	var rounds: int = maxi(0, rounds_survived)
-	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON + rounds * SEVERANCE_PER_ROUND
+	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON + rounds * SEVERANCE_PER_ROUND + maxi(0, rescue_pts) + maxi(0, consolation_pts)
 	profile.severance_points += award
 	profile.barons_broken += broken
 	return award

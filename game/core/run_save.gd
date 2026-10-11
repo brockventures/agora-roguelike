@@ -62,6 +62,8 @@ static func restore(data: Dictionary) -> Dictionary:
 	var rd = data.get("rescue", null)
 	if rd is Dictionary:
 		rc.rescue = RescueProject.from_dict(rd)
+	# Barons.rent_bonus_bps is derived, never saved: rebuild it from the project and the holdings.
+	rc.sync_rent_bonus()
 	return {
 		"ok": true,
 		"error": "",

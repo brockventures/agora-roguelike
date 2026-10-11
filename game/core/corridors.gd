@@ -242,6 +242,14 @@ static func raid(w: Barons, rc: RunController, info: Dictionary, round_num: int,
 	var head: int = w.lethal_headroom(rc)
 	var ransom: int = int(demand["ransom"])
 	var choice: String = "pay" if rc.cr >= ransom and ransom <= head else "surrender"
+	# Ryan's rule (#32 design 8): a raid on a hold carrying the open Rescue phase's goods is
+	# random, not the player's choice, so it settles as ransom only, never a seizure. The ransom
+	# is floored at the CR held (and at the lethal headroom). A raid after the player earned
+	# heat is a consequence and keeps the full loss.
+	var ransom_only: bool = rc.rescue != null and rc.rescue.hold_carries_project_goods(rc) and Heat.total(w) == 0
+	if ransom_only:
+		choice = "pay"
+		demand["ransom"] = mini(ransom, mini(rc.cr, head))
 	var out: Dictionary = desk.respond(StationMarket.PLAYER_ID, tid, choice, rc.cr)
 	var row: Dictionary = out.get("payload", {})
 	var paid: int = int(row.get("cr_taken", 0))
@@ -253,8 +261,11 @@ static func raid(w: Barons, rc: RunController, info: Dictionary, round_num: int,
 		var f: RivalFleet = w.rival(sponsor)
 		if f != null and int(demand.get("fine", 0)) > 0:
 			f.cr = maxi(0, f.cr - int(demand["fine"]))
-	events.append({"kind": "rival_raid" if sponsor != "" else "corridor_raid", "fleet": sponsor, "choice": str(row.get("choice", choice)), "ransom": paid,
-		"qty_taken": taken, "commodity": com, "value": value, "station": origin, "clamped": taken < want})
+	var ev: Dictionary = {"kind": "rival_raid" if sponsor != "" else "corridor_raid", "fleet": sponsor, "choice": str(row.get("choice", choice)), "ransom": paid,
+		"qty_taken": taken, "commodity": com, "value": value, "station": origin, "clamped": taken < want}
+	if ransom_only:
+		ev["ransom_only"] = true  # absent otherwise, so a raid with no project reads as before
+	events.append(ev)
 
 
 ## The departure's hazards (a storm delay, a hull breach), on this lane's rated odds with an

@@ -253,7 +253,8 @@ static func rent(w: Barons, id: String) -> int:
 	for pipe in d.get("privileges", {}).get("pipelines", []):
 		var cents: int = int(round(float(base.get(str(pipe.get("commodity", "")), 0.0)) * 100.0))
 		total += cents * int(cfg["rent_units"]) * int(cfg["rent_spread_bps"]) / 1000000
-	return maxi(0, total)
+	# The Rescue Project's rent bonus (#32): 10000 (x1) unless a project is open and held.
+	return maxi(0, total * w.rent_bonus_bps / 10000)
 
 
 static func _ceil_div(a: int, b: int) -> int:

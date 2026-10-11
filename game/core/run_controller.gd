@@ -30,6 +30,8 @@ signal severance_awarded(points: int)
 ## The player holds every baron (Epic 3 phase 1 of the win, design doc 5.4). The run
 ## win itself, the Sol System Rescue, is #32 and is not built here.
 signal monopoly_achieved()
+## The Sol System Rescue Project was finished and the run won (#32): end_run("rescued") has banked.
+signal run_rescued()
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
 ## A systemic margin collapse drained CR from the player this round (#12).
@@ -79,6 +81,10 @@ var world: Barons = null
 ## gets there has none and saves no `rescue` key (RunSave), exactly like `world`. It is Sol's,
 ## not the corp's: a Chapter 11 filing leaves it alone (Ryan, #32 Q5 a).
 var rescue: RescueProject = null
+## Severance a won run banked for the rescue (#32), and what a lost one banked for the phases
+## it finished. Both are 0 except on the run that ended that way, saved only when non-zero.
+var rescue_severance_award: int = 0
+var consolation_severance_award: int = 0
 
 # --- Travel (Epic 3 task 0, #111) ---
 
@@ -105,7 +111,7 @@ func can_depart(destination: String, mkt: StationMarket = null, lane: String = "
 		"fuel_units": 0, "fuel_hold": 0, "fuel_buy": 0, "fuel_cr": 0, "fuel_fee": 0,
 		"fuel_bps": fuel_discount_bps(),
 	}
-	if is_collapsed() or pending_bankruptcy:
+	if is_run_over() or pending_bankruptcy:
 		out["reason"] = "RUN_OVER"
 	elif is_in_transit():
 		out["reason"] = "IN_TRANSIT"
@@ -417,8 +423,49 @@ func check_monopoly() -> bool:
 
 ## True once the doomsday clock has collapsed: the only true end of the run.
 ## Chapter 11 filing is NOT a game over; it founds a new corp in place.
+## A rescued run is over too (#32): the clock is not what ended it.
 func is_run_over() -> bool:
-	return is_collapsed()
+	return is_collapsed() or is_rescued()
+
+## True once the Sol System Rescue Project won this corp's run. It reads the banked reason, so
+## it needs no field of its own, and a later filing or new corp (which rewrites end_reason or
+## bumps corp_number) can never read as rescued.
+func is_rescued() -> bool:
+	return end_reason == "rescued" and _banked_corp == corp_number
+
+## Opens the Rescue Project (phase 1) once the player holds the monopoly. False when one exists
+## already, the monopoly is not held, or rescue.json is invalid. The loop calls this when the
+## player continues from the monopoly summary (task 3).
+func open_rescue() -> bool:
+	if rescue != null or not has_monopoly():
+		return false
+	var p: RescueProject = RescueProject.open_new(get_current_round())
+	if p == null:
+		return false
+	rescue = p
+	sync_rent_bonus()
+	return true
+
+## Sets Barons.rent_bonus_bps from the saved state it derives from: the project's multiplier
+## while a phase is open and the player still holds every baron, x1 otherwise. A Chapter 11
+## filing forfeits the holdings, so the bonus ends with them; a finished project has none.
+## Call after anything that changes the project or the holdings; RunSave.restore calls it.
+func sync_rent_bonus() -> void:
+	if world == null:
+		return
+	world.rent_bonus_bps = rescue.rent_bonus_bps() if (rescue != null and has_monopoly()) else RescueProject.FULL_SPEED_BPS
+
+## The deposit that finished the last phase calls this (task 3 wires it): pause the sim, bank
+## the corp once with reason "rescued" (normal Severance plus the rescue bonus), and signal.
+## Returns the Severance awarded, 0 when there is nothing to finish or the run already ended.
+func finish_rescue() -> int:
+	if rescue == null or not rescue.is_complete() or is_run_over():
+		return 0
+	sim_clock.pause()
+	var award: int = end_run("rescued")
+	sync_rent_bonus()
+	run_rescued.emit()
+	return award
 
 ## Fresh-start CR for the next corp: the Chapter 11 stake through fresh_start_cr perks.
 ## New corp stake = the fresh_start_cr stat applied to FRESH_START_CR, plus the
@@ -470,7 +517,17 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 	barons_broken_award = world.held_by(Takeover.PLAYER).size() if world != null else 0
 	var corp_ticks: int = maxi(0, sim_clock.total_ticks - _corp_start_tick)
 	rounds_survived_award = int(corp_ticks / ticks_per_round) if ticks_per_round > 0 else 0
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award)
+	# The Rescue Project (#32): a win adds the rescue bonus, a collapse with phases built adds the
+	# per-phase consolation. A filing or a manual end pays neither (progress is Sol's, not the corp's).
+	rescue_severance_award = 0
+	consolation_severance_award = 0
+	if rescue != null:
+		if reason == "rescued" and rescue.is_complete():
+			rescue_severance_award = rescue.win_severance(int(doomsday.ticks_remaining / ticks_per_round) if ticks_per_round > 0 else 0)
+			profile.rescues_completed += 1
+		elif reason == "collapse":
+			consolation_severance_award = rescue.consolation_severance()
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award, rescue_severance_award, consolation_severance_award)
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
@@ -540,7 +597,7 @@ func _unwire() -> void:
 
 ## Advance by a real-time frame delta. Returns sub-ticks executed.
 func advance(delta: float) -> int:
-	if pending_bankruptcy or is_collapsed():
+	if pending_bankruptcy or is_run_over():
 		return 0
 	return sim_clock.step(delta)
 
@@ -577,7 +634,7 @@ func reassess() -> bool:
 ## and corp_ended(summary) fires. The Sol world and its doomsday clock keep running
 ## (never reset); the sim clock is left paused for the caller to resume.
 func file_bankruptcy() -> Dictionary:
-	if is_collapsed():
+	if is_run_over():
 		return {}
 	if not pending_bankruptcy and not bool(assess()["insolvent"]):
 		return {}
@@ -616,6 +673,8 @@ func file_bankruptcy() -> Dictionary:
 		world.forget_corp(self)  # and the barons' grudges, bounties and live retaliations (task 11)
 		# Takeover core (task 7): the failed corp's holdings revert to NPC control.
 		report["forfeited_barons"] = world.forfeit_holdings()
+	# The Rescue Project keeps its progress (Q5 a) but its rent bonus ended with the holdings.
+	sync_rent_bonus()
 	bankruptcy_filed.emit(report)
 	return report
 
@@ -671,6 +730,10 @@ func to_dict() -> Dictionary:
 		out["barons_broken_award"] = barons_broken_award
 	if rounds_survived_award > 0:
 		out["rounds_survived_award"] = rounds_survived_award
+	if rescue_severance_award > 0:
+		out["rescue_severance_award"] = rescue_severance_award
+	if consolation_severance_award > 0:
+		out["consolation_severance_award"] = consolation_severance_award
 	return out
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -698,6 +761,8 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.severance_award = maxi(0, int(d.get("severance_award", 0)))
 	rc.barons_broken_award = maxi(0, int(d.get("barons_broken_award", 0)))
 	rc.rounds_survived_award = maxi(0, int(d.get("rounds_survived_award", 0)))
+	rc.rescue_severance_award = maxi(0, int(d.get("rescue_severance_award", 0)))
+	rc.consolation_severance_award = maxi(0, int(d.get("consolation_severance_award", 0)))
 	rc._corp_start_tick = maxi(0, int(d.get("corp_start_tick", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))
 	var co = d.get("carry_over", {})
@@ -768,7 +833,10 @@ static func _sanitise_modifiers(raw) -> Dictionary:
 	return out
 
 func _on_sub_ticked(total: int) -> void:
-	doomsday.step_ticks(1)
+	# The Stabiliser Field (#32 design 5.1): a finished phase lets only some ticks count against
+	# the clock. No project means every tick counts, so a run without one is untouched.
+	if rescue == null or rescue.counts_tick(total):
+		doomsday.step_ticks(1)
 	if not transit.is_empty() and total >= int(transit["arrive_tick"]):
 		_arrive()
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
@@ -788,6 +856,12 @@ func _advance_crisis_deck(round_num: int) -> void:
 		for c in cargo:
 			value += Piracy.cargo_value(str(c), int(cargo[c]))
 		var drain: int = mini(cr, value * bps / 10000)
+		if rescue != null and rescue.is_open():
+			# Ryan's rule (#32 design 8): a random margin call may not by itself tip the corp into
+			# Chapter 11 (which forfeits the barons) while the project is open. Same shape as
+			# Barons.penalize(.., "random"): clamp to liquidation value less debt.
+			var a: Dictionary = assess()
+			drain = mini(drain, maxi(0, int(a["liquidation_value"]) - int(a["total_debt"])))
 		if drain > 0:
 			cr -= drain
 			margin_call_applied.emit(drain)

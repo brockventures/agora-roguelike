@@ -2730,6 +2730,11 @@ func _summary_model() -> Dictionary:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARON") % [_maker_name(str(id)), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % Parachutes.SEVERANCE_PER_BARON})
 	if broken_ids.is_empty() and int(r["barons_broken"]) > 0:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARONS") % [int(r["barons_broken"]), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % int(r["barons_severance"])})
+	# The Rescue Project's Severance (#32): the win bonus, or the per-phase consolation of a lost run.
+	if int(r.get("severance_rescue_pts", 0)) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_RESCUE"), "value": tr("SUM_SEV_VALUE") % int(r["severance_rescue_pts"])})
+	if int(r.get("severance_consolation_pts", 0)) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_CONSOLATION") % [int(r["rescue_phases_done"]), int(r["rescue_phases_total"])], "value": tr("SUM_SEV_VALUE") % int(r["severance_consolation_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
 	return {"eyebrow": tr("SUM_EYEBROW"), "title": tr("SUM_TITLE"), "band": "alert", "wide": true, "art": tr("SUM_ART"),
 		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
@@ -3538,6 +3543,8 @@ static func _cause_text(reason: String) -> String:
 			return Loc.t("SUM_CAUSE_BANKRUPTCY")
 		"manual":
 			return Loc.t("SUM_CAUSE_MANUAL")
+		"rescued":
+			return Loc.t("SUM_CAUSE_RESCUED")
 	return Loc.t("SUM_CAUSE_COLLAPSE")
 
 
