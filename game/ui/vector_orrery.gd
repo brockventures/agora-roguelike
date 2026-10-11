@@ -197,6 +197,8 @@ func get_orbit_rings() -> Array[Dictionary]:
 		var au_radius: float = Transit.get_station_orbital_radius(st)
 		var scale_px: float = SolTacticalMap.AU_SCALE_PX if tactical_map == null else tactical_map.AU_SCALE_PX
 		var r_px: float = au_radius * scale_px
+		if tactical_map != null:
+			r_px = tactical_map.get_orbit_radius_px(st)  # the map's display radii, so rings meet their blips
 		rings.append({
 			"station_id": st,
 			"radius_px": r_px,
