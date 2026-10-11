@@ -6,7 +6,7 @@ Grounded source of truth for vessel visual consistency across all viewports. Par
 
 ## 🚀 Invariant Rule of Vessel Consistency
 
-Every ship archetype is grounded directly to `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game/scenes/main.gd`. Whether viewed as a command deck fleet profile (3:2 design sheet), an orbital transit marker on the Sol tactical map (1:1 icon), or under combat/hazard strain (damage overlay), **the vessel's distinctive industrial silhouette, primary color tone, and mechanical anatomy must persist verbatim**.
+Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui/fleet_view.gd:20`) and `FLEET_ARCH_TONES` (in `game/scenes/main.gd:2315`). Whether viewed as a command deck fleet profile (3:2 design sheet), an orbital transit marker on the Sol tactical map (1:1 icon), or under combat/hazard strain (damage overlay), **the vessel's distinctive industrial silhouette, primary color tone, and mechanical anatomy must persist verbatim**.
 
 ---
 
