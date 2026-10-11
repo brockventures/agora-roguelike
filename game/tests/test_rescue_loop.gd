@@ -240,7 +240,7 @@ func test_a_finished_phase_moves_the_embargo_and_posts_its_lines() -> String:
 	if _ask_units(m, "luna", "MACHINERY") <= StationMarket.DEPTH_LEVELS:
 		return "luna was not reseeded after the embargo lifted"
 	var t: Array = _texts(c["hud"])
-	if not _any(t, "Stabiliser phase 1 of 4 complete. Next build site: KENNEDY ELEVATOR") or not _any(t, "Stabiliser field up: doomsday clock at 60% speed"):
+	if not _any(t, "Stabiliser phase 1 of 4 complete. Next: Coil Foundry at KENNEDY ELEVATOR") or not _any(t, "Stabiliser field up: doomsday clock at 60% speed"):
 		return "lines: %s" % str(t)
 	return "ok"
 
@@ -293,7 +293,7 @@ func test_continuing_from_the_monopoly_summary_opens_the_project() -> String:
 	var tail: Array = m.world_mods.slice(-2)
 	if tail != rc.rescue.embargo_mods():
 		return "the market has no embargo: %s" % str(tail)
-	if not _any(_texts(c["hud"]), "Sol System Rescue Project open: build the Stabiliser in 4 phases. Phase 1 is at LUNA"):
+	if not _any(_texts(c["hud"]), "Sol System Rescue Project open: build the Stabiliser in 4 phases. Phase 1, Anchor Yard, is at LUNA"):
 		return "no open line: %s" % str(_texts(c["hud"]))
 	# A second continue (a re-taken monopoly after a filing) keeps the project it has.
 	var before: String = JSON.stringify(rc.rescue.to_dict())

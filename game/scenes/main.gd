@@ -935,7 +935,7 @@ func _refresh_header() -> void:
 		[tr("HUD_CHIP_CREDITS"), _fmt(int(h["cr"]))],
 		[tr("HUD_CHIP_DEBT"), _fmt(int(h["total_debt"]))],
 		[tr("HUD_CHIP_SPEED"), str(h["speed_label"])],
-		[tr("HUD_CHIP_DOOMSDAY") % Loc.stage(stage), "%d:%02d" % [secs / 60, secs % 60]],
+		[tr("HUD_CHIP_DOOMSDAY") % Loc.stage(stage), "%d:%02d" % [secs / 60, secs % 60] + (" " + tr("HUD_CLOCK_SPEED") % loop.rescue_clock_pct() if loop.rescue_clock_pct() < 100 else "")],
 	]
 	var tab_names: Array = []
 	for i in M0Loop.TAB_NAMES.size():
@@ -1946,7 +1946,13 @@ func _card_notes() -> Array:
 		out.append({"kind": "line", "text": tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""], "color": HudTheme.INK})
 	var st: String = hud.active_station
 	var com: String = hud.active_commodity
-	for pair in [[loop.pipeline_tag(st, com), HudTheme.TEAL_DARK, HudTheme.BONE], [loop.squeeze_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.hoard_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.rival_tag(st, com), HudTheme.SLATE, HudTheme.BONE], [loop.toll_line(st), HudTheme.SLATE, HudTheme.BONE], [_contract_sidebar_line(), HudTheme.OCHRE, HudTheme.INK]]:
+	# The Stabiliser card (#32): the open phase, its bill and what a delivery would do here.
+	for n in loop.rescue_lines(st):
+		if str(n["kind"]) == "chip":
+			out.append({"kind": "chip", "text": n["text"], "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
+		else:
+			out.append({"kind": "line", "text": n["text"], "color": HudTheme.RUST_DARK if str(n["tone"]) == "bad" else HudTheme.INK})
+	for pair in [[loop.rescue_tag(st, com), HudTheme.TEAL_DARK, HudTheme.BONE], [loop.pipeline_tag(st, com), HudTheme.TEAL_DARK, HudTheme.BONE], [loop.squeeze_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.hoard_tag(st, com), HudTheme.RUST_DARK, HudTheme.BONE], [loop.rival_tag(st, com), HudTheme.SLATE, HudTheme.BONE], [loop.toll_line(st), HudTheme.SLATE, HudTheme.BONE], [_contract_sidebar_line(), HudTheme.OCHRE, HudTheme.INK]]:
 		if str(pair[0]) != "":
 			out.append({"kind": "chip", "text": pair[0], "bg": pair[1], "fg": pair[2]})
 	var auction: Array = loop.auction_lines(st, com)
@@ -2164,6 +2170,8 @@ func _refresh_board() -> void:
 				pipe = loop.lever_tag(st, c)
 			if pipe == "":
 				pipe = loop.auction_tag(st, c)
+			if pipe == "":
+				pipe = loop.rescue_tag(st, c)
 			if pipe == "":
 				pipe = loop.pipeline_tag(st, c)
 			if pipe != "":
@@ -2617,7 +2625,7 @@ func _build_modals() -> void:
 	_res["texts"] = texts
 	resolution_label = texts[0]
 	var kvs: Array = []
-	for i in 14:
+	for i in 20:
 		kvs.append({
 			"key": kit.label(resolution_modal, "ResolutionKey%d" % i, HudTheme.ROLE_LABEL, 12, HudTheme.BONE_DIM),
 			"value": kit.label(resolution_modal, "ResolutionValue%d" % i, HudTheme.ROLE_READOUT, 20, HUD_TEXT_COLOR, HORIZONTAL_ALIGNMENT_RIGHT),
@@ -2669,6 +2677,8 @@ func _resolution_model() -> Dictionary:
 		return _contract_model()
 	if loop.overlay_state == M0Loop.OVERLAY_MONOPOLY:
 		return _monopoly_model()
+	if loop.overlay_state == M0Loop.OVERLAY_RESCUED:
+		return _rescued_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return {"eyebrow": tr("CH11_EYEBROW"), "title": tr("CH11_TITLE"), "band": "alert", "wide": false,
@@ -2721,11 +2731,16 @@ func _summary_model() -> Dictionary:
 		{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
 		{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
 		{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds_survived"]))}]
+	# The Rescue Project's own numbers (#32): the win's stats, or how far a lost run got.
+	rows.append_array(_rescue_summary_rows(r))
 	# The severance calculation: per filing, the peak-net-worth share, per broken baron, total.
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_FILINGS") % [int(r["severance_filings"]), Parachutes.SEVERANCE_PER_FILING], "value": tr("SUM_SEV_VALUE") % int(r["severance_filings_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_PEAK") % ("%.1f" % (float(Parachutes.SEVERANCE_NET_WORTH_BPS) / 100.0)), "value": tr("SUM_SEV_VALUE") % int(r["severance_peak_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEV_ROUNDS") % [int(r.get("severance_rounds", 0)), Parachutes.SEVERANCE_PER_ROUND], "value": tr("SUM_SEV_VALUE") % int(r.get("severance_rounds_pts", 0))})
-	var broken_ids: Array = r["broken_ids"]
+	# A win holds every baron, so its three named rows would be the same three each time: one
+	# aggregate row keeps the rescue's own rows on screen at 130% text.
+	var is_win: bool = str(r["reason"]) == "rescued"
+	var broken_ids: Array = [] if is_win else r["broken_ids"]
 	for id in broken_ids:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_BARON") % [_maker_name(str(id)), Parachutes.SEVERANCE_PER_BARON], "value": tr("SUM_SEV_VALUE") % Parachutes.SEVERANCE_PER_BARON})
 	if broken_ids.is_empty() and int(r["barons_broken"]) > 0:
@@ -2736,7 +2751,8 @@ func _summary_model() -> Dictionary:
 	if int(r.get("severance_consolation_pts", 0)) > 0:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_CONSOLATION") % [int(r["rescue_phases_done"]), int(r["rescue_phases_total"])], "value": tr("SUM_SEV_VALUE") % int(r["severance_consolation_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
-	return {"eyebrow": tr("SUM_EYEBROW"), "title": tr("SUM_TITLE"), "band": "alert", "wide": true, "art": tr("SUM_ART"),
+	var won: bool = is_win  # a rescued run's summary is a win, not a collapse
+	return {"eyebrow": tr("RESC_SUM_EYEBROW" if won else "SUM_EYEBROW"), "title": tr("RESC_SUM_TITLE" if won else "SUM_TITLE"), "band": "teal" if won else "alert", "wide": true, "art": tr("SUM_ART"),
 		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
 
 
@@ -2746,7 +2762,7 @@ func _monopoly_model() -> Dictionary:
 	var r: Dictionary = loop.monopoly_summary()
 	return {"eyebrow": tr("MONO_EYEBROW"), "title": tr("MONO_TITLE"), "band": "teal", "wide": true,
 		"rows": [
-			{"kind": "text", "text": tr("MONO_BODY")},
+			{"kind": "text", "text": tr("MONO_BODY") % Loc.station(str(r["first_site"]))},
 			{"kind": "kv", "key": tr("MONO_HELD"), "value": tr("MONO_HELD_VALUE") % [int(r["barons_held"]), int(r["barons_total"])]},
 			{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
 			{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
@@ -2754,6 +2770,42 @@ func _monopoly_model() -> Dictionary:
 			{"kind": "kv", "key": tr("MONO_SEVERANCE"), "value": tr("MONO_SEVERANCE_VALUE") % int(r["severance_pending"])},
 			{"kind": "muted", "text": tr("MONO_NEXT")},
 			{"kind": "muted", "text": tr("HUD_CLOCK_HALTED")}],
+		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
+
+
+## The rescue rows of the run summary: a win's round, clock left and counter (the phases, units
+## hauled and CR paid are on the rescued modal: the summary is already the tallest screen), or on a lost run
+## with a project the phase it reached.
+func _rescue_summary_rows(r: Dictionary) -> Array:
+	var rows: Array = []
+	var st: Dictionary = r.get("rescue", {})
+	if st.is_empty():
+		return rows
+	if bool(st["rescued"]) and str(r["reason"]) == "rescued":
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_ROUND"), "value": str(int(st["round"]))})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_CLOCK"), "value": str(int(st["clock_rounds_left"]))})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_COUNT"), "value": tr("SUM_RESC_COUNT_VALUE") % int(st["rescues_completed"])})
+	elif str(r["reason"]) == "collapse":
+		rows.append({"kind": "kv", "key": tr("SUM_STAB_PHASE"), "value": tr("SUM_STAB_PHASE_VALUE") % [mini(int(st["phases_done"]) + 1, int(st["phases_total"])), int(st["phases_total"])]})
+	return rows
+
+
+## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
+## run summary, then the Golden Parachutes perks and a new run.
+func _rescued_model() -> Dictionary:
+	var r: Dictionary = loop.run_summary()
+	var st: Dictionary = r.get("rescue", {})
+	var rows: Array = [{"kind": "text", "text": tr("RESC_BODY")}]
+	if not st.is_empty():
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_ROUND"), "value": str(int(st["round"]))})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_CLOCK"), "value": str(int(st["clock_rounds_left"]))})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_PHASES"), "value": tr("SUM_RESC_PHASES_VALUE") % [int(st["phases_done"]), int(st["phases_total"])]})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_UNITS"), "value": _fmt(int(st["units"]))})
+		rows.append({"kind": "kv", "key": tr("SUM_RESC_CR"), "value": tr("HUD_CR_VALUE") % _fmt(int(st["cr_paid"]))})
+	rows.append({"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))})
+	rows.append({"kind": "kv", "key": tr("SUM_SEV_RESCUE"), "value": tr("SUM_SEV_VALUE") % int(r["severance_rescue_pts"])})
+	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
+	return {"eyebrow": tr("RESC_EYEBROW"), "title": tr("RESC_TITLE"), "band": "teal", "wide": true, "rows": rows,
 		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
 
 
@@ -3053,8 +3105,15 @@ func _build_toasts() -> void:
 ## A trading fill becomes a FILLED toast and a GalNet warning or critical alert a NOTICE
 ## toast. Presentation only: the headline was already posted by the sim-side code.
 func _on_headline_toast(item: Dictionary) -> void:
-	if str(item.get("key", "")) == "HL_FILL":
+	var key: String = str(item.get("key", ""))
+	if key == "HL_FILL":
 		toasts.push(ToastTray.KIND_FILLED, Loc.format("TOAST_FILL", item["args"]))
+	elif key == "HL_RESCUE_REFUSED":
+		toasts.push(ToastTray.KIND_REJECTED, hud.headline_text(item))  # the Rescue Project refused a delivery, and why
+	elif key == "HL_RESCUE_DELIVER":
+		toasts.push(ToastTray.KIND_FILLED, hud.headline_text(item))
+	elif key == "HL_RESCUE_PHASE" or key == "HL_RESCUE_OPEN":
+		toasts.push(ToastTray.KIND_INFO, hud.headline_text(item))  # a phase is a toast and a ticker line, never a modal
 	elif ["WARNING", "CRITICAL"].has(str(item.get("severity", ""))):
 		toasts.push(ToastTray.KIND_INFO, hud.headline_text(item))
 
@@ -3307,12 +3366,15 @@ static func _circle_hits(center: Vector2, radius: float, rect: Rect2) -> bool:
 ## every box kept apart from every other. {discs, texts, offsets, sol_pos, ship_tag,
 ## rivals: [{hull, tag, spot (Vector2 or null)}], boxes: {key: Rect2}}. `round_num` is the
 ## round the bodies are drawn at.
-func map_layout(round_num: int) -> Dictionary:
+func map_layout(round_num: int, site_tag: bool = true) -> Dictionary:
 	var font: Font = HudTheme.role_font(HudTheme.ROLE_LABEL)
 	var fs: int = scaled_size(MAP_FONT_SIZE)
 	var ascent: float = font.get_ascent(fs)
 	var height: float = ascent + font.get_descent(fs)
 	var docked: String = controller.docked_at if controller != null else ""
+	var rescue_site: String = ""
+	if site_tag and controller != null and controller.rescue != null and controller.rescue.is_open():
+		rescue_site = str(controller.rescue.current().get("site", ""))
 	var discs: Dictionary = {}
 	var texts: Dictionary = {}
 	var widths: Dictionary = {}
@@ -3321,6 +3383,8 @@ func map_layout(round_num: int) -> Dictionary:
 		var t: String = Loc.station(st).to_upper()
 		if st == docked:
 			t = tr("MAP_DOCKED_TAG") % t
+		if st == rescue_site:
+			t = tr("MAP_RESCUE_TAG") % t  # the open phase's build site (#32), like the docked tag
 		texts[st] = t
 		widths[st] = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	# The route card takes the first corner that leaves every label a place; the docked tag
@@ -3329,6 +3393,8 @@ func map_layout(round_num: int) -> Dictionary:
 	var short_texts: Dictionary = {}
 	if docked != "" and texts.has(docked):
 		short_texts[docked] = Loc.station(docked).to_upper()
+	if rescue_site != "" and texts.has(rescue_site):
+		short_texts[rescue_site] = Loc.station(rescue_site).to_upper()
 	var spots: Array = _route_card_spots(discs)
 	if spots.is_empty():
 		spots = [null]
@@ -3341,6 +3407,7 @@ func map_layout(round_num: int) -> Dictionary:
 	var bounds: Rect2 = _map_label_bounds()
 	var center: Vector2 = _map_center()
 	var sol_r: float = SolTacticalMap.SOL_NODE_RADIUS_PX
+	var all_placed: bool = false
 	var sol_w: float = font.get_string_size(sol_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	for spot in spots:
 		placed = []
@@ -3367,8 +3434,12 @@ func map_layout(round_num: int) -> Dictionary:
 		for st in discs:
 			boxes[st] = Rect2(Vector2(discs[st]) + Vector2(offsets[st]) + Vector2(0.0, -ascent), Vector2(try_widths[st], height)).grow(1.0)
 		final_texts = try_texts
-		if failed.is_empty():
+		all_placed = failed.is_empty()
+		if all_placed:
 			break
+	# The build-site tag (#32) is a nicety: when it leaves some label no place, draw without it.
+	if not all_placed and rescue_site != "":
+		return map_layout(round_num, false)
 	# Tags go where they clear every node and label: the player's YOU first, then the fleets.
 	var ship_tag: Vector2 = Vector2.ZERO
 	var voyage: Dictionary = tactical_map.get_player_transit(round_num)

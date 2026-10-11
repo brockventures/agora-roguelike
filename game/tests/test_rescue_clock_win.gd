@@ -462,7 +462,7 @@ func _sev_rows_sum(scene: Node) -> int:
 	var summed: int = 0
 	for row in scene._summary_model()["rows"]:
 		var k: String = str(row["key"])
-		if k.begins_with("FILINGS") or k.begins_with("PEAK NET WORTH @") or k.begins_with("ROUNDS x") or k.begins_with("BROKEN") or k.begins_with("SOL RESCUED BONUS") or k.begins_with("STABILISER PHASES"):
+		if k.begins_with("FILINGS") or k.begins_with("PEAK NET WORTH @") or k.begins_with("ROUNDS x") or k.begins_with("BROKEN") or k.begins_with("BARONS BROKEN") or k.begins_with("SOL RESCUED BONUS") or k.begins_with("STABILISER PHASES"):
 			summed += int(str(row["value"]).trim_prefix("+"))
 	return summed
 
