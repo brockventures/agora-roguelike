@@ -376,3 +376,102 @@ func test_signal_emission_counts_match_with_and_without_the_listener() -> String
 	_attach(s2, _ob(), counts)
 	_drive(s2)
 	return "ok" if plain == counts else "emission counts differ: %s vs %s" % [str(plain), str(counts)]
+
+
+# ---- the "Orientation program" settings row (task 4) ----
+func _act(action: String) -> InputEventAction:
+	var e := InputEventAction.new()
+	e.action = action
+	e.pressed = true
+	return e
+
+
+func _tutorial_row(menu: SettingsMenu) -> int:
+	for i in menu.rows().size():
+		if int(menu.rows()[i]["kind"]) == SettingsMenu.Row.TUTORIAL:
+			return i
+	return -1
+
+
+func test_settings_row_is_on_off_and_reachable_on_the_gamepad() -> String:
+	var menu := SettingsMenu.new(AccessibilitySettings.new())
+	menu.open()
+	var row: int = _tutorial_row(menu)
+	if row < 0:
+		return "no tutorial row"
+	for i in row:
+		menu.handle_event(_act("ui_down"))
+	if menu.cursor != row:
+		return "D-pad did not reach the row"
+	var on_text: String = menu.row_text(row, menu.rows()[row])
+	if not on_text.contains(Loc.t("SET_TUTORIAL")) or not on_text.contains("< " + Loc.t("SET_ON") + " >"):
+		return "default row text should read the label and < On >: %s" % on_text
+	menu.handle_event(_act("ui_right"))
+	if menu.settings.tutorial_enabled or not menu.row_text(row, menu.rows()[row]).contains("< " + Loc.t("SET_OFF") + " >"):
+		return "Right should turn the tutorial off: %s" % menu.row_text(row, menu.rows()[row])
+	menu.handle_event(_act("ui_accept"))
+	if not menu.settings.tutorial_enabled:
+		return "A should turn it back on"
+	menu.handle_event(_act("ui_left"))
+	return "ok" if not menu.settings.tutorial_enabled else "Left should toggle it"
+
+
+func test_settings_row_off_stops_the_tutorial_and_on_replays_the_core_beats() -> String:
+	var s := AccessibilitySettings.new()
+	var ob := Onboarding.new(s)
+	var menu := SettingsMenu.new(s)
+	menu.onboarding = ob
+	menu.open()
+	menu.cursor = _tutorial_row(menu)
+	ob.handle(_ev("tab_changed", {"tab": "MARKET"}))
+	menu.handle_event(_act("ui_right"))
+	if s.tutorial_enabled or ob.is_enabled() or ob.active_id() != "":
+		return "OFF should stop the core beats, active '%s'" % ob.active_id()
+	var kept: Array[String] = s.tutorial_seen.duplicate()
+	menu.handle_event(_act("ui_right"))
+	if not s.tutorial_enabled:
+		return "ON did not enable"
+	if not s.tutorial_seen.is_empty():
+		return "ON should clear the core seen marks, still seen: %s (before: %s)" % [str(s.tutorial_seen), str(kept)]
+	ob.set_context({"tab": "MAP", "fills": 0})
+	return "ok" if ob.active_id() == "tabs" else "replay should restart at tabs, got '%s'" % ob.active_id()
+
+
+func test_settings_row_works_without_a_live_model() -> String:
+	var s := AccessibilitySettings.new()
+	s.mark_tutorial_seen("tabs")
+	var menu := SettingsMenu.new(s)
+	menu.open()
+	menu.cursor = _tutorial_row(menu)
+	menu.handle_event(_act("ui_right"))
+	menu.handle_event(_act("ui_right"))
+	return "ok" if s.tutorial_enabled and not s.tutorial_seen.has("tabs") else "bare menu should still replay: %s" % str(s.to_dict())
+
+
+func test_settings_row_persists_through_settings_json() -> String:
+	var store := _store()
+	var s := AccessibilitySettings.new()
+	var menu := SettingsMenu.new(s)
+	menu.open()
+	menu.cursor = _tutorial_row(menu)
+	menu.handle_event(_act("ui_right"))
+	var saved_ok: bool = s.save(store) == OK
+	var loaded: AccessibilitySettings = AccessibilitySettings.from_dict(store.load_settings())
+	_cleanup(store)
+	if not saved_ok:
+		return "settings save failed"
+	return "ok" if not loaded.tutorial_enabled else "OFF did not survive settings.json"
+
+
+func test_main_wires_the_row_to_its_live_tutorial_model() -> String:
+	var m: MainScene = load("res://scenes/main.gd").new()
+	m.start_new_run(5)
+	var ob: Onboarding = m.enable_onboarding()
+	var wired: bool = m.settings_menu.onboarding == ob
+	m.free()
+	return "ok" if wired else "Main did not hand the settings menu its Onboarding"
+
+
+func test_settings_row_label_is_in_the_string_table() -> String:
+	var rows: Dictionary = load("res://tests/test_localization.gd").csv_rows()
+	return "ok" if rows.has("SET_TUTORIAL") else "SET_TUTORIAL missing from agora_strings.csv"
