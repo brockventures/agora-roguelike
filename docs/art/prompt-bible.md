@@ -231,7 +231,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 
 ## Batch 6.5: encounter deck (12 cards, 4:3)
 
-Nine cards come from real ids in `game/data/crises.json`; CME flare, pirate ambush and black market come from the hazard, piracy and underworld systems named in `source`. The remaining crises (e.g. `ares_opportunistic_squeeze`, `titan_opportunistic_hoard`) are left for a later pass.
+Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard and 3 opportunistic crises); CME flare comes from `hazards.check_cme_relay_interference`.
 
 ### card-antitrust-audit
 - batch: 6.5
@@ -240,7 +240,7 @@ Nine cards come from real ids in `game/data/crises.json`; CME flare, pirate ambu
 - source: antitrust_audit
 - prompt: Encounter card illustration, wide 4:3 composition: Regulatory auditors boarding a trading station: a row of stern officials in plain grey coats inspecting stacked crates under a harsh overhead lamp, an empty hearing podium and a scale of justice emblem-free, rust-red warning light.
 
-### card-emergency-sweep
+### card-emergency-antitrust-sweep
 - batch: 6.5
 - aspect: 4:3
 - sample: no
@@ -254,42 +254,56 @@ Nine cards come from real ids in `game/data/crises.json`; CME flare, pirate ambu
 - source: localized_shortage
 - prompt: Encounter card illustration, wide 4:3 composition: A bare Mars warehouse: rows of empty shelves and one lonely crate, a dust-red window onto the desert, a worker shrugging beside an empty loading lift.
 
-### card-supply-chain-stall
+### card-supply-chain-shortage
 - batch: 6.5
 - aspect: 4:3
 - sample: no
 - source: supply_chain_shortage
 - prompt: Encounter card illustration, wide 4:3 composition: A stalled convoy of cargo haulers parked dead in a dark lane, thrusters cold, a stranded dock crane waiting beside an empty berth.
 
-### card-margin-collapse
+### card-systemic-margin-collapse
 - batch: 6.5
 - aspect: 4:3
 - sample: no
 - source: systemic_margin_collapse
 - prompt: Encounter card illustration, wide 4:3 composition: A trading floor in cascade collapse: shattered holographic panels, scattered paper slips, a toppled chair and rust-red emergency light, traders frozen in alarm.
 
-### card-ares-markers
+### card-ares-retaliation
 - batch: 6.5
 - aspect: 4:3
 - sample: no
 - source: ares_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: Heavy industrial enforcers from a rust-coloured arms combine calling in debts: broad-shouldered figures in heavy suits at a dock gangway, a ledger-less contract slab held out menacingly.
 
-### card-titan-embargo
+### card-titan-retaliation
 - batch: 6.5
 - aspect: 4:3
 - sample: no
 - source: titan_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: A frozen cryo-hydro depot sealed shut: icy blockade barriers across a dock, frost-covered tanks, teal glow, a lone trader locked outside.
 
-### card-sol-audit
+### card-sol-retaliation
 - batch: 6.5
 - aspect: 4:3
 - sample: no
 - source: sol_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: A central government audit fleet looming over a small trader ship, a tall pale-bone administrative tower station behind, one beam locking onto the hull.
 
-### card-sol-levy
+### card-ares-opportunistic-squeeze
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: ares_opportunistic_squeeze
+- prompt: Encounter card illustration, wide 4:3 composition: Ares Heavy syndicate market squeeze: armored industrial syndicate managers in heavy rust-trimmed work suits watching an automated order terminal flicker, bulk gantry cranes idling, traders negotiating under harsh orange sodium worklights.
+
+### card-titan-opportunistic-hoard
+- batch: 6.5
+- aspect: 4:3
+- sample: no
+- source: titan_opportunistic_hoard
+- prompt: Encounter card illustration, wide 4:3 composition: Titan Cryo-Hydro hoarding market supply: massive frost-caked propellant storage spheres sealed behind security barricades, automated cryo-pumps draining terminal fuel lines, chilled teal vapor clouds, dock workers standing locked out at the gate.
+
+### card-sol-opportunistic-levy
 - batch: 6.5
 - aspect: 4:3
 - sample: no
@@ -302,17 +316,3 @@ Nine cards come from real ids in `game/data/crises.json`; CME flare, pirate ambu
 - sample: yes
 - source: hazards.check_cme_relay_interference
 - prompt: Encounter card illustration, wide 4:3 composition: A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler, radio relay dishes sparking, shock-front bands rippling through space.
-
-### card-pirate-ambush
-- batch: 6.5
-- aspect: 4:3
-- sample: no
-- source: agora/piracy.py
-- prompt: Encounter card illustration, wide 4:3 composition: A pirate ambush in the asteroid belt: a ragged raider swooping out of a rock shadow toward a lone hauler, grappling lines flying, dust and debris, rust-red running lights.
-
-### card-black-market
-- batch: 6.5
-- aspect: 4:3
-- sample: no
-- source: tests/test_underworld_syndicate.py (underworld syndicate)
-- prompt: Encounter card illustration, wide 4:3 composition: A black-market deal in a dim docking bay: two hooded figures trading a sealed crate under a swinging lamp, stacked contraband barrels, a lookout watching the shadows.

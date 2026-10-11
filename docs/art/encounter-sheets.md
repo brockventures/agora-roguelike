@@ -1,12 +1,12 @@
 # AGORA Encounter Deck Character Sheets
 
-Grounded source of truth for encounter card illustrations across the 4:3 viewport in `card_panel` (`game/scenes/main.gd`). Part of #73 (Epic 6: Visual Identity & Art Asset Pipeline), sub-task 6.5.
+Grounded source of truth for encounter and crisis card illustrations across the 4:3 viewport in `card_panel` (`game/scenes/main.gd`). Part of #73 (Epic 6: Visual Identity & Art Asset Pipeline), sub-task 6.5.
 
 ---
 
 ## 🃏 Invariant Rule of Encounter Consistency
 
-Every encounter card represents an active crisis, regulatory enforcement, corporate retaliation, space hazard, or underworld event in the Sol system. Cards are rendered as pure **4:3 viewports** inside Godot's `card_panel` Control frame. Telemetry, crisis tier headers, expiration round counters, and systemic trade effects are rendered dynamically in Godot for #40 localization. The raster artwork must remain **100% text-free**.
+Every encounter card represents an active crisis (`game/data/crises.json`), spatial hazard (`game/core/hazards.gd`), or rated corridor event (`game/core/corridors.gd`) in the Sol system. Cards are rendered as pure **4:3 viewports** inside Godot's `card_panel` Control frame. Telemetry, crisis tier headers, expiration round counters, and systemic trade effects are rendered dynamically in Godot for #40 localization. The raster artwork must remain **100% text-free**.
 
 ---
 
@@ -26,76 +26,88 @@ Every encounter card represents an active crisis, regulatory enforcement, corpor
 
 ---
 
-## 1. Regulatory Crises (Antitrust & Enforcement)
+## 1. Systemic & Regulatory Crises (`game/data/crises.json`)
 
-### `card-antitrust-audit` (Sample Gate)
-- **Source:** `game/data/crises.json: antitrust_audit`
-- **Theme:** Government scrutiny, bureaucratic weight, warehouse inspections.
+Keyed 1:1 to the crisis IDs in `game/data/crises.json`:
+
+### `antitrust_audit` (`card-antitrust-audit` - Sample Gate)
+- **Name in Data:** "Antitrust Audit" (`tier: mid`, `kind: audit`)
 - **Visual Anatomy:** A squad of stern regulatory officials in grey trench coats boarding an industrial warehouse dock; harsh conical overhead floodlamp illuminating stacked shipping crates; an empty hearing podium with an emblem-free scale of justice; glowing rust-red inspection light.
 
-### `card-emergency-sweep`
-- **Source:** `game/data/crises.json: emergency_antitrust_sweep`
-- **Theme:** Urgent militarized regulatory raid.
+### `emergency_antitrust_sweep` (`card-emergency-antitrust-sweep`)
+- **Name in Data:** "Emergency Antitrust Sweep" (`tier: endgame`, `kind: audit`)
 - **Visual Anatomy:** Armored customs cutters swarming a station docking slip with crossing searchlight beams; shipping containers being sealed with magnetic security bands; dockworkers and traders scattering from gangways.
 
----
-
-## 2. Supply Chain & Market Collapses
-
-### `card-localized-shortage`
-- **Source:** `game/data/crises.json: localized_shortage`
-- **Theme:** Depleted planetary stocks, logistical drought.
+### `localized_shortage` (`card-localized-shortage`)
+- **Name in Data:** "Localized Shortage" (`tier: early`, `kind: shortage`)
 - **Visual Anatomy:** Cavernous Mars subterranean warehouse with endless rows of barren shelving; a single lonely crate under an amber worklight; a rust-red window overlooking the dusty Martian desert; a worker gesturing at an empty freight lift.
 
-### `card-supply-chain-stall`
-- **Source:** `game/data/crises.json: supply_chain_shortage`
-- **Theme:** Chokepoints, dead transit corridors.
-- **Visual Anatomy:** A frozen convoy of heavy haulers parked bumper-to-bumper along a dark transit lane with cold, unlit thrusters; a stranded station cargo crane poised above an empty berth.
+### `supply_chain_shortage` (`card-supply-chain-shortage`)
+- **Name in Data:** "Supply Chain Shortage" (`tier: mid`, `kind: shortage`)
+- **Visual Anatomy:** A stalled convoy of cargo haulers parked dead in a dark lane with cold unlit thrusters; a stranded dock crane waiting beside an empty berth.
 
-### `card-margin-collapse`
-- **Source:** `game/data/crises.json: systemic_margin_collapse`
-- **Theme:** Financial panic, cascading liquidations.
+### `systemic_margin_collapse` (`card-systemic-margin-collapse`)
+- **Name in Data:** "Systemic Margin Collapse" (`tier: endgame`, `kind: collapse`)
 - **Visual Anatomy:** Chaos across an orbital trading exchange floor; shattered glass-slate holographic quote boards; scattered physical paper transaction slips; toppled operator stools; stark rust-red emergency strobes reflecting on alarmed traders.
 
 ---
 
-## 3. Baron Retaliations & Sanctions
+## 2. Baron Retaliations & Opportunistic Moves (`game/data/crises.json`)
 
-### `card-ares-markers`
-- **Source:** `game/data/crises.json: ares_retaliation`
-- **Theme:** Heavy industrial syndicate calling in debts.
-- **Visual Anatomy:** Heavy syndicate enforcers in bulky pressurized suits standing menacingly at an airlock gangway; cold industrial foundry lighting; a blank slate contract tablet held out for payment.
+Keyed 1:1 to the baron event IDs in `game/data/crises.json`:
 
-### `card-titan-embargo`
-- **Source:** `game/data/crises.json: titan_retaliation`
-- **Theme:** Cryo-fuel cartel blockade.
-- **Visual Anatomy:** A sealed outer cryo-hydro refueling terminal; heavy frozen barricades clamped across the docking collars; frost-caked propellant spheres; dark teal lighting; a locked-out hauler drifting outside.
+### `ares_retaliation` (`card-ares-retaliation`)
+- **Name in Data:** "Ares Markers" (`baron_archetype: short_squeezer`, `origin: consequence`)
+- **Visual Anatomy:** Heavy industrial enforcers from a rust-coloured arms combine calling in debts: broad-shouldered figures in heavy suits at a dock gangway, a ledger-less contract slab held out menacingly.
 
-### `card-sol-audit`
-- **Source:** `game/data/crises.json: sol_retaliation`
-- **Theme:** Inner-system sovereign intervention.
-- **Visual Anatomy:** A colossal Sol administrative cruiser looming over a small merchant vessel; bone-white sovereign spire station in the background; a heavy containment tractor beam locking onto the merchant's hull.
+### `titan_retaliation` (`card-titan-retaliation`)
+- **Name in Data:** "Titan Embargo" (`baron_archetype: hoarder`, `origin: consequence`)
+- **Visual Anatomy:** A frozen cryo-hydro depot sealed shut: icy blockade barriers across a dock, frost-covered tanks, dark teal glow, a lone trader locked outside.
 
-### `card-sol-levy`
-- **Source:** `game/data/crises.json: sol_opportunistic_levy`
-- **Theme:** Surprise transit tariff at station gates.
-- **Visual Anatomy:** A heavy toll barrier dropping across a docking bay throat; uniformed customs collectors sliding an armored lockbox into a pneumatic intake hopper while a trader hands over cargo canisters.
+### `sol_retaliation` (`card-sol-retaliation`)
+- **Name in Data:** "Sol Audit" (`baron_archetype: auctioneer`, `origin: consequence`)
+- **Visual Anatomy:** A central government audit fleet looming over a small trader ship; a tall pale-bone administrative tower station behind; one tractor beam locking onto the hull.
+
+### `ares_opportunistic_squeeze` (`card-ares-opportunistic-squeeze`)
+- **Name in Data:** "Ares Squeeze" (`baron_archetype: short_squeezer`, `origin: random`)
+- **Visual Anatomy:** Ares Heavy syndicate leaning on a station trading desk: armored syndicate managers in rust-trimmed work suits watching an automated order terminal flicker; bulk gantry cranes idling; traders negotiating under harsh orange sodium lamps.
+
+### `titan_opportunistic_hoard` (`card-titan-opportunistic-hoard`)
+- **Name in Data:** "Titan Hoard" (`baron_archetype: hoarder`, `origin: random`)
+- **Visual Anatomy:** Titan Cryo-Hydro hoarding propellant and cornering the book: massive frost-caked propellant storage spheres sealed behind security barricades; automated cryo-pumps draining terminal fuel lines; chilled teal vapor clouds; dock workers locked out at the gate.
+
+### `sol_opportunistic_levy` (`card-sol-opportunistic-levy`)
+- **Name in Data:** "Sol Levy" (`baron_archetype: auctioneer`, `origin: random`)
+- **Visual Anatomy:** A surprise levy at a dock: a toll gate dropping across a berth; customs collectors sliding an armored lockbox into a pneumatic intake hopper while a trader hands over cargo canisters.
 
 ---
 
-## 4. Space Hazards & Underworld
+## 3. Spatial Hazard Outcomes (`game/core/hazards.gd`)
 
-### `card-cme-flare` (Sample Gate)
-- **Source:** `TransitHazards.check_cme_relay_interference`
-- **Theme:** Violent solar space weather disrupting comms and nav.
-- **Visual Anatomy:** A massive coronal mass ejection wave rolling through the inner system in layered ochre and rust prominence arcs; rocky asteroid relay dishes sparking electrical discharges; a lone cargo hauler racing through dark teal space ahead of the shock front.
+Keyed to concrete hazard mechanics in `game/core/hazards.gd`:
 
-### `card-pirate-ambush`
-- **Source:** `TransitHazards / piracy system`
-- **Theme:** Belt raiders, deep-space ambush.
-- **Visual Anatomy:** A ragged outlaw raider swooping out of the shadow of an asteroid toward an isolated hauler; magnetic harpoons and grappling tethers firing; cloud of rocky shrapnel; hostile rust-red running lights.
+### CME Relay Blackout (`card-cme-flare` - Sample Gate)
+- **Source:** `Hazards.check_cme_relay_interference` / `CME_RELAY_CORRIDORS`
+- **Visual Anatomy:** A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler; radio relay dishes sparking electrical discharges; shock-front bands rippling through dark teal space.
 
-### `card-black-market`
-- **Source:** `Underworld syndicate system`
-- **Theme:** Illicit transactions in unmonitored docking bays.
-- **Visual Anatomy:** A clandestine deal in a decommissioned station maintenance bay; two hooded figures exchanging an unmarked reinforced strongbox under a swinging paper-yellow utility lamp; stacked illicit fluid barrels; a lookout keeping watch in the corridor shadows.
+### Transit Storm Delay (`card-storm-delay`)
+- **Source:** `Hazards.P_DELAY` (`DELAY_ROUNDS: 1-3 rounds`)
+- **Visual Anatomy:** A cargo vessel caught in a high-radiation solar storm: ion turbulence battering the hull; glowing static discharges along the radiator panels; a blown thruster coil glowing hot while crew race to repair propulsion.
+
+### Hull Breach & Cargo Loss (`card-hull-breach`)
+- **Source:** `Hazards.P_LOSS` (`LOSS_FRACTION: 10-20% cargo`)
+- **Visual Anatomy:** Micro-meteoroid puncture or containment breach: jagged tear along the container rack; frozen atmosphere venting into the void; container canisters spilling loose into zero-g.
+
+---
+
+## 4. Corridor Piracy & Smuggling (`game/core/corridors.gd`)
+
+Keyed to rated corridors and smuggling lanes in `game/data/corridors.json`:
+
+### Asteroid Belt Corridor Raid (`card-pirate-raid`)
+- **Source:** `Corridors.data().piracy` / `is_belt` raid odds
+- **Visual Anatomy:** A pirate raider ambush in the asteroid belt: a ragged raider swooping out of a rock shadow toward a lone hauler; grappling lines flying; dust and debris; rust-red running lights.
+
+### Dark Run Smuggle Lane (`card-dark-run`)
+- **Source:** `Corridors.data().smuggle_lanes.dark_run` / `black_market_corridors` perk
+- **Visual Anatomy:** Running silent on the unmonitored Mars-Ceres Dark Run: a blacked-out hauler slipping through a craggy asteroid trench with running lights extinguished; illicit fluid canisters strapped to the keel; scanning sensors sweeping harmlessly overhead.
