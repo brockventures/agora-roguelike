@@ -35,7 +35,7 @@ Design proposal for #160 (Corporate policies: a run-only tech tree that resets e
 | **A cursor list exists.** The perk screen is a modal of `perk` rows (`tier`, `name`, `branch`, `tag`, `cursor`), moved by D-pad `m0_up` / `m0_down` (`perk_cursor`) and bought with A. It also takes an onboarding `text` row (`ONB_PERKS_1`) pushed to the front. | `main.gd:3066-3077`, `m0_loop.gd:144,1674-1696` |
 | **Controller-first actions.** `ALL_ACTIONS` holds 19 `m0_*` actions mirrored in `project.godot` and the Steam Input manifest; a modal reuses `m0_up` / `m0_down` / `m0_submit` / `m0_cancel` and adds none. | `m0_loop.gd:64-99`, `docs/design/onboarding.md` section 4 |
 | **Replays** record player inputs only; `Replay.start_recording(seed, profile, delta, tpr, world)` attaches a world only when asked. The whole-world goldens play 40 rounds at 30 ticks per round, so they cross rounds 20 and 40. | `replay.gd:88-91`, `world_golden.gd:15-17`, `tests/fixtures/world/world_goldens.json` |
-| **Onboarding** has a conditional beat for the perk screen that adds one `text` row to that modal, and says a later beat will teach the first policy pick once #160 exists. | `docs/design/onboarding.md` section 3 ("Later"), `main.gd:3074`, `data/onboarding.json` |
+| **Onboarding** has a conditional beat for the perk screen that adds one `text` row to that modal, and says a later beat will teach the first policy pick once #160 (Corporate policies) exists. | `docs/design/onboarding.md` section 3 ("Later"), `main.gd:3074`, `data/onboarding.json` |
 | **Localization.** Every player-visible string is a CSV key; tests require every used key to exist, every key to be reachable, no raw English in `ui/`, `scenes/`, `core/`, and the modals fit at 100 / 115 / 130% in English and in the pseudo locale (+30% length). | `tests/test_localization.gd`, `tests/test_i18n_audit.gd`, `tests/test_i18n_fit.gd:768-797` |
 
 **Gaps (not features).** None of these exist: any run-scoped modifier layer, any stat for tolls, assumed debt or Severance, any mid-run pick, any in-run list of what the player has adopted.
@@ -211,7 +211,7 @@ Policies are run state, so they change the hash when they exist.
 
 ## 10. The onboarding hook (Proposed)
 
-`docs/design/onboarding.md` leaves "a later beat teaches the first policy pick" for #160. Its mechanics are the perk beat's (beat 8): **one new conditional beat**, `policy`, in `data/onboarding.json`:
+`docs/design/onboarding.md` leaves "a later beat teaches the first policy pick" for #160 (Corporate policies). Its mechanics are the perk beat's (beat 8): **one new conditional beat**, `policy`, in `data/onboarding.json`:
 
 - `kind: conditional`, `holds: false` (the modal already stops the clock through the serialized path, so the `Main`-level freeze is not needed), `fires` on a new `policy_pending` event, `done` on a new `policy_adopted` event.
 - The text is one `text` row pushed to the front of the policy modal, as `_perks_model` does at `main.gd:3074`: what a policy is, that it lasts one run and that the permanent perks are unchanged. In the HR voice, three lines, for example: "Welcome to the Policy Committee. Adopt one directive. It remains in force until this run ends. Your Golden Parachutes are unaffected."
