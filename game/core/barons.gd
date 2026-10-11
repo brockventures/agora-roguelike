@@ -86,7 +86,9 @@ static func for_new_run() -> Barons:
 ## fold order the market relies on: barons by sorted id, then rival fleets by
 ## sorted id. Today a baron emits its supply pipelines (Epic 3 task 3); archetype
 ## behaviours (tasks 4-6) add to this; rival fleets (task 10) emit no mods, they trade.
-func market_mods() -> Array:
+## The Rescue Project's site embargo (#32 task 3) comes last of all, after every rival mod:
+## RunController.world_mods() passes the open project in, null (the default) emits none.
+func market_mods(rescue: RescueProject = null) -> Array:
 	var out: Array = []
 	for id in ids():
 		out.append_array(_mods_of(id))
@@ -94,6 +96,8 @@ func market_mods() -> Array:
 	# destination book. A fleet with none emits nothing, so the fold is as it was.
 	for id in rival_ids():
 		out.append_array(Rivals.mods_of(rivals[id]))
+	if rescue != null:
+		out.append_array(rescue.embargo_mods())
 	return out
 
 

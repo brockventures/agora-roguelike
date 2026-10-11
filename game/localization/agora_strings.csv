@@ -489,3 +489,15 @@ MAP_CARD_ALIGNED,ALIGNED: -%d%% hazard
 MAP_CARD_SMUGGLE,%s: NO BELT TOLL
 MAP_ROUTE_LANE,"Route to %s via %s: %s. A departs."
 LANE_DARK_RUN_NAME,Dark Run
+HL_RESCUE_OPEN,"Sol System Rescue Project open: build the Stabiliser in %d phases. Phase 1 is at %s"
+HL_RESCUE_DELIVER,"Stabiliser: %d units delivered at %s for %d CR"
+HL_RESCUE_PHASE,"Stabiliser phase %d of %d complete. Next build site: %s"
+HL_RESCUE_FIELD,Stabiliser field up: doomsday clock at %d%% speed
+HL_RESCUE_DONE,"SOL SYSTEM RESCUED in round %d with %d rounds of clock to spare"
+HL_RESCUE_REFUSED,"Delivery refused: %s"
+RESCUE_REASON_NOT_OPEN,the Rescue Project is not open
+RESCUE_REASON_WRONG_SITE,this is not the build site
+RESCUE_REASON_NO_CARGO,your hold has nothing the phase needs
+RESCUE_REASON_NO_CR,not enough CR for the fee
+RESCUE_REASON_WOULD_BANKRUPT,the fee would leave you insolvent
+SET_ACT_PROJECT,Deliver to the Rescue Project
