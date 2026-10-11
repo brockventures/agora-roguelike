@@ -127,6 +127,16 @@ var _loaded_profile: MetaProfile = null
 var steam_hooks: SteamHooks = null
 var _saved_profile_dict: Dictionary = {}
 
+## First-hour tutorial (#36 First-Hour Onboarding Flow, docs/design/onboarding.md). Null until
+## enable_onboarding(), which enable_persistence() calls, so headless runs never have one.
+## `_onb_hold` is the id of the beat whose reading hold is up ("" for none): a Main-level
+## freeze like the settings screen, so the SimClock is never written. `_onb_shown` holds the
+## beats whose first show has happened (hold raised or deliberately skipped), runtime only.
+var onboarding: Onboarding = null
+var _onb_hold: String = ""
+var _onb_shown: Dictionary = {}
+var _onb_ctrl: RunController = null
+
 
 func _init() -> void:
 	custom_minimum_size = VIEWPORT_SIZE
@@ -163,8 +173,13 @@ func _process(delta: float) -> void:
 	# covers the dialog and is still there when the dialog closes.
 	if not _modal_has_focus():
 		toasts.advance(delta)
+	_onb_update()
 	# The settings screen freezes the sim, as an overlay would.
 	if settings_menu != null and settings_menu.is_open:
+		_refresh_readouts()
+		return
+	# A tutorial hold freezes it the same way (never through the SimClock).
+	if _onb_hold != "":
 		_refresh_readouts()
 		return
 	# A wake-sized raw delta must not drive the ticker or anything else either.
@@ -193,6 +208,13 @@ func handle_input(event: InputEvent) -> bool:
 			return settings_menu.handle_event(event)
 		if InputMap.has_action(InputRemap.ACT_SETTINGS) and event.is_action_pressed(InputRemap.ACT_SETTINGS) and not event.is_echo():
 			settings_menu.open()
+			return true
+	if _onb_hold != "":
+		_onb_update()  # a modal or Start since the last frame has already ended the hold
+		if _onb_hold != "" and event.is_action_pressed(M0Loop.ACT_SUBMIT) and not event.is_echo():
+			# The confirm press ends the hold and goes no further: M0Loop never sees it, so it
+			# cannot submit an order or depart.
+			_onb_hold = ""
 			return true
 	return loop != null and loop.handle_input(event)
 
@@ -233,6 +255,7 @@ func enable_persistence(store: SaveStore) -> void:
 	if not loop.round_completed.is_connected(_on_round_completed):
 		loop.round_completed.connect(_on_round_completed)
 		loop.action_handled.connect(_on_action_handled)
+	enable_onboarding()
 
 
 ## Replaces the current run with the one in the run slot. False (and nothing
@@ -254,6 +277,7 @@ func continue_saved_run() -> bool:
 	bags = r["bags"]
 	initialize_systems(rc, false)
 	loop.set_market(r["market"])
+	_onb_resume()
 	return true
 
 
@@ -340,6 +364,7 @@ func initialize_systems(p_controller: RunController = null, p_dock_start: bool =
 	else:
 		loop.sync_hud_to_ship()
 	_bind_steam_hooks()
+	_onb_bind_controller()
 	if not loop.woke_from_sleep.is_connected(_on_woke_from_sleep):
 		loop.woke_from_sleep.connect(_on_woke_from_sleep)
 	if not loop.run_restarted.is_connected(_on_run_restarted):
@@ -351,6 +376,7 @@ func initialize_systems(p_controller: RunController = null, p_dock_start: bool =
 func _on_run_restarted(rc: RunController) -> void:
 	controller = rc
 	_bind_steam_hooks()
+	_onb_bind_controller()
 	bags = Bags.new("m0", null, rc.run_seed)
 	tactical_map = hud.tactical_map
 	trading_overlay = hud.trading_overlay
@@ -669,6 +695,190 @@ func wipe_fraction(seq: int) -> float:
 	return clampf(float(drawings) / float(WIPE_DRAWINGS), 0.0, 1.0)
 
 
+# --- First-hour tutorial wiring (#36, docs/design/onboarding.md sections 4, 5, 8) ---
+
+## Builds the tutorial model and wires it to the signals that already fire. Called by
+## enable_persistence(), so only a real (persisting) game has one; a test builds it explicitly.
+## Everything here reads; nothing writes the sim, the clock, a draw stream or a save.
+func enable_onboarding(model: Onboarding = null) -> Onboarding:
+	if onboarding != null:
+		return onboarding
+	onboarding = model if model != null else Onboarding.new(settings)
+	_onb_hold = ""
+	_onb_shown.clear()
+	if loop != null:
+		loop.tab_changed.connect(_onb_on_tab_changed)
+		loop.overlay_changed.connect(_onb_on_overlay_changed)
+		loop.collapse_phase_changed.connect(_onb_on_phase_changed)
+	if hud != null:
+		hud.headline_emitted.connect(_onb_on_headline)
+		if hud.gamepad_focus != null:
+			hud.gamepad_focus.order_executed.connect(_onb_on_order_executed)
+	_onb_bind_controller()
+	_onb_sync_context()
+	return onboarding
+
+
+## After a saved run is loaded: recompute the active beat from live state (the current tab,
+## fills, cargo, the route card). A load resumes mid-beat, and the beat that is active now
+## counts as already shown, so a load never raises a hold (design section 5).
+func _onb_resume() -> void:
+	if onboarding == null:
+		return
+	_onb_hold = ""
+	_onb_sync_context()
+	if onboarding.active_id() != "":
+		_onb_shown[onboarding.active_id()] = true
+
+
+## (Re)connects the RunController signals; the controller is replaced on a new run or a load.
+func _onb_bind_controller() -> void:
+	if onboarding == null:
+		return
+	if _onb_ctrl == controller:
+		return
+	if _onb_ctrl != null:
+		_onb_ctrl.round_advanced.disconnect(_onb_on_round_advanced)
+		_onb_ctrl.transit_departed.disconnect(_onb_on_departed)
+		_onb_ctrl.transit_arrived.disconnect(_onb_on_arrived)
+		_onb_ctrl.bankruptcy_filed.disconnect(_onb_on_filed)
+		_onb_ctrl.run_collapsed.disconnect(_onb_on_run_ended)
+		_onb_ctrl.run_rescued.disconnect(_onb_on_run_ended)
+	_onb_ctrl = controller
+	_onb_hold = ""
+	if _onb_ctrl != null:
+		_onb_ctrl.round_advanced.connect(_onb_on_round_advanced)
+		_onb_ctrl.transit_departed.connect(_onb_on_departed)
+		_onb_ctrl.transit_arrived.connect(_onb_on_arrived)
+		_onb_ctrl.bankruptcy_filed.connect(_onb_on_filed)
+		_onb_ctrl.run_collapsed.connect(_onb_on_run_ended)
+		_onb_ctrl.run_rescued.connect(_onb_on_run_ended)
+
+
+func _onb_event(type: String, extra: Dictionary = {}) -> void:
+	if onboarding == null:
+		return
+	var e: Dictionary = extra.duplicate()
+	e["type"] = type
+	# Events are folded against the HUD as it is right now. The fill count is left to the model
+	# while it folds an order (it counts that fill itself), then resynced from the loop.
+	_onb_sync_context(type == "order_executed")
+	onboarding.handle(e)
+	_onb_sync_context()
+
+
+func _onb_on_tab_changed(tab_name: String) -> void:
+	_onb_event("tab_changed", {"tab": tab_name})
+
+
+func _onb_on_order_executed(payload: Dictionary) -> void:
+	_onb_event("order_executed", {"side": str(payload.get("side", "")), "station": str(payload.get("station", ""))})
+
+
+func _onb_on_round_advanced(_round_num: int) -> void:
+	_onb_event("round_advanced")
+
+
+func _onb_on_departed(_info: Dictionary) -> void:
+	_onb_event("transit_departed")
+
+
+func _onb_on_arrived(_info: Dictionary) -> void:
+	_onb_event("transit_arrived")
+
+
+func _onb_on_filed(_report: Dictionary) -> void:
+	_onb_event("bankruptcy_filed")
+
+
+func _onb_on_run_ended() -> void:
+	_onb_event("run_ended")
+
+
+## A corridor raid or hazard is the lane's own GalNet headline (m0_loop _post_corridor_headline).
+func _onb_on_headline(item: Dictionary) -> void:
+	var key: String = str(item.get("key", ""))
+	if ["HL_RAID_PAID", "HL_RAID_TAKEN", "HL_RAID_SPARED"].has(key):
+		_onb_event("corridor_raid")
+	elif ["HL_CORRIDOR_DELAY", "HL_CORRIDOR_LOSS", "HL_CORRIDOR_HELD"].has(key):
+		_onb_event("corridor_hazard")
+
+
+func _onb_on_overlay_changed(_state: String) -> void:
+	_onb_update()
+
+
+func _onb_on_phase_changed(phase: String) -> void:
+	_onb_event("perk_screen_opened" if phase == M0Loop.PHASE_PERKS else "perk_screen_closed")
+
+
+## What the HUD can show right now, read from values it already computes.
+func _onb_sync_context(skip_fills: bool = false) -> void:
+	if onboarding == null or loop == null or controller == null:
+		return
+	var ctx: Dictionary = {
+		"tab": loop.tab_name(),
+		"hold_empty": controller.get_total_cargo() <= 0,
+		"route_card": market_modal != null and not _route_card_plan().is_empty(),
+		"in_transit": controller.is_in_transit(),
+	}
+	if not skip_fills:
+		ctx["fills"] = loop.total_fills
+	onboarding.set_context(ctx)
+
+
+## Once a frame (and on overlay changes): refresh the context, end a hold that no longer
+## applies, and raise the hold for a beat that is showing its row for the first time.
+func _onb_update() -> void:
+	if onboarding == null or loop == null or controller == null:
+		return
+	_onb_sync_context()
+	var active: String = onboarding.active_id()
+	var clock_paused: bool = controller.sim_clock.paused
+	if _onb_hold != "" and (active != _onb_hold or loop.overlay_state != M0Loop.OVERLAY_NONE or clock_paused):
+		_onb_hold = ""  # done by the player, a modal opened, or Start paused the clock
+	if active == "" or _onb_shown.has(active) or _modal_has_focus():
+		return  # a beat waits for the modal to close; it is not "shown" until then
+	_onb_shown[active] = true
+	if onboarding.holds_now() and not clock_paused:
+		_onb_hold = active
+
+
+## True while a tutorial hold is freezing the sim.
+func is_onboarding_held() -> bool:
+	return _onb_hold != ""
+
+
+## The active beat as desk-notes entries (a debug-grade chip and lines until the surface
+## task): hidden while a modal owns the screen, and after the tutorial has nothing to say.
+func _onb_notes() -> Array:
+	var out: Array = []
+	if onboarding == null or _modal_has_focus():
+		return out
+	var b: Dictionary = onboarding.active_beat()
+	if b.is_empty():
+		return out
+	var held: bool = _onb_hold != ""
+	var chip: String
+	if str(b["kind"]) == Onboarding.KIND_CORE:
+		chip = tr("ONB_CHIP_HELD" if held else "ONB_CHIP") % [int(b["index"]) + 1, _onb_core_count()]
+	else:
+		chip = tr("ONB_CHIP_NOTE_HELD" if held else "ONB_CHIP_NOTE")
+	out.append({"kind": "chip", "text": chip, "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
+	if held:
+		out.append({"kind": "line", "text": tr("ONB_CONTINUE"), "color": HudTheme.INK})
+	out.append({"kind": "line", "text": str(b["id"]).to_upper(), "color": HudTheme.INK})
+	return out
+
+
+func _onb_core_count() -> int:
+	var n: int = 0
+	for b in onboarding.beats:
+		if str((b as Dictionary)["kind"]) == Onboarding.KIND_CORE:
+			n += 1
+	return n
+
+
 # --- Accessibility settings (#37) ---
 
 ## Loads settings.json (defaults when absent) and applies them to InputMap,
@@ -683,6 +893,8 @@ func _load_settings() -> void:
 	settings.alert_volume = fresh.alert_volume
 	settings.alert_mute = fresh.alert_mute
 	settings.reduced_motion = fresh.reduced_motion
+	settings.tutorial_enabled = fresh.tutorial_enabled
+	settings.tutorial_seen = fresh.tutorial_seen
 	settings.bindings = fresh.bindings
 	var env_locale: bool = OS.get_environment(Loc.PSEUDO_ENV) in ["1", "true", "yes"] or OS.get_environment(Loc.LOCALE_ENV) != ""
 	if env_locale:
@@ -934,7 +1146,7 @@ func _refresh_header() -> void:
 		[tr("HUD_CHIP_LANG"), Loc.locale_label()],
 		[tr("HUD_CHIP_CREDITS"), _fmt(int(h["cr"]))],
 		[tr("HUD_CHIP_DEBT"), _fmt(int(h["total_debt"]))],
-		[tr("HUD_CHIP_SPEED"), str(h["speed_label"])],
+		[tr("HUD_CHIP_SPEED"), tr("ONB_HELD") if _onb_hold != "" else str(h["speed_label"])],
 		[tr("HUD_CHIP_DOOMSDAY") % Loc.stage(stage), "%d:%02d" % [secs / 60, secs % 60] + (" " + tr("HUD_CLOCK_SPEED") % loop.rescue_clock_pct() if loop.rescue_clock_pct() < 100 else "")],
 	]
 	var tab_names: Array = []
@@ -1946,6 +2158,7 @@ func _card_notes() -> Array:
 		var o: Dictionary = f.last_executed_order
 		var who: String = _maker_name(str(o.get("counterparty_id", ""))) if str(o.get("counterparty_id", "")) != "" else str(o.get("counterparty", ""))
 		out.append({"kind": "line", "text": tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""], "color": HudTheme.INK})
+	out.append_array(_onb_notes())
 	var st: String = hud.active_station
 	var com: String = hud.active_commodity
 	# The Stabiliser card (#32): the open phase, its bill and what a delivery would do here.
