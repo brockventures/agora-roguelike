@@ -4,6 +4,8 @@ Design proposal for #32 (Implement Endgame Sol System Rescue Project (Post-Monop
 
 **Status: proposed, awaiting Ryan** (section 12). Every section separates what the code already does (**Grounded**, with `file:line` from `main` at `0bea1d9`) from what this doc invents (**Proposed**). Nothing here is game code. Every number marked "placeholder" is a tuning guess for Ryan, in CR, units, bps or rounds. The pacing numbers in section 7 were measured with a throwaway probe against `main` (`scratch/e32probe/`, not committed); the method and its limits are stated there.
 
+**Headline finding.** The project itself fits comfortably once the monopoly exists (section 7.2). The risk sits one step earlier: at current Epic 3 numbers a takeover puts roughly 55,000 CR of baron debt on the player's principal, and I could not show that a trade-funded run reaches the monopoly before about round 90 (section 7.1). That is Question 1, and it matters more than any number in the project's own bill.
+
 ## 1. What exists today (Grounded)
 
 | Fact | Where |
@@ -19,7 +21,7 @@ Design proposal for #32 (Implement Endgame Sol System Rescue Project (Post-Monop
 | Docking tolls exist (Ares 15, Titan 10, Sol Central 12 CR) but go to SYSTEM: `_arrive` subtracts the toll from the arriving player's CR and credits nobody. A held baron makes the player toll-exempt. **There is no toll income for a holder.** | `run_controller.gd:147-168`, `barons.gd:642-654` |
 | A taken baron's treasury is absorbed into the player's CR and its debt onto doomsday principal at the moment of takeover. Along the lever route (corner, credit, default) the treasury is already drained: all three read `treasury=0` after the probe's takeovers. A held baron keeps its warehouse (`inventory`); after the probe's takeovers that was Ares 200 MACHINERY, Sol Central 150 FOOD, Titan 200 FOOD (section 4). | `takeover.gd` (`take`), `epic3-barons.md` 5.3, probe in section 7 |
 | Pipelines: each baron's anchor has two commodities with extra ask depth, and outsiders pay a premium on the ask; insiders (the holder) see the base price. Mars: ORE and MACHINERY. Ceres: FUEL and FOOD. Earth: FRAG and FOOD. **Luna has no baron.** | `barons.json`, `barons.gd:657` |
-| The transit loop: four stations (`earth`, `luna`, `mars`, `ceres`), five commodities (`FRAG`, `FUEL`, `FOOD`, `ORE`, `MACHINERY`), a **100-unit hold**, route times of 1 to 3 rounds (Earth-Luna 1, Earth-Mars 2, Luna-Mars 2, Mars-Ceres 2, Earth-Ceres 3, Luna-Ceres 3). `StationMarket.unlock_station` seeds books for any of the four. Fuel burn is computed but nothing in play charges it. | `game/core/transit.gd:10-45`, `run_controller.gd:43-44`, `station_market.gd:109`, `epic3-barons.md` section 1 |
+| The transit loop: four stations (`earth`, `luna`, `mars`, `ceres`), five commodities (`FRAG`, `FUEL`, `FOOD`, `ORE`, `MACHINERY`), a **100-unit hold**, route times of 1 to 3 rounds (Earth-Luna 1, Earth-Mars 2, Luna-Mars 2, Mars-Ceres 2, Earth-Ceres 3, Luna-Ceres 3). `StationMarket.unlock_station` seeds books for any of the four. Luna is a legal destination. `depart` charges only the belt toll, never fuel. | `game/core/transit.gd:10-45`, `run_controller.gd:43-44,86-132`, `station_market.gd:109`, `epic3-barons.md` section 1 |
 | Base prices (CR per unit): Earth FRAG 20.2 FUEL 14.5 FOOD 10.2 ORE 27.5 MACHINERY 18.5; Luna 15.8 / 8.5 / 22.0 / 21.5 / 23.0; Mars 12.8 / 16.5 / 17.5 / 16.5 / 13.8; Ceres 11.2 / 24.5 / 27.5 / 11.5 / 29.5. | `transit.gd:20-26` |
 | Severance is `rounds x 1 + 0.5% of peak net worth + 400 per baron held at the end`, banked into `profile.severance_points` and `profile.barons_broken` (saved only when non-zero). The perk tree in `parachutes.json` costs 2050 points in total (tiers 100 / 250 / 500). | `game/core/parachutes.gd:62-66,301-307`, `game/core/meta_profile.gd:21,69`, `game/data/parachutes.json` |
 | Chapter 11 assessment is `Chapter11.assess`: insolvent when total debt exceeds liquidation value (CR plus cargo at a 50% haircut). A fresh corp starts with 5000 CR. Filing forfeits held barons. | `game/core/chapter11.gd:24-34`, `epic3-barons.md` 5.3 |
@@ -41,7 +43,7 @@ Design proposal for #32 (Implement Endgame Sol System Rescue Project (Post-Monop
 2. **Monopoly pays for the rescue; the player supplies the legs.** Rent funds the CR cost, the pipelines make the goods cheap, and the work is hauling them to four named stations.
 3. **Progress is never taken away by chance** (Ryan's rule, section 8). The clock can end the run only because the player was too slow.
 4. **No new randomness.** The project is a pure function of the player's deliveries, so replays and saves need no new draw streams.
-5. A strong run **fits with room to spare**; a slow run fails by a margin the player can see coming (section 7).
+5. **Once the monopoly exists, the project fits with room to spare**; a slow run fails by a margin the player can see coming (section 7.2). Whether a run reaches the monopoly in time is an Epic 3 capital question, not a project one (section 7.1, Question 1).
 
 ## 3. The project (Proposed)
 
@@ -67,7 +69,7 @@ A **Magnetic Solar Stabiliser** ("the Stabiliser"): a ring of superconducting co
     {"id": "ignition_array", "name": "Ignition Array", "site": "ceres",
      "needs": {"MACHINERY": 100, "ORE": 100, "FUEL": 100}, "cr": 8000, "keep_bps": 0}
   ],
-  "win": {"severance_base": 1000, "severance_per_round_left": 20}
+  "win": {"severance_base": 500, "severance_per_round_left": 10}
 }
 ```
 
@@ -86,9 +88,9 @@ The project **opens** when `monopoly_achieved` fires and the player continues fr
 
 Every station sells every commodity (`unlock_station` seeds all five), so on its own a site that is also a seller would let the player buy and deposit in place and never travel. The rule that prevents it uses machinery that already exists:
 
-> While a phase is open, the site's books **carry no ask depth** for that phase's commodities: `{station: site, commodity: X, depth_bps: -10000}` world mods, emitted from project state each round like every baron effect (epic3 constraint 1: persistence cannot live in the book, because `replenish()` reseeds it).
+> While a phase is open, the site's books **carry almost no ask depth** for that phase's commodities: `{station: site, commodity: X, ask_depth_bps: 0}` world mods, emitted from project state each round like every baron effect (epic3 constraint 1: persistence cannot live in the book, because `replenish()` reseeds it).
 
-The fiction: the yard has bought up the local stock. The player's other trades at the site are untouched (bids stay). The mods fold **after** every baron and rival mod and before crisis mods, with a golden fixture for the order, exactly as epic3 constraint 3 requires.
+The fiction: the yard has bought up the local stock. `ask_depth_bps` is the ask-side multiplier Epic 3 task 2 added (`station_market.gd:196-212`, folded as `depth x ask_depth / 10000`), so **bids are untouched** and the player's other trades at the site are too. It is a multiplier, not an offset: 0 does not make the ask empty, because the seeder floors every level at 1 unit (`maxi(1, ...)`, `station_market.gd:98`), leaving a trickle of `DEPTH_LEVELS` (5) units. That is enough for the book to keep a mid price that rival route scoring reads (task 3 checks this), and too little to build a phase from. The mods fold **after** every baron and rival mod and before crisis mods, with a golden fixture for the order, exactly as epic3 constraint 3 requires.
 
 Where the goods are bought is the player's choice, and that is the design:
 
@@ -113,9 +115,9 @@ Honest accounting against the code, not the brief's wish list:
 
 | Source | Today | Use in the project |
 |---|---|---|
-| **Rent** | Real: 675 CR a round across the three barons (`takeover.gd:245`). | **The main funding.** While the project is open, rent is multiplied by `rent_multiplier_bps` (20000, placeholder), so **1,350 CR a round**. `Takeover.rent` stays a pure function of saved state (the multiplier reads the saved project state), so rent previews and the sidebar line stay correct. |
+| **Rent** | Real: 675 CR a round across the three barons (`takeover.gd:245`). | **The main funding.** While the project is open, rent is multiplied by `rent_multiplier_bps` (20000, placeholder), so **1,350 CR a round**. `Takeover.rent(w, id)` takes no `RunController`, so the multiplier lives on the world: `Barons.rent_bonus_bps` (default 10000, never saved because it is derived), set by `RunController` when the project opens, completes or is forfeited, and re-derived from the saved project state in `RunSave.restore` (task 2). Rent stays a pure function of saved state, so previews and the sidebar line stay correct. |
 | **Pipelines** | Real: insider base price and extra depth on six commodity lines. | The cheap source for four of the five commodities (section 3.3). Without the monopoly the same goods cost an outsider's ask premium (+6% to +8%, `barons.json` `outsider_ask_bps`) and thinner depth: a visible edge. |
-| **Warehouses** | Real: a taken baron keeps its `inventory`. The probe left Ares 200 MACHINERY, Sol Central 150 FOOD, Titan 200 FOOD (the lever route drains the pipeline lines it covers, not the rest). | **Pledge**: stock in a held baron's warehouse **at the open phase's site station** counts as already delivered, no hauling, CR fee still charged. Because the lever route decides what is left, the pacing in section 7 does **not** count on it; it is upside. Phase 3 at Mars with Ares's machinery is the only case that matches the shipped stock, so this is a small bonus. |
+| **Warehouses** | Real: a taken baron keeps its `inventory`. The probe left Ares 200 MACHINERY (Mars), Sol Central 150 FOOD (Earth), Titan 200 FOOD (Ceres); the lever route drains the pipeline lines it covers, not the rest. | **No match, so no mechanic.** Checked against the bill: Mars's phase (3) needs FOOD and FRAG, Earth's (2) needs FUEL and MACHINERY, Ceres's (4) needs MACHINERY, ORE and FUEL, and Luna has no baron. None of the three leftovers fits a phase at its own station. A pledge of warehouse stock would do nothing with the shipped data, and the lever route decides what is left, so it is dropped. (If Ryan wants warehouses to matter, the bill is data: re-aim a phase at a station whose baron holds stock it needs.) |
 | **Treasuries** | A takeover absorbs the treasury into CR at once. The shipped lever route leaves it near 0. | **Not a funding source**, and the doc does not pretend otherwise. They paid for themselves at takeover. |
 | **Toll income** | None. Tolls go to SYSTEM. | **Not a funding source.** Even if tolls were redirected to the holder, a fleet docking pays 10 to 15 CR, a rounding error beside 1,350 a round. Proposal: leave tolls alone. The exemption stays the benefit. |
 
@@ -155,7 +157,7 @@ Phase 4 complete -> `RescueProject.completed` -> `RunController.finish_rescue()`
 - `end_run("rescued")` (existing path: `_bank_corp` once per corp, `end_reason = "rescued"`), the sim clock pauses, `is_run_over()` returns true for a rescued run (it must not read `is_collapsed()` alone), and the collapse path cannot double-bank because of the `_banked_corp` guard.
 - `M0Loop.OVERLAY_RESCUED` raises a wide teal modal (the `_monopoly_model` shape: eyebrow "SOL SYSTEM RESCUED", body, `kv` rows, A continues), then the **existing** summary -> Golden Parachutes perks -> new run flow (`PHASE_SUMMARY`, `m0_loop.gd:1512`). The collapse overlay is not reused; the cause text for `reason == "rescued"` is new.
 - **Run summary rows** (additions to `run_summary()`, `m0_loop.gd:1326`, and `_summary_model`, `main.gd:2630`): `RESCUED IN ROUND N`, `ROUNDS OF CLOCK LEFT`, `PHASES x/4`, `UNITS HAULED`, `PROJECT CR PAID`, plus the existing net worth, peak, rounds, per-baron Severance rows.
-- **Severance for a rescued run** (`Parachutes.award_severance` gains a `rescued` argument, default false): the normal terms **plus** `severance_base + severance_per_round_left x clock-rounds left` (1000 + 20 per round). A rescue at round 106 with 14 clock-rounds left adds 1,280. A normal strong run banks about 1,600 (106 rounds + 3 x 400 + 0.5% of a 60,000 peak), so a rescue roughly doubles it; one rescued run buys most of the 2,050-point tree. Placeholder.
+- **Severance for a rescued run** (`Parachutes.award_severance` gains a `rescued` argument, default false): the normal terms **plus** `severance_base + severance_per_round_left x clock-rounds left` (500 + 10 per round). A rescue at round 106 with 14 clock-rounds left adds 640. A normal strong run already banks about 1,606 (106 rounds + 3 x 400 + 0.5% of a 60,000 peak), so the rescued run banks about **2,250, more than the whole 2,050-point perk tree in one run**. That is a deliberate consequence to look at: the win pays for the full tree once. (My first draft, 1000 + 20 per round, would have paid 2,886.) Placeholder.
 - **Meta-progression reward**: `MetaProfile.rescues_completed` (default 0, saved only when non-zero, the `barons_broken` pattern, so old profiles and hashes hold), shown as "SOL RESCUED x N" on the summary and the title. A new achievement `SOL_RESCUED` ("Sol Saved", hook `rescue_completed`) and a stat entry in `achievements.json`. **No gameplay power** for winning (see Question 4).
 
 ### 6.2 Loss (Proposed)
@@ -182,15 +184,28 @@ Capital is the binding constraint, not time. The takeover refuses a bid that wou
 
 | CR at the start of the chain | Result |
 |---|---|
-| 5,000 (the fresh-start stake) | Refused (`WOULD_BANKRUPT`) from round 25; nothing taken by the probe's round-160 cap |
-| 25,000 | Sol Central taken round 24; Titan refused from round 46; nothing more by round 160 |
-| 40,000 | Sol Central round 24, Titan round 46; Ares refused from round 77, taken only at round 136 and the corp is insolvent (net worth -146,680) |
+| 5,000 (the fresh-start stake) | Refused (`WOULD_BANKRUPT`) from round 25; nothing taken before collapse |
+| 25,000 | Sol Central taken round 24; Titan refused from round 46; nothing more before collapse |
+| 40,000 | Sol Central round 24, Titan round 46; Ares refused from round 77 and not taken before collapse (the probe, uncapped, takes it at round 136 and ends insolvent, past the end of the run) |
 | 55,000 | Monopoly at round 79, but net worth -5,763: insolvent, so the filing would forfeit the lot |
 | 70,000 | Monopoly at round 79, net worth **+6,835** |
 | 85,000 | Monopoly at round 79, net worth +19,434 |
 | 100,000 | Monopoly at round 79, net worth **+32,031**, CR 116,030, total debt 83,999 |
 
-So a monopoly that survives needs about **70,000 CR in hand when the chain starts**, and the net worth left at the end is roughly what the player had above 63,000 to 68,000 (rent flows in during the chain). **I did not measure how long it takes to earn 70,000 CR**: nothing in the repo plays the trading game. It is the largest assumption in this section, and it moves the whole schedule: every round spent earning the capital is a round off the 41.
+So a monopoly that survives needs about **70,000 CR in hand when the chain starts**, and the net worth left at the end is roughly what the player had above 63,000 to 68,000 (rent flows in during the chain). Nothing in the repo plays the trading game, so I could not measure how a player earns that CR. What I can measure is the break-even. A second sweep starts at the real 5,000 CR stake and adds a **flat income per round** while the chain runs (the parked player is not trading, so this is generous):
+
+| Flat income, CR per round | Result |
+|---|---|
+| 200 | Sol Central round 27; nothing else before collapse |
+| 400 | Sol Central round 32; nothing else before collapse |
+| 600 | Monopoly at round 86, but net worth -5,870 (insolvent, so a filing would forfeit it) |
+| 800 | Monopoly at round 79, net worth +11,185 |
+| 1,000 | Monopoly at round 79, net worth +25,919 |
+| 1,500 | Monopoly at round 79, net worth +62,757 |
+
+The break-even is about **700 CR a round**, every round, for 79 rounds. What a trader can make is an estimate from `BASE_PRICES`, not a measurement: the best spreads (FUEL Luna 8.5 to Ceres 24.5, ORE Ceres 11.5 to Earth 27.5, FOOD Earth 10.2 to Luna 22.0) are about 16, 16 and 12 CR a unit; a full 100-unit hold on the 7-round Luna, Ceres, Earth loop earns about 4,400 CR, roughly **630 CR a round at mid prices with no spread, no ladder impact and no tolls**. The Mars to Ceres machinery run is about 520 a round. That is at or below the break-even before costs, and a player cornering a baron is parked, not hauling.
+
+**Conclusion, stated plainly.** At current numbers I cannot show that a trade-funded run reaches the monopoly before about round 90, and a typical one may not reach it at all. The Rescue Project cannot fix that: it is the project's gate. The largest lever is the debt a takeover assumes (about 55,000 CR of principal at monopoly in every case above, almost all of it the barons' own corner and margin debt). Assuming only half of it would roughly halve the capital needed (back-of-envelope: the break-even falls from about 700 to about 470 CR a round, inside the trading estimate); it is not measured, and task 5's bot is where it would be. That is Question 1.
 
 ### 7.2 Modelled: the haul
 
@@ -214,18 +229,18 @@ Against what is left when the monopoly lands, scaled by how much slower than ide
 
 | Monopoly lands | Clock-rounds left | Fits with the field up to | Fits without the field up to |
 |---|---|---|---|
-| Round 79 (measured floor) | 41 | **k = 3.25** (41 / 12.6) | k = 1.5 (41 / 27) |
+| Round 79 (floor, if the capital exists) | 41 | **k = 3.25** (41 / 12.6) | k = 1.5 (41 / 27) |
 | Round 90 | 30 | k = 2.4 | k = 1.1 |
 | Round 100 | 20 | k = 1.6 | no |
 | Round 110 | 10 | no (k = 0.8) | no |
 
-Read it this way. A strong run, defined as "holds 70,000 CR early enough that the monopoly lands by round 90", finishes the project even at **2.4 times** the ideal route time. Without the field it would need to be within 10% of perfect. Round 100 is the edge of "winnable by a good player", round 110 is not, and that is the intended climax shape: the late baron is a race, not a stroll. A player who wants slack should not wait for round 79.
+Read it this way. If the monopoly lands by round 90 (section 7.1 says that is the open question), the project finishes even at **2.4 times** the ideal route time. Without the field it would need to be within 10% of perfect. Round 100 is the edge of "winnable by a good player", round 110 is not, and that is the intended climax shape: the late baron is a race, not a stroll. A player who wants slack should not wait for round 79.
 
 Burn check at k = 2 (54 haul rounds) from round 79: debt grows about 460 CR a round while the clock is at full speed (CRITICAL) and about 70 to 280 CR a round at the later `keep_bps`; rent is 1,350 a round throughout. Debt growth stays under the rent, so the project's own spending (fees and goods) is what lowers net worth, not the clock.
 
 ### 7.3 What is not measured
 
-Trading-up time to 70,000 CR; rival-fleet bidding (the probe removed the fleets, so lots can be taken slower in a real world); raids and front-runs on a loaded hold; crisis modals; audit caps (`trade_cap_qty`) which could limit a purchase per round; the real distribution of player efficiency `k`. Section 11's task 5 is a headless bot that measures `k` and the trading-up time so the placeholders in `rescue.json` get a number to move, as epic3 task 12 did for the barons.
+How a player actually earns the capital (only the break-even and a price-sheet estimate above); rival-fleet bidding (the probe removed the fleets, so lots can be taken slower in a real world); raids and front-runs on a loaded hold; crisis modals; audit caps (`trade_cap_qty`) which could limit a purchase per round; the real distribution of player efficiency `k`. Section 11's task 5 is a headless bot that measures `k`, the real income of a trading policy, and the effect of assuming less baron debt so the placeholders in `rescue.json` get a number to move, as epic3 task 12 did for the barons.
 
 ## 8. Failure modes and Ryan's rule
 
@@ -271,8 +286,8 @@ Sizing follows the house format: a specced Sonnet build is 5 to 15 minutes and 0
 | # | Task (one PR each) | Estimate |
 |---|---|---|
 | 1 | **Core.** `game/core/rescue_project.gd` and `game/data/rescue.json` with loader/validator; phases, deposit with pro rata fee and refusals, completion, `to_dict`/`from_dict`, `counts_tick`; `RunController.rescue` and the `rescue` key in `RunSave`; `MetaProfile.rescues_completed`. Unit tests for the arithmetic and the hash-unchanged-without-a-project test. | ~25 min agent time · ~0.4% of the weekly limit |
-| 2 | **Clock, win and guards.** The `counts_tick` gate in `_on_sub_ticked`; `finish_rescue`, `is_run_over`, `end_run("rescued")`; `Parachutes` rescue Severance and phase consolation; rent multiplier in `Takeover.rent`; project-open clamp on the random margin-call drain; raid-as-ransom rule; Chapter 11 keeps progress and drops the rent bonus. | ~25 min agent time · ~0.4% of the weekly limit |
-| 3 | **Loop wiring.** `m0_project` action (`ACT_PROJECT`) and `M0Loop` handler; embargo world mods emitted after rival mods with the fold-order fixture; open on the monopoly continue; pledge of a held baron's warehouse stock at the site; GalNet events. | ~20 min agent time · ~0.3% of the weekly limit |
+| 2 | **Clock, win and guards.** The `counts_tick` gate in `_on_sub_ticked`; `finish_rescue`, `is_run_over`, `end_run("rescued")`; `Parachutes` rescue Severance and phase consolation; rent multiplier via `Barons.rent_bonus_bps` (derived, re-set in `RunSave.restore`); project-open clamp on the random margin-call drain; raid-as-ransom rule; Chapter 11 keeps progress and drops the rent bonus. | ~25 min agent time · ~0.4% of the weekly limit |
+| 3 | **Loop wiring.** `m0_project` action (`ACT_PROJECT`) and `M0Loop` handler; embargo world mods emitted after rival mods with the fold-order fixture; open on the monopoly continue; check that rival route scoring still reads a mid on the embargoed books; GalNet events. | ~20 min agent time · ~0.3% of the weekly limit |
 | 4 | **UI.** `rescue_lines`, the Stabiliser card, delivery chips, header suffix, toasts, `OVERLAY_RESCUED` modal and its summary rows, achievement and stat entries, localization keys, a `shots_epic3_rescue.gd` screenshot script. | ~25 min agent time · ~0.4% of the weekly limit |
 | 5 | **Goldens, bot, tuning, guide.** Whole-run golden with a scripted rescue (two seeds, save/restore), a headless pacing bot that measures trading-up time and the `k` of section 7, `docs/game-guide.md` note, and the placeholder pass on `rescue.json`. | ~12 min agent time · ~0.2% of the weekly limit |
 
@@ -280,17 +295,18 @@ Order: 1 -> 2 -> 3 -> 4, then 5. Tasks 2 and 3 can run in parallel worktrees onc
 
 ## 12. Questions for Ryan
 
-1. **How should each finished phase help against the clock?**
+1. **Can a player actually afford the monopoly?**
+   - What I measured: taking the three barons works only if the player has about 70,000 CR in hand, because a takeover puts the baron's debt (about 55,000 CR in total) on your own books. A player starting from 5,000 CR needs roughly 700 CR a round of income for 79 rounds, and a price-sheet estimate of the best trading is about 630 a round, before costs.
+   - (a) **Assume only half the baron's debt** when you take it over (one number, not measured end to end).
+   - (b) **Give back clock time at the monopoly** (for example 20 rounds, using the unused tribute code), so a late monopoly still has room for the project.
+   - (c) **Leave it**, and accept that most runs never reach the Rescue.
+   - **Recommend (a).** It removes the cause, keeps the climax at the end of the run, and the pacing bot in task 5 can check it.
+
+2. **How should each finished phase help against the clock?**
    - (a) **Staged slowdown**: the clock runs at 60%, then 35%, then 15% of speed as phases finish, stopping at the win. The player can see the pressure ease as they build.
    - (b) **Stop the clock on the first phase.** Simple, but after Phase 1 nothing can go wrong and Phases 2 to 4 become a victory lap.
-   - (c) **No slowdown**: pure race against 41-ish rounds. By the numbers a player must be within 50% of perfect routing even in the best case, and within 10% if the monopoly lands at round 90.
-   - **Recommend (a).** It turns the 41 rounds left into room for a player who is up to 3 times slower than ideal, and the late phases still feel like a final push.
-
-2. **When does the project open?**
-   - (a) **Only after all three barons** (your earlier decision). The fastest measured monopoly is round 79, so the project gets at most 41 rounds.
-   - (b) **Phase 1 opens at two barons**, later phases still need all three. Lets the player start hauling while the last takeover plays out.
-   - (c) As (a), but lengthen the run past 120 once the monopoly lands.
-   - **Recommend (a)**, with (b) as the fix if playtests show the monopoly landing after round 90. The numbers say (a) works for a strong run; I could not measure how long earning the 70,000 CR needed for the chain takes.
+   - (c) **No slowdown**: pure race. With the monopoly at round 79 a player must be within 50% of perfect routing, and within 10% if it lands at round 90.
+   - **Recommend (a).** It lets a player up to about 3 times slower than ideal still win, and the late phases still feel like a final push.
 
 3. **What does a failed rescue pay?**
    - (a) Nothing extra: the normal collapse.
