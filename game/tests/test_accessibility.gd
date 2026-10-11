@@ -606,7 +606,10 @@ func test_sidebar_scrolls_instead_of_truncating_when_larger_text_overflows_it() 
 	var ends: float = MainScene.marquee_offset(1000.0 * 0.0 + MainScene.SIDEBAR_DWELL_TOP + overflow / MainScene.SIDEBAR_SCROLL_SPEED + 0.5, overflow)
 	scene._scroll_t = MainScene.SIDEBAR_DWELL_TOP + overflow / MainScene.SIDEBAR_SCROLL_SPEED + 0.5
 	scene._refresh_readouts()
-	var reaches_end: bool = is_equal_approx(-(notes["content"] as Control).position.y, overflow)
+	# The notes step by whole entries, so the last step is the first entry top at or past the
+	# overflow (every line below it in view), not the raw overflow.
+	var end_y: float = -(notes["content"] as Control).position.y
+	var reaches_end: bool = end_y >= overflow - 0.01 and end_y < overflow + 40.0
 	scene.free()
 	_reset_globals()
 	if overflow <= 0.0:

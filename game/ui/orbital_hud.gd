@@ -649,6 +649,7 @@ func get_ticker_lines(measure: Callable = Callable(), view_width: float = TICKER
 			"text": text,
 			"category": cat,
 			"category_id": str(item["category"]),
+			"seq": int(item["seq"]),
 			"body": body,
 			"severity": item["severity"],
 			"width": w,
