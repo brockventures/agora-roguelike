@@ -34,7 +34,7 @@ Underneath the flavor text it's a real, fully working exchange: a double-entry l
 The Godot roguelike opens with a short corporate orientation on the Desk Notes card. It covers the core loop in five beats: open the Market tab, place a first order, watch debt accrue over two rounds, leave the station with cargo, and sell it somewhere else. Later it adds one-time notes for a first raid or hazard, a first Chapter 11 filing and the perk screen.
 
 - **The hold.** When a beat that needs reading first appears, the game holds the clock so debt does not run while you read. The chip shows `HELD`, and the first line names the confirm button (`A: CONTINUE`). Confirm, Start, any modal, or opening settings (View or F1) ends the hold; the beat stays on the card until you do the thing, with the clock running.
-- **Turning it off or replaying it.** The tutorial turns itself off after your first sale or your first finished run. Open settings (View or F1) and use the `REPLAY TUTORIAL` line: OFF skips it, ON replays the core beats.
+- **Turning it off or replaying it.** The tutorial turns itself off after your first sale or your first finished run. Open settings (View or F1) and use the **Orientation program** line: Off skips it, On replays the core beats.
 - **Steam.** Finishing the core loop unlocks the "Orientation Complete" achievement, and the `onboarding_step` stat (0 to 5) records how far a player got. Nothing is sent anywhere else.
 
 ## 3. The fleets
