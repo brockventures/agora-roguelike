@@ -189,6 +189,15 @@
   }
 
   /* --- Header Right Controls --- */
+
+  /* Keep the focus pills reachable when the header is crowded (#125 polish). */
+  .header-left, .header-center { min-width: 0; flex-shrink: 1; }
+  .header-center { overflow-x: auto; scrollbar-width: none; }
+  .header-center::-webkit-scrollbar { display: none; }
+  .header-right { flex-shrink: 0; }
+  .orrery-header { gap: 12px; }
+  @media (max-width: 1440px) { .header-title-group .header-badge { display: none; } }
+
   .header-right {
     display: flex;
     align-items: center;
