@@ -29,7 +29,7 @@ const AU_SCALE_PX: float = 112.0
 ## Half the drawn disc (MapIcons.BODIES: Earth and Mars 38 px, Sol 84 px) plus a little air; the
 ## label placer and the docked ring keep clear of these.
 const STATION_NODE_RADIUS_PX: float = 27.0
-const SOL_NODE_RADIUS_PX: float = 44.0
+const SOL_NODE_RADIUS_PX: float = 62.0
 
 ## Label placement (get_label_offsets): spots tried in order after the preferred
 ## one, and the clear margin kept around every label box and node.
@@ -43,6 +43,10 @@ const LABEL_PAD_PX: float = 1.0
 ## ring: 72 * 0.56 = 40 px against Earth 22 + Luna 14 px of disc). Display only: the simulation's
 ## Luna offset (Transit, 0.05 AU) is untouched.
 const LUNA_SCREEN_SEPARATION_PX: float = 72.0
+
+## Luna keeps at least this panel-px distance from the Sun's centre: the Sun's drawn frame
+## reaches about 72 px right of its centre, plus Luna's radius and air.
+const LUNA_SOL_CLEARANCE_PX: float = 108.0
 
 ## Display-only starting phase of each body on the map, radians (counter-clockwise on screen).
 ## The simulation puts Earth, Mars and Ceres all at angle 0 on round 0, which stacks them in a
@@ -117,18 +121,39 @@ func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
 	if st == "luna":
 		var earth_screen := get_station_screen_pos("earth", round_num)
 		var lunar_angle: float = (fposmod(effective_r, 4.0) / 4.0) * TAU
-		return earth_screen + Vector2(cos(lunar_angle), -sin(lunar_angle)) * LUNA_SCREEN_SEPARATION_PX
+		return earth_screen + _luna_offset_clear_of_sol(earth_screen, lunar_angle)
 
 	var au_pos := Transit.get_station_position(st, effective_r).rotated(float(DISPLAY_PHASE_RAD.get(st, 0.0)))
 	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
 
+## Luna's offset from Earth at its nominal angle, or the nearest angle at which it clears the
+## Sun's disc and frame as drawn (the panel foreshortens x by 1.34 and y by 0.56). Display only:
+## when Earth is near the Sun, Luna swings to the far side of Earth instead of crossing the Sun.
+static func _luna_offset_clear_of_sol(earth_pos: Vector2, angle: float) -> Vector2:
+	var best: Vector2 = Vector2.ZERO
+	var best_d: float = -1.0
+	for i in 33:
+		# 0, +step, -step, +2 step ...: the nearest clear angle to the nominal one wins.
+		var k: int = (i + 1) / 2 * (1 if i % 2 == 1 else -1)
+		var a: float = angle + float(k) * TAU / 32.0
+		var off := Vector2(cos(a), -sin(a)) * LUNA_SCREEN_SEPARATION_PX
+		var d: Vector2 = earth_pos + off - MAP_CENTER
+		var dist: float = Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y).length()
+		if dist >= LUNA_SOL_CLEARANCE_PX:
+			return off
+		if dist > best_d:
+			best_d = dist
+			best = off
+	return best
+
+
 ## Offset from a station node to its label origin. At round 0 Luna sits one orbit (72 px)
-## right of Earth, so Earth's label goes to its left, Luna's and Ceres' to their right, and
+## right of Earth, so Earth's label goes below it, Luna's and Ceres' to their right, and
 ## Mars' two rows above its node, clear of Luna's ring.
 static func get_label_offset(station_id: String) -> Vector2:
 	match station_id.to_lower():
 		"earth":
-			return Vector2(-169.0, 5.0)
+			return Vector2(-69.0, 47.0)
 		"mars":
 			return Vector2(-8.0, -46.0)
 		_:

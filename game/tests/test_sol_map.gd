@@ -359,3 +359,12 @@ func test_display_phase_spreads_the_bodies_without_touching_the_simulation() -> 
 	if Transit.get_station_position("mars", 0.0) != Vector2(Transit.ORBITAL_RADII["mars"], 0.0):
 		return "Transit positions changed"
 	return "ok"
+
+
+func test_luna_never_draws_over_the_sun() -> String:
+	var m := SolTacticalMap.new()
+	for r in 96:
+		var d: Vector2 = m.get_station_screen_pos("luna", r) - SolTacticalMap.MAP_CENTER
+		if Vector2(d.x * HudLayout.MAP_STRETCH.x, d.y * HudLayout.MAP_STRETCH.y).length() < SolTacticalMap.LUNA_SOL_CLEARANCE_PX - 0.01:
+			return "luna crosses the Sun at round %d" % r
+	return "ok"
