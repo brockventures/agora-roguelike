@@ -1,0 +1,38 @@
+/* AGORA heavy-cel palette. Source: game/ui/hud_theme.gd, game/core/palette.gd */
+:root {
+  --ag-ink: #1c1a17;
+  --ag-slate: #2c353b;
+  --ag-bone: #e6dcc3;
+  --ag-bone-dim: #b8ad94;
+  --ag-paper: #d9cdb0;
+  --ag-paper-deep: #cdbf9f;
+  --ag-ochre: #c99a2e;
+  --ag-ochre-dark: #9a6f1c;
+  --ag-rust: #a8431f;
+  --ag-rust-dark: #7a2e14;
+  --ag-teal: #2f6f6a;
+  --ag-teal-dark: #1f4f4b;
+  --ag-void: #000000;
+
+  /* semantic */
+  --ag-surface-plate: var(--ag-slate);
+  --ag-surface-paper: var(--ag-paper);
+  --ag-surface-paper-deep: var(--ag-paper-deep);
+  --ag-surface-card: var(--ag-bone);
+  --ag-text-on-plate: var(--ag-bone);
+  --ag-text-on-plate-dim: var(--ag-bone-dim);
+  --ag-text-on-paper: var(--ag-ink);
+  --ag-line: var(--ag-ink);
+  --ag-focus: var(--ag-ochre);
+  --ag-alert: var(--ag-rust);
+  --ag-alert-cut: var(--ag-rust-dark);
+  --ag-scrim: rgba(28, 26, 23, .55);
+
+  /* market meaning (default) */
+  --ag-bid: #1a6b75;
+  --ag-ask: #c74d24;
+  --ag-bid-ink: var(--ag-bone);
+  --ag-ask-ink: var(--ag-ink);
+}
+[data-palette="deuteranopia"] { --ag-bid: #56B4E9; --ag-ask: #E69F00; --ag-bid-ink: var(--ag-ink); }
+[data-palette="protanopia"] { --ag-bid: #56B4E9; --ag-ask: #F0E442; --ag-bid-ink: var(--ag-ink); }

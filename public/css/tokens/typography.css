@@ -1,0 +1,14 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap");
+:root {
+  --ag-font: 'Archivo', system-ui, sans-serif;
+  --ag-font-mono: ui-monospace, Menlo, monospace;
+  /* size / weight / width (font-stretch) */
+  --ag-type-display: 800 40px/1 var(--ag-font);   --ag-display-wdth: 70%;
+  --ag-type-title: 800 24px/1.1 var(--ag-font);   --ag-title-wdth: 75%;
+  --ag-type-readout: 700 20px/1.2 var(--ag-font); --ag-readout-wdth: 85%;
+  --ag-type-body: 500 16px/1.45 var(--ag-font);
+  --ag-type-hint: 600 14px/1.3 var(--ag-font);
+  --ag-type-label: 700 12px/1.3 var(--ag-font);   --ag-label-track: .12em;
+  --ag-min-text: 12px; /* floor at 100% scale; never below */
+  --ag-text-scale: 1;  /* 1 | 1.15 | 1.3 */
+}
