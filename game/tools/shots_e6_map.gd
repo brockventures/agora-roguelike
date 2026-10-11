@@ -123,6 +123,17 @@ func _run() -> void:
 		main._refresh_readouts()
 		print("crowded round ", r, " now ", main.controller.get_current_round())
 		await _shot("map-04-crowded-inner-system")
+	# Spacing across time: the same map at later rounds (name map-depth-r<N>), Luna and the
+	# bodies in different places each time.
+	for round_name in ["map-depth-r03", "map-depth-r07", "map-depth-r14"]:
+		if _want(round_name):
+			await _fresh()
+			var target_round: int = int(round_name.substr(round_name.length() - 2))
+			_fly(target_round * main.controller.ticks_per_round - main.controller.sim_clock.total_ticks + 2)
+			main.loop.dock_at("mars")
+			main.hud.set_station("earth")
+			main._refresh_readouts()
+			await _shot(round_name)
 	if _want("map-05-ticker"):
 		await _fresh()
 		var hud: OrbitalHUD = main.hud

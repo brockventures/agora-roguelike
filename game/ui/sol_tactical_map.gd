@@ -26,8 +26,10 @@ const MAP_CENTER: Vector2 = Vector2(440.0, 400.0)
 const AU_SCALE_PX: float = 112.0
 
 ## Visual radius in pixels for celestial body / station icons.
-const STATION_NODE_RADIUS_PX: float = 14.0
-const SOL_NODE_RADIUS_PX: float = 24.0
+## Half the drawn disc (MapIcons.BODIES: Earth and Mars 38 px, Sol 84 px) plus a little air; the
+## label placer and the docked ring keep clear of these.
+const STATION_NODE_RADIUS_PX: float = 27.0
+const SOL_NODE_RADIUS_PX: float = 44.0
 
 ## Label placement (get_label_offsets): spots tried in order after the preferred
 ## one, and the clear margin kept around every label box and node.
@@ -36,8 +38,22 @@ const LABEL_SPOTS: Array[String] = ["right", "left", "above", "below", "above_ri
 const LABEL_EXTRA_ROWS: int = 5
 const LABEL_PAD_PX: float = 1.0
 
-## Minimum screen separation for Luna to prevent visual overlap and hit-test ambiguity with Earth.
-const LUNA_SCREEN_SEPARATION_PX: float = 32.0
+## Luna's drawn orbit radius around Earth, in map-model px (the panel then foreshortens y by
+## HudLayout.MAP_STRETCH.y = 0.56, so Luna still clears Earth's disc at the top and bottom of its
+## ring: 72 * 0.56 = 40 px against Earth 22 + Luna 14 px of disc). Display only: the simulation's
+## Luna offset (Transit, 0.05 AU) is untouched.
+const LUNA_SCREEN_SEPARATION_PX: float = 72.0
+
+## Display-only starting phase of each body on the map, radians (counter-clockwise on screen).
+## The simulation puts Earth, Mars and Ceres all at angle 0 on round 0, which stacks them in a
+## row. Adding a constant to the drawn angle spreads them without touching Transit: ETAs, fuel,
+## alignment windows and every golden read Transit, never these. Distances between bodies are
+## not preserved by this, so the map is a schematic, as it already was.
+const DISPLAY_PHASE_RAD: Dictionary = {
+	"earth": -0.61,  # about -35 degrees: lower right, on the near side
+	"mars": 0.61,    # about +35 degrees: upper right, on the far side
+	"ceres": 2.62,   # about +150 degrees: upper left
+}
 
 var controller: RunController = null
 var current_round: int = 0
@@ -103,23 +119,20 @@ func get_station_screen_pos(station_id: String, round_num: int = -1) -> Vector2:
 		var lunar_angle: float = (fposmod(effective_r, 4.0) / 4.0) * TAU
 		return earth_screen + Vector2(cos(lunar_angle), -sin(lunar_angle)) * LUNA_SCREEN_SEPARATION_PX
 
-	var au_pos := Transit.get_station_position(st, effective_r)
+	var au_pos := Transit.get_station_position(st, effective_r).rotated(float(DISPLAY_PHASE_RAD.get(st, 0.0)))
 	return MAP_CENTER + Vector2(au_pos.x * AU_SCALE_PX, -au_pos.y * AU_SCALE_PX)
 
-## Offset from a station node to its label origin. Earth, Luna and Mars sit within
-## 70px of each other at round 0 and the station names are long, so labels are
-## stacked in separate rows instead of all going right: Earth one row above its
-## node, Mars two rows above, Luna below, Ceres right.
+## Offset from a station node to its label origin. At round 0 Luna sits one orbit (72 px)
+## right of Earth, so Earth's label goes to its left, Luna's and Ceres' to their right, and
+## Mars' two rows above its node, clear of Luna's ring.
 static func get_label_offset(station_id: String) -> Vector2:
 	match station_id.to_lower():
 		"earth":
-			return Vector2(-24.0, -24.0)
-		"luna":
-			return Vector2(-8.0, 34.0)
+			return Vector2(-169.0, 5.0)
 		"mars":
 			return Vector2(-8.0, -46.0)
 		_:
-			return Vector2(18.0, 5.0)
+			return Vector2(STATION_NODE_RADIUS_PX + 4.0, 5.0)
 
 ## Where each station's label goes this round: {station_id: offset from its node}.
 ## get_label_offset() is the preferred spot (right at round 0), but Luna circles
