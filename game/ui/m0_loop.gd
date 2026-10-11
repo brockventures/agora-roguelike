@@ -1369,7 +1369,9 @@ func run_summary() -> Dictionary:
 	var peak_pts: int = maxi(0, controller.peak_net_worth) * Parachutes.SEVERANCE_NET_WORTH_BPS / Parachutes.BPS
 	var baron_pts: int = broken * Parachutes.SEVERANCE_PER_BARON
 	var round_pts: int = rounds * Parachutes.SEVERANCE_PER_ROUND
-	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts)
+	var rescue_pts: int = controller.rescue_severance_award
+	var consolation_pts: int = controller.consolation_severance_award
+	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts - rescue_pts - consolation_pts)
 	var filings_count: int = (filing_pts / Parachutes.SEVERANCE_PER_FILING) if Parachutes.SEVERANCE_PER_FILING > 0 else 0
 	return {
 		"reason": controller.end_reason,
@@ -1386,6 +1388,10 @@ func run_summary() -> Dictionary:
 		"severance_filings": filings_count,
 		"severance_filings_pts": filing_pts,
 		"severance_peak_pts": peak_pts,
+		"severance_rescue_pts": rescue_pts,
+		"severance_consolation_pts": consolation_pts,
+		"rescue_phases_done": controller.rescue.phases_done() if controller.rescue != null else 0,
+		"rescue_phases_total": controller.rescue.phase_count() if controller.rescue != null else 0,
 		"broken_ids": _broken_baron_ids(broken),
 		"runs_completed": controller.profile.runs_completed,
 	}
