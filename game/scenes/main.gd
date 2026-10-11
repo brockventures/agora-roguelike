@@ -3245,6 +3245,10 @@ func _update_focus_frames() -> void:
 
 # --- The tactical map, drawn on the map panel ---
 
+## Depth cues on the tilted map: the far half of an orbit is fainter, the near half heavier.
+const MAP_FAR_ALPHA: float = 0.6
+const MAP_NEAR_EXTRA_WIDTH: float = 1.0
+
 ## Maps a point of the map model's screen space (SolTacticalMap, circular orbits around
 ## MAP_CENTER) to map-panel px: the orbit system is foreshortened into the 3a ellipses.
 func _map_point(model: Vector2) -> Vector2:
@@ -3256,15 +3260,48 @@ func _map_center() -> Vector2:
 	return _map_point(SolTacticalMap.MAP_CENTER)
 
 
-## An orbit ring (a circle of the model, an ellipse on screen).
+## An orbit ring (a circle of the model, an ellipse on screen) around the Sun.
 func _draw_orbit(radius: float, color: Color, width: float) -> void:
-	var pts := PackedVector2Array()
+	_draw_ellipse_orbit(_map_center(), Vector2(radius * HudLayout.MAP_STRETCH.x, radius * HudLayout.MAP_STRETCH.y), color, width)
+
+
+## The tilted view made deliberate: the orbital plane leans toward the viewer, so the bottom
+## (near) half of every ring is drawn a step heavier and full ink, the top (far) half a step
+## lighter and fainter. Flat strokes only, no gradient; the far half keeps the 2 px floor.
+func _draw_ellipse_orbit(c: Vector2, radii: Vector2, color: Color, width: float, faint: float = 1.0) -> void:
+	var far := PackedVector2Array()
+	var near := PackedVector2Array()
+	var half: int = 48
+	for i in half + 1:
+		var a: float = PI * float(i) / float(half)
+		# Screen y grows downward: angles 0..PI are the near (bottom) half, PI..TAU the far half.
+		near.append(c + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+		far.append(c + Vector2(cos(a + PI) * radii.x, sin(a + PI) * radii.y))
+	var far_color: Color = Color(color, color.a * MAP_FAR_ALPHA * faint)
+	var near_color: Color = Color(color, color.a * faint)
+	tactical_map_panel.draw_polyline(far, far_color, width, true)
+	tactical_map_panel.draw_polyline(near, near_color, width + MAP_NEAR_EXTRA_WIDTH, true)
+
+
+## The orbital plane as a faint disc behind the rings: three flat elliptical bands from the
+## paper tone near the Sun to a slightly deeper one at the rim, so the plane reads as a tilted
+## disc without any glossy gradient. Palette tokens only.
+func _draw_orbit_plane() -> void:
 	var c: Vector2 = _map_center()
-	var steps: int = 96
-	for i in steps + 1:
-		var a: float = TAU * float(i) / float(steps)
-		pts.append(c + Vector2(cos(a) * radius * HudLayout.MAP_STRETCH.x, sin(a) * radius * HudLayout.MAP_STRETCH.y))
-	tactical_map_panel.draw_polyline(pts, color, width, true)
+	var rim: float = tactical_map.get_orbit_radius_px("ceres") + 16.0
+	for band in [[1.0, 0.85], [0.62, 0.55], [0.3, 0.25]]:
+		var r: float = rim * float(band[0])
+		var pts := PackedVector2Array()
+		for i in 64:
+			var a: float = TAU * float(i) / 64.0
+			pts.append(c + Vector2(cos(a) * r * HudLayout.MAP_STRETCH.x, sin(a) * r * HudLayout.MAP_STRETCH.y))
+		tactical_map_panel.draw_colored_polygon(pts, HudTheme.PAPER.lerp(HudTheme.PAPER_DEEP, float(band[1])))
+
+
+## -1 at the far (top) edge of the orbital plane, +1 at the near (bottom) edge, for a panel point.
+func _map_depth(p: Vector2) -> float:
+	var half: float = (tactical_map.get_orbit_radius_px("ceres") + 16.0) * HudLayout.MAP_STRETCH.y
+	return clampf((p.y - _map_center().y) / half, -1.0, 1.0)
 
 
 ## A dashed ring (the MapNode "docked" ring: 8 on, 6 off).
@@ -3479,12 +3516,20 @@ func _draw_map() -> void:
 	var discs: Dictionary = layout["discs"]
 	var texts: Dictionary = layout["texts"]
 	var offsets: Dictionary = layout["offsets"]
-	# Flat ligne claire: ink orbit rings, then flat filled nodes with ink contours and a hard shadow cut.
+	# Flat ligne claire: the tilted orbital plane, then ink orbit rings (near half heavier).
+	_draw_orbit_plane()
 	var stations: Array = tactical_map.get_stations()
 	for st in stations:
-		var pos_m: Vector2 = tactical_map.get_station_screen_pos(st, round_num)
 		var ring_active: bool = st == hud.active_station
-		_draw_orbit(pos_m.distance_to(SolTacticalMap.MAP_CENTER), HudTheme.RUST if ring_active else HudTheme.INK, HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0))
+		var ring_color: Color = HudTheme.RUST if ring_active else HudTheme.INK
+		var ring_width: float = HudTheme.OUTLINE_RING + (1.0 if ring_active else 0.0)
+		if st == "luna":
+			# Luna orbits Earth, not the Sun: a small faint ring around Earth, no heliocentric orbit.
+			var lr: float = SolTacticalMap.LUNA_SCREEN_SEPARATION_PX
+			_draw_ellipse_orbit(Vector2(discs["earth"]), Vector2(lr * HudLayout.MAP_STRETCH.x, lr * HudLayout.MAP_STRETCH.y), ring_color, ring_width, 0.5)
+			continue
+		var pos_m: Vector2 = tactical_map.get_station_screen_pos(st, round_num)
+		_draw_orbit(pos_m.distance_to(SolTacticalMap.MAP_CENTER), ring_color, ring_width)
 	# The lane the route card describes: dashed from home to the pick, rust across the belt.
 	var plan: Dictionary = _route_card_plan()
 	if not plan.is_empty() and discs.has(hud.active_station) and discs.has(controller.docked_at):
@@ -3495,14 +3540,14 @@ func _draw_map() -> void:
 	var docked: String = controller.docked_at if controller != null else ""
 	# MapNode: Sol is ochre; a station is teal, rust when the ship is docked there, and
 	# wears the dashed ochre ring when docked or picked with LT/RT.
-	if not MapIcons.draw_icon(tactical_map_panel, MapIcons.SOL_ID, center, MapIcons.SOL_DRAW_PX):
+	if not MapIcons.draw_icon(tactical_map_panel, MapIcons.SOL_ID, center):
 		HudTheme.draw_flat_disc(tactical_map_panel, center, SolTacticalMap.SOL_NODE_RADIUS_PX, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	for st in stations:
 		var pos: Vector2 = discs[st]
 		var is_docked: bool = st == docked
 		if is_docked or (docked != "" and st == hud.active_station):
 			_draw_dashed_ring(pos, SolTacticalMap.STATION_NODE_RADIUS_PX + 13.0, HudTheme.OCHRE, 4.0, ring_march_px())
-		if not MapIcons.draw_icon(tactical_map_panel, st, pos, MapIcons.STATION_DRAW_PX):
+		if not MapIcons.draw_icon(tactical_map_panel, st, pos, MapIcons.depth_scale(_map_depth(pos))):
 			HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
 	_draw_map_text(font, Vector2(layout["sol_pos"]), str(layout["sol_text"]), fs, HudTheme.INK)
 	for st in stations:
@@ -3525,8 +3570,13 @@ func _free_tag_pos(hull: Vector2, w: float, font: Font, fs: int, discs: Dictiona
 	var height: float = ascent + font.get_descent(fs)
 	var bounds: Rect2 = _map_label_bounds()
 	var gap: float = 10.0
-	for off in [Vector2(-w * 0.5, -gap - 2.0), Vector2(-w * 0.5, gap + height), Vector2(gap, height * 0.35), Vector2(-gap - w, height * 0.35),
-			Vector2(gap, -gap), Vector2(-gap - w, -gap), Vector2(gap, gap + height), Vector2(-gap - w, gap + height)]:
+	# A hull leaving a body sits on its (now larger) disc, so the ring of spots repeats one disc out.
+	var far: float = SolTacticalMap.STATION_NODE_RADIUS_PX + gap
+	var spots: Array = [Vector2(-w * 0.5, -gap - 2.0), Vector2(-w * 0.5, gap + height), Vector2(gap, height * 0.35), Vector2(-gap - w, height * 0.35),
+			Vector2(gap, -gap), Vector2(-gap - w, -gap), Vector2(gap, gap + height), Vector2(-gap - w, gap + height)]
+	spots.append_array([Vector2(-w * 0.5, -far - 2.0), Vector2(-w * 0.5, far + height), Vector2(far, height * 0.35), Vector2(-far - w, height * 0.35),
+			Vector2(far, -far), Vector2(-far - w, -far), Vector2(far, far + height), Vector2(-far - w, far + height)])
+	for off in spots:
 		var box := Rect2(hull + off + Vector2(0.0, -ascent), Vector2(w, height)).grow(1.0)
 		if _map_label_fits(box, "", discs, placed, bounds) and not _circle_hits(hull, 8.0, box):
 			placed.append(box)

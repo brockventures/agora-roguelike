@@ -233,7 +233,9 @@ func test_to_dict_serialization() -> String:
 func test_map_fits_tactical_panel_at_every_round() -> String:
 	var m := SolTacticalMap.new()
 	var panel := SolTacticalMap.PANEL_RECT
-	var margin := SolTacticalMap.STATION_NODE_RADIUS_PX
+	# Model-space check on the node centre (the drawn map foreshortens y by 0.56 and has its own
+	# label bounds), so the margin is the old half-node, not the larger drawn-disc radius.
+	var margin := 14.0
 	for r in 24:
 		for st in Transit.STATIONS:
 			var pos := m.get_station_screen_pos(st, r)
@@ -319,4 +321,41 @@ func test_label_offsets_are_deterministic_and_keep_the_round_zero_layout() -> St
 	for st in Transit.STATIONS:
 		if zero[st] != SolTacticalMap.get_label_offset(st):
 			return "round 0 moved %s's label off its designed spot: %s" % [st, str(zero[st])]
+	return "ok"
+
+
+func test_body_sizes_order_sol_then_earth_and_mars_then_luna_and_ceres() -> String:
+	if MapIcons.disc_px("sol") <= MapIcons.disc_px("earth") * 1.5:
+		return "Sol is not clearly the biggest body"
+	if absf(MapIcons.disc_px("earth") - MapIcons.disc_px("mars")) > 0.01:
+		return "Earth and Mars discs differ"
+	for small in ["luna", "ceres"]:
+		if MapIcons.disc_px(small) >= MapIcons.disc_px("earth"):
+			return "%s is not smaller than Earth and Mars" % small
+	if MapIcons.depth_scale(-1.0) >= MapIcons.depth_scale(1.0) or MapIcons.depth_scale(1.0) != 1.0:
+		return "far bodies must draw slightly smaller than near ones"
+	return "ok"
+
+
+func test_display_phase_spreads_the_bodies_without_touching_the_simulation() -> String:
+	var m := SolTacticalMap.new()
+	var min_gap: float = 1e9
+	var round0_gap: float = m.get_station_screen_pos("earth", 0).distance_to(m.get_station_screen_pos("mars", 0))
+	if round0_gap < 100.0:
+		return "earth and mars still stack at round 0: %f px apart" % round0_gap
+	for r in 48:
+		var e := m.get_station_screen_pos("earth", r)
+		var l := m.get_station_screen_pos("luna", r)
+		var ma := m.get_station_screen_pos("mars", r)
+		min_gap = minf(min_gap, minf(e.distance_to(ma), e.distance_to(l)))
+		# Luna's foreshortened orbit (y x 0.56) still clears Earth's disc and its own.
+		var d: Vector2 = (l - e) * HudLayout.MAP_STRETCH
+		if d.length() < 0.5 * (MapIcons.disc_px("earth") + MapIcons.disc_px("luna")) + 4.0:
+			return "luna overlaps earth at round %d" % r
+	# The floor is the two orbits' own radial gap (0.524 AU = 58.7 px): they can never be closer.
+	if min_gap < 58.0:
+		return "earth, luna and mars still stack: closest %f px" % min_gap
+	# Transit (the simulation's positions) stays at its original round-0 angle 0.
+	if Transit.get_station_position("mars", 0.0) != Vector2(Transit.ORBITAL_RADII["mars"], 0.0):
+		return "Transit positions changed"
 	return "ok"
