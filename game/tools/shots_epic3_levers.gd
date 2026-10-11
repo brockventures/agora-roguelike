@@ -147,7 +147,7 @@ func _run() -> void:
 	rc = main.controller
 	w = rc.world
 	rc.sim_clock.pause()
-	rc.modifiers = {"takeover_threshold_shares": {"add": -50, "mul_bps": 10000}}  # the perk, owned
+	rc.apply_modifiers({"takeover_threshold_shares": {"add": -50, "mul_bps": 10000}})  # the perk, owned
 	_view("mars", "ORE")
 	await _shot("tender-offer")
 	print("tender: ", loop.dispatch_action(M0Loop.ACT_SHARES), " ", w.state("ares_heavy").shares)

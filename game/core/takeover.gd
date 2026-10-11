@@ -156,9 +156,11 @@ static func threshold_for(w: Barons, buyer: String, rc: RunController = null) ->
 	return base
 
 
-## True while the Hostile Buyout Line perk is owned: it unlocks tender offers.
+## True while the Hostile Buyout Line perk is owned: it unlocks tender offers. Reads the
+## permanent base, not the effective modifiers: a run-only policy (#160) also touches
+## `takeover_threshold_shares` and must not unlock them.
 static func tender_unlocked(rc: RunController) -> bool:
-	return rc != null and rc.modifiers.has("takeover_threshold_shares")
+	return rc != null and rc.perk_modifiers.has("takeover_threshold_shares")
 
 
 ## Shares outside the baron's treasury that nobody in the world holds yet: what a

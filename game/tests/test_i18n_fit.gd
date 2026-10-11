@@ -420,7 +420,7 @@ func _collect_levers(scene: Node, add: Callable) -> void:
 	scene.hud.set_station("mars")
 	scene.hud.set_commodity("ORE")
 	loop.set_tab(M0Loop.Tab.MARKET)
-	var saved_mods: Dictionary = rc.modifiers
+	var saved_mods: Dictionary = rc.perk_modifiers.duplicate(true)
 	for state in ["hold", "corner", "pressure", "forced sale", "credit offer", "credit open", "tender"]:
 		match state:
 			"hold":
@@ -441,12 +441,12 @@ func _collect_levers(scene: Node, add: Callable) -> void:
 			"tender":
 				st.scratch.erase("credit")
 				st.treasury_cr = 60000
-				rc.modifiers = {"takeover_threshold_shares": {"add": -50, "mul_bps": 10000}}
+				rc.apply_modifiers({"takeover_threshold_shares": {"add": -50, "mul_bps": 10000}})
 		loop.market.set_world_mods(rc.world.market_mods())
 		scene._refresh_readouts()
 		add.call("market board[levers %s]" % state, scene.wordmark_label)
 		add.call("sidebar[levers %s]" % state, scene.wordmark_label)
-	rc.modifiers = saved_mods
+	rc.apply_modifiers(saved_mods)
 	rc.cargo = {}
 	rc.world = null
 	loop.market.set_world(null)
@@ -468,7 +468,7 @@ func _collect_travel(scene: Node, add: Callable) -> void:
 	add.call("tabs+hint[route]", scene.wordmark_label)
 	add.call("map[route]", scene.map_label)
 	# #138: the route card's FUEL row and the fuel_hedge line (the perk on, so both show).
-	var saved_mods: Dictionary = rc.modifiers.duplicate(true)
+	var saved_mods: Dictionary = rc.perk_modifiers.duplicate(true)
 	rc.apply_modifiers({"fuel_discount_bps": {"add": 1000, "mul_bps": 10000}})
 	scene._refresh_readouts()
 	for k in ["fuel_cap", "fuel_val", "hedge"]:
