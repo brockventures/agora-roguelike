@@ -1508,6 +1508,9 @@ func _card_notes() -> Array:
 			out.append({"kind": "chip", "text": takeover[i], "bg": HudTheme.TEAL_DARK if takeover_held else HudTheme.RUST_DARK, "fg": HudTheme.BONE})
 		else:
 			out.append({"kind": "line", "text": takeover[i], "color": HudTheme.INK})
+	# Rival fleets' cash health (#134): all of them at a baron's station, the strained ones anywhere.
+	for line in loop.fleet_health_lines(st):
+		out.append({"kind": "line", "text": line, "color": HudTheme.INK})
 	# The player's levers on the baron anchoring this station (task 8).
 	for n in loop.lever_notes(st):
 		if str(n["kind"]) == "chip":

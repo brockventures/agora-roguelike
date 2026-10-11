@@ -461,6 +461,13 @@ func _post_baron_headline(e: Dictionary) -> void:
 			hud.post_headline_tr("HL_CREDIT_DEFAULT", [who, int(e["due"])], "INSOLVENCY", "WARNING")
 		"distress":
 			hud.post_headline_tr("HL_DISTRESS", [who, int(e["qty"]), int(e["px"]), int(e["cap"])], "INSOLVENCY", "WARNING")
+		"auction":
+			if bool(e.get("forced", false)):
+				hud.post_headline_tr("HL_AUCTION_FORCED", [who, int(e["qty"]), int(e["px"])], "INSOLVENCY", "WARNING")
+			else:
+				hud.post_headline_tr("HL_AUCTION_CLEARED", [who, int(e["qty"]), int(e["px"]), int(e["reserve"])], "INSOLVENCY", "WARNING")
+		"control_lost":
+			hud.post_headline_tr("HL_CONTROL_LOST", [Loc.maker_arg(str(e.get("fleet", ""))), who], "INSOLVENCY", "WARNING")
 		"shares":
 			if str(e.get("buyer", "")) == Takeover.PLAYER and bool(e.get("tender", false)):
 				hud.post_headline_tr("HL_TENDER_BOUGHT", [int(e["qty"]), who, int(e["px"]), int(e["held"]), int(e["threshold"])], "MARKET", "INFO")
@@ -509,6 +516,8 @@ func _post_rival_headline(e: Dictionary) -> void:
 				hud.post_headline_tr("HL_RIVAL_DEPART", [fleet, int(e["qty"]), com, station, dest], "MARKET", "INFO")
 		"rival_frontrun":
 			hud.post_headline_tr("HL_RIVAL_FRONTRUN", [fleet, com, station, (10000 - int(e["depth_bps"])) / 100, int(e["rounds"])], "MARKET", "WARNING")
+		"rival_bankrupt":
+			hud.post_headline_tr("HL_RIVAL_BANKRUPT", [fleet, int(e["shares"])], "INSOLVENCY", "CRITICAL")
 		"rival_bounty_traced":
 			hud.post_headline_tr("HL_RIVAL_BOUNTY_TRACED", [fleet, int(e["rounds"])], "CRISIS", "WARNING")
 		"rival_raid":
@@ -616,19 +625,34 @@ func withdraw_auction_orders() -> int:
 var last_shares_reason: String = ""
 
 
-## ACT_SHARES: buy the whole standing lot of the baron anchoring the docked
-## station (as much of it as the CR allow). A takeover at the threshold happens
-## inside the buy. Returns true when shares changed hands.
+## ACT_SHARES (#134): bid for the whole standing lot of the baron anchoring the docked
+## station at the player's own value per share; the lot clears, one price for every winner, at
+## the next round boundary. Pressing it again raises the top price by bid_step_bps (to outbid a fleet). At a baron a rival fleet holds
+## it tenders for the shares the player needs at the fleet's asking price (recapture); with no
+## lot and the Hostile Buyout Line it tenders for the public float. Returns true when a bid was
+## placed or shares changed hands. A takeover at the threshold happens inside a recapture.
 func buy_shares() -> bool:
 	if controller == null or controller.world == null or controller.docked_at == "":
 		return false
 	var o: Dictionary = controller.world.distress_at(controller.docked_at)
 	var res: Dictionary
+	var bid_placed: bool = false
+	var tid: String = controller.world.baron_at(controller.docked_at)
+	var ts: BaronState = controller.world.state(tid) if tid != "" else null
 	if not o.is_empty():
-		res = controller.world.buy_shares(controller, controller.docked_at, int(o["qty"]))
+		var value: int = controller.world.share_value(tid, Takeover.PLAYER, controller)
+		# The first press bids at the player's value; each press after it, in the same lot, raises
+		# the top price by takeover.bid_step_bps, which is how the player outbids a fleet.
+		var prior: Dictionary = Takeover.player_bid(controller.world, tid)
+		if not prior.is_empty():
+			value = maxi(value, int(prior["px"]) + maxi(1, int(prior["px"]) * int(Takeover.settings(controller.world)["bid_step_bps"]) / 10000))
+		res = controller.world.submit_bid(controller, controller.docked_at, int(o["qty"]), value)
+		bid_placed = bool(res["ok"])
+	elif ts != null and ts.holder != "" and ts.holder != Takeover.PLAYER and controller.world.rival(ts.holder) != null:
+		var need: int = Takeover.threshold_for(controller.world, Takeover.PLAYER, controller) - Takeover.shares_of(controller.world, tid, Takeover.PLAYER)
+		res = controller.world.recapture_shares(controller, controller.docked_at, ts.holder, need, controller.world.share_value(tid, ts.holder, controller))
 	else:
 		# No lot on offer: with the Hostile Buyout Line the same key tenders for the public float.
-		var tid: String = controller.world.baron_at(controller.docked_at)
 		var to: Dictionary = Takeover.tender_offer(controller.world, tid, controller) if tid != "" else {}
 		if to.is_empty():
 			return false  # nothing to buy here: the key does nothing
@@ -641,6 +665,8 @@ func buy_shares() -> bool:
 				hud.tactile_audio.play_sfx(TactileAudio.NAV_BUMP)
 		return false
 	_refresh_world_mods()  # a taken baron's pipeline premium is gone; its repricing posts first
+	if bid_placed and hud != null:
+		hud.post_headline_tr("HL_BID_PLACED", [int(res["n"]), Loc.maker_arg(tid), int(res["max_price"]), int(o["px"])], "MARKET", "INFO")
 	for e in res["events"]:
 		_post_baron_event(e)
 	if hud != null and hud.tactile_audio != null:
@@ -704,18 +730,61 @@ func takeover_lines(station: String) -> Array:
 			out.append(Loc.t("TAG_HELD"))
 			out.append(Loc.t("SIDE_HELD_RENT") % w.rent_of(id))
 		else:
-			out.append(Loc.t("SIDE_HELD_BY") % s.holder.to_upper())
+			out.append(Loc.t("SIDE_HELD_BY") % (str(w.rival_def(s.holder).get("name", s.holder)).to_upper() if w.rival(s.holder) != null else s.holder.to_upper()))
+			if w.rival(s.holder) != null:
+				out.append(Loc.t("SIDE_RECAPTURE") % w.share_value(id, s.holder, controller))
 		return out
 	var o: Dictionary = w.distress_at(station)
 	if o.is_empty():
 		# This round's lot is sold (the next round lists another), or the treasury has none left.
 		out.append(Loc.t("SIDE_DISTRESS_SOLD" if s.treasury_shares > 0 else "SIDE_DISTRESS_NONE"))
+	elif bool(o.get("forced", false)):
+		out.append(Loc.t("SIDE_FORCED") % int(o["qty"]))
 	else:
 		out.append(Loc.t("SIDE_DISTRESS") % [int(o["qty"]), int(o["px"])])
-	out.append(Loc.t("SIDE_INSOLVENT") % [s.strain, int(t["bankrupt_rounds"])])
+	if s.strain > 0:
+		out.append(Loc.t("SIDE_INSOLVENT") % [s.strain, int(t["bankrupt_rounds"])])
 	out.append(Loc.t("SIDE_SHARES_HELD") % [Takeover.shares_of(w, id, Takeover.PLAYER), Takeover.threshold_for(w, Takeover.PLAYER, controller)])
-	if not o.is_empty() and controller.docked_at == station.to_lower():
-		out.append(Loc.t("SIDE_SHARES_HINT"))
+	var info: Dictionary = w.auction_info(id, controller)
+	# One row for value and bid, and the hint only before the player has bid or held a share:
+	# the card is short, and the fleets' cash health rows below must not be pushed off it.
+	var mine: int = Takeover.shares_of(w, id, Takeover.PLAYER)
+	if info["your_bid"].is_empty():
+		out.append(Loc.t("SIDE_YOUR_VALUE") % int(info["your_value"]))
+	else:
+		out.append(Loc.t("SIDE_YOUR_VALUE_BID") % [int(info["your_value"]), int(info["your_bid"]["qty"]), int(info["your_bid"]["px"])])
+	if not info["last_clear"].is_empty():
+		out.append(Loc.t("SIDE_LAST_CLEAR") % [int(info["last_clear"]["px"]), int(info["last_clear"]["qty"])])
+	for row in info["stakes"]:
+		if str(row["bidder"]) != Takeover.PLAYER and int(row["shares"]) > 0:
+			out.append(Loc.t("SIDE_STAKE") % [Loc.maker_tag(str(row["bidder"]), str(row["bidder"]).to_upper()), int(row["shares"]), int(row["stake_bps"]) / 100])
+	if not o.is_empty() and controller.docked_at == station.to_lower() and info["your_bid"].is_empty() and mine == 0:
+		out.append(Loc.t("SIDE_BID_HINT"))
+	return out
+
+
+## Sidebar rows for the rival fleets' cash health (#134): every fleet still in the run, its CR
+## against its debt, and while it is insolvent the rounds left before it liquidates. Shown at a
+## baron's station (where the auction is) and anywhere a fleet is under strain; else empty.
+func fleet_health_lines(station: String = "") -> Array:
+	var out: Array = []
+	if controller == null or controller.world == null:
+		return out
+	var w: Barons = controller.world
+	var at_baron: bool = station != "" and w.baron_at(station) != ""
+	var healthy: Array = []
+	for fid in w.rival_ids():
+		var h: Dictionary = w.fleet_health(fid)
+		if h.is_empty() or (int(h["strain"]) <= 0 and not at_baron):
+			continue
+		var nm: String = str(w.rival_def(fid).get("name", fid)).to_upper()
+		if int(h["strain"]) > 0:
+			out.append(Loc.t("SIDE_FLEET_STRAIN") % [nm, int(h["cr"]), int(h["debt"]), int(h["rounds_left"])])
+		else:
+			# Solvent fleets share one row (the card is short): first word of the name, CR / debt.
+			healthy.append("%s %d/%d" % [nm.split(" ")[0], int(h["cr"]), int(h["debt"])])
+	if not healthy.is_empty():
+		out.append(Loc.t("SIDE_FLEET_CASH") % ", ".join(healthy))
 	return out
 
 

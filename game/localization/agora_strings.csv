@@ -147,10 +147,15 @@ SIDE_AUCTION_HIDDEN,"INDICATIVE HIDDEN  REF %d CR"
 SIDE_AUCTION_ORDER,"QUEUED %s %d @ %d"
 SIDE_AUCTION_ORDER_MISS,"QUEUED %s %d @ %d: MISSES"
 SIDE_AUCTION_HINT,"B WITHDRAWS"
-HL_DISTRESS,"%s is in distress: %d shares on offer at %d CR each, up to %d a round"
+HL_DISTRESS,"%s is in distress: %d shares go to sealed bids, reserve %d CR each, up to %d a round"
 HL_SHARES_BOUGHT,"You buy %d %s shares at %d CR each: %d of %d held"
 HL_SHARES_SOLD,"%s sells %d shares to %s at %d CR each"
 HL_SHARES_REFUSED,"Shares refused: %s"
+HL_BID_PLACED,"Bid placed: %d %s shares, up to %d CR each (reserve %d). The lot clears at the round boundary, one price for every winner"
+HL_AUCTION_CLEARED,"%s auction clears: %d shares at %d CR each (reserve %d)"
+HL_AUCTION_FORCED,"%s forced sale clears: %d shares at %d CR each, no reserve"
+HL_CONTROL_LOST,"%s sells down and loses control of %s"
+HL_RIVAL_BANKRUPT,"%s is insolvent and liquidates: %d baron shares go to forced auction"
 HL_TAKEOVER,"You take over %s: %d CR treasury absorbed, %d CR debt assumed"
 HL_TAKEOVER_FORCED,"%s: the debt you assumed sinks your corp, Chapter 11 follows"
 HL_TAKEOVER_OTHER,"%s is taken over by %s"
@@ -163,6 +168,10 @@ SHARES_REASON_NO_CR,not enough CR
 SHARES_REASON_WOULD_BANKRUPT,the purchase would leave you insolvent
 SHARES_REASON_HELD,already held
 SHARES_REASON_LOCKED,needs the Hostile Buyout Line
+SHARES_REASON_BELOW_RESERVE,the bid is under the reserve
+SHARES_REASON_NO_FLEET,no such fleet
+SHARES_REASON_NO_SHARES,that fleet holds no shares here
+SHARES_REASON_REJECTED,the fleet values its shares higher
 CREDIT_REASON_NO_BARON,no baron here
 CREDIT_REASON_HELD,already held
 CREDIT_REASON_OPEN,a line is already open
@@ -172,7 +181,16 @@ CREDIT_REASON_WOULD_BANKRUPT,the loan would leave you insolvent
 TAG_HELD,HELD
 SIDE_HELD_RENT,RENT +%d CR A ROUND
 SIDE_HELD_BY,HELD BY %s
-SIDE_DISTRESS,DISTRESS: %d SHARES @ %d CR
+SIDE_DISTRESS,"DISTRESS LOT: %d SHARES, RESERVE %d CR"
+SIDE_FORCED,"FORCED SALE: %d SHARES, NO RESERVE"
+SIDE_YOUR_VALUE,YOUR VALUE %d CR A SHARE
+SIDE_YOUR_VALUE_BID,"YOUR VALUE %d CR. BID %d SHARES UP TO %d CR"
+SIDE_LAST_CLEAR,LAST CLEAR %d CR (%d SHARES)
+SIDE_STAKE,%s HOLDS %d SHARES (%d%%)
+SIDE_RECAPTURE,"BUY BACK AT %d CR A SHARE"
+SIDE_BID_HINT,F / L3 BIDS AT YOUR VALUE. PRESS AGAIN TO RAISE
+SIDE_FLEET_CASH,FLEET CASH/DEBT: %s
+SIDE_FLEET_STRAIN,"%s INSOLVENT: %d CR VS %d DEBT, %d RDS LEFT"
 SIDE_DISTRESS_NONE,DISTRESS: NO SHARES LEFT
 SIDE_DISTRESS_SOLD,DISTRESS: LOT SOLD
 SIDE_INSOLVENT,INSOLVENT RD %d OF %d

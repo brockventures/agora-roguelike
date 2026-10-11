@@ -14,10 +14,11 @@ const PERK: Dictionary = {"takeover_threshold_shares": {"add": -50, "mul_bps": 1
 
 
 ## A docked run with a world on a 30-tick round, starting at Mars (Ares Heavy's).
-func _ctx(p_seed: int = 21, cr: int = 100000, mods: Dictionary = {}) -> Dictionary:
+func _ctx(p_seed: int = 21, cr: int = 100000, mods: Dictionary = {}, fleets: bool = false) -> Dictionary:
 	var rc := RunController.new(null, p_seed, null, mods, TPR)
 	rc.world = Barons.for_new_run()
-	rc.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
+	if not fleets:
+		rc.world.rivals.clear()  # most tests are not about the fleets; the _with_fleets ones keep them ON
 	rc.cr = cr
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
@@ -506,6 +507,7 @@ func test_the_player_takes_a_baron_at_451_with_the_perk_and_not_without() -> Str
 	w.state(ARES).shares["player"] = 450
 	_boundary(with, 1)
 	var r: Dictionary = w.buy_shares(with["rc"], "mars", 100)
+	_boundary(with, 2)
 	if not bool(r["ok"]) or int(r["n"]) != 1 or w.state(ARES).holder != "player":
 		return "the 451st share did not take it: %s holder '%s'" % [str(r), w.state(ARES).holder]
 	var without := _ctx()
@@ -514,6 +516,7 @@ func test_the_player_takes_a_baron_at_451_with_the_perk_and_not_without() -> Str
 	w2.state(ARES).shares["player"] = 450
 	_boundary(without, 1)
 	r = w2.buy_shares(without["rc"], "mars", 100)
+	_boundary(without, 2)
 	# Without the perk the same 450 shares need 51 more: the perk saves 50.
 	if int(r["n"]) != 51 or w2.state(ARES).holder != "player" or int(w2.state(ARES).shares["player"]) != 501:
 		return "without the perk 450 + 51 should take it at 501: n %d holder '%s'" % [int(r["n"]), w2.state(ARES).holder]
@@ -561,6 +564,20 @@ func test_tender_offers_need_the_perk_and_buy_the_public_float_at_a_premium() ->
 	return "ok"
 
 
+func test_with_fleets_on_a_tender_reaches_only_the_float_the_fleets_have_not_taken() -> String:
+	var c := _ctx(21, 100000, PERK, true)
+	var w: Barons = c["world"]
+	var rc: RunController = c["rc"]
+	var before: int = Takeover.public_float(w, ARES)
+	w.state(ARES).shares["ember_haulage"] = 120
+	if Takeover.public_float(w, ARES) != before - 120:
+		return "float %d did not net out the fleet's 120" % Takeover.public_float(w, ARES)
+	var r: Dictionary = w.tender_shares(rc, "mars", 50)
+	if not bool(r["ok"]) or int(w.state(ARES).shares["player"]) != 50 or int(w.state(ARES).shares["ember_haulage"]) != 120:
+		return "tender with a fleet holding shares: %s" % str(r)
+	return "ok"
+
+
 func test_a_tender_cannot_reach_the_threshold_alone() -> String:
 	# 400 public shares < 451: the last 51 still have to come from a distress lot.
 	var c := _ctx(21, 1000000, PERK)
@@ -574,6 +591,7 @@ func test_a_tender_cannot_reach_the_threshold_alone() -> String:
 	w.add_debt(ARES, 999999)
 	_boundary(c, 10)
 	var r: Dictionary = w.buy_shares(rc, "mars", 100)
+	_boundary(c, 11)
 	if w.state(ARES).holder != "player" or int(r["n"]) != 51:
 		return "tender + a distress lot should take it at 451: %s holder '%s'" % [str(r), w.state(ARES).holder]
 	return "ok"
@@ -599,7 +617,8 @@ func test_chapter_11_returns_tendered_shares_to_the_public_float() -> String:
 	w.tender_shares(rc, "mars", 50)
 	w.add_debt(ARES, 999999)
 	_boundary(c, 2)
-	w.buy_shares(rc, "mars", 30)  # 30 from the treasury at the auction price
+	w.buy_shares(rc, "mars", 30)  # 30 from the treasury, won at the next clearing
+	_boundary(c, 3)
 	var ts0: int = s.treasury_shares
 	if int(s.shares["player"]) != 80 or ts0 != 570:
 		return "setup: held %d treasury shares %d" % [int(s.shares["player"]), ts0]

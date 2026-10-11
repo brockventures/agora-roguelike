@@ -21,8 +21,17 @@ extends RefCounted
 ##    so the UI can lead with "saw you leave X" in one GalNet line.
 ##    This is NOT front-running (task 11): the fleet sails its own best route, it does
 ##    not chase the player's cargo.
-##  - Distress bids. A fleet with spare CR bids for a baron's treasury shares once the
-##    baron has been insolvent for `bid_after_strain` rounds, so the player gets a head start.
+##  - Distress bids (#134). A fleet bids in the sealed-bid auction for a baron's shares, but only
+##    on a baron anchored at a station it trades at, at most its own valuation of the shares
+##    (Takeover.value_per_share: NAV plus the control premium for its own stake) and no more
+##    than `bid_cr_share_bps` of its CR, never so much it would be insolvent. No chance draw:
+##    a fleet bids when it has a reason. Barons insolvent less than `bid_after_strain` rounds
+##    are left alone (a forced lot from a liquidated fleet is not).
+##  - Bankruptcy (#134). A fleet takes the same Chapter11.assess as barons and the player, against
+##    the `debt_cr` its barons.json entry carries. After `fleet_bankrupt_rounds` insolvent rounds
+##    it liquidates: cargo and CR are gone, its baron shares go to each baron's next auction as a
+##    forced lot with no reserve, and it leaves the run (`gone`). Its dock tolls at a baron the
+##    player holds are paid to the player.
 ##
 ## Determinism (design doc 6.3): every chance comes from a fresh NativeDrawSource seeded
 ## with StableHash.hash32("rival-<id>-<run_seed>-<round>") (react and bid use their own
@@ -46,9 +55,10 @@ const DEFAULTS: Dictionary = {
 	"cautious_margin_bps": 1500,
 	# Insolvent rounds a baron must have run before fleets bid for its shares.
 	"bid_after_strain": 2,
-	"bid_chance_bps": 5000,
 	# Share of its CR a fleet will put into one lot of shares.
 	"bid_cr_share_bps": 5000,
+	# Insolvent rounds (Chapter11.assess against the fleet's debt_cr) before a fleet liquidates.
+	"fleet_bankrupt_rounds": 4,
 	# Front-running (task 11, trait front_runner): the least a departing hold must be worth
 	# (Piracy.cargo_value), the CR the fleet must keep after fuel and tolls, the chance it
 	# acts, how much of the destination book's depth it takes (depth_bps left, 6000 = -40%)
@@ -171,9 +181,9 @@ static func advance(w: Barons, round_num: int, rc: RunController, market: Statio
 		var f: RivalFleet = w.rival(id)
 		if f.in_flight() and round_num >= int(f.route.get("arrival_round", 0)):
 			if int(f.route.get("front", 0)) == 1:
-				_front_arrive(w, f, round_num, events)
+				_front_arrive(w, f, round_num, events, rc)
 			else:
-				_arrive(w, f, market, round_num, events)
+				_arrive(w, f, market, round_num, events, rc)
 		if f.in_flight():
 			continue
 		if f.cargo_units() > 0:
@@ -241,11 +251,21 @@ static func _sail(w: Barons, f: RivalFleet, p: Dictionary, market: StationMarket
 	events.append({"kind": "rival_depart", "fleet": f.id, "station": origin, "destination": str(p["destination"]), "commodity": c, "qty": filled, "price": price, "rounds": int(p["rounds"])})
 
 
-static func _arrive(w: Barons, f: RivalFleet, market: StationMarket, round_num: int, events: Array) -> void:
+## A fleet pays the docking toll on arrival; at a baron the player holds the player collects it.
+static func _pay_toll(w: Barons, f: RivalFleet, dest: String, rc: RunController) -> void:
+	var toll: int = w.docking_toll(f.id, dest, f.cr)
+	f.cr -= toll
+	if toll > 0 and rc != null:
+		var bs: BaronState = w.state(w.baron_at(dest))
+		if bs != null and bs.holder == Takeover.PLAYER:
+			rc.cr += toll
+
+
+static func _arrive(w: Barons, f: RivalFleet, market: StationMarket, round_num: int, events: Array, rc: RunController = null) -> void:
 	var dest: String = str(f.route.get("destination", f.at))
 	f.at = dest
 	f.route = {}
-	f.cr -= w.docking_toll(f.id, dest, f.cr)
+	_pay_toll(w, f, dest, rc)
 	_sell_cargo(f, market, round_num, events)
 
 
@@ -269,35 +289,112 @@ static func _sell_cargo(f: RivalFleet, market: StationMarket, round_num: int, ev
 		events.append({"kind": "rival_trade", "fleet": f.id, "station": f.at, "commodity": c, "qty": filled, "price": price})
 
 
-# --- Distress bids (the Takeover seam) ---
+# --- Distress bids and bankruptcy (#134) ---
 
-## The bids {buyer, qty} fleets make for a distress lot, in sorted fleet id order. The CR
-## is taken from the fleet here; Takeover sells the shares. A baron must have been
-## insolvent `bid_after_strain` rounds, and each fleet puts at most `bid_cr_share_bps` of
-## its CR into the lot, so the player has a head start on every distress auction.
-static func bids(w: Barons, baron_id: String, round_num: int, px: int, qty: int, rc: RunController) -> Array:
+## True when the fleet trades at `station`: its home, where it is docked or heading, or where
+## it last traded. A fleet only bids on a baron anchored at one of these.
+static func trades_at(f: RivalFleet, home: String, station: String) -> bool:
+	var st: String = station.to_lower()
+	if st == "":
+		return false
+	if home == st or f.at == st or str(f.last.get("station", "")) == st:
+		return true
+	return str(f.route.get("origin", "")) == st or str(f.route.get("destination", "")) == st
+
+
+## The sealed bids {buyer, qty, max_price} fleets make for a lot of `qty` shares at reserve
+## `px` in baron `baron_id`'s auction, sorted by fleet id. Nothing is drawn: a fleet bids when
+## the baron is anchored at a station it trades at (a forced lot, reserve 0, ignores the
+## `bid_after_strain` head start), its valuation (Takeover.value_per_share) clears the reserve,
+## and it can pay: at most `bid_cr_share_bps` of its CR and never enough to leave it insolvent.
+## Its top price is its valuation; it pays only the uniform clearing price. CR is taken by the
+## clearing, not here.
+static func bids(w: Barons, baron_id: String, round_num: int, px: int, qty: int, rc: RunController, forced: bool = false) -> Array:
 	var out: Array = []
 	var s: BaronState = w.state(baron_id)
-	if s == null or rc == null or px <= 0 or qty <= 0 or w.rivals.is_empty():
+	if s == null or rc == null or qty <= 0 or w.rivals.is_empty() or s.holder != "":
 		return out
 	var cfg: Dictionary = settings(w)
-	if s.strain < int(cfg["bid_after_strain"]):
+	if not forced and s.strain < int(cfg["bid_after_strain"]):
 		return out
-	var left: int = qty
+	var anchor: String = str(w.def(baron_id).get("anchor", ""))
 	for id in w.rival_ids():
-		if left <= 0:
-			break
 		var f: RivalFleet = w.rival(id)
-		var roll: int = _draw("rival-bid-%s" % baron_id, id, rc.run_seed, round_num).randint(0, 9999)
-		if roll >= int(cfg["bid_chance_bps"]):
+		if not trades_at(f, str(w.rival_def(id).get("home", "")), anchor):
 			continue
-		var n: int = mini(left, f.cr * int(cfg["bid_cr_share_bps"]) / 10000 / px)
+		var top: int = Takeover.value_per_share(w, baron_id, id, rc)
+		if top < maxi(1, px):
+			continue
+		var n: int = mini(qty, f.cr * int(cfg["bid_cr_share_bps"]) / 10000 / top)
+		n = mini(n, maxi(1, Takeover.threshold_for(w, id, rc) - Takeover.shares_of(w, baron_id, id)))
+		n = mini(n, maxi(0, int(health(w, id)["headroom"])) / top)
 		if n <= 0:
 			continue
-		f.cr -= n * px
-		left -= n
-		out.append({"buyer": id, "qty": n})
+		out.append({"buyer": id, "qty": n, "max_price": top})
 	return out
+
+
+## A fleet's balance sheet through Chapter11.assess, the same test as barons and the player:
+## {cr, debt, liquidation, headroom (liquidation less debt), insolvent, strain, rounds_left
+## (insolvent rounds before it liquidates), gone}. {} for an unknown fleet.
+static func health(w: Barons, fleet_id: String) -> Dictionary:
+	var f: RivalFleet = w.rival(fleet_id)
+	if f == null:
+		return {}
+	var debt: int = maxi(0, int(w.rival_def(fleet_id).get("debt_cr", 0)))
+	var a: Dictionary = Chapter11.assess({"cr": f.cr, "cargo": f.cargo, "ships": [], "doomsday": {"principal_debt": debt}})
+	var liq: int = int(a["liquidation_value"])
+	return {
+		"cr": f.cr, "debt": debt, "liquidation": liq, "headroom": liq - debt,
+		"insolvent": bool(a["insolvent"]), "strain": f.strain,
+		"rounds_left": maxi(0, int(settings(w)["fleet_bankrupt_rounds"]) - f.strain), "gone": f.gone,
+	}
+
+
+## The once-a-round solvency step (Barons.advance_round, before the barons' lots): fleets by
+## sorted id. An insolvent fleet's strain climbs, a solvent one's resets; at
+## `fleet_bankrupt_rounds` it liquidates. Returns {kind: "rival_bankrupt", fleet, shares, barons}.
+static func advance_health(w: Barons, round_num: int) -> Array:
+	var events: Array = []
+	var limit: int = int(settings(w)["fleet_bankrupt_rounds"])
+	for id in w.rival_ids():
+		var f: RivalFleet = w.rival(id)
+		if bool(health(w, id)["insolvent"]):
+			f.strain += 1
+			if f.strain >= limit:
+				events.append(_liquidate(w, f, round_num))
+		elif f.strain != 0:
+			f.strain = 0
+	return events
+
+
+## The fleet's CR and cargo are gone and it leaves the run. Each baron it held shares of
+## (sorted) takes them as a forced lot (BaronState.scratch["forced"]) for its next auction,
+## with no reserve; a baron the fleet held reverts to NPC control. Shares in a baron someone
+## else holds simply return to the public float.
+static func _liquidate(w: Barons, f: RivalFleet, round_num: int) -> Dictionary:
+	var total: int = 0
+	var barons: Array = []
+	for bid in w.ids():
+		var s: BaronState = w.state(bid)
+		var n: int = int(s.shares.get(f.id, 0))
+		if n <= 0 and s.holder != f.id:
+			continue
+		s.shares.erase(f.id)
+		if s.holder == f.id:
+			s.holder = ""
+		if n > 0 and s.holder == "":
+			s.scratch["forced"] = int(s.scratch.get("forced", 0)) + n
+			total += n
+			barons.append(bid)
+	var ev: Dictionary = {"kind": "rival_bankrupt", "fleet": f.id, "shares": total, "barons": barons, "cr": f.cr, "round": round_num}
+	f.cr = 0
+	f.cargo = {}
+	f.route = {}
+	f.front = {}
+	f.strain = 0
+	f.gone = true
+	return ev
 
 
 # --- Reading state for the UI ---
@@ -384,25 +481,25 @@ static func _try_front_run(w: Barons, f: RivalFleet, rc: RunController, market: 
 ## Fleets that front-ran and have landed: runs at the START of the round boundary
 ## (Barons.advance_round), before the books are reseeded, so the dent is on the book the
 ## player docks to. Also expires finished front-runs. Returns the GalNet events.
-static func front_arrivals(w: Barons, round_num: int) -> Array:
+static func front_arrivals(w: Barons, round_num: int, rc: RunController = null) -> Array:
 	var events: Array = []
 	for id in w.rival_ids():
 		var f: RivalFleet = w.rival(id)
 		if not f.front.is_empty() and round_num >= int(f.front["until_round"]):
 			f.front = {}
 		if f.in_flight() and int(f.route.get("front", 0)) == 1 and round_num >= int(f.route.get("arrival_round", 0)):
-			_front_arrive(w, f, round_num, events)
+			_front_arrive(w, f, round_num, events, rc)
 	return events
 
 
-static func _front_arrive(w: Barons, f: RivalFleet, round_num: int, events: Array) -> void:
+static func _front_arrive(w: Barons, f: RivalFleet, round_num: int, events: Array, rc: RunController = null) -> void:
 	var dest: String = str(f.route.get("destination", f.at))
 	var com: String = str(f.route.get("commodity", ""))
 	var depth: int = int(f.route.get("depth_bps", 10000))
 	var hold: int = int(f.route.get("hold_rounds", 2))
 	f.at = dest
 	f.route = {}
-	f.cr -= w.docking_toll(f.id, dest, f.cr)
+	_pay_toll(w, f, dest, rc)
 	f.front = {"station": dest, "commodity": com, "depth_bps": depth, "until_round": round_num + hold}
 	events.append({"kind": "rival_frontrun", "fleet": f.id, "station": dest, "commodity": com, "depth_bps": depth, "rounds": hold, "arrived": true})
 

@@ -99,7 +99,7 @@ func test_validation_rejects_bad_fleets() -> String:
 		"player id": func(f: Dictionary, _r: Dictionary): f["id"] = "player",
 		"id shape": func(f: Dictionary, _r: Dictionary): f["id"] = "Bad Id",
 		"setting": func(_f: Dictionary, r: Dictionary): r["capacity"] = -5,
-		"bps": func(_f: Dictionary, r: Dictionary): r["bid_chance_bps"] = 10001,
+		"bps": func(_f: Dictionary, r: Dictionary): r["bid_cr_share_bps"] = 10001,
 		"unknown setting": func(_f: Dictionary, r: Dictionary): r["warp"] = 1,
 	}
 	for name in cases:
@@ -479,7 +479,7 @@ func test_the_map_projects_fleets_in_flight() -> String:
 # --- distress bids (the Takeover seam) ---
 
 func test_fleets_bid_only_after_the_baron_has_been_insolvent_a_while() -> String:
-	var c := _world(84, {"bid_chance_bps": 10000})
+	var c := _world(84)
 	var w: Barons = c["w"]
 	var rc: RunController = c["rc"]
 	w.state(ARES).strain = 1
@@ -492,27 +492,21 @@ func test_fleets_bid_only_after_the_baron_has_been_insolvent_a_while() -> String
 	var bids: Array = w.rival_bids(ARES, 5, 10, 100, rc)
 	if bids.is_empty():
 		return "no bids at strain 2"
-	var total: int = 0
 	var last: String = ""
 	for b in bids:
 		if str(b["buyer"]) <= last:
 			return "bids are not in sorted id order: %s" % str(bids)
 		last = str(b["buyer"])
-		total += int(b["qty"])
-	if total > 100:
-		return "bid for %d of a 100-share lot" % total
-	var cr1: int = w.rival(BLACKWATER).cr + w.rival(EMBER).cr + w.rival(KESSLER).cr
-	if cr0 - cr1 != total * 10:
-		return "bidders paid %d for %d shares at 10" % [cr0 - cr1, total]
-	var quiet := _world(84, {"bid_chance_bps": 0})
-	(quiet["w"] as Barons).state(ARES).strain = 3
-	if not (quiet["w"] as Barons).rival_bids(ARES, 5, 10, 100, quiet["rc"]).is_empty():
-		return "bid at 0 bps"
+		if int(b["max_price"]) > w.share_value(ARES, str(b["buyer"]), rc) or int(b["qty"]) > 100:
+			return "bid out of bounds: %s" % str(b)
+	# A bid takes no CR: the clearing does.
+	if cr0 != w.rival(BLACKWATER).cr + w.rival(EMBER).cr + w.rival(KESSLER).cr:
+		return "bidding spent CR"
 	return "ok"
 
 
 func test_a_distressed_baron_sells_its_lot_to_a_fleet_through_the_takeover_core() -> String:
-	var c := _world(84, {"bid_chance_bps": 10000, "decide_chance_bps": 0})
+	var c := _world(84, {"decide_chance_bps": 0})
 	var w: Barons = c["w"]
 	var rc: RunController = c["rc"]
 	w.add_debt(ARES, int(w.assess_baron(ARES)["liquidation_value"]) + 5000)

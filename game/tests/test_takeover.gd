@@ -14,10 +14,11 @@ const SOL: String = "sol_central"
 
 
 ## A docked run with a world on a 30-tick round, starting at Mars (Ares Heavy's).
-func _ctx(p_seed: int = 21, cr: int = 100000) -> Dictionary:
+func _ctx(p_seed: int = 21, cr: int = 100000, fleets: bool = false) -> Dictionary:
 	var rc := RunController.new(null, p_seed, null, {}, TPR)
 	rc.world = Barons.for_new_run()
-	rc.world.rivals.clear()  # not what this test is about; test_rival_fleets.gd covers the fleets
+	if not fleets:
+		rc.world.rivals.clear()  # most tests are not about the fleets; the _with_fleets ones keep them ON
 	rc.cr = cr
 	var hud := OrbitalHUD.new(rc)
 	var lp := M0Loop.new(hud)
@@ -60,6 +61,19 @@ func _kinds(events: Array, baron: String = "") -> Array:
 		if baron == "" or str(e.get("baron", "")) == baron:
 			out.append(str(e["kind"]))
 	return out
+
+
+## Places the player's bid on the standing Mars lot and runs boundary `r`, where it clears.
+func _win(c: Dictionary, r: int, n: int = 100, px: int = 50) -> Array:
+	(c["world"] as Barons).submit_bid(c["rc"], "mars", n, px)
+	return _boundary(c, r)
+
+
+## A non-player stand-in takes `n` shares of the standing lot at its reserve (outside the auction).
+func _stand_in(w: Barons, id: String, buyer: String, n: int, rc: RunController) -> void:
+	var o: Dictionary = Takeover.offer(w, id)
+	if not o.is_empty():
+		Takeover._transfer(w, id, buyer, mini(n, int(o["qty"])), int(o["px"]), rc)
 
 
 ## Debt that puts `id` `extra` CR past solvent: its liquidation value plus extra.
@@ -185,7 +199,7 @@ func test_no_rival_bids_exist_yet_so_the_lot_stays_in_the_treasury() -> String:
 	_distress(w, ARES, 50000)
 	for r in range(1, 5):
 		_boundary(c, r)
-	if w.state(ARES).treasury_shares != 600 or not w.rival_bids(ARES, 1, 7, 100).is_empty():
+	if w.state(ARES).treasury_shares != 600 or not w.rival_bids(ARES, 1, 7, 100, c["rc"]).is_empty():
 		return "shares moved with nobody buying: %d" % w.state(ARES).treasury_shares
 	return "ok"
 
@@ -201,17 +215,23 @@ func test_buying_the_lot_moves_cash_and_shares() -> String:
 	var cr0: int = rc.cr
 	var tr0: int = w.state(ARES).treasury_cr
 	var res: Dictionary = w.buy_shares(rc, "mars", 40)
-	if not bool(res["ok"]) or int(res["n"]) != 40 or int(res["cost"]) != 280 or int(res["held"]) != 40:
-		return "buy wrong: %s" % str(res)
+	if not bool(res["ok"]) or int(res["n"]) != 40 or int(res["cost"]) != 0 or int(res["max_price"]) != 10:
+		return "bid wrong: %s" % str(res)
+	if rc.cr != cr0 or w.state(ARES).treasury_cr != tr0:
+		return "a bid moved cash before the lot cleared"
+	_boundary(c, 2)
 	if rc.cr != cr0 - 280 or w.state(ARES).treasury_cr != tr0 + 280:
-		return "cash did not move: cr %d treasury %d" % [rc.cr, w.state(ARES).treasury_cr]
+		return "cash did not move at the clearing: cr %d treasury %d" % [rc.cr, w.state(ARES).treasury_cr]
 	var s: BaronState = w.state(ARES)
-	if s.treasury_shares != 560 or int(s.shares["player"]) != 40 or int(w.distress_at("mars")["qty"]) != 60:
+	if s.treasury_shares != 560 or int(s.shares["player"]) != 40:
 		return "shares did not move: %s" % str(s.to_dict())
-	# The rest of the lot, then the offer is gone until the next round.
-	w.buy_shares(rc, "mars", 500)
-	if not w.distress_at("mars").is_empty() or w.state(ARES).treasury_shares != 500:
-		return "the lot was not capped at what was on offer"
+	# A bid for more than the lot is capped at the lot; the next lot is listed again.
+	var big: Dictionary = w.buy_shares(rc, "mars", 500)
+	if int(big["n"]) != 100:
+		return "the bid was not capped at what was on offer: %s" % str(big)
+	_boundary(c, 3)
+	if w.state(ARES).treasury_shares != 460:
+		return "the capped bid did not buy the lot: %d" % w.state(ARES).treasury_shares
 	return "ok"
 
 
@@ -243,17 +263,17 @@ func test_the_501st_share_takes_the_baron_and_not_a_share_more() -> String:
 	var rc: RunController = c["rc"]
 	var w: Barons = c["world"]
 	_distress(w, ARES, 5000)
-	var last: Dictionary = {}
-	for r in range(1, 8):
-		_boundary(c, r)
-		last = w.buy_shares(rc, "mars", 100)
+	var last: Array = []
+	for r in range(1, 9):
+		last = _boundary(c, r)
+		w.buy_shares(rc, "mars", 100)
 		if w.state(ARES).holder == Takeover.PLAYER:
 			break
 	var s: BaronState = w.state(ARES)
 	if s.holder != "player" or int(s.shares["player"]) != 501:
 		return "after %d rounds holder '%s' shares %s" % [7, s.holder, str(s.shares)]
-	if not _kinds(last["events"]).has("takeover"):
-		return "no takeover event: %s" % str(_kinds(last["events"]))
+	if not _kinds(last).has("takeover"):
+		return "no takeover event: %s" % str(_kinds(last))
 	return "ok"
 
 
@@ -271,7 +291,7 @@ func test_a_takeover_absorbs_treasury_and_debt_and_the_holder_gains_the_privileg
 	var tr0: int = s.treasury_cr
 	var res: Dictionary = w.buy_shares(rc, "mars", 100)
 	var tk: Dictionary = {}
-	for e in res["events"]:
+	for e in _boundary(c, 2):
 		if str(e["kind"]) == "takeover":
 			tk = e
 	if tk.is_empty() or int(res["n"]) != 1:
@@ -302,7 +322,7 @@ func test_a_takeover_that_sinks_the_player_reports_it_and_filing_forfeits_the_ba
 	_boundary(c, 1)
 	var res: Dictionary = w.buy_shares(rc, "mars", 1)
 	var tk: Dictionary = {}
-	for e in res["events"]:
+	for e in _boundary(c, 2):
 		if str(e["kind"]) == "takeover":
 			tk = e
 	if tk.is_empty() or not bool(tk["forced_ch11"]):
@@ -372,7 +392,8 @@ func test_taking_a_baron_cancels_its_contract_and_auction() -> String:
 	_distress(w, ARES, 5000)
 	_boundary(c, 9)
 	var res: Dictionary = w.buy_shares(rc, "mars", 1)
-	if not bool(res["ok"]) or w.has_pending_offer() or w.state(ARES).scratch.has("contract"):
+	_boundary(c, 10)
+	if not bool(res["ok"]) or w.state(ARES).holder != Takeover.PLAYER or w.has_pending_offer() or w.state(ARES).scratch.has("contract"):
 		return "taking Ares left its contract behind: %s" % str(w.state(ARES).scratch)
 	return "ok"
 
@@ -390,7 +411,7 @@ func _sell_out(c: Dictionary, id: String, start: int) -> int:
 			return r
 		var o: Dictionary = Takeover.offer(w, id)
 		if not o.is_empty():
-			w.sell_auction_shares(id, "rival_a" if r % 2 == 0 else "rival_b", int(o["qty"]), c["rc"])
+			_stand_in(w, id, "rival_a" if r % 2 == 0 else "rival_b", int(o["qty"]), c["rc"])
 		r += 1
 	return r
 
@@ -428,7 +449,7 @@ func test_a_systems_bankruptcy_liquidates_at_the_haircut_and_reorganises_the_bar
 		events = _boundary(c, r)
 		var o: Dictionary = Takeover.offer(w, ARES)
 		if not o.is_empty() and w.state(ARES).treasury_shares > 0:
-			w.sell_auction_shares(ARES, "rival_a" if r % 2 == 0 else "rival_b", int(o["qty"]), rc)
+			_stand_in(w, ARES, "rival_a" if r % 2 == 0 else "rival_b", int(o["qty"]), rc)
 		r += 1
 	var ev: Dictionary = {}
 	for e in events:
@@ -597,7 +618,7 @@ func test_no_random_event_forces_chapter_11() -> String:
 		for id in [ARES, TITAN, SOL]:
 			var o: Dictionary = Takeover.offer(w, id)
 			if not o.is_empty() and r % 3 == 0:
-				w.sell_auction_shares(id, "rival_a" if r % 2 == 0 else "rival_b", 100, rc)
+				_stand_in(w, id, "rival_a" if r % 2 == 0 else "rival_b", 100, rc)
 		if rc.doomsday.principal_debt != 0 or bool(rc.assess()["insolvent"]):
 			return "round %d: the world put debt on the player" % r
 	if rc.cr < cr0:
@@ -618,9 +639,46 @@ func test_only_the_players_own_purchase_can_report_a_forced_chapter_11() -> Stri
 	return "ok"
 
 
+# --- the same rules with the shipped fleets ON (#134) ---
+
+func test_with_fleets_on_a_distressed_baron_is_contested_and_the_player_can_still_take_it() -> String:
+	var c := _ctx(21, 400000, true)
+	var rc: RunController = c["rc"]
+	var w: Barons = c["world"]
+	w.data["takeover"]["auction_cap"] = 200
+	_distress(w, ARES, 400000)
+	var fleets_got: int = 0
+	var r: int = 1
+	while r <= 14 and w.state(ARES).holder != Takeover.PLAYER:
+		_boundary(c, r)
+		fleets_got = maxi(fleets_got, Takeover.shares_of(w, ARES, "ember_haulage") + Takeover.shares_of(w, ARES, "blackwater_lines"))
+		if not w.distress_at("mars").is_empty():
+			w.submit_bid(rc, "mars", 200, w.share_value(ARES, "player", rc) * 4)
+		r += 1
+	if w.state(ARES).holder != Takeover.PLAYER:
+		return "the player never took Ares against the fleets: %s" % str(w.state(ARES).shares)
+	if w.state(ARES).scratch.has("distress") or w.has_pending_offer():
+		return "a taken baron kept its auction"
+	return "ok"
+
+
+func test_with_fleets_on_the_same_bankruptcy_path_settles() -> String:
+	var c := _ctx(21, 100000, true)
+	var w: Barons = c["world"]
+	w.data["rivals"]["bid_after_strain"] = 99  # the fleets sit this one out
+	w.data["rivals"]["decide_chance_bps"] = 0
+	_distress(w, ARES, 50000)
+	var at: int = _sell_out(c, ARES, 1)
+	if w.state(ARES).strain != 0 or w.state(ARES).holder != "":
+		return "the stand-in sales never settled with fleets present: strain %d" % w.state(ARES).strain
+	if at < 7:
+		return "settled at round %d, before six insolvent rounds were served" % at
+	return "ok"
+
+
 # --- the UI path ---
 
-func test_the_shares_action_buys_the_lot_and_posts_the_headline() -> String:
+func test_the_shares_action_bids_for_the_lot_and_posts_the_headlines() -> String:
 	var c := _ctx()
 	var lp: M0Loop = c["loop"]
 	var w: Barons = c["world"]
@@ -628,14 +686,19 @@ func test_the_shares_action_buys_the_lot_and_posts_the_headline() -> String:
 	if lp.dispatch_action(M0Loop.ACT_SHARES):
 		return "the key did something with no lot on offer"
 	_distress(w, ARES, 50000)
-	_boundary(c, 1)
-	lp._post_baron_event({"kind": "distress", "baron": ARES, "px": 7, "qty": 100, "cap": 100})
+	var ev: Array = _boundary(c, 1)
+	for e in ev:
+		lp._post_baron_event(e)
 	if not lp.dispatch_action(M0Loop.ACT_SHARES):
-		return "the key did not buy the lot (reason '%s')" % lp.last_shares_reason
+		return "the key did not bid for the lot (reason '%s')" % lp.last_shares_reason
+	if rc.cr != 100000 or w.state(ARES).shares.has("player"):
+		return "the key bought at once: cr %d" % rc.cr
+	for e in _boundary(c, 2):
+		lp._post_baron_event(e)
 	if int(w.state(ARES).shares["player"]) != 100 or rc.cr != 100000 - 700:
-		return "lot not bought: %s cr %d" % [str(w.state(ARES).shares), rc.cr]
+		return "lot not won: %s cr %d" % [str(w.state(ARES).shares), rc.cr]
 	var t: Array = _texts(c["hud"])
-	if not _any(t, "ARES HEAVY is in distress") or not _any(t, "You buy 100 ARES HEAVY shares at 7 CR each: 100 of 501 held"):
+	if not _any(t, "ARES HEAVY is in distress") or not _any(t, "Bid placed: 100 ARES HEAVY shares, up to 10 CR each (reserve 7)") or not _any(t, "ARES HEAVY auction clears: 100 shares at 7 CR each (reserve 7)") or not _any(t, "You buy 100 ARES HEAVY shares at 7 CR each: 100 of 501 held"):
 		return "headlines: %s" % str(t)
 	return "ok"
 
@@ -665,17 +728,26 @@ func test_the_sidebar_rows_follow_the_baron() -> String:
 	_distress(w, ARES, 50000)
 	_boundary(c, 1)
 	var rows: Array = lp.takeover_lines("mars")
-	if rows.size() != 4 or rows[0] != "DISTRESS: 100 SHARES @ 7 CR" or rows[1] != "INSOLVENT RD 1 OF 6" or rows[2] != "YOU HOLD 0 OF 501 SHARES" or rows[3] != "F / L3 BUYS THE LOT":
+	if rows != ["DISTRESS LOT: 100 SHARES, RESERVE 7 CR", "INSOLVENT RD 1 OF 6", "YOU HOLD 0 OF 501 SHARES", "YOUR VALUE 10 CR A SHARE", "F / L3 BIDS AT YOUR VALUE. PRESS AGAIN TO RAISE"]:
 		return "distress rows: %s" % str(rows)
 	if lp.takeover_state("mars") != "distress":
 		return "state %s" % lp.takeover_state("mars")
 	w.buy_shares(rc, "mars", 100)
+	if not (lp.takeover_lines("mars") as Array).has("YOUR VALUE 10 CR. BID 100 SHARES UP TO 10 CR"):
+		return "no bid row: %s" % str(lp.takeover_lines("mars"))
+	_boundary(c, 2)
+	if not (lp.takeover_lines("mars") as Array).has("LAST CLEAR 7 CR (100 SHARES)") or not (lp.takeover_lines("mars") as Array).has("YOU HOLD 100 OF 501 SHARES"):
+		return "no last-clear row: %s" % str(lp.takeover_lines("mars"))
+	w.state(ARES).scratch.erase("distress")
 	if lp.takeover_lines("mars")[0] != "DISTRESS: LOT SOLD":
 		return "sold-lot row: %s" % str(lp.takeover_lines("mars"))
 	w.state(ARES).scratch["distress"] = {"px": 7, "qty": 100, "round": 1}
-	# Away from the baron's dock there is nothing to press, so no hint.
+	# Away from the baron's dock there is nothing to press, so no hint (and it shows only to a player with no stake).
+	w.state(ARES).shares.erase("player")
+	if not (lp.takeover_lines("mars") as Array).has("F / L3 BIDS AT YOUR VALUE. PRESS AGAIN TO RAISE"):
+		return "no hint at the dock: %s" % str(lp.takeover_lines("mars"))
 	rc.docked_at = "earth"
-	if (lp.takeover_lines("mars") as Array).has("F / L3 BUYS THE LOT"):
+	if (lp.takeover_lines("mars") as Array).has("F / L3 BIDS AT YOUR VALUE. PRESS AGAIN TO RAISE"):
 		return "hint shown away from the dock"
 	rc.docked_at = "mars"
 	w.state(ARES).holder = "player"
