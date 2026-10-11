@@ -537,3 +537,29 @@ ONB_CHIP_HELD,ORIENTATION %d/%d · HELD
 ONB_CHIP_NOTE,ORIENTATION NOTE
 ONB_CHIP_NOTE_HELD,ORIENTATION NOTE · HELD
 ONB_CONTINUE,A: CONTINUE
+ONB_HINT,VIEW: Opt out of orientation
+ONB_TABS_TITLE,Welcome aboard! Action item: press RB for MARKET.
+ONB_TABS_1,LB/RB change tab. Start pauses the clock.
+ONB_TABS_2,Alignment begins at the order book.
+ONB_ORDER_TITLE,Action item: execute one order.
+ONB_ORDER_1,R-STICK: commodity. D-PAD: walk the ladder.
+ONB_ORDER_2,D-PAD left/right: quantity. A: submit.
+ONB_ORDER_3,Crossing the spread flips BUY/SELL.
+ONB_DEBT_TITLE,Friendly reminder: your DEBT chip is climbing.
+ONB_DEBT_1,Your burn rate is now a growth opportunity.
+ONB_DEBT_2,Burn never compounds. DOOMSDAY is the deadline.
+ONB_LEAVE_TITLE,Action item: take this show on the road. A: depart.
+ONB_LEAVE_1,LT/RT: pick the destination. Review the route card.
+ONB_LEAVE_2,Light cargo attracts no raiders. Risk is a lifestyle.
+ONB_SELL_TITLE,Action item: realize value. SELL here.
+ONB_SELL_1,"D-PAD to a bid, then A. Prices differ by station."
+ONB_SELL_2,No trading in transit. Plan your touchpoints.
+ONB_RAID_TITLE,Incident review: a lane event occurred.
+ONB_RAID_1,"That headline was a raid or a storm: ransom, cargo or delay."
+ONB_RAID_2,Risk is on the route card before every departure.
+ONB_CH11_TITLE,Restructuring complete. Congratulations!
+ONB_CH11_1,Debt wiped. The clock was not.
+ONB_CH11_2,Severance banked: %d. Perks are bought when this run ends.
+ONB_PERKS_TITLE,Benefits update
+ONB_PERKS_1,Benefits update: Severance buys permanent perks. The cheapest costs %d.
+HUD_PROMPT_NEXT,Next

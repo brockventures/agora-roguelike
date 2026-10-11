@@ -96,6 +96,8 @@ func test_every_csv_key_is_reachable() -> String:
 	var corpus: String = ""
 	for path in script_paths():
 		corpus += FileAccess.get_file_as_string(path)
+	# The tutorial's beat copy is named in its data table, not in a script.
+	corpus += FileAccess.get_file_as_string("res://data/onboarding.json")
 	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_"]
 	var dead: Array = []
 	for k in rows:
