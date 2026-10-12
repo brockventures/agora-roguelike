@@ -24,8 +24,8 @@ BONE = (0xE6, 0xDC, 0xC3)
 INK = (0x1A, 0x14, 0x10)
 SHEET_BG = (0x0F, 0x0D, 0x0B)
 WEIGHT = 700
-WORD = "AGORA"
-WORD2 = "STATION"  # working title "Agora Station" (Ryan, 2026-10-12); second line, tracked to AGORA's width
+WORD = "SHORT"
+WORD2 = "THE SUN"  # title "Short the Sun" (Ryan, 2026-10-12); second line, tracked to the first line's width
 
 # name -> (width, height, layout, wordmark height fraction)
 # layout: "left" (left third, vertically centered) | "top" (centered, top third)
@@ -164,7 +164,7 @@ def busy_mask(img):
 
 
 def title_block(wm_target, max_w, stroke_w):
-    """AGORA over a tracked-out STATION, both lines the same width."""
+    """SHORT over a tracked-out THE SUN, both lines the same width."""
     wordmark = fit_text(WORD, wm_target, max_w, stroke_w, BONE, INK)
     if not WORD2:
         return wordmark
