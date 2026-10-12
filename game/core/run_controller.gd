@@ -34,6 +34,10 @@ signal monopoly_achieved()
 signal run_rescued()
 ## Standalone public demo limit reached (3 quarters / 90 rounds, #39).
 signal demo_completed()
+## Secret Final Boss: Sol Government Nationalization & Sovereign Buyout (#33).
+signal sovereign_decree_issued(decree_info: Dictionary)
+signal sovereign_resolved(method: String, award: int)
+signal sovereign_nationalized()
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
 ## #160: a policy pick was granted (count = picks now waiting), and one was adopted.
@@ -89,6 +93,9 @@ var rescue: RescueProject = null
 ## Severance a won run banked for the rescue (#32), and what a lost one banked for the phases
 ## it finished. Both are 0 except on the run that ended that way, saved only when non-zero.
 var rescue_severance_award: int = 0
+var sovereign: SovereignTakeover = null
+var sovereign_enabled: bool = false
+var sovereign_severance_award: int = 0
 var consolation_severance_award: int = 0
 
 # --- Travel (Epic 3 task 0, #111) ---
@@ -471,9 +478,9 @@ func check_monopoly() -> bool:
 
 ## True once the doomsday clock has collapsed: the only true end of the run.
 ## Chapter 11 filing is NOT a game over; it founds a new corp in place.
-## A rescued run is over too (#32): the clock is not what ended it.
+## A rescued, nationalized, or sovereign-buyout run is over too (#32, #33).
 func is_run_over() -> bool:
-	return is_collapsed() or is_rescued() or is_demo_completed()
+	return is_collapsed() or is_rescued() or is_demo_completed() or is_nationalized() or is_sovereign_buyout()
 
 ## True once the public demo run limit (3 quarters / 90 rounds, #39) was reached.
 func is_demo_completed() -> bool:
@@ -496,6 +503,8 @@ func open_rescue() -> bool:
 		return false
 	rescue = p
 	sync_rent_bonus()
+	if sovereign_enabled:
+		_trigger_sovereign_decree()
 	return true
 
 ## Every book mod the world emits: the barons', then the rivals', then the open Rescue Project's
@@ -584,7 +593,8 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 			profile.rescues_completed += 1
 		elif reason == "collapse":
 			consolation_severance_award = rescue.consolation_severance()
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award, rescue_severance_award, consolation_severance_award, Parachutes.apply_stat(modifiers, "severance_bps", Parachutes.BPS))
+	var total_rescue: int = rescue_severance_award + sovereign_severance_award
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award, total_rescue, consolation_severance_award, Parachutes.apply_stat(modifiers, "severance_bps", Parachutes.BPS))
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
@@ -699,6 +709,11 @@ func _effective_modifiers() -> Dictionary:
 func attach_policies() -> void:
 	if policies == null:
 		policies = PolicyState.new()
+
+## Attach Secret Final Boss (idempotent). Whoever starts a run that should have the sovereign
+## boss calls this; bare controllers and replay goldens stay untouched (#33).
+func attach_sovereign() -> void:
+	sovereign_enabled = true
 
 ## Adopt a policy with the pending pick. The caller resumes the clock (as it does after a
 ## contract). False when nothing is pending or `id` is not on offer.
@@ -831,6 +846,12 @@ func to_dict() -> Dictionary:
 		out["rescue_severance_award"] = rescue_severance_award
 	if consolation_severance_award > 0:
 		out["consolation_severance_award"] = consolation_severance_award
+	if sovereign_enabled:
+		out["sovereign_enabled"] = true
+	if sovereign != null:
+		out["sovereign"] = sovereign.to_dict()
+	if sovereign_severance_award > 0:
+		out["sovereign_severance_award"] = sovereign_severance_award
 	return out
 
 static func from_dict(d: Dictionary) -> RunController:
@@ -860,6 +881,10 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.rounds_survived_award = maxi(0, int(d.get("rounds_survived_award", 0)))
 	rc.rescue_severance_award = maxi(0, int(d.get("rescue_severance_award", 0)))
 	rc.consolation_severance_award = maxi(0, int(d.get("consolation_severance_award", 0)))
+	if d.has("sovereign") and d["sovereign"] is Dictionary:
+		rc.sovereign = SovereignTakeover.from_dict(d["sovereign"])
+	rc.sovereign_enabled = bool(d.get("sovereign_enabled", false)) or rc.sovereign != null
+	rc.sovereign_severance_award = maxi(0, int(d.get("sovereign_severance_award", 0)))
 	rc._corp_start_tick = maxi(0, int(d.get("corp_start_tick", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))
 	var co = d.get("carry_over", {})
@@ -935,6 +960,9 @@ func _on_sub_ticked(total: int) -> void:
 	# the clock. No project means every tick counts, so a run without one is untouched.
 	if rescue == null or rescue.counts_tick(total):
 		doomsday.step_ticks(1)
+	if sovereign != null and sovereign.is_active():
+		if sovereign.step_tick():
+			_on_sovereign_nationalized()
 	if not transit.is_empty() and total >= int(transit["arrive_tick"]):
 		_arrive()
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
@@ -955,6 +983,95 @@ func _on_demo_limit_reached() -> void:
 		return
 	sim_clock.paused = true
 	end_run("demo_limit")
+
+
+## --- Secret Final Boss: Sol Government Nationalization & Sovereign Buyout (#33) ---
+
+func _trigger_sovereign_decree() -> void:
+	if sovereign != null:
+		return
+	sovereign = SovereignTakeover.load_default()
+	sovereign.start(sim_clock.total_ticks)
+	sovereign_decree_issued.emit(sovereign.to_dict())
+
+func _on_sovereign_nationalized() -> void:
+	if is_run_over():
+		return
+	sim_clock.paused = true
+	sovereign_nationalized.emit()
+	end_run("nationalized")
+
+func is_nationalized() -> bool:
+	return end_reason == "nationalized" and _banked_corp == corp_number
+
+func is_sovereign_buyout() -> bool:
+	return end_reason == "sovereign_buyout" and _banked_corp == corp_number
+
+func has_regulatory_perk() -> bool:
+	if profile != null and profile.has_patent("corrupt_regulator"):
+		return true
+	if perk_modifiers.has("corrupt_regulator"):
+		return true
+	if policies != null and (policies.picks.has("risk_transfer") or policies.picks.has("cost_containment")):
+		return true
+	return false
+
+func has_debt_leverage() -> bool:
+	if profile != null and (profile.has_patent("corrupt_regulator") or profile.has_patent("hostile_buyout_line")):
+		return true
+	if perk_modifiers.has("corrupt_regulator") or perk_modifiers.has("hostile_buyout_line"):
+		return true
+	if policies != null and (policies.picks.has("lbo_framework") or policies.picks.has("covenant_relief")):
+		return true
+	return false
+
+func has_buyout_perk() -> bool:
+	if profile != null and (profile.has_patent("hostile_buyout_line") or profile.has_patent("corrupt_regulator")):
+		return true
+	if perk_modifiers.has("hostile_buyout_line") or perk_modifiers.has("corrupt_regulator"):
+		return true
+	if policies != null and (policies.picks.has("lbo_framework") or policies.picks.has("rollup_mandate")):
+		return true
+	return false
+
+func resolve_sovereign_bribe() -> bool:
+	if sovereign == null or not sovereign.can_bribe(cr, has_regulatory_perk()):
+		return false
+	var cost: int = sovereign.get_bribe_cost(has_regulatory_perk())
+	cr -= cost
+	var award: int = sovereign.resolve(SovereignTakeover.STATUS_BRIBED)
+	sovereign_severance_award = award
+	sovereign_resolved.emit(SovereignTakeover.STATUS_BRIBED, award)
+	return true
+
+func resolve_sovereign_debt_choke() -> bool:
+	var debt: int = doomsday.principal_debt if doomsday != null else 0
+	if sovereign == null or not sovereign.can_debt_choke(cr, debt, has_debt_leverage()):
+		return false
+	var cost: int = sovereign.get_debt_choke_cost(has_debt_leverage())
+	cr -= cost
+	var debt_relief: int = mini(debt, sovereign.debt_choke_leverage_debt if has_debt_leverage() else sovereign.debt_choke_required_debt)
+	if doomsday != null and debt_relief > 0:
+		doomsday.principal_debt = maxi(0, doomsday.principal_debt - debt_relief)
+	var award: int = sovereign.resolve(SovereignTakeover.STATUS_DEBT_CHOKED)
+	sovereign_severance_award = award
+	sovereign_resolved.emit(SovereignTakeover.STATUS_DEBT_CHOKED, award)
+	return true
+
+func resolve_sovereign_privatize() -> bool:
+	if sovereign == null or not sovereign.can_privatize(cr, has_buyout_perk()):
+		return false
+	var cost: int = sovereign.get_privatize_cost(has_buyout_perk())
+	cr -= cost
+	var award: int = sovereign.resolve(SovereignTakeover.STATUS_PRIVATIZED)
+	sovereign_severance_award = award
+	sovereign_resolved.emit(SovereignTakeover.STATUS_PRIVATIZED, award)
+	return true
+
+func finish_sovereign_buyout() -> int:
+	if sovereign == null or sovereign.status != SovereignTakeover.STATUS_PRIVATIZED or is_run_over():
+		return 0
+	return end_run("sovereign_buyout")
 
 func _advance_crisis_deck(round_num: int) -> void:
 	crisis_deck.advance_round(round_num, int(doomsday.stage), net_worth())

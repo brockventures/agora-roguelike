@@ -236,6 +236,7 @@ func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 	var rc := RunController.new(_loaded_profile, p_seed)
 	rc.world = Barons.for_new_run()  # Epic 3: the sector barons make the books
 	rc.attach_policies()  # #160: run-only corporate policies (rounds 20/50/80 and the first takeover)
+	rc.attach_sovereign()  # #33: Secret Final Boss (Sol Government nationalization decree)
 	bags = Bags.new("m0", null, p_seed)
 	initialize_systems(rc)
 	return rc
@@ -275,6 +276,7 @@ func continue_saved_run() -> bool:
 	# An older save past round 20 therefore catches up on the milestones it missed at the next
 	# round boundary (PolicyState.on_round).
 	rc.attach_policies()
+	rc.attach_sovereign()
 	# profile.json is written whenever the profile changes (perk buys, filings),
 	# the run slot's embedded copy only at round autosaves, so after a crash the
 	# file is the newer one: it wins, and the run is re-pointed at it (D3).
@@ -2970,6 +2972,8 @@ func _resolution_model() -> Dictionary:
 		return _policy_model()
 	if loop.overlay_state == M0Loop.OVERLAY_RESCUED:
 		return _rescued_model()
+	if loop.overlay_state == M0Loop.OVERLAY_SOVEREIGN_DECREE:
+		return _sovereign_decree_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return {"eyebrow": tr("CH11_EYEBROW"), "title": tr("CH11_TITLE"), "band": "alert", "wide": false,
@@ -3097,6 +3101,8 @@ func _summary_model() -> Dictionary:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_RESCUE"), "value": tr("SUM_SEV_VALUE") % int(r["severance_rescue_pts"])})
 	if int(r.get("severance_consolation_pts", 0)) > 0:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_CONSOLATION") % [int(r["rescue_phases_done"]), int(r["rescue_phases_total"])], "value": tr("SUM_SEV_VALUE") % int(r["severance_consolation_pts"])})
+	if int(r.get("severance_sovereign_pts", 0)) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_SOVEREIGN"), "value": tr("SUM_SEV_VALUE") % int(r["severance_sovereign_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
 	var won: bool = is_win  # a rescued run's summary is a win, not a collapse
 	return {"eyebrow": tr("RESC_SUM_EYEBROW" if won else "SUM_EYEBROW"), "title": tr("RESC_SUM_TITLE" if won else "SUM_TITLE"), "band": "teal" if won else "alert", "wide": true, "art": tr("SUM_ART"),
@@ -3139,6 +3145,91 @@ func _rescue_summary_rows(r: Dictionary) -> Array:
 
 ## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
 ## run summary, then the Golden Parachutes perks and a new run.
+func _sovereign_decree_model() -> Dictionary:
+	var sov: SovereignTakeover = loop.controller.sovereign if (loop != null and loop.controller != null) else null
+	var rounds_left: int = sov.rounds_remaining(loop.controller.ticks_per_round) if sov != null else 0
+	var reg: bool = loop.controller.has_regulatory_perk() if (loop != null and loop.controller != null) else false
+	var lev: bool = loop.controller.has_debt_leverage() if (loop != null and loop.controller != null) else false
+	var buy: bool = loop.controller.has_buyout_perk() if (loop != null and loop.controller != null) else false
+	var cr: int = loop.controller.cr if (loop != null and loop.controller != null) else 0
+	var debt: int = loop.controller.doomsday.principal_debt if (loop != null and loop.controller != null and loop.controller.doomsday != null) else 0
+
+	var can_b: bool = sov.can_bribe(cr, reg) if sov != null else false
+	var can_d: bool = sov.can_debt_choke(cr, debt, lev) if sov != null else false
+	var can_p: bool = sov.can_privatize(cr, buy) if sov != null else false
+
+	var rows: Array = [
+		{"kind": "text", "text": tr("SOVEREIGN_DECREE_BODY")},
+		{"kind": "kv", "key": tr("SOVEREIGN_SEIZURE_TIMER"), "value": tr("SOVEREIGN_ROUNDS_LEFT") % rounds_left},
+	]
+
+	var b_cost: int = sov.get_bribe_cost(reg) if sov != null else 0
+	var d_req: int = (sov.debt_choke_leverage_debt if lev else sov.debt_choke_required_debt) if sov != null else 0
+	var d_cost: int = sov.get_debt_choke_cost(lev) if sov != null else 0
+	var p_cost: int = sov.get_privatize_cost(buy) if sov != null else 0
+
+	var options: Array = [
+		{
+			"name": tr("SOVEREIGN_ACT_BRIBE"),
+			"branch": tr("SOVEREIGN_BRANCH_CORRUPT"),
+			"tag": tr("HUD_CR_VALUE") % _fmt(b_cost),
+			"enabled": can_b,
+			"desc": tr("SOVEREIGN_DESC_BRIBE") % _fmt(b_cost),
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_DEBT_CHOKE"),
+			"branch": tr("SOVEREIGN_BRANCH_LEVERAGE"),
+			"tag": tr("SOVEREIGN_TAG_DEBT") % [_fmt(d_req), _fmt(d_cost)],
+			"enabled": can_d,
+			"desc": tr("SOVEREIGN_DESC_DEBT_CHOKE") % [_fmt(d_req), _fmt(d_cost)],
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_PRIVATIZE"),
+			"branch": tr("SOVEREIGN_BRANCH_BUYOUT"),
+			"tag": tr("HUD_CR_VALUE") % _fmt(p_cost),
+			"enabled": can_p,
+			"desc": tr("SOVEREIGN_DESC_PRIVATIZE") % _fmt(p_cost),
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_DISMISS"),
+			"branch": tr("SOVEREIGN_BRANCH_STAND_DOWN"),
+			"tag": tr("SOVEREIGN_TAG_RESUME"),
+			"enabled": true,
+			"desc": tr("SOVEREIGN_DESC_DISMISS"),
+		},
+	]
+
+	var cursor_idx: int = loop.sovereign_cursor if loop != null else 0
+	for i in range(options.size()):
+		var opt: Dictionary = options[i]
+		rows.append({
+			"kind": "perk",
+			"cursor": i == cursor_idx,
+			"dim": not bool(opt["enabled"]),
+			"branch_share": 0.28,
+			"tier": "",
+			"name": str(opt["name"]),
+			"branch": str(opt["branch"]),
+			"tag": str(opt["tag"]),
+		})
+
+	var cur_opt: Dictionary = options[clampi(cursor_idx, 0, options.size() - 1)]
+	rows.append({"kind": "muted", "text": str(cur_opt["desc"])})
+	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
+
+	return {
+		"eyebrow": tr("SOVEREIGN_DECREE_EYEBROW"),
+		"title": tr("SOVEREIGN_DECREE_TITLE"),
+		"band": "alert",
+		"wide": true,
+		"rows": rows,
+		"actions": [
+			[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")],
+			[tr("HUD_PAD_A"), tr("HUD_ACT_EXECUTE") if bool(cur_opt["enabled"]) else tr("HUD_ACT_LOCKED")],
+			[tr("HUD_PAD_B"), tr("HUD_ACT_DISMISS")]
+		]
+	}
+
 func _demo_complete_model() -> Dictionary:
 	var r: Dictionary = loop.run_summary()
 	var rows: Array = [
@@ -4107,6 +4198,10 @@ static func _cause_text(reason: String) -> String:
 			return Loc.t("SUM_CAUSE_RESCUED")
 		"demo_limit":
 			return Loc.t("SUM_CAUSE_DEMO_LIMIT")
+		"nationalized":
+			return Loc.t("SUM_CAUSE_NATIONALIZED")
+		"sovereign_buyout":
+			return Loc.t("SUM_CAUSE_SOVEREIGN_BUYOUT")
 	return Loc.t("SUM_CAUSE_COLLAPSE")
 
 

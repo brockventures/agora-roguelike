@@ -100,6 +100,15 @@ func pick(id: String) -> bool:
 	return true
 
 
+## True when `id` has been adopted into picks.
+func has_pick(id: String) -> bool:
+	return picks.has(id)
+
+
+func has_policy(id: String) -> bool:
+	return picks.has(id)
+
+
 ## A filing rescinds every policy (section 7). Call after the filing is settled. The picks and
 ## the earned count go, the takeover pick is available to the new corp; milestones_done stays.
 func reset_for_new_corp() -> void:

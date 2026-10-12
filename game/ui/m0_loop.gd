@@ -58,6 +58,11 @@ const OVERLAY_MONOPOLY: String = "monopoly"
 const OVERLAY_RESCUED: String = "rescued"
 ## Standalone public demo limit reached (#39, 3 quarters / 90 rounds).
 const OVERLAY_DEMO_COMPLETE: String = "demo_complete"
+const OVERLAY_SOVEREIGN_DECREE: String = "sovereign_decree"
+const ACT_SOVEREIGN_BRIBE: String = "sovereign_bribe"
+const ACT_SOVEREIGN_DEBT_CHOKE: String = "sovereign_debt_choke"
+const ACT_SOVEREIGN_PRIVATIZE: String = "sovereign_privatize"
+const ACT_SOVEREIGN_DISMISS: String = "sovereign_dismiss"
 
 ## A corporate policy pick has been granted (#160 section 9): the Policy Committee modal halts the
 ## clock until A adopts the policy under the cursor. There is no B: a pick cannot be declined.
@@ -104,6 +109,10 @@ const ALL_ACTIONS: Array[String] = [
 	ACT_PROJECT,
 ]
 
+const SOVEREIGN_ACTIONS: Array[String] = [
+	ACT_SOVEREIGN_BRIBE, ACT_SOVEREIGN_DEBT_CHOKE, ACT_SOVEREIGN_PRIVATIZE, ACT_SOVEREIGN_DISMISS,
+]
+
 ## Actions that stay live while a resolution overlay is up.
 const OVERLAY_ACTIONS: Array[String] = [ACT_CHAPTER_11]
 
@@ -135,6 +144,7 @@ var overlay_state: String = OVERLAY_NONE
 var focus_trap: Dictionary = {}
 ## The barons held when the corp ended, for the summary's per-baron severance rows.
 var _broken_ids: Array = []
+var _sovereign_decree_pending: bool = false
 ## True while the sim is paused by a wake (banner text: key SLEEP_NOTICE); cleared when the player resumes.
 const FOCUS_ANCHOR_PAUSE: String = "pause"
 var sleep_pause_active: bool = false
@@ -151,6 +161,8 @@ var collapse_phase: String = PHASE_NONE
 var perk_cursor: int = 0
 ## The Policy Committee modal's cursor: an index into the offered nodes (UI state, never saved).
 var policy_cursor: int = 0
+## The Sovereign Decree modal's cursor: an index into counter options (UI state, never saved).
+var sovereign_cursor: int = 0
 ## Cursor over controller.ships on the Fleet tab (Epic 6 #122). UI only: never saved.
 var fleet_cursor: int = 0
 var parachutes: Parachutes = null
@@ -196,6 +208,9 @@ func _connect_all() -> void:
 		controller.run_collapsed.connect(_on_collapsed)
 		controller.run_rescued.connect(_on_rescued)
 		controller.demo_completed.connect(_on_demo_completed)
+		controller.sovereign_decree_issued.connect(_on_sovereign_decree_issued)
+		controller.sovereign_resolved.connect(_on_sovereign_resolved)
+		controller.sovereign_nationalized.connect(_on_sovereign_nationalized)
 		controller.round_advanced.connect(_on_round_advanced)
 		controller.margin_call_applied.connect(_on_margin_call)
 		controller.transit_departed.connect(_on_transit_departed)
@@ -224,6 +239,12 @@ func _disconnect_all() -> void:
 			controller.run_rescued.disconnect(_on_rescued)
 		if controller.demo_completed.is_connected(_on_demo_completed):
 			controller.demo_completed.disconnect(_on_demo_completed)
+		if controller.sovereign_decree_issued.is_connected(_on_sovereign_decree_issued):
+			controller.sovereign_decree_issued.disconnect(_on_sovereign_decree_issued)
+		if controller.sovereign_resolved.is_connected(_on_sovereign_resolved):
+			controller.sovereign_resolved.disconnect(_on_sovereign_resolved)
+		if controller.sovereign_nationalized.is_connected(_on_sovereign_nationalized):
+			controller.sovereign_nationalized.disconnect(_on_sovereign_nationalized)
 		if controller.round_advanced.is_connected(_on_round_advanced):
 			controller.round_advanced.disconnect(_on_round_advanced)
 		if controller.margin_call_applied.is_connected(_on_margin_call):
@@ -505,6 +526,59 @@ func acknowledge_monopoly() -> bool:
 	_raise_contract_if_pending()
 	if overlay_state == OVERLAY_NONE:
 		controller.sim_clock.resume()
+	return true
+
+
+## Raises the sovereign decree modal and halts the clock when an expropriation decree
+## awaits acknowledgement and nothing outranks it.
+func _raise_sovereign_if_pending() -> void:
+	if controller == null or controller.sovereign == null or not controller.sovereign.is_active():
+		return
+	if not _sovereign_decree_pending:
+		return
+	if overlay_state != OVERLAY_NONE:
+		return
+	sovereign_cursor = 0
+	controller.sim_clock.pause()
+	_set_overlay(OVERLAY_SOVEREIGN_DECREE)
+
+
+## D-pad: moves the cursor over the sovereign counter options (0..3).
+func move_sovereign_cursor(delta: int) -> bool:
+	if overlay_state != OVERLAY_SOVEREIGN_DECREE:
+		return false
+	var next: int = clampi(sovereign_cursor + delta, 0, 3)
+	var moved: bool = next != sovereign_cursor
+	sovereign_cursor = next
+	return moved
+
+
+## A: executes the sovereign option under the cursor (or given index).
+func execute_sovereign_option(idx: int = -1) -> bool:
+	if overlay_state != OVERLAY_SOVEREIGN_DECREE or controller == null or controller.sovereign == null:
+		return false
+	var opt_idx: int = sovereign_cursor if idx < 0 else idx
+	match opt_idx:
+		0:
+			return controller.resolve_sovereign_bribe()
+		1:
+			return controller.resolve_sovereign_debt_choke()
+		2:
+			return controller.resolve_sovereign_privatize()
+		3:
+			_set_overlay(OVERLAY_NONE)
+			controller.sim_clock.resume()
+			return true
+	return false
+
+
+## Explicitly shows the sovereign decree modal, pausing the sim clock.
+func show_sovereign_decree() -> bool:
+	if controller == null or controller.sovereign == null or not controller.sovereign.is_active():
+		return false
+	sovereign_cursor = 0
+	controller.sim_clock.pause()
+	_set_overlay(OVERLAY_SOVEREIGN_DECREE)
 	return true
 
 
@@ -1542,7 +1616,7 @@ func handle_input(event: InputEvent) -> bool:
 
 ## Applies one m0_* action. Returns true when it did something.
 func dispatch_action(action: String) -> bool:
-	if hud == null or not ALL_ACTIONS.has(action):
+	if hud == null or not (ALL_ACTIONS.has(action) or SOVEREIGN_ACTIONS.has(action)):
 		return false
 	if action == ACT_LOCALE:
 		Loc.cycle_locale()
@@ -1553,6 +1627,51 @@ func dispatch_action(action: String) -> bool:
 		return false  # the sleep banner: Start resumes, nothing behind it is live
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
+	if overlay_state == OVERLAY_SOVEREIGN_DECREE:
+		match action:
+			ACT_UP:
+				var moved: bool = move_sovereign_cursor(-1)
+				if moved:
+					_click()
+					action_handled.emit(action)
+				return moved
+			ACT_DOWN:
+				var moved: bool = move_sovereign_cursor(1)
+				if moved:
+					_click()
+					action_handled.emit(action)
+				return moved
+			ACT_SUBMIT:
+				var executed: bool = execute_sovereign_option()
+				if executed:
+					_click()
+					action_handled.emit(action)
+				return executed
+			ACT_CANCEL, ACT_SOVEREIGN_DISMISS:
+				_set_overlay(OVERLAY_NONE)
+				controller.sim_clock.resume()
+				_click()
+				action_handled.emit(action)
+				return true
+			ACT_SOVEREIGN_BRIBE:
+				var done: bool = controller.resolve_sovereign_bribe()
+				if done:
+					_click()
+					action_handled.emit(action)
+				return done
+			ACT_SOVEREIGN_DEBT_CHOKE:
+				var done: bool = controller.resolve_sovereign_debt_choke()
+				if done:
+					_click()
+					action_handled.emit(action)
+				return done
+			ACT_SOVEREIGN_PRIVATIZE:
+				var done: bool = controller.resolve_sovereign_privatize()
+				if done:
+					_click()
+					action_handled.emit(action)
+				return done
+
 	if overlay_state == OVERLAY_DEMO_COMPLETE:
 		var acked: bool = action == ACT_SUBMIT and acknowledge_demo_complete()
 		if acked:
@@ -1638,7 +1757,15 @@ func dispatch_action(action: String) -> bool:
 		ACT_CREDIT:
 			handled = extend_credit()
 		ACT_PROJECT:
-			handled = deliver_to_project()
+			if controller != null and controller.sovereign != null and controller.sovereign.is_active():
+				var rp: RescueProject = controller.rescue
+				var at_site: bool = rp != null and rp.is_open() and controller.docked_at == rp.current().get("site", "")
+				if at_site and deliver_to_project():
+					handled = true
+				else:
+					handled = show_sovereign_decree()
+			else:
+				handled = deliver_to_project()
 		ACT_SPEED:
 			cycle_speed()
 			handled = controller != null
@@ -1689,7 +1816,8 @@ func run_summary() -> Dictionary:
 	var round_pts: int = rounds * Parachutes.SEVERANCE_PER_ROUND
 	var rescue_pts: int = controller.rescue_severance_award
 	var consolation_pts: int = controller.consolation_severance_award
-	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts - rescue_pts - consolation_pts)
+	var sovereign_pts: int = controller.sovereign_severance_award if controller != null else 0
+	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts - rescue_pts - consolation_pts - sovereign_pts)
 	var filings_count: int = (filing_pts / Parachutes.SEVERANCE_PER_FILING) if Parachutes.SEVERANCE_PER_FILING > 0 else 0
 	return {
 		"reason": controller.end_reason,
@@ -1708,6 +1836,7 @@ func run_summary() -> Dictionary:
 		"severance_peak_pts": peak_pts,
 		"severance_rescue_pts": rescue_pts,
 		"severance_consolation_pts": consolation_pts,
+		"severance_sovereign_pts": controller.sovereign_severance_award if controller != null else 0,
 		"rescue_phases_done": controller.rescue.phases_done() if controller.rescue != null else 0,
 		"rescue_phases_total": controller.rescue.phase_count() if controller.rescue != null else 0,
 		"rescue": rescue_stats(),
@@ -1879,6 +2008,35 @@ func _on_collapsed() -> void:
 
 
 ## The last phase was delivered (RunController.finish_rescue banked the corp): raise the win modal.
+
+func _on_sovereign_decree_issued(_decree: Dictionary) -> void:
+	_sovereign_decree_pending = true
+	if hud != null:
+		hud.post_headline_tr("HL_SOVEREIGN_DECREE", [], "CRISIS", "INFO")
+
+func _on_sovereign_resolved(method: String, _award: int) -> void:
+	_sovereign_decree_pending = false
+	if hud != null:
+		match method:
+			SovereignTakeover.STATUS_BRIBED:
+				hud.post_headline_tr("HL_SOVEREIGN_BRIBED", [], "CRISIS", "INFO")
+			SovereignTakeover.STATUS_DEBT_CHOKED:
+				hud.post_headline_tr("HL_SOVEREIGN_DEBT_CHOKED", [], "CRISIS", "INFO")
+			SovereignTakeover.STATUS_PRIVATIZED:
+				hud.post_headline_tr("HL_SOVEREIGN_PRIVATIZED", [], "CRISIS", "INFO")
+	if method == SovereignTakeover.STATUS_PRIVATIZED:
+		controller.finish_sovereign_buyout()
+		_sync_overlay_from_controller()
+		return
+	if overlay_state == OVERLAY_SOVEREIGN_DECREE:
+		_set_overlay(OVERLAY_NONE)
+		controller.sim_clock.resume()
+
+func _on_sovereign_nationalized() -> void:
+	controller.sim_clock.pause()
+	_set_phase(PHASE_SUMMARY)
+	_set_overlay(OVERLAY_COLLAPSED)
+
 func _on_demo_completed() -> void:
 	controller.sim_clock.pause()
 	_set_phase(PHASE_NONE)
@@ -1925,6 +2083,10 @@ func _on_round_advanced(round_num: int) -> void:
 			_post_baron_event(e)
 	_raise_contract_if_pending()
 	_raise_policy_if_pending()
+	if controller != null and controller.sovereign != null and controller.sovereign.is_active():
+		var left: int = controller.sovereign.rounds_remaining(controller.ticks_per_round)
+		if left in [10, 5, 3, 2, 1]:
+			show_sovereign_decree()
 	round_completed.emit(round_num)
 
 
@@ -1946,6 +2108,9 @@ func _sync_overlay_from_controller() -> void:
 		_set_overlay(OVERLAY_COLLAPSED if collapse_phase != PHASE_NONE else OVERLAY_RESCUED)
 	elif controller.is_demo_completed():
 		_set_overlay(OVERLAY_COLLAPSED if collapse_phase != PHASE_NONE else OVERLAY_DEMO_COMPLETE)
+	elif controller.is_nationalized() or controller.is_sovereign_buyout():
+		_set_phase(PHASE_SUMMARY)
+		_set_overlay(OVERLAY_COLLAPSED)
 	elif controller.pending_bankruptcy:
 		_set_overlay(OVERLAY_CHAPTER_11)
 	else:
@@ -1955,6 +2120,7 @@ func _sync_overlay_from_controller() -> void:
 		_raise_contract_if_pending()
 		# ...and a granted pick not yet adopted (the counters are saved, the modal is not).
 		_raise_policy_if_pending()
+		_raise_sovereign_if_pending()
 
 
 func _set_overlay(state: String) -> void:
