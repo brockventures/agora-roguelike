@@ -2970,6 +2970,8 @@ func _resolution_model() -> Dictionary:
 		return _policy_model()
 	if loop.overlay_state == M0Loop.OVERLAY_RESCUED:
 		return _rescued_model()
+	if loop.overlay_state == M0Loop.OVERLAY_SOVEREIGN_DECREE:
+		return _sovereign_decree_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
 		var a: Dictionary = controller.assess()
 		return {"eyebrow": tr("CH11_EYEBROW"), "title": tr("CH11_TITLE"), "band": "alert", "wide": false,
@@ -3139,6 +3141,27 @@ func _rescue_summary_rows(r: Dictionary) -> Array:
 
 ## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
 ## run summary, then the Golden Parachutes perks and a new run.
+func _sovereign_decree_model() -> Dictionary:
+	var sov = loop.controller.sovereign if (loop != null and loop.controller != null) else null
+	var rounds_left: int = sov.rounds_remaining(loop.controller.ticks_per_round) if sov != null else 0
+	var reg: bool = loop.controller.has_regulatory_perk() if (loop != null and loop.controller != null) else false
+	var lev: bool = loop.controller.has_debt_leverage() if (loop != null and loop.controller != null) else false
+	var buy: bool = loop.controller.has_buyout_perk() if (loop != null and loop.controller != null) else false
+	var rows: Array = [
+		{"kind": "text", "text": tr("SOVEREIGN_DECREE_BODY")},
+		{"kind": "kv", "key": tr("SOVEREIGN_SEIZURE_TIMER"), "value": tr("SOVEREIGN_ROUNDS_LEFT") % rounds_left},
+		{"kind": "kv", "key": tr("SOVEREIGN_BRIBE_COST"), "value": tr("HUD_CR_VALUE") % _fmt(sov.get_bribe_cost(reg) if sov != null else 0)},
+		{"kind": "kv", "key": tr("SOVEREIGN_DEBT_REQ"), "value": tr("HUD_CR_VALUE") % _fmt(sov.debt_choke_leverage_debt if (sov != null and lev) else (sov.debt_choke_required_debt if sov != null else 0))},
+		{"kind": "kv", "key": tr("SOVEREIGN_BUYOUT_COST"), "value": tr("HUD_CR_VALUE") % _fmt(sov.get_privatize_cost(buy) if sov != null else 0)},
+	]
+	return {
+		"title": tr("SOVEREIGN_DECREE_TITLE"),
+		"rows": rows,
+		"actions": [
+			[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]
+		]
+	}
+
 func _demo_complete_model() -> Dictionary:
 	var r: Dictionary = loop.run_summary()
 	var rows: Array = [
@@ -4107,6 +4130,10 @@ static func _cause_text(reason: String) -> String:
 			return Loc.t("SUM_CAUSE_RESCUED")
 		"demo_limit":
 			return Loc.t("SUM_CAUSE_DEMO_LIMIT")
+		"nationalized":
+			return Loc.t("SUM_CAUSE_NATIONALIZED")
+		"sovereign_buyout":
+			return Loc.t("SUM_CAUSE_SOVEREIGN_BUYOUT")
 	return Loc.t("SUM_CAUSE_COLLAPSE")
 
 
