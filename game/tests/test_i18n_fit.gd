@@ -1225,6 +1225,51 @@ func test_policy_modal_fits_at_every_text_scale() -> String:
 	return "ok" if bad.is_empty() else "policy modal overflows (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 12)))]
 
 
+## The onboarding `text` row on the policy modal (#160 row 5): at the worst-case list it adds no
+## overflow at any text scale in either locale beyond what the same modal has without it.
+func test_onboarding_policy_row_fits_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			scene.enable_onboarding()
+			for worst in [true, false]:
+				_stage_policy(scene, worst)
+				var base: Array = []
+				for on in [false, true]:
+					scene.onboarding._active = "policy" if on else ""
+					scene._refresh_readouts()
+					_seen = {}
+					var rows: Array = []
+					_snap(scene, "policy modal", rows)
+					var found: bool = false
+					for row in rows:
+						if not _node_path(row[1]).contains("ResolutionPanel"):
+							continue
+						judged += 1
+						if str(row[2]).contains(scene._onb_text("ONB_POLICY_1").substr(0, 20)):
+							found = true
+						for f in row[5]:
+							if not on:
+								base.append(f)
+							elif not base.has(f):
+								bad.append("%s %.2fx worst=%s: %s" % [locale, scale, str(worst), f])
+					if found != on:
+						bad.append("%s %.2fx: policy row shown=%s but beat active=%s" % [locale, scale, str(found), str(on)])
+					var panel: Panel = scene.resolution_modal
+					if on and (panel.position.y < 0.0 or panel.position.y + panel.size.y > 800.0):
+						bad.append("%s %.2fx worst=%s: the panel spans y %.0f..%.0f on an 800 px screen" % [locale, scale, str(worst), panel.position.y, panel.position.y + panel.size.y])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 60:
+		return "judged only %d policy modal labels" % judged
+	return "ok" if bad.is_empty() else "policy row overflows (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 10)))]
+
+
 ## The held-policy chip and its adopted names on the desk notes, at every text scale in both
 ## locales: the labels fit and no entry is ever shown cut off across the scroll cycle.
 func test_policy_chip_and_lines_fit_at_every_text_scale() -> String:

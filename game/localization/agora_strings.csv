@@ -563,6 +563,8 @@ ONB_CH11_1,Debt wiped. The clock was not.
 ONB_CH11_2,Severance banked: %d. Perks are bought when this run ends.
 ONB_PERKS_TITLE,Benefits update
 ONB_PERKS_1,Benefits update: Severance buys permanent perks. The cheapest costs %d.
+ONB_POLICY_TITLE,Policy briefing
+ONB_POLICY_1,"Welcome to the Policy Committee. D-pad selects a directive, A adopts it. It stays in force until this run ends. Your Golden Parachutes are unaffected."
 HUD_PROMPT_NEXT,Next
 POLICY_EYEBROW,POLICY COMMITTEE %d OF %d
 POLICY_TITLE,Quarterly Policy Review

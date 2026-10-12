@@ -26,10 +26,18 @@ func _check(p_seed: int, timings: Array) -> String:
 		why = "tutorial-on script stopped: " + on.error
 	elif off.error != "":
 		why = "tutorial-off script stopped: " + off.error
-	elif on.fire_order != BEATS:
-		why = "beats fired %s, expected %s" % [str(on.fire_order), str(BEATS)]
-	elif on.done_order != BEATS:
-		why = "beats completed %s, expected %s" % [str(on.done_order), str(BEATS)]
+	elif on.fire_order != BEATS + ["policy"]:
+		why = "beats fired %s, expected %s then policy" % [str(on.fire_order), str(BEATS)]
+	elif on.done_order != BEATS + ["policy"]:
+		why = "beats completed %s, expected %s then policy" % [str(on.done_order), str(BEATS)]
+	elif on.policy_picks != 1 or off.policy_picks != 1:
+		why = "both scripts should answer exactly one round-20 pick (%d, %d)" % [on.policy_picks, off.policy_picks]
+	elif not on.policy_active_at_pick or not on.policy_row_first or on.policy_row_text == "":
+		why = "the policy beat should be active with its text row first in the modal"
+	elif on.holds.has("policy"):
+		why = "the policy beat must not hold (the modal already pauses)"
+	elif int(on.fired_tick["policy"]) > int(on.done_tick["policy"]) or int(on.fired_tick["policy"]) < 18000:
+		why = "the policy beat should fire at the round-20 pick, fired at %d" % int(on.fired_tick["policy"])
 	elif on.main.settings.tutorial_enabled:
 		why = "completing beat 5 should switch the core tutorial off"
 	else:

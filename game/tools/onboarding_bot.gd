@@ -22,6 +22,9 @@ const ORDER_QTY: int = 10
 const DEBT_ROUNDS: int = 3
 const TAIL_TICKS: int = 1800
 const CORE_ORDER: Array = ["tabs", "order", "debt", "leave", "sell"]
+## The first policy pick (#160) lands at round 20; the script runs on until it has answered it.
+const POLICY_BEAT := "policy"
+const POLICY_ROUND_LIMIT: int = 26
 
 var run_seed: int
 var tutorial: bool
@@ -43,6 +46,11 @@ var buy_station: String = ""
 var sell_station: String = ""
 var end_ticks: int = 0
 var _last_active: String = ""
+## The policy pick (#160): picks answered with a real A press, and what the modal showed.
+var policy_picks: int = 0
+var policy_row_first: bool = false
+var policy_row_text: String = ""
+var policy_active_at_pick: bool = false
 var _actions: int = 0
 
 
@@ -55,7 +63,9 @@ func _init(p_seed: int, p_tutorial: bool) -> void:
 func run() -> bool:
 	main = (load(MAIN_SCENE_PATH) as PackedScene).instantiate()
 	main.bags = Bags.new("m0", null, run_seed)
-	main.initialize_systems(RunController.new(null, run_seed))
+	var rc0 := RunController.new(null, run_seed)
+	rc0.attach_policies()  # Main.start_new_run does this; the first pick is the policy beat's trigger
+	main.initialize_systems(rc0)
 	main._resolve_child_nodes()
 	main._build_readouts()
 	main.controller.sim_clock.set_paused(false)
@@ -112,6 +122,14 @@ func run() -> bool:
 	while _ticks() < stop:
 		if not _step():
 			return false
+	# Policy pick: on to the round-20 Policy Committee. _answer_overlay adopts it with a real A press.
+	while policy_picks == 0:
+		if rounds >= POLICY_ROUND_LIMIT:
+			return _fail("no policy pick by round %d" % rounds)
+		if not _step():
+			return false
+	if not _step():
+		return false
 	end_ticks = _ticks()
 	return true
 
@@ -177,8 +195,31 @@ func _answer_overlay() -> bool:
 		main.loop.acknowledge_crisis()
 	elif ov == M0Loop.OVERLAY_CONTRACT:
 		main.loop.decline_contract()
+	elif ov == M0Loop.OVERLAY_POLICY:
+		return _answer_policy()
 	elif ov != M0Loop.OVERLAY_NONE:
 		return _fail("unexpected overlay '%s' at tick %d" % [ov, _ticks()])
+	return true
+
+
+## Adopts the pending policy with a real A press (the modal's own input), after recording what the
+## modal showed: with the tutorial on, the first row is the beat's text row and the beat is active.
+func _answer_policy() -> bool:
+	_observe()
+	if main.onboarding != null:
+		var rows: Array = main._policy_model()["rows"]
+		policy_row_first = not rows.is_empty() and str(rows[0]["kind"]) == "text"
+		policy_row_text = str(rows[0].get("text", "")) if policy_row_first else ""
+		policy_active_at_pick = _active() == POLICY_BEAT
+	var before: int = main.controller.policies.picks.size()
+	var e := InputEventJoypadButton.new()
+	e.button_index = JOY_BUTTON_A
+	e.pressed = true
+	main.handle_input(e)
+	if main.controller.policies.picks.size() != before + 1:
+		return _fail("the A press did not adopt the policy")
+	policy_picks += 1
+	_observe()
 	return true
 
 
@@ -195,7 +236,7 @@ func _observe() -> void:
 		fired_tick[a] = _ticks()
 		fire_order.append(a)
 	_last_active = a
-	for id in CORE_ORDER:
+	for id in CORE_ORDER + [POLICY_BEAT]:
 		if main.onboarding.is_seen(id) and not done_tick.has(id):
 			done_tick[id] = _ticks()
 			done_order.append(id)

@@ -12,6 +12,7 @@ extends RefCounted
 ##   tab_changed {tab}            order_executed {side, station}     round_advanced
 ##   transit_departed             transit_arrived                    corridor_raid / corridor_hazard
 ##   bankruptcy_filed             perk_screen_opened / _closed       run_ended
+##   policy_pending / policy_adopted (#160: the Policy Committee pick)
 ## Context (set_context, also updated by events) is what the HUD can show right now:
 ##   tab, fills, hold_empty, route_card, in_transit. It is runtime only, recomputed on load.
 ##
@@ -35,7 +36,7 @@ const MAX_LINES: int = 3
 const EVENTS: Array[String] = [
 	"tab_changed", "order_executed", "round_advanced", "transit_departed", "transit_arrived",
 	"corridor_raid", "corridor_hazard", "bankruptcy_filed", "perk_screen_opened",
-	"perk_screen_closed", "run_ended",
+	"perk_screen_closed", "run_ended", "policy_pending", "policy_adopted",
 ]
 ## Context keys and the type each must hold.
 const CONTEXT_TYPES: Dictionary = {

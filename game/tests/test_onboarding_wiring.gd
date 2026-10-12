@@ -422,3 +422,18 @@ func test_a_swallowed_confirm_is_what_keeps_the_hash_equal() -> String:
 	a.free()
 	b.free()
 	return "ok" if diverged else "the control press should have departed and moved the hash (went %s: %s)" % [str(went), reason]
+
+
+func test_policy_signals_are_translated() -> String:
+	var m := _main(true)
+	var rc: RunController = m.controller
+	rc.attach_policies()
+	var ob: Onboarding = m.onboarding
+	ob.settings.set_tutorial_enabled(false)
+	rc.policy_pending.emit(1)
+	if ob.active_id() != "policy":
+		return "policy_pending should activate the policy beat, got '%s'" % ob.active_id()
+	rc.policy_adopted.emit("training_module")
+	var ok: bool = ob.is_seen("policy") and ob.active_id() == "" and not m.is_onboarding_held()
+	m.free()
+	return "ok" if ok else "policy_adopted should complete the beat with no hold"

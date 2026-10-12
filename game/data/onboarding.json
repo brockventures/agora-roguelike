@@ -49,6 +49,12 @@
       "title_key": "ONB_PERKS_TITLE", "line_keys": ["ONB_PERKS_1"],
       "fires": {"on": ["perk_screen_opened"]},
       "done": {"on": ["perk_screen_closed"]}
+    },
+    {
+      "id": "policy", "kind": "conditional", "holds": false,
+      "title_key": "ONB_POLICY_TITLE", "line_keys": ["ONB_POLICY_1"],
+      "fires": {"on": ["policy_pending"]},
+      "done": {"on": ["policy_adopted"]}
     }
   ]
 }
