@@ -16,7 +16,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
 2. **Text-Free Invariant:** 100% text-free rasters. Hull numbers, registration codes, faction logos, and telemetry are rendered dynamically in Godot for #40 localization.
 3. **Orientation & Framing:**
    - **Profile Sheets (`hull-*`, 3:2):** Strict side profile facing right, centered, flat pale paper background (`#d9cdb0`) with zero cast ground shadows for clean compositing.
-   - **Transit Markers (`icon-*`, 1:1):** Top-down readable silhouette, pointing up, bold ink outlines, flat primary archetype tone plus black.
+   - **Transit Markers (`icon-*`, 1:1):** Top-down readable silhouette, pointing up, bold ink outlines, flat primary archetype tone plus black. [Contact Sheet Proof](../screens/vessel-samples/transit-marker-sheet.png)
 4. **Color Tokens:** Grounded to `docs/design-system/tokens/colors.css`:
    - Ink: `#1c1a17`
    - Slate: `#2c353b`
@@ -37,7 +37,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Stern:** Elevated aft engineering section tapering into a single massive conical thruster bell with slate-grey cowling and rust trim.
 - **Viewports:**
   - *Profile Sheet (3:2 - `hull-hauler`):* Strict right-facing side profile highlighting stacked cylindrical pods and massive thruster. [Sample Proof](../screens/vessel-samples/hull-hauler.png)
-  - *Transit Marker (1:1 - `icon-hauler`):* Bold top-down rectangular silhouette with flared rear thruster bell.
+  - *Transit Marker (1:1 - `icon-hauler`):* Bold top-down rectangular silhouette with flared rear thruster bell. [Transit Proof](../screens/vessel-samples/icon-hauler.png)
 
 ---
 
@@ -50,7 +50,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Stern:** Compact twin-nozzle high-output propulsion block with active vector flaps.
 - **Viewports:**
   - *Profile Sheet (3:2 - `hull-interceptor`):* Sleek, low-drag silhouette with swept rust wings and twin thrusters. [Sample Proof](../screens/vessel-samples/hull-interceptor.png)
-  - *Transit Marker (1:1 - `icon-interceptor`):* Sharp wedge/chevron silhouette pointing up.
+  - *Transit Marker (1:1 - `icon-interceptor`):* Sharp wedge/chevron silhouette pointing up. [Transit Proof](../screens/vessel-samples/icon-interceptor.png)
 
 ---
 
@@ -63,7 +63,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Stern:** Wide, industrial engine block with reinforced radiator panels and multi-chamber exhaust manifold.
 - **Viewports:**
   - *Profile Sheet (3:2 - `hull-freighter`):* Extended length-to-beam ratio, visible container rows along the teal spine, wide aft block. [Sample Proof](../screens/vessel-samples/hull-freighter.png)
-  - *Transit Marker (1:1 - `icon-freighter`):* Long elongated bar silhouette with cross-struts and wide rear block.
+  - *Transit Marker (1:1 - `icon-freighter`):* Long elongated bar silhouette with cross-struts and wide rear block. [Transit Proof](../screens/vessel-samples/icon-freighter.png)
 
 ---
 
@@ -76,7 +76,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Stern:** Slim, high-efficiency ion drive assembly with minimal heat signature.
 - **Viewports:**
   - *Profile Sheet (3:2 - `hull-scout`):* Light, agile proportions with extended antenna mast and bubble canopy. [Sample Proof](../screens/vessel-samples/hull-scout.png)
-  - *Transit Marker (1:1 - `icon-scout`):* Dart-like silhouette with forward sensor spike.
+  - *Transit Marker (1:1 - `icon-scout`):* Dart-like silhouette with forward sensor spike. [Transit Proof](../screens/vessel-samples/icon-scout.png)
 
 ---
 
@@ -89,7 +89,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
   - **Stern:** Over-clocked, mismatched salvage thrusters with exposed fuel lines and trailing conduit bundles.
 - **Viewports:**
   - *Profile Sheet (3:2 - `hull-scrap_barge`):* Asymmetrical, heavily welded silhouette with cranes and magnetic grab slung underneath. [Sample Proof](../screens/vessel-samples/hull-scrap_barge.png)
-  - *Transit Marker (1:1 - `icon-scrap_barge`):* Irregular, blocky silhouette with crane booms extending outward.
+  - *Transit Marker (1:1 - `icon-scrap_barge`):* Irregular, blocky silhouette with crane booms extending outward. [Transit Proof](../screens/vessel-samples/icon-scrap_barge.png)
 
 ---
 

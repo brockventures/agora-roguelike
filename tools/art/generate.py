@@ -92,9 +92,11 @@ def resolve_reference(ref, root=ROOT):
         candidates.append(root / "game" / "assets" / "map_icons" / f"{short}_256.png")
     candidates.extend([
         root / ref_str,
+        root / "docs" / "screens" / "vessel-samples" / f"{ref_str}.png",
+        root / "game" / "assets" / "map_icons" / f"{ref_str}.png",
         root / "art_out" / f"{ref_str}.png",
         root / "art_out" / "batch-6.3" / f"{ref_str}.png",
-        root / "game" / "assets" / "map_icons" / f"{ref_str}.png",
+        root / "art_out" / "batch-6.4" / f"{ref_str}.png",
     ])
     for cand in candidates:
         if cand.is_file():
@@ -205,13 +207,18 @@ def sweep_borders(img, aspect, tol=12):
     if box is None:
         raise HarnessError("border sweep: image is a single flat color")
     out = rgb.crop(box)
-    if out.size[0] < original[0] * 0.5 or out.size[1] < original[1] * 0.5:
-        raise HarnessError("border sweep: trimmed more than half the image, rejecting")
     aw, ah = (int(x) for x in aspect.split(":"))
     target = aw / ah
+    orig_drift = abs(original[0] / original[1] - target) / target
+    if out.size[0] < original[0] * 0.5 or out.size[1] < original[1] * 0.5:
+        if orig_drift <= ASPECT_TOLERANCE:
+            return rgb, {"original_size": list(original), "final_size": list(original), "trim_box": [0, 0, original[0], original[1]]}
+        raise HarnessError("border sweep: trimmed more than half the image, rejecting")
     w, h = out.size
     drift = abs(w / h - target) / target
     if drift > 0.15:
+        if orig_drift <= ASPECT_TOLERANCE:
+            return rgb, {"original_size": list(original), "final_size": list(original), "trim_box": [0, 0, original[0], original[1]]}
         raise HarnessError(f"aspect check: {w}x{h} is {drift:.0%} off {aspect}")
     if drift > ASPECT_TOLERANCE / 10:
         if w / h > target:

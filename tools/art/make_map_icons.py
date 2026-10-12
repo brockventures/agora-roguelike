@@ -113,14 +113,88 @@ def _fit(im: Image.Image) -> Image.Image:
     return im.crop((round(cx - half), round(cy - half), round(cx + half), round(cy + half)))
 
 
+VESSEL_ICONS = {"hauler": "icon-hauler", "interceptor": "icon-interceptor",
+                "freighter": "icon-freighter", "scout": "icon-scout",
+                "scrap_barge": "icon-scrap_barge"}
+VESSEL_SAMPLES = ROOT / "docs" / "screens" / "vessel-samples"
+
+
+def _clean_alpha(alpha: Image.Image, min_area: int = 100) -> Image.Image:
+    """Removes small isolated alpha speckles/islands (less than min_area pixels)."""
+    w, h = alpha.size
+    px = bytearray(alpha.tobytes())
+    seen = bytearray(w * h)
+    for start in range(w * h):
+        if px[start] <= 60 or seen[start]:
+            continue
+        comp = [start]
+        seen[start] = 1
+        k = 0
+        while k < len(comp):
+            i = comp[k]
+            k += 1
+            x = i % w
+            for j in ((i - w) if i >= w else -1, (i + w) if i + w < w * h else -1,
+                      (i - 1) if x > 0 else -1, (i + 1) if x < w - 1 else -1):
+                if j >= 0 and px[j] > 60 and not seen[j]:
+                    seen[j] = 1
+                    comp.append(j)
+        if len(comp) < min_area:
+            for i in comp:
+                px[i] = 0
+    return Image.frombytes("L", (w, h), bytes(px))
+
+
+def build_vessel(src: Path, work_size: int = 1024) -> Image.Image:
+    """Keys out plain flat pale paper background from a 1:1 vessel transit marker illustration,
+    cleans stray alpha speckles, and fits to the subject bounding box."""
+    im = Image.open(src).convert("RGB").resize((work_size, work_size), Image.LANCZOS)
+    key = im.copy()
+    w, h = work_size, work_size
+    for seed in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1),
+                 (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2)):
+        ImageDraw.floodfill(key, seed, (255, 0, 255), thresh=KEY_THRESH)
+    r, g, b = key.split()
+    is_bg = ImageChops.multiply(ImageChops.multiply(r.point(lambda v: 255 if v == 255 else 0),
+                                                    g.point(lambda v: 255 if v == 0 else 0)),
+                                b.point(lambda v: 255 if v == 255 else 0))
+    corner = tuple(round(sum(im.getpixel(p)[c] for p in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))) / 4)
+                   for c in range(3))
+    is_bg = ImageChops.lighter(is_bg, _pockets(im, is_bg, corner))
+    alpha = ImageChops.invert(is_bg).filter(ImageFilter.GaussianBlur(1.2))
+    alpha = _clean_alpha(alpha, min_area=100)
+    out = im.convert("RGBA")
+    out.putalpha(alpha)
+    fitted = _fit(out)
+    return fitted.resize((work_size, work_size), Image.LANCZOS)
+
+
 def main() -> None:
-    src_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "art_out" / "batch-6.3"
-    OUT.mkdir(parents=True, exist_ok=True)
-    for name, stem in ICONS.items():
-        big = build(src_dir / f"{stem}.png")
-        for s in SIZES:
-            big.resize((s, s), Image.LANCZOS).save(OUT / f"{name}_{s}.png", optimize=True)
-            print("wrote", OUT / f"{name}_{s}.png")
+    src_dir = Path(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else ROOT / "art_out" / "batch-6.3"
+    do_vessels = "--vessels" in sys.argv or "--all" in sys.argv
+    do_stations = "--stations" in sys.argv or "--all" in sys.argv or not do_vessels
+
+    if do_stations:
+        OUT.mkdir(parents=True, exist_ok=True)
+        for name, stem in ICONS.items():
+            src = src_dir / f"{stem}.png"
+            if not src.exists():
+                continue
+            big = build(src)
+            for s in SIZES:
+                big.resize((s, s), Image.LANCZOS).save(OUT / f"{name}_{s}.png", optimize=True)
+                print("wrote", OUT / f"{name}_{s}.png")
+
+    if do_vessels:
+        vessel_src_dir = Path(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else ROOT / "art_out" / "batch-6.4"
+        VESSEL_SAMPLES.mkdir(parents=True, exist_ok=True)
+        for name, stem in VESSEL_ICONS.items():
+            src = vessel_src_dir / f"{stem}.png"
+            if not src.exists():
+                continue
+            fitted = build_vessel(src, work_size=1024)
+            fitted.save(VESSEL_SAMPLES / f"{stem}.png", optimize=True)
+            print("wrote vessel sample", VESSEL_SAMPLES / f"{stem}.png")
 
 
 if __name__ == "__main__":
