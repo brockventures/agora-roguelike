@@ -62,13 +62,44 @@ def load_bible(path=BIBLE_PATH):
         eid = m.group(1)
         entry = {"id": eid, "batch": fields["batch"], "aspect": fields["aspect"],
                  "sample": fields["sample"].strip().lower() == "yes",
-                 "prompt": fields["prompt"].strip(), "source": fields.get("source", "")}
+                 "prompt": fields["prompt"].strip(), "source": fields.get("source", ""),
+                 "ref": fields.get("ref", "").strip()}
         if entry["batch"] == CARD_BATCH and entry["aspect"] != "4:3":
             raise HarnessError(f"entry {eid}: cards must be 4:3, got {entry['aspect']}")
         if eid in bible["entries"]:
             raise HarnessError(f"duplicate entry id {eid}")
         bible["entries"][eid] = entry
     return bible
+
+
+def resolve_reference(ref, root=ROOT):
+    """Resolve a reference string or anchor ID to an existing image Path.
+
+    Accepts:
+    - An anchor ID, e.g. 'earth' -> game/assets/map_icons/earth_256.png
+    - A station ID, e.g. 'station-earth' -> game/assets/map_icons/earth_256.png
+    - A direct relative path from repo root
+    - An art_out batch reference
+    """
+    if not ref:
+        return None
+    ref_str = str(ref).strip()
+    candidates = [
+        root / "game" / "assets" / "map_icons" / f"{ref_str}_256.png",
+    ]
+    if ref_str.startswith("station-"):
+        short = ref_str[len("station-"):]
+        candidates.append(root / "game" / "assets" / "map_icons" / f"{short}_256.png")
+    candidates.extend([
+        root / ref_str,
+        root / "art_out" / f"{ref_str}.png",
+        root / "art_out" / "batch-6.3" / f"{ref_str}.png",
+        root / "game" / "assets" / "map_icons" / f"{ref_str}.png",
+    ])
+    for cand in candidates:
+        if cand.is_file():
+            return cand
+    raise HarnessError(f"reference image not found for ref '{ref_str}'")
 
 
 # ---------------------------------------------------------------- filter
@@ -207,8 +238,24 @@ class GeminiClient:
         self.api_key = api_key
         self.model = model
 
-    def generate(self, prompt, aspect, seed):
-        body = {"contents": [{"parts": [{"text": prompt}]}],
+    def generate(self, prompt, aspect, seed, reference_image=None):
+        parts = []
+        if reference_image:
+            ref_path = Path(reference_image)
+            if not ref_path.exists():
+                raise HarnessError(f"reference image file does not exist: {ref_path}")
+            ref_bytes = ref_path.read_bytes()
+            ref_b64 = base64.b64encode(ref_bytes).decode("utf-8")
+            ref_mime = "image/png" if ref_path.suffix.lower() == ".png" else "image/jpeg"
+            parts.append({
+                "inlineData": {
+                    "mimeType": ref_mime,
+                    "data": ref_b64
+                }
+            })
+        parts.append({"text": prompt})
+
+        body = {"contents": [{"parts": parts}],
                 "generationConfig": {"responseModalities": ["IMAGE"], "seed": seed,
                                      "imageConfig": {"aspectRatio": aspect}}}
         req = urllib.request.Request(
@@ -233,8 +280,9 @@ def client_from_env(model):
 
 # ---------------------------------------------------------------- run
 
-def prompt_hash(final_prompt):
-    return hashlib.sha256(final_prompt.encode("utf-8")).hexdigest()[:16]
+def prompt_hash(final_prompt, ref=""):
+    content = f"{final_prompt}|ref:{ref}" if ref else final_prompt
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
 
 def seed_for(entry_id):
@@ -255,8 +303,10 @@ def run(args, client=None, bible=None, banned=None):
     manifest = load_manifest(args.out, args.batch)
     if args.dry_run:
         for e, final in prepared:
-            print(f"=== {e['id']} | batch {e['batch']} | {e['aspect']} | sample={'yes' if e['sample'] else 'no'} "
-                  f"| hash {prompt_hash(final)} ===\n{final}\n")
+            ref_id = getattr(args, "ref", None) or e.get("ref", "")
+            ref_tag = f" | ref={ref_id}" if ref_id else ""
+            print(f"=== {e['id']} | batch {e['batch']} | {e['aspect']} | sample={'yes' if e['sample'] else 'no'}{ref_tag} "
+                  f"| hash {prompt_hash(final, ref_id)} ===\n{final}\n")
         try:
             check_gate(bible, args.batch, selected, manifest)
             print("[dry-run] sample gate: open for this selection. No API call made.")
@@ -271,20 +321,31 @@ def run(args, client=None, bible=None, banned=None):
     results = []
     for e, final in prepared:
         seed = seed_for(e["id"])
-        raw = client.generate(final, e["aspect"], seed)
+        ref_id = getattr(args, "ref", None) or e.get("ref", "")
+        ref_path = resolve_reference(ref_id) if ref_id else None
+        try:
+            raw = client.generate(final, e["aspect"], seed, reference_image=ref_path)
+        except TypeError:
+            raw = client.generate(final, e["aspect"], seed)
+
         from PIL import Image
         import io
         img, report = sweep_borders(Image.open(io.BytesIO(raw)), e["aspect"])
         path = out_dir / f"{e['id']}.png"
         img.save(path)
         prev = manifest["items"].get(e["id"], {})
+        curr_hash = prompt_hash(final, ref_id)
         item = {"id": e["id"], "batch": e["batch"], "aspect": e["aspect"], "sample": e["sample"],
-                "prompt_hash": prompt_hash(final), "model": args.model,
+                "prompt_hash": curr_hash, "model": args.model,
                 "params": {"seed": seed, "aspect_ratio": e["aspect"]},
                 "output": str(path), "sweep": report,
                 "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                # A regenerated piece with a changed prompt needs a fresh review.
-                "review": prev.get("review", "pending") if prev.get("prompt_hash") == prompt_hash(final) else "pending"}
+                # A regenerated piece with a changed prompt or ref needs a fresh review.
+                "review": prev.get("review", "pending") if prev.get("prompt_hash") == curr_hash else "pending"}
+        if ref_id:
+            item["ref"] = ref_id
+            item["params"]["ref"] = ref_id
+            item["reference_image"] = str(ref_path)
         manifest["items"][e["id"]] = item
         save_manifest(args.out, args.batch, manifest)
         results.append(item)
@@ -297,6 +358,7 @@ def parse_args(argv=None):
     p.add_argument("--batch", required=True, choices=BATCHES)
     p.add_argument("--sample", action="store_true", help="only the #73 sample-gate pieces")
     p.add_argument("--ids", nargs="+", help="restrict to these asset ids")
+    p.add_argument("--ref", help="override or provide reference anchor image for conditioning")
     p.add_argument("--out", default=str(DEFAULT_OUT), help="output directory (default: art_out/)")
     p.add_argument("--model", default=os.environ.get("GEMINI_IMAGE_MODEL", DEFAULT_MODEL))
     p.add_argument("--dry-run", action="store_true", help="print final prompts, make no API call")

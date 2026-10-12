@@ -39,8 +39,8 @@ class FakeClient:
         self.calls = []
         self.size, self.border = size, border
 
-    def generate(self, prompt, aspect, seed):
-        self.calls.append((prompt, aspect, seed))
+    def generate(self, prompt, aspect, seed, reference_image=None):
+        self.calls.append((prompt, aspect, seed, reference_image))
         aw, ah = (int(x) for x in aspect.split(":"))
         inner = (self.size[0], round(self.size[0] * ah / aw))
         return png_bytes((inner[0] + 2 * self.border, inner[1] + 2 * self.border), self.border)
@@ -220,6 +220,46 @@ class SweepTests(unittest.TestCase):
     def test_flat_image_rejected(self):
         with self.assertRaises(G.HarnessError):
             G.sweep_borders(Image.new("RGB", (100, 100), (5, 5, 5)), "1:1")
+
+
+
+
+@unittest.skipIf(Image is None, "Pillow not installed: reference image tests need it")
+class ReferenceImageTests(unittest.TestCase):
+    def test_ref_field_parsed_from_bible(self):
+        bible = G.load_bible()
+        self.assertEqual(bible["entries"]["card-earth"].get("ref"), "earth")
+        self.assertEqual(bible["entries"]["card-mars"].get("ref"), "mars")
+        self.assertEqual(bible["entries"]["card-luna"].get("ref"), "luna")
+        self.assertEqual(bible["entries"]["card-ceres"].get("ref"), "ceres")
+
+    def test_resolve_reference_finds_map_icons(self):
+        path = G.resolve_reference("earth")
+        self.assertTrue(path.exists())
+        self.assertTrue(path.name.endswith("earth_256.png"))
+
+    def test_resolve_reference_station_prefix(self):
+        path = G.resolve_reference("station-mars")
+        self.assertTrue(path.exists())
+        self.assertTrue(path.name.endswith("mars_256.png"))
+
+    def test_resolve_reference_unknown_raises(self):
+        with self.assertRaises(G.HarnessError):
+            G.resolve_reference("nonexistent_station_xyz")
+
+    def test_run_passes_reference_image_to_client(self):
+        client = FakeClient()
+        with tempfile.TemporaryDirectory() as d:
+            manifest = {"batch": "6.3", "items": {
+                "station-earth": {"review": "approved"},
+                "station-mars": {"review": "approved"}
+            }}
+            G.save_manifest(d, "6.3", manifest)
+            G.run(args("6.3", d, ids=["card-earth"]), client=client)
+            self.assertEqual(len(client.calls), 1)
+            prompt, aspect, seed, ref_img = client.calls[0]
+            self.assertIsNotNone(ref_img)
+            self.assertTrue(str(ref_img).endswith("earth_256.png"))
 
 
 if __name__ == "__main__":

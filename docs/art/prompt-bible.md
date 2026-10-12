@@ -75,6 +75,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - batch: 6.3
 - aspect: 4:3
 - sample: no
+- ref: earth
 - source: Transit.STATIONS: earth
 - prompt: Card vignette illustration: wide view of a blue-green ocean world with recognizable real continents, swirled white cloud bands, a warm yellow-amber atmospheric rim haze, a thick hazardous cloud of dead satellites and metallic scrap in low orbit, the orbital dock ring half-buried in the debris, and the horizontal space elevator tether connecting to a massive orbital shipyard hub. Zero free-flying cargo haulers. Cinematic composition, low horizon, strong flat shadow cuts.
 
@@ -82,20 +83,23 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - batch: 6.3
 - aspect: 4:3
 - sample: no
+- ref: luna
 - source: Transit.STATIONS: luna
-- prompt: Card vignette illustration: wide view of a pale monochrome cratered moon with dark charcoal basalt maria, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical tanks and floodlit landing pads breaking the lunar horizon. Strictly monochrome greyscale, zero rust, zero ochre. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Orbital vista of the cratered moon matching the reference icon: pale bone highland regolith sharply contrasted with large, prominent dark charcoal basalt maria plains across the lunar face, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical tanks and floodlit landing pads breaking the curved lunar limb against deep slate-black space. Strict monochrome greyscale, high contrast between dark basalt maria and pale highlands, zero rust, zero ochre.
 
 ### card-mars
 - batch: 6.3
 - aspect: 4:3
 - sample: no
+- ref: mars
 - source: Transit.STATIONS: mars
-- prompt: Card vignette illustration: wide view of a rust-red desert world with dark-teal terraformed basin seas, polar ice cap in bone white, clustered dome habitats, and heavy industrial foundries and spaceport docks rooted firmly into bedrock along the basin shore. Zero canyon scars, zero cargo haulers. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Orbital vista showing the full planetary globe of Mars matching the reference icon: centered rust-red desert world against flat deep slate-black space, with dark-teal terraformed basin seas spreading across the visible face, a crisp bone-white polar ice cap, and squat industrial foundries and surface dome habitats rooted firmly into bedrock on the basin rim. Clean outer limb, zero canyon scars, zero cargo haulers. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts.
 
 ### card-ceres
 - batch: 6.3
 - aspect: 4:3
 - sample: no
+- ref: ceres
 - source: Transit.STATIONS: ceres
 - prompt: Card vignette illustration: wide view of a small asymmetrical dark rocky potato asteroid with pitted ochre mineral veins, a ragged mining platform clamped onto it and tethered ore sleds trailing in zero-g. Cinematic composition, low horizon, strong flat shadow cuts.
 

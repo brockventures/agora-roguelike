@@ -29,7 +29,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   3. **The Massive Orbital Station Hub:** Sprawling heavy industrial space station dock and counterweight hub at the outer head of the horizontal tether, distinctly massive and substantially wider than the ribbon.
 - **Camera Viewports:**
   - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Full globe with recognizable continents, warm yellowed atmospheric rim haze, thick debris belt with half-buried dock ring, 3 o'clock horizontal elevator ribbon, and sprawling terminal orbital station hub. [Map Icon](../../game/assets/map_icons/earth_256.png)
-  - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista showing Earth's recognizable coastlines, yellowed atmospheric haze, the thick cloud of dead satellites and scrap with the dock ring half-buried in it, and the elevator hub. No cargo haulers.
+  - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista showing Earth's recognizable coastlines, yellowed atmospheric haze, the thick cloud of dead satellites and scrap with the dock ring half-buried in it, and the elevator hub. No cargo haulers. [Card Proof](../screens/station-cards/card-earth.png)
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Low-orbit approach looking along the elevator ribbon into the orbital dock ring enveloped in scrap.
     - *Trading Floor (4:3):* Pressurized freight transfer deck inside the orbital elevator hub overlooking Earth below.
@@ -45,7 +45,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   3. **Uncluttered Face:** The center disk remains clean cratered regolith and dark charcoal maria without surface sticker clutter.
 - **Camera Viewports:**
   - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Pure monochrome moon disk with dark maria and perimeter-anchored fuel storage spheres and illuminated pads. [Map Icon](../../game/assets/map_icons/luna_256.png)
-  - *Overview Card (4:3 - Live in Godot `card_panel`):* Low-orbit vista over lunar craters toward the illuminated fuel pads and tanker berths on the horizon.
+  - *Overview Card (4:3 - Live in Godot `card_panel`):* Low-orbit vista over lunar craters toward the illuminated fuel pads and tanker berths on the horizon. [Card Proof](../screens/station-cards/card-luna.png)
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Descending approach over lunar craters toward the illuminated fuel pads and tanker berths in the mare basin.
     - *Trading Floor (4:3):* Gritty, pressurized propellant brokerage deck with fuel gauges and tanker docking airlocks.
@@ -60,7 +60,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   2. **Surface Domes:** Clustered pressurized dome habitats embedded in the bedrock near the basin sea.
 - **Camera Viewports:**
   - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Mars globe showing dark-teal basin sea, polar cap, surface dome habitats, and foundries rooted onto the basin rim on the visible face. Clean outer limb. [Map Icon](../../game/assets/map_icons/mars_256.png)
-  - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista looking across the terraformed basin sea at the dome habitats, spaceports, and foundry complex rooted on the bedrock shore. No canyon scar, no cargo haulers.
+  - *Overview Card (4:3 - Live in Godot `card_panel`):* Orbital vista looking across the terraformed basin sea at the dome habitats, spaceports, and foundry complex rooted on the bedrock shore. No canyon scar, no cargo haulers. [Card Proof](../screens/station-cards/card-mars.png)
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Atmospheric entry angle sweeping past the foundry exhaust stacks and heavy orbital shipyard moorings.
     - *Trading Floor (4:3):* Heavy machinery trading exchange overlooking molten slag channels and fabrication bays.
@@ -75,7 +75,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
   2. **Extraction Rigging:** Deep core drill derricks, magnetic crane booms, and tethered mineral rock sleds trailing in zero-g.
 - **Camera Viewports:**
   - *Tactical Node (1:1 - Live in Godot `tactical_map_panel`):* Craggy grey asteroid silhouette with external clamped gantry and tethered ore sleds. [Map Icon](../../game/assets/map_icons/ceres_256.png)
-  - *Overview Card (4:3 - Live in Godot `card_panel`):* Wide view of the craggy asteroid with the clamped mining platform and trailing ore sleds.
+  - *Overview Card (4:3 - Live in Godot `card_panel`):* Wide view of the craggy asteroid with the clamped mining platform and trailing ore sleds. [Card Proof](../screens/station-cards/card-ceres.png)
   - *Proposed Extra Views (Pending Ryan approval in #lounge; no current Godot slot):*
     - *Arrival Vista / Spaceport (4:3):* Close approach along a tether cable toward the clamped asteroid mining platform.
     - *Trading Floor (4:3):* Cramped, zero-g roughneck ore exchange bolted directly into excavated asteroid rock.
