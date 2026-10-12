@@ -45,7 +45,7 @@ const POLICIES_PATH := "res://data/policies.json"
 const OPS: Array[String] = ["add", "mul_bps"]
 const BPS: int = 10000
 
-## stat -> "live" (has a consumer) | "pending" (stored, no consumer yet)
+## stat -> "live" (has a consumer). A stat joins this table only with its consumer.
 const STATS: Dictionary = {
 	"starting_cr": "live",
 	"fresh_start_cr": "live",
@@ -57,11 +57,10 @@ const STATS: Dictionary = {
 	"piracy_odds_bps": "live",
 	"bankruptcy_grace_ticks": "live",
 	"takeover_threshold_shares": "live",  # Epic 3 task 8: Takeover.threshold_for (the player's 501 less the perk)
-	# #160 corporate policies, section 5.2. Known to the validator so policies.json loads; the
-	# consumers (belt and docking tolls, Takeover.take, award_severance) land in the next PR.
-	"toll_discount_bps": "pending",
-	"assumed_debt_bps": "pending",
-	"severance_bps": "pending",
+	# #160 corporate policies, section 5.2.
+	"toll_discount_bps": "live",         # RunController.toll_discount_bps(): belt toll (can_depart) and docking toll (_arrive)
+	"assumed_debt_bps": "live",          # Takeover.take: the player's share of a baron's debt (base 5000)
+	"severance_bps": "live",             # RunController._bank_corp -> award_severance(..., severance_bps): scales the whole award
 }
 
 ## Severance formula (#97, D1):
@@ -397,10 +396,13 @@ static func apply_stat(mods: Dictionary, stat: String, base: int) -> int:
 ## `rescue_pts` (a won Sol System Rescue, #32) and `consolation_pts` (a lost one, per finished
 ## phase) are whole points worked out by RescueProject from rescue.json; both default to 0 so a
 ## run without a project is exactly the award it always was.
-static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0, rounds_survived: int = 0, rescue_pts: int = 0, consolation_pts: int = 0) -> int:
+## `severance_bps` (#160, 10000 = x1.0) scales the whole award, truncating; below zero counts as zero.
+static func award_severance(profile: MetaProfile, filings: int, peak_net_worth: int, barons_broken: int = 0, rounds_survived: int = 0, rescue_pts: int = 0, consolation_pts: int = 0, severance_bps: int = 10000) -> int:
 	var broken: int = maxi(0, barons_broken)
 	var rounds: int = maxi(0, rounds_survived)
 	var award: int = maxi(0, filings) * SEVERANCE_PER_FILING + maxi(0, peak_net_worth) * SEVERANCE_NET_WORTH_BPS / BPS + broken * SEVERANCE_PER_BARON + rounds * SEVERANCE_PER_ROUND + maxi(0, rescue_pts) + maxi(0, consolation_pts)
+	if severance_bps != BPS:
+		award = award * maxi(0, severance_bps) / BPS
 	profile.severance_points += award
 	profile.barons_broken += broken
 	return award

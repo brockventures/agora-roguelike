@@ -326,13 +326,16 @@ static func calculate_fuel_burn(
 	return required_fuel
 
 ## Calculates Belt Authority toll with optional corporate opex discount.
-static func calculate_toll(origin: String, destination: String, corp_opex_discount: float = 0.0) -> int:
+## `toll_discount_bps` (#160, 0..10000, clamped) is the integer discount; the result truncates.
+static func calculate_toll(origin: String, destination: String, corp_opex_discount: float = 0.0, toll_discount_bps: int = 0) -> int:
 	var k := route_key(origin, destination)
 	if not (k in BELT_ROUTES):
 		return 0
 	var toll: int = BELT_TOLL_CR
 	if corp_opex_discount > 0.0:
 		toll = int(float(toll) * (1.0 - corp_opex_discount))
+	if toll_discount_bps > 0:
+		toll = toll * (10000 - mini(toll_discount_bps, 10000)) / 10000
 	return toll
 
 ## Calculates settled cargo decay upon arrival at destination.

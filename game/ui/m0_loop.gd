@@ -1208,7 +1208,7 @@ func depart_message() -> String:
 		"SAME_STATION":
 			return Loc.t("DEPART_SAME_STATION")
 		"INSUFFICIENT_CR":
-			return Loc.t("DEPART_NO_TOLL") % Transit.calculate_toll(controller.docked_at, dest)
+			return Loc.t("DEPART_NO_TOLL") % Transit.calculate_toll(controller.docked_at, dest, 0.0, controller.toll_discount_bps())
 		"INSUFFICIENT_FUEL":
 			return Loc.t("DEPART_NO_FUEL") % [int(last_depart_check.get("fuel_units", 0)), int(last_depart_check.get("fuel_buy", 0)), int(last_depart_check.get("fuel_cr", 0)) + int(last_depart_check.get("fuel_fee", 0)) + int(last_depart_check.get("toll", 0))]
 		"NO_ROUTE":

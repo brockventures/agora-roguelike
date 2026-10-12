@@ -665,7 +665,7 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 		rc.cr += s.treasury_cr
 		# Q1 (a), #32: the player assumes only `player_assumed_debt_bps` of the debt (the
 		# shipped 5000 = half); the rest is written off with the baron's books.
-		var assumed: int = debt * int(settings(w)["player_assumed_debt_bps"]) / 10000
+		var assumed: int = debt * Parachutes.apply_stat(rc.modifiers, "assumed_debt_bps", int(settings(w)["player_assumed_debt_bps"])) / 10000
 		ev["debt"] = rc.doomsday.add_principal(assumed)
 		s.treasury_cr = 0
 		ev["forced_ch11"] = not bool(pre["insolvent"]) and bool(rc.assess()["insolvent"])
