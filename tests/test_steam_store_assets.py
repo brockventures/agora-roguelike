@@ -1,0 +1,89 @@
+"""Tests for Steam Store assets, capsule specifications, copy, and surveys (#29, part of Epic 5 #26)."""
+
+import json
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+GAME = ROOT / "game"
+STORE_ASSETS_PATH = GAME / "data" / "store_assets.json"
+STEAM_CONFIG_PATH = GAME / "data" / "steam.json"
+
+
+class TestSteamStoreAssets(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(STORE_ASSETS_PATH.is_file(), "store_assets.json must exist")
+        self.data = json.loads(STORE_ASSETS_PATH.read_text(encoding="utf-8"))
+        self.steam_cfg = json.loads(STEAM_CONFIG_PATH.read_text(encoding="utf-8"))
+
+    def test_basic_metadata_and_partner_alignment(self):
+        self.assertEqual(self.data["app_name"], "AGORA Roguelike")
+        self.assertEqual(self.data["app_id_target"], 3064620)
+        self.assertEqual(self.data["publisher"], "Placeholder Studios")
+        self.assertEqual(self.steam_cfg.get("target_app_id"), 3064620)
+        self.assertEqual(self.steam_cfg.get("publisher"), "Placeholder Studios")
+
+    def test_descriptions_length_and_structure(self):
+        short_desc = self.data["short_description"]
+        self.assertTrue(short_desc, "Short description cannot be empty")
+        self.assertLessEqual(
+            len(short_desc),
+            300,
+            f"Steam short description must be <= 300 chars, got {len(short_desc)}",
+        )
+
+        about = self.data["about_the_game"]
+        self.assertTrue(len(about) > 100, "About the game must have substantive copy")
+
+        features = self.data["key_features"]
+        self.assertIsInstance(features, list)
+        self.assertGreaterEqual(len(features), 4, "Must highlight at least 4 key features")
+
+    def test_capsule_asset_dimensions_valve_compliance(self):
+        capsules = self.data["capsules"]
+        expected = {
+            "header_capsule": (460, 215),
+            "small_capsule": (231, 87),
+            "main_capsule": (616, 353),
+            "vertical_capsule": (374, 448),
+            "page_background": (1438, 810),
+        }
+        for name, (w, h) in expected.items():
+            self.assertIn(name, capsules, f"Missing capsule spec: {name}")
+            self.assertEqual(capsules[name]["width"], w, f"{name} width mismatch")
+            self.assertEqual(capsules[name]["height"], h, f"{name} height mismatch")
+
+    def test_system_requirements(self):
+        reqs = self.data["system_requirements"]
+        for platform in ["linux", "windows"]:
+            self.assertIn(platform, reqs)
+            for tier in ["minimum", "recommended"]:
+                self.assertIn(tier, reqs[platform])
+                tier_spec = reqs[platform][tier]
+                for key in ["os", "processor", "memory", "graphics", "storage"]:
+                    self.assertIn(key, tier_spec)
+                    self.assertTrue(tier_spec[key])
+
+    def test_content_survey_and_iarc(self):
+        survey = self.data["content_survey_iarc"]
+        self.assertIn("violence", survey)
+        self.assertIn("rating_target", survey)
+        self.assertIn("E", survey["rating_target"])
+
+    def test_steam_ai_disclosure(self):
+        ai = self.data["steam_ai_disclosure"]
+        self.assertTrue(ai["has_generative_ai"])
+        self.assertTrue(ai["pre_generated_content"])
+        self.assertFalse(ai["live_generated_content"])
+
+    def test_trailer_storyboard(self):
+        trailer = self.data["trailer_storyboard"]
+        self.assertIsInstance(trailer, list)
+        self.assertGreaterEqual(len(trailer), 3)
+        total_duration = sum(step["duration_sec"] for step in trailer)
+        self.assertGreaterEqual(total_duration, 20)
+        self.assertLessEqual(total_duration, 60)
+
+
+if __name__ == "__main__":
+    unittest.main()
