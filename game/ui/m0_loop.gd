@@ -56,6 +56,8 @@ const OVERLAY_MONOPOLY: String = "monopoly"
 ## The Sol System Rescue Project was finished (#32): the clock is paused and the run is won. A
 ## continues to the run summary (OVERLAY_COLLAPSED at PHASE_SUMMARY), then perks and a new run.
 const OVERLAY_RESCUED: String = "rescued"
+## Standalone public demo limit reached (#39, 3 quarters / 90 rounds).
+const OVERLAY_DEMO_COMPLETE: String = "demo_complete"
 
 ## A corporate policy pick has been granted (#160 section 9): the Policy Committee modal halts the
 ## clock until A adopts the policy under the cursor. There is no B: a pick cannot be declined.
@@ -193,6 +195,7 @@ func _connect_all() -> void:
 		controller.bankruptcy_filed.connect(_on_bankruptcy_filed)
 		controller.run_collapsed.connect(_on_collapsed)
 		controller.run_rescued.connect(_on_rescued)
+		controller.demo_completed.connect(_on_demo_completed)
 		controller.round_advanced.connect(_on_round_advanced)
 		controller.margin_call_applied.connect(_on_margin_call)
 		controller.transit_departed.connect(_on_transit_departed)
@@ -219,6 +222,8 @@ func _disconnect_all() -> void:
 			controller.run_collapsed.disconnect(_on_collapsed)
 		if controller.run_rescued.is_connected(_on_rescued):
 			controller.run_rescued.disconnect(_on_rescued)
+		if controller.demo_completed.is_connected(_on_demo_completed):
+			controller.demo_completed.disconnect(_on_demo_completed)
 		if controller.round_advanced.is_connected(_on_round_advanced):
 			controller.round_advanced.disconnect(_on_round_advanced)
 		if controller.margin_call_applied.is_connected(_on_margin_call):
@@ -1548,6 +1553,12 @@ func dispatch_action(action: String) -> bool:
 		return false  # the sleep banner: Start resumes, nothing behind it is live
 	if overlay_state == OVERLAY_COLLAPSED:
 		return _collapsed_action(action)
+	if overlay_state == OVERLAY_DEMO_COMPLETE:
+		var acked: bool = action == ACT_SUBMIT and acknowledge_demo_complete()
+		if acked:
+			_click()
+			action_handled.emit(action)
+		return acked
 	if overlay_state == OVERLAY_RESCUED:
 		# A continues to the run summary; the run is won, so nothing else is live behind it.
 		var won: bool = action == ACT_SUBMIT and acknowledge_rescued()
@@ -1868,6 +1879,20 @@ func _on_collapsed() -> void:
 
 
 ## The last phase was delivered (RunController.finish_rescue banked the corp): raise the win modal.
+func _on_demo_completed() -> void:
+	controller.sim_clock.pause()
+	_set_phase(PHASE_NONE)
+	_set_overlay(OVERLAY_DEMO_COMPLETE)
+
+
+func acknowledge_demo_complete() -> bool:
+	if overlay_state != OVERLAY_DEMO_COMPLETE or controller == null:
+		return false
+	_set_phase(PHASE_SUMMARY)
+	_set_overlay(OVERLAY_COLLAPSED)
+	return true
+
+
 func _on_rescued() -> void:
 	_broken_ids = controller.world.held_by(Takeover.PLAYER) if controller.world != null else []
 	controller.sim_clock.pause()
@@ -1919,6 +1944,8 @@ func _sync_overlay_from_controller() -> void:
 		_set_overlay(OVERLAY_COLLAPSED)
 	elif controller.is_rescued():
 		_set_overlay(OVERLAY_COLLAPSED if collapse_phase != PHASE_NONE else OVERLAY_RESCUED)
+	elif controller.is_demo_completed():
+		_set_overlay(OVERLAY_COLLAPSED if collapse_phase != PHASE_NONE else OVERLAY_DEMO_COMPLETE)
 	elif controller.pending_bankruptcy:
 		_set_overlay(OVERLAY_CHAPTER_11)
 	else:

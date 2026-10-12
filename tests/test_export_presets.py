@@ -32,17 +32,26 @@ def load():
 
 
 class ExportPresets(unittest.TestCase):
+    RELEASE_PRESETS = {'Linux x86_64', 'Windows Desktop', 'Steam Deck'}
+    DEMO_PRESETS = {'Linux x86_64 Demo', 'Windows Desktop Demo', 'Steam Deck Demo'}
+    ALL_PRESETS = RELEASE_PRESETS | DEMO_PRESETS
+
     def setUp(self):
         self.presets = load()
 
-    def test_exactly_the_three_presets(self):
-        self.assertEqual(set(self.presets),
-                         {'Linux x86_64', 'Windows Desktop', 'Steam Deck'})
+    def test_all_presets_configured(self):
+        self.assertEqual(set(self.presets), self.ALL_PRESETS)
 
     def test_platforms_and_architecture(self):
-        for name, plat in [('Linux x86_64', 'Linux'),
-                           ('Windows Desktop', 'Windows Desktop'),
-                           ('Steam Deck', 'Linux')]:
+        expected_platforms = {
+            'Linux x86_64': 'Linux',
+            'Windows Desktop': 'Windows Desktop',
+            'Steam Deck': 'Linux',
+            'Linux x86_64 Demo': 'Linux',
+            'Windows Desktop Demo': 'Windows Desktop',
+            'Steam Deck Demo': 'Linux',
+        }
+        for name, plat in expected_platforms.items():
             p, o = self.presets[name]
             self.assertEqual(p['platform'], plat, name)
             self.assertEqual(o['binary_format/architecture'], 'x86_64', name)
@@ -55,20 +64,33 @@ class ExportPresets(unittest.TestCase):
             self.assertIn('tools/*', patterns, name)
 
     def test_windows_needs_no_rcedit_or_signing(self):
-        _, o = self.presets['Windows Desktop']
-        self.assertEqual(o['application/modify_resources'], 'false')
-        self.assertEqual(o['codesign/enable'], 'false')
+        for win_preset in ('Windows Desktop', 'Windows Desktop Demo'):
+            _, o = self.presets[win_preset]
+            self.assertEqual(o['application/modify_resources'], 'false', win_preset)
+            self.assertEqual(o['codesign/enable'], 'false', win_preset)
 
     def test_steam_deck_tuning(self):
-        p, o = self.presets['Steam Deck']
-        self.assertEqual(o['binary_format/embed_pck'], 'true')
-        self.assertIn('steamdeck', p['custom_features'].split(','))
+        for deck_preset in ('Steam Deck', 'Steam Deck Demo'):
+            p, o = self.presets[deck_preset]
+            self.assertEqual(o['binary_format/embed_pck'], 'true', deck_preset)
+            self.assertIn('steamdeck', p['custom_features'].split(','), deck_preset)
         self.assertNotIn('steamdeck',
                          self.presets['Linux x86_64'][0]['custom_features'])
+        self.assertNotIn('steamdeck',
+                         self.presets['Linux x86_64 Demo'][0]['custom_features'])
+
+    def test_demo_custom_features(self):
+        for name in self.DEMO_PRESETS:
+            p, _ = self.presets[name]
+            self.assertIn('demo', p['custom_features'].split(','), name)
+        for name in self.RELEASE_PRESETS:
+            p, _ = self.presets[name]
+            features = [f for f in p['custom_features'].split(',') if f]
+            self.assertNotIn('demo', features, name)
 
     def test_export_paths_distinct_and_under_build(self):
         paths = [p['export_path'] for p, _ in self.presets.values()]
-        self.assertEqual(len(set(paths)), 3)
+        self.assertEqual(len(set(paths)), 6)
         for path in paths:
             self.assertTrue(path.startswith('../build/'), path)
 

@@ -32,6 +32,8 @@ signal severance_awarded(points: int)
 signal monopoly_achieved()
 ## The Sol System Rescue Project was finished and the run won (#32): end_run("rescued") has banked.
 signal run_rescued()
+## Standalone public demo limit reached (3 quarters / 90 rounds, #39).
+signal demo_completed()
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
 ## #160: a policy pick was granted (count = picks now waiting), and one was adopted.
@@ -471,7 +473,11 @@ func check_monopoly() -> bool:
 ## Chapter 11 filing is NOT a game over; it founds a new corp in place.
 ## A rescued run is over too (#32): the clock is not what ended it.
 func is_run_over() -> bool:
-	return is_collapsed() or is_rescued()
+	return is_collapsed() or is_rescued() or is_demo_completed()
+
+## True once the public demo run limit (3 quarters / 90 rounds, #39) was reached.
+func is_demo_completed() -> bool:
+	return end_reason == "demo_limit" and _banked_corp == corp_number
 
 ## True once the Sol System Rescue Project won this corp's run. It reads the banked reason, so
 ## it needs no field of its own, and a later filing or new corp (which rewrites end_reason or
@@ -583,6 +589,8 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
 	corp_ended.emit(carry_over)
+	if reason == "demo_limit":
+		demo_completed.emit()
 	return severance_award
 
 func _lost_snapshot() -> Dictionary:
@@ -937,9 +945,17 @@ func _on_sub_ticked(total: int) -> void:
 		if crisis_deck != null:
 			_advance_crisis_deck(round_num)
 		round_advanced.emit(round_num)
+		if DemoMode.is_round_limit_reached(round_num):
+			_on_demo_limit_reached()
 
 ## Once per round, before round_advanced: expire / draw crises, then charge any
 ## margin call owed by collapses that were already live.
+func _on_demo_limit_reached() -> void:
+	if is_run_over():
+		return
+	sim_clock.paused = true
+	end_run("demo_limit")
+
 func _advance_crisis_deck(round_num: int) -> void:
 	crisis_deck.advance_round(round_num, int(doomsday.stage), net_worth())
 	var bps: int = crisis_deck.last_margin_call_bps
