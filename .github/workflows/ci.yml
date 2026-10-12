@@ -17,6 +17,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Run test suite
+        env:
+          AGORA_SLOW_TESTS: ${{ github.event_name == 'push' && '1' || '0' }}
         run: python -m unittest discover -s tests -v
       - name: Golden fixture drift guard
         run: python tools/golden/check_drift.py

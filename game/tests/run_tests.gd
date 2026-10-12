@@ -16,9 +16,26 @@ const PASS_SENTINEL := "ok"
 func _init() -> void:
 	# Existing tests assert English text: pin the locale whatever the host's is.
 	Loc.set_locale(Loc.LOCALE_EN)
+	# Optional file filters after `--`: keep only test files whose name contains one.
+	var filters: PackedStringArray = OS.get_cmdline_user_args()
+	var files: Array = _find_tests(TEST_DIR)
+	if not filters.is_empty():
+		var kept: Array = []
+		for path in files:
+			var fname: String = String(path).get_file()
+			for f in filters:
+				if fname.contains(f):
+					kept.append(path)
+					break
+		files = kept
+		print("filter: %s (%d files)" % [", ".join(filters), files.size()])
+		if files.is_empty():
+			print("FAIL  no test files match filter")
+			quit(1)
+			return
 	var passed := 0
 	var failed := 0
-	for path in _find_tests(TEST_DIR):
+	for path in files:
 		var script = load(path)
 		if script == null:
 			print("FAIL  %s (could not load)" % path)

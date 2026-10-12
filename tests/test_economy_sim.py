@@ -4,6 +4,7 @@ fast enough for CI, on the live referee (#155), and its scripted fleets
 actually trade and use the live-only mechanics.
 """
 
+import os
 import unittest
 
 from tools.economy_sim import FLEETS, HYBRID_FOCUSES, hybrid_table, run, scenario_kinds
@@ -11,6 +12,7 @@ from tools.economy_sim import FLEETS, HYBRID_FOCUSES, hybrid_table, run, scenari
 KW = dict(mode="tolerant", check_every=10)
 
 
+@unittest.skipUnless(os.environ.get("AGORA_SLOW_TESTS") == "1", "slow tier: set AGORA_SLOW_TESTS=1 to run")
 class TestEconomySim(unittest.TestCase):
     def test_short_mixed_run(self):
         r = run("mixed", "flat", seed=2, rounds=30, **KW)
