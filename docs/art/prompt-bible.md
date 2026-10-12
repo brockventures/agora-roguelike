@@ -202,6 +202,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - batch: 6.4
 - aspect: 1:1
 - sample: no
+- ref: hull-hauler
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the hauler hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 
@@ -209,6 +210,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - batch: 6.4
 - aspect: 1:1
 - sample: no
+- ref: hull-interceptor
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the interceptor hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 
@@ -216,6 +218,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - batch: 6.4
 - aspect: 1:1
 - sample: no
+- ref: hull-freighter
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the freighter hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 
@@ -223,6 +226,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - batch: 6.4
 - aspect: 1:1
 - sample: no
+- ref: hull-scout
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the scout hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 
@@ -230,6 +234,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - batch: 6.4
 - aspect: 1:1
 - sample: no
+- ref: hull-scrap_barge
 - source: dynamic map transit icons
 - prompt: Tiny map transit marker icon: the scrap barge hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
 

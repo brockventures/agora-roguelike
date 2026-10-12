@@ -221,6 +221,15 @@ class SweepTests(unittest.TestCase):
         with self.assertRaises(G.HarnessError):
             G.sweep_borders(Image.new("RGB", (100, 100), (5, 5, 5)), "1:1")
 
+    def test_centered_icon_on_target_aspect_canvas_retains_composition(self):
+        # An isolated icon (e.g. 150x500 ship silhouette) centered on a 1000x1000 background
+        img = Image.new("RGB", (1000, 1000), (240, 230, 210))
+        ship = Image.new("RGB", (150, 500), (30, 30, 30))
+        img.paste(ship, ((1000 - 150) // 2, (1000 - 500) // 2))
+        out, rep = G.sweep_borders(img, "1:1")
+        self.assertEqual(out.size, (1000, 1000))
+        self.assertEqual(rep["final_size"], [1000, 1000])
+
 
 
 
@@ -232,11 +241,18 @@ class ReferenceImageTests(unittest.TestCase):
         self.assertEqual(bible["entries"]["card-mars"].get("ref"), "mars")
         self.assertEqual(bible["entries"]["card-luna"].get("ref"), "luna")
         self.assertEqual(bible["entries"]["card-ceres"].get("ref"), "ceres")
+        self.assertEqual(bible["entries"]["icon-hauler"].get("ref"), "hull-hauler")
+        self.assertEqual(bible["entries"]["icon-interceptor"].get("ref"), "hull-interceptor")
 
     def test_resolve_reference_finds_map_icons(self):
         path = G.resolve_reference("earth")
         self.assertTrue(path.exists())
         self.assertTrue(path.name.endswith("earth_256.png"))
+
+    def test_resolve_reference_finds_vessel_sample(self):
+        path = G.resolve_reference("hull-hauler")
+        self.assertTrue(path.exists())
+        self.assertTrue(str(path).endswith("docs/screens/vessel-samples/hull-hauler.png"))
 
     def test_resolve_reference_station_prefix(self):
         path = G.resolve_reference("station-mars")
