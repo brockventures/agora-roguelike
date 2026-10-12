@@ -57,6 +57,11 @@ const OVERLAY_MONOPOLY: String = "monopoly"
 ## continues to the run summary (OVERLAY_COLLAPSED at PHASE_SUMMARY), then perks and a new run.
 const OVERLAY_RESCUED: String = "rescued"
 
+## A corporate policy pick has been granted (#160 section 9): the Policy Committee modal halts the
+## clock until A adopts the policy under the cursor. There is no B: a pick cannot be declined.
+## Chapter 11, collapse, a crisis, a contract and the monopoly summary all outrank it.
+const OVERLAY_POLICY: String = "policy"
+
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
 const PHASE_SUMMARY: String = "summary"
@@ -142,6 +147,8 @@ var last_depart_check: Dictionary = {}
 var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
+## The Policy Committee modal's cursor: an index into the offered nodes (UI state, never saved).
+var policy_cursor: int = 0
 ## Cursor over controller.ships on the Fleet tab (Epic 6 #122). UI only: never saved.
 var fleet_cursor: int = 0
 var parachutes: Parachutes = null
@@ -361,6 +368,79 @@ func decline_contract() -> bool:
 	return true
 
 
+# --- Corporate policies (#160 section 9) ---
+
+## The Policy Committee modal's rows: every node the player can take now (in the tree's file
+## order, the cursor moves over these), then the nodes an owned policy forecloses, shown as
+## unavailable. [{id, state: "offer"|"excluded"}].
+func policy_rows() -> Array:
+	var out: Array = []
+	if controller == null or controller.policies == null:
+		return out
+	var ps: PolicyState = controller.policies
+	for id in ps.offers():
+		out.append({"id": id, "state": "offer"})
+	for id in ps.tree().perks:
+		if ps.excluded_by_owned(str(id)):
+			out.append({"id": str(id), "state": "excluded"})
+	return out
+
+
+## Raises the Policy Committee modal and halts the clock when a granted pick awaits adoption and
+## nothing outranks it. Called where the grant lands (the round boundary, a takeover, a load) and
+## from the clock's pause hook: a pick that waited behind a crisis, a contract or the monopoly
+## summary is raised the moment that modal closes and the clock, which the controller's interrupt
+## check stops again on the next sub-tick, trips. Two picks pending show one after the other.
+func _raise_policy_if_pending() -> void:
+	if controller == null or controller.policies == null or controller.policies.pending() <= 0:
+		return
+	if overlay_state != OVERLAY_NONE:
+		return
+	policy_cursor = 0
+	controller.sim_clock.pause()
+	_set_overlay(OVERLAY_POLICY)
+
+
+## D-pad: moves the cursor over the offered nodes (no wrap). False at either end.
+func move_policy_cursor(delta: int) -> bool:
+	if controller == null or controller.policies == null:
+		return false
+	var count: int = controller.policies.offers().size()
+	var next: int = clampi(policy_cursor + delta, 0, maxi(0, count - 1))
+	var moved: bool = next != policy_cursor
+	policy_cursor = next
+	return moved
+
+
+## A: adopts the policy under the cursor. The clock resumes unless another pick or modal waits.
+func adopt_policy_under_cursor() -> bool:
+	if overlay_state != OVERLAY_POLICY or controller == null or controller.policies == null:
+		return false
+	var offers: Array[String] = controller.policies.offers()
+	if offers.is_empty():
+		return false
+	policy_cursor = clampi(policy_cursor, 0, offers.size() - 1)
+	return adopt_policy(offers[policy_cursor])
+
+
+## Adopts `id` with the pending pick (the controller refuses an id that is not on offer), posts its
+## GalNet line, closes the modal and resumes the clock unless a second pick is waiting. Used by
+## the A press; kept public for callers that already know the id.
+func adopt_policy(id: String) -> bool:
+	if controller == null or not controller.adopt_policy(id):
+		return false
+	if hud != null:
+		var node: Dictionary = controller.policies.tree().perks.get(id, {})
+		hud.post_headline_tr("HL_POLICY_ADOPTED", [Loc.key_arg(str(node.get("name_key", "")))], "REGULATION", "INFO")
+	if overlay_state == OVERLAY_POLICY:
+		_set_overlay(OVERLAY_NONE)
+	policy_cursor = 0
+	_raise_policy_if_pending()
+	if overlay_state == OVERLAY_NONE:
+		controller.sim_clock.resume()
+	return true
+
+
 func _refresh_world_mods() -> void:
 	if market != null and controller != null and controller.world != null:
 		market.set_world_mods(controller.world_mods())
@@ -371,6 +451,9 @@ func _post_baron_event(e: Dictionary) -> void:
 	_post_baron_headline(e)
 	if str(e.get("kind", "")) == "takeover" and str(e.get("holder", "")) == Takeover.PLAYER:
 		_raise_monopoly_if_any()
+		# The corp's first baron earns a policy pick (Takeover.take); the monopoly summary,
+		# when this takeover completed the set, outranks it.
+		_raise_policy_if_pending()
 
 
 ## Raises the monopoly summary the first time the player holds every baron, unless a
@@ -1493,6 +1576,20 @@ func dispatch_action(action: String) -> bool:
 			_click()
 			action_handled.emit(action)
 		return answered
+	if overlay_state == OVERLAY_POLICY and action != ACT_CHAPTER_11:
+		# D-pad moves the cursor, A adopts; no B and nothing else is live behind the modal.
+		var picked: bool = false
+		match action:
+			ACT_UP:
+				picked = move_policy_cursor(-1)
+			ACT_DOWN:
+				picked = move_policy_cursor(1)
+			ACT_SUBMIT:
+				picked = adopt_policy_under_cursor()
+		if picked:
+			_click()
+			action_handled.emit(action)
+		return picked
 	if overlay_state != OVERLAY_NONE and not OVERLAY_ACTIONS.has(action):
 		return false
 	if action == ACT_SUBMIT and tab == Tab.MAP:
@@ -1709,6 +1806,8 @@ func start_next_run() -> RunController:
 	_broken_ids = []
 	if controller.world != null:
 		rc.world = Barons.for_new_run()  # a new Sol: fresh barons
+	if controller.policies != null:
+		rc.attach_policies()  # a new corp, a new run: no policies held, none pending (#160)
 	hud.bind_controller(rc)
 	market = StationMarket.new()
 	tab = Tab.MAP
@@ -1800,10 +1899,13 @@ func _on_round_advanced(round_num: int) -> void:
 		for e in controller.world.advance_rivals(round_num, controller, market):
 			_post_baron_event(e)
 	_raise_contract_if_pending()
+	_raise_policy_if_pending()
 	round_completed.emit(round_num)
 
 
 func _on_clock_changed(_value: Variant) -> void:
+	if controller != null and controller.sim_clock.paused:
+		_raise_policy_if_pending()
 	if controller != null and not controller.sim_clock.paused:
 		sleep_pause_active = false
 	speed_changed.emit(speed_label())
@@ -1824,6 +1926,8 @@ func _sync_overlay_from_controller() -> void:
 		_raise_crisis_if_pending()
 		# A save can hold an unanswered contract offer (autosave runs after it was posted).
 		_raise_contract_if_pending()
+		# ...and a granted pick not yet adopted (the counters are saved, the modal is not).
+		_raise_policy_if_pending()
 
 
 func _set_overlay(state: String) -> void:

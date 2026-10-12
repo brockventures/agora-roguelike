@@ -221,6 +221,13 @@ func _collect_modals(scene: Node, add: Callable) -> void:
 	rc.barons_broken_award = 0
 	rc.peak_net_worth = 0
 	_collect_rescue_modals(scene, add)
+	_stage_policy(scene, true)
+	scene._refresh_readouts()
+	add.call("policy modal[worst]", scene.resolution_label)
+	_stage_policy(scene, false)
+	scene._refresh_readouts()
+	add.call("policy modal[excluded]", scene.resolution_label)
+	scene.controller.policies = null
 	loop.overlay_state = M0Loop.OVERLAY_NONE
 	loop.collapse_phase = M0Loop.PHASE_NONE
 	# Toasts: a fill, a rejection and an alert, each with a long line.
@@ -739,7 +746,11 @@ func findings(scene: Node) -> Array:
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_DEPART", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), Loc.station_arg("mars")])]),
 		Loc.format("TICKER_LINE", [Loc.category("MARKET"), Loc.format("HL_RIVAL_SELL", [kess, 99999, Loc.commodity_arg("MACHINERY"), Loc.station_arg("earth"), 99999])]),
 	]
-	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + rescue_lines + lever_lines + rival_lines:
+	# #160: the line posted when the Policy Committee adopts a policy, with every policy's name.
+	var policy_lines: Array = []
+	for id in Parachutes.load_policies().perks:
+		policy_lines.append(Loc.format("TICKER_LINE", [Loc.category("REGULATION"), Loc.format("HL_POLICY_ADOPTED", [Loc.key_arg(str(Parachutes.load_policies().perks[id]["name_key"]))])]))
+	for text in [Loc.format("TICKER_LINE", [Loc.category("PIRACY"), Loc.format("HL_PIRACY_DEMAND", [99999, "ship_alpha", Loc.station_arg("earth"), Loc.station_arg("mars"), Loc.commodity_arg("MACHINERY")])])] + ares_lines + titan_lines + sol_lines + take_lines + rescue_lines + lever_lines + rival_lines + policy_lines:
 		var tl: Label = scene.ticker_labels[0]
 		var w: float = text_extent(tl, text).x
 		if w > tl.size.x:
@@ -1146,3 +1157,129 @@ func test_onboarding_perk_row_fits_at_every_text_scale() -> String:
 	if judged < 20:
 		return "judged only %d perk modal labels" % judged
 	return "ok" if bad.is_empty() else "perk row overflows (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 10)))]
+
+
+# --- Corporate policies (#160 row 4) ---
+
+## Stages the Policy Committee modal on a scene. `worst`: three roots held and a fourth pick
+## pending, so seven capstone and root rows are on offer (the tallest list a run can show).
+## Otherwise a capstone is held and its sibling is listed as unavailable.
+func _stage_policy(scene: Node, worst: bool) -> void:
+	var rc: RunController = scene.controller
+	rc.attach_policies()
+	rc.policies.earned = 4
+	if worst:
+		rc.policies.picks = ["supply_chain", "cost_containment", "training_module"] as Array[String]
+	else:
+		rc.policies.picks = ["supply_chain", "risk_transfer", "cost_containment"] as Array[String]
+	scene.loop.policy_cursor = 0
+	scene.loop.overlay_state = M0Loop.OVERLAY_POLICY
+
+
+## The pick modal at its worst case and with an exclusion, the cursor on every offered row (each
+## shows a different description), at every text scale in English and pseudo-localization (the
+## 130% pseudo-locale is the worst case): no label overflows or escapes, the columns of a row
+## never overlap, and the whole panel stays on the 1280x800 screen.
+func test_policy_modal_fits_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	var states: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			for worst in [true, false]:
+				_stage_policy(scene, worst)
+				var offers: int = scene.loop.policy_rows().filter(func(r): return str(r["state"]) == "offer").size()
+				for cur in offers:
+					scene.loop.policy_cursor = cur
+					scene._refresh_readouts()
+					states += 1
+					var tag: String = "%s %.2fx worst=%s cursor=%d" % [locale, scale, str(worst), cur]
+					_seen = {}
+					var rows: Array = []
+					_snap(scene, tag, rows)
+					for row in rows:
+						if not _node_path(row[1]).contains("ResolutionPanel"):
+							continue
+						judged += 1
+						for f in row[5]:
+							bad.append(f)
+					var panel: Panel = scene.resolution_modal
+					if panel.position.y < 0.0 or panel.position.y + panel.size.y > 800.0:
+						bad.append("%s: the panel spans y %.0f..%.0f on an 800 px screen" % [tag, panel.position.y, panel.position.y + panel.size.y])
+					for i in 12:
+						var name_l: Label = scene._res["perks"][i]["name"]
+						if not name_l.visible:
+							continue
+						var br: Label = scene._res["perks"][i]["branch"]
+						var tg: Label = scene._res["perks"][i]["tag"]
+						if name_l.position.x + name_l.size.x > br.position.x + 0.5 or br.position.x + br.size.x > tg.position.x + 0.5:
+							bad.append("%s row %d: name %.0f..%.0f, branch %.0f..%.0f, tag from %.0f overlap" % [tag, i, name_l.position.x, name_l.position.x + name_l.size.x, br.position.x, br.position.x + br.size.x, tg.position.x])
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if states < 40 or judged < 200:
+		return "judged only %d labels over %d states: the test is not reaching the modal" % [judged, states]
+	return "ok" if bad.is_empty() else "policy modal overflows (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 12)))]
+
+
+## The held-policy chip and its adopted names on the desk notes, at every text scale in both
+## locales: the labels fit and no entry is ever shown cut off across the scroll cycle.
+func test_policy_chip_and_lines_fit_at_every_text_scale() -> String:
+	var bad: Array = []
+	var judged: int = 0
+	for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+		Loc.set_locale(locale)
+		for scale in AccessibilitySettings.TEXT_SCALES:
+			var scene := _scene()
+			scene.settings.text_scale = scale
+			scene.apply_text_scale()
+			var rc: RunController = scene.controller
+			rc.attach_policies()
+			rc.policies.earned = 4
+			rc.policies.milestones_done = 3
+			# The four longest names a run can hold: one of each branch's capstone.
+			rc.policies.picks = ["supply_chain", "corridor_access", "cost_containment", "prepack_reorg"] as Array[String]
+			scene._refresh_readouts()
+			var tag: String = "%s %.2fx" % [locale, scale]
+			_seen = {}
+			var rows: Array = []
+			_snap(scene, tag, rows)
+			var found_chip: bool = false
+			for row in rows:
+				var path: String = _node_path(row[1])
+				if not (path.contains("NoteLine") or path.contains("NoteChip")):
+					continue
+				judged += 1
+				if path.contains("NoteChip") and str(row[2]).contains("4/4"):  # digits survive the pseudo-locale
+					found_chip = true
+				for f in row[5]:
+					bad.append(f)
+			var view: Dictionary = scene._card["notes"]["view"]
+			var clip: Control = view["clip"]
+			var entries: Array = view["entries"]
+			if entries.size() < 5:
+				bad.append("%s: %d desk-note entries, wanted the chip and four names" % [tag, entries.size()])
+			var t: float = 0.0
+			while t < 30.0:
+				scene._scroll_t = t
+				scene._update_scrollers()
+				var off: float = -(view["content"] as Control).position.y
+				var cover: Control = view["hide"]
+				var limit: float = cover.position.y if cover.visible else clip.size.y
+				for sp in entries:
+					var top: float = float(sp[0]) - off
+					var bottom: float = float(sp[1]) - off
+					if bottom > 0.5 and top < limit - 0.5 and (top < -0.5 or bottom > limit + 0.5):
+						bad.append("%s t=%.1f: entry %.0f..%.0f shows cut off in 0..%.0f" % [tag, t, top, bottom, limit])
+						break
+				t += 1.0
+			if not found_chip:
+				bad.append("%s: the chip is not on the desk notes" % tag)
+			scene.free()
+	Loc.set_locale(Loc.LOCALE_EN)
+	if judged < 20:
+		return "judged only %d policy note labels" % judged
+	return "ok" if bad.is_empty() else "policy notes overflow (%d): %s" % [bad.size(), "\n  ".join(PackedStringArray(bad.slice(0, 10)))]

@@ -386,9 +386,6 @@ func test_the_shipped_world_goldens_carry_no_policies() -> String:
 	for sd in recs:
 		if (recs[sd] as Dictionary).has("policies"):
 			return "seed %s world golden attaches policies" % sd
-		for e in recs[sd]["inputs"]:
-			if str(e["action"]).begins_with(Replay.POLICY_PREFIX):
-				return "seed %s world golden holds a policy pick" % sd
 	return "ok"
 
 

@@ -18,8 +18,6 @@ extends RefCounted
 
 const KIND_REPLAY: String = "replay"
 const DEFAULT_FRAME_DELTA: float = 1.0 / 60.0 + 0.0001
-## A recorded policy pick (#160) is the input "policy:<id>".
-const POLICY_PREFIX: String = "policy:"
 
 
 class Session extends RefCounted:
@@ -39,7 +37,8 @@ class Session extends RefCounted:
 	var with_world: bool = false
 	## True when corporate policies (#160) are attached. Off by default: the world goldens run
 	## past round 20, and a pick there would stop the clock and move both pins. Recorded as
-	## `policies` only when set.
+	## `policies` only when set. A pick is made the way a player makes it: the Policy Committee
+	## modal's D-pad and A (m0_up / m0_down / m0_submit), so it is a plain recorded input.
 	var with_policies: bool = false
 
 	func _init(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false, p_policies: bool = false) -> void:
@@ -73,17 +72,6 @@ class Session extends RefCounted:
 		if recording:
 			inputs.append({"frame": frames, "tick": controller.sim_clock.total_ticks, "action": action})
 		return loop.dispatch_action(action)
-
-	## Adopts policy `id` with the pending pick and resumes the clock, logging it as the input
-	## `policy:<id>` when recording. Stands in for the pick modal's A press until the modal
-	## lands (the modal's input will replace this). False, and nothing logged, when it is refused.
-	func adopt_policy(id: String) -> bool:
-		if not controller.adopt_policy(id):
-			return false
-		if recording:
-			inputs.append({"frame": frames, "tick": controller.sim_clock.total_ticks, "action": POLICY_PREFIX + id})
-		controller.sim_clock.resume()
-		return true
 
 	func state_hash() -> String:
 		return RunSave.state_hash(controller, loop.market, bags)
@@ -146,13 +134,7 @@ static func replay(rec: Dictionary) -> Dictionary:
 		if tick != int(entry["tick"]):
 			result["error"] = "input #%d: sim is on tick %d, recording says %d" % [idx, tick, int(entry["tick"])]
 			return _finish(result, s)
-		var act: String = str(entry["action"])
-		if act.begins_with(POLICY_PREFIX):
-			if not s.adopt_policy(act.substr(POLICY_PREFIX.length())):
-				result["error"] = "input #%d: policy pick '%s' was refused" % [idx, act]
-				return _finish(result, s)
-		else:
-			s.loop.dispatch_action(act)
+		s.loop.dispatch_action(str(entry["action"]))
 		idx += 1
 	s.advance_frames(maxi(0, total_frames - s.frames))
 	_finish(result, s)

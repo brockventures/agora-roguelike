@@ -564,3 +564,39 @@ ONB_CH11_2,Severance banked: %d. Perks are bought when this run ends.
 ONB_PERKS_TITLE,Benefits update
 ONB_PERKS_1,Benefits update: Severance buys permanent perks. The cheapest costs %d.
 HUD_PROMPT_NEXT,Next
+POLICY_EYEBROW,POLICY COMMITTEE %d OF %d
+POLICY_TITLE,Quarterly Policy Review
+POLICY_TAG_ROOT,ROOT
+POLICY_TAG_FORK,FORK
+POLICY_TAG_EXCLUDED,BARRED
+POLICY_CARD_CHIP,POLICIES %d/%d
+HL_POLICY_ADOPTED,Policy Committee adopts %s. In force until this run ends.
+HUD_ACT_ADOPT,Adopt
+POLICY_BRANCH_LOGISTICS,Logistics & Supply Chain
+POLICY_BRANCH_TREASURY,Treasury & Finance
+POLICY_BRANCH_COMPLIANCE,Compliance & Risk
+POLICY_BRANCH_MERGERS,Mergers & Acquisitions
+POLICY_SUPPLY_CHAIN,Synergized Supply Chain
+POLICY_SUPPLY_CHAIN_DESC,Cross-functional alignment cuts fuel burn %d%% on every departure.
+POLICY_RISK_TRANSFER,Risk Transfer Framework
+POLICY_RISK_TRANSFER_DESC,Raid exposure is transferred to a third party. Piracy odds down %d%%.
+POLICY_CORRIDOR_ACCESS,Expedited Corridor Access
+POLICY_CORRIDOR_ACCESS_DESC,"Fast-tracked lane permits. Hazard odds down %d%%, tolls cut %d%%."
+POLICY_COST_CONTAINMENT,Cost Containment Initiative
+POLICY_COST_CONTAINMENT_DESC,Headcount-neutral savings cut the clock's burn %d%%.
+POLICY_COVENANT_RELIEF,Covenant Relief Package
+POLICY_COVENANT_RELIEF_DESC,Lender-friendly restructuring. Interest down %d bps a minute.
+POLICY_WIND_DOWN,Managed Wind-Down Plan
+POLICY_WIND_DOWN_DESC,Orderly asset disposal. Liquidation keeps %d points more.
+POLICY_TRAINING_MODULE,Mandatory Training Module
+POLICY_TRAINING_MODULE_DESC,Staff completes training before any filing. %d more rounds of grace.
+POLICY_PREPACK_REORG,Pre-Packaged Reorganization
+POLICY_PREPACK_REORG_DESC,The next corp launches funded. Fresh-start stake +%s CR.
+POLICY_EXIT_PACKAGE,Exit Package Optimization
+POLICY_EXIT_PACKAGE_DESC,Departing executives negotiate better terms. Severance +%d%%.
+POLICY_SYNERGY_REVIEW,Strategic Synergy Review
+POLICY_SYNERGY_REVIEW_DESC,Due diligence trims the control stake by %d shares.
+POLICY_LBO_FRAMEWORK,Leveraged Buyout Framework
+POLICY_LBO_FRAMEWORK_DESC,Acquired debt is largely written off. You assume %d%% less of it.
+POLICY_ROLLUP_MANDATE,Aggressive Roll-Up Mandate
+POLICY_ROLLUP_MANDATE_DESC,Board pre-approves the deal. Control stake trimmed by %d more shares.
