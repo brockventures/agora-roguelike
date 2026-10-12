@@ -11,9 +11,9 @@ extends SceneTree
 ##
 ## Seeds are comma separated (default 84,7,21,3,11,42, the pacing bot's six).
 ##
-## Picks go straight through the core API, `RunController.adopt_policy(id)` (PolicyState.pick plus
-## the modifier rebuild and the `policy_adopted` signal), then resume the clock: the same calls the
-## pick modal makes, with no dependence on a replay input or on Main/UI. The bot has no baron work, so the "first takeover" pick is
+## Picks go through `M0Loop.adopt_policy(id)`, the call the Policy Committee modal's A press makes
+## (controller adopt, GalNet line, close the modal, resume the clock), with no replay input and no
+## Main/UI. The loop raises OVERLAY_POLICY itself when a grant lands, so the bot only answers it. The bot has no baron work, so the "first takeover" pick is
 ## stood in for by `on_takeover()` at round TAKEOVER_ROUND, and a build with fewer than four picks
 ## switches the surplus grants off (the milestones list is cut, the takeover pick disabled) on
 ## the run's own PolicyState, so the clock never stalls on a pick the build does not take. A pick
@@ -161,9 +161,8 @@ static func run(p_seed: int, build: Array) -> Dictionary:
 			rc.policies.earned += 1  # what on_takeover() does with takeover_pick on; the build keeps it off
 		if rc.policies != null and rc.policies.pending() > 0:
 			var id: String = _next_pick(rc, plan)
-			if not rc.adopt_policy(id):
+			if not s.loop.adopt_policy(id):
 				return {"error": "refused pick %s (taken %s)" % [id, str(taken)], "session": s}
-			rc.sim_clock.resume()  # the pick modal's A press does this in play
 			taken.append(id)
 			pick_log.append("%d:%s" % [r, id])
 		elif rc.pending_bankruptcy:
