@@ -85,7 +85,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - sample: no
 - ref: luna
 - source: Transit.STATIONS: luna
-- prompt: Card vignette illustration: wide view of a pale monochrome cratered moon with dark charcoal basalt maria, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical tanks and floodlit landing pads breaking the lunar horizon. Strictly monochrome greyscale, zero rust, zero ochre. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Orbital vista of the cratered moon matching the reference icon: pale bone highland regolith sharply contrasted with large, prominent dark charcoal basalt maria plains across the lunar face, long flat shadow cuts across craters, and a perimeter fuel depot spaceport with clustered spherical tanks and floodlit landing pads breaking the curved lunar limb against deep slate-black space. Strict monochrome greyscale, high contrast between dark basalt maria and pale highlands, zero rust, zero ochre.
 
 ### card-mars
 - batch: 6.3
@@ -93,7 +93,7 @@ Grounded to `Transit.STATIONS` (earth, luna, mars, ceres). `station-*` are 1:1 t
 - sample: no
 - ref: mars
 - source: Transit.STATIONS: mars
-- prompt: Card vignette illustration: wide view of a rust-red desert world with dark-teal terraformed basin seas, polar ice cap in bone white, clustered dome habitats, and heavy industrial foundries and spaceport docks rooted firmly into bedrock along the basin shore. Zero canyon scars, zero cargo haulers. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts. Cinematic composition, low horizon, strong flat shadow cuts.
+- prompt: Orbital vista showing the full planetary globe of Mars matching the reference icon: centered rust-red desert world against flat deep slate-black space, with dark-teal terraformed basin seas spreading across the visible face, a crisp bone-white polar ice cap, and squat industrial foundries and surface dome habitats rooted firmly into bedrock on the basin rim. Clean outer limb, zero canyon scars, zero cargo haulers. Bold uniform-weight black ink contours, prominent linework around every structure, flat hard shadow cuts.
 
 ### card-ceres
 - batch: 6.3
