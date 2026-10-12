@@ -40,7 +40,7 @@ func test_shipped_table_loads_and_validates() -> String:
 	if not bool(r["ok"]):
 		return "shipped table invalid: %s" % r["error"]
 	var ids: Array[String] = Onboarding.beat_ids()
-	if ids != ["tabs", "order", "debt", "leave", "sell", "raid", "chapter11", "perks"]:
+	if ids != ["tabs", "order", "debt", "leave", "sell", "raid", "chapter11", "perks", "policy"]:
 		return "unexpected beat ids: %s" % str(ids)
 	for b in r["beats"]:
 		var core: bool = b["kind"] == "core"
@@ -174,7 +174,7 @@ func test_fresh_player_starts_on_the_tabs_beat() -> String:
 	if ob.active_id() != "tabs":
 		return "expected tabs, got '%s'" % ob.active_id()
 	var b: Dictionary = ob.active_beat()
-	if int(b["index"]) != 0 or int(b["total"]) != 8 or not ob.holds_now():
+	if int(b["index"]) != 0 or int(b["total"]) != 9 or not ob.holds_now():
 		return "active_beat wrong: %s" % str(b)
 	return "ok"
 
@@ -475,3 +475,23 @@ func test_main_wires_the_row_to_its_live_tutorial_model() -> String:
 func test_settings_row_label_is_in_the_string_table() -> String:
 	var rows: Dictionary = load("res://tests/test_localization.gd").csv_rows()
 	return "ok" if rows.has("SET_TUTORIAL") else "SET_TUTORIAL missing from agora_strings.csv"
+
+
+func test_policy_beat_fires_on_pending_and_completes_on_adoption() -> String:
+	var ob := Onboarding.new(AccessibilitySettings.new())
+	ob.settings.set_tutorial_enabled(false)  # a conditional beat ignores the core switch
+	var b: Dictionary = ob.beat("policy")
+	if b.is_empty() or str(b["kind"]) != "conditional" or bool(b["holds"]):
+		return "policy should be a conditional beat with no hold"
+	ob.handle({"type": "policy_pending"})
+	if ob.active_id() != "policy" or ob.holds_now():
+		return "policy_pending should activate the beat without a hold, got '%s'" % ob.active_id()
+	ob.handle({"type": "policy_adopted"})
+	if ob.active_id() != "" or not ob.is_seen("policy"):
+		return "policy_adopted should complete the beat"
+	ob.handle({"type": "policy_pending"})
+	if ob.active_id() != "":
+		return "the beat shows once per player"
+	var quiet := Onboarding.new(AccessibilitySettings.new())
+	quiet.handle({"type": "policy_adopted"})
+	return "ok" if quiet.is_seen("policy") else "adopting first should mark the beat done silently"

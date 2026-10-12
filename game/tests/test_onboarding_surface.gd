@@ -135,3 +135,21 @@ func test_perk_modal_shows_the_row_only_for_the_active_beat() -> String:
 	if str(with_row["rows"][0]["kind"]) != "text":
 		return "the perk beat row should be a text row, first"
 	return "ok"
+
+
+func test_policy_modal_shows_the_row_only_for_the_active_beat() -> String:
+	var m := _main()
+	m.controller.attach_policies()
+	m.controller.policies.earned = 1
+	var plain: Dictionary = m._policy_model()
+	m.onboarding._active = "policy"
+	var with_row: Dictionary = m._policy_model()
+	var copy: String = m._onb_text("ONB_POLICY_1")
+	m.free()
+	if (with_row["rows"] as Array).size() != (plain["rows"] as Array).size() + 1:
+		return "the policy beat should add exactly one row"
+	if str(with_row["rows"][0]["kind"]) != "text" or str(with_row["rows"][0]["text"]) != copy:
+		return "the policy beat row should be the copy as a text row, first"
+	if not copy.contains("D-pad") or not copy.contains("A adopts"):
+		return "the copy should name the default buttons: %s" % copy
+	return "ok"

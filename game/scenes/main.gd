@@ -754,6 +754,8 @@ func _onb_bind_controller() -> void:
 		_onb_ctrl.bankruptcy_filed.disconnect(_onb_on_filed)
 		_onb_ctrl.run_collapsed.disconnect(_onb_on_run_ended)
 		_onb_ctrl.run_rescued.disconnect(_onb_on_run_ended)
+		_onb_ctrl.policy_pending.disconnect(_onb_on_policy_pending)
+		_onb_ctrl.policy_adopted.disconnect(_onb_on_policy_adopted)
 	_onb_ctrl = controller
 	_onb_hold = ""
 	if _onb_ctrl != null:
@@ -763,6 +765,8 @@ func _onb_bind_controller() -> void:
 		_onb_ctrl.bankruptcy_filed.connect(_onb_on_filed)
 		_onb_ctrl.run_collapsed.connect(_onb_on_run_ended)
 		_onb_ctrl.run_rescued.connect(_onb_on_run_ended)
+		_onb_ctrl.policy_pending.connect(_onb_on_policy_pending)
+		_onb_ctrl.policy_adopted.connect(_onb_on_policy_adopted)
 
 
 func _onb_event(type: String, extra: Dictionary = {}) -> void:
@@ -799,6 +803,14 @@ func _onb_on_arrived(_info: Dictionary) -> void:
 
 func _onb_on_filed(_report: Dictionary) -> void:
 	_onb_event("bankruptcy_filed")
+
+
+func _onb_on_policy_pending(_count: int) -> void:
+	_onb_event("policy_pending")
+
+
+func _onb_on_policy_adopted(_id: String) -> void:
+	_onb_event("policy_adopted")
 
 
 func _onb_on_run_ended() -> void:
@@ -3016,6 +3028,8 @@ func _policy_model() -> Dictionary:
 	if desc != "":
 		rows.append({"kind": "muted", "text": desc})
 	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
+	if onboarding != null and onboarding.active_id() == "policy":
+		rows.push_front({"kind": "text", "text": _onb_text("ONB_POLICY_1")})
 	return {"eyebrow": tr("POLICY_EYEBROW") % [ps.picks.size() + 1, _policy_total(tree)], "title": tr("POLICY_TITLE"), "band": "teal", "wide": true, "rows": rows,
 		"actions": [[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")], [tr("HUD_PAD_A"), tr("HUD_ACT_ADOPT")]]}
 
