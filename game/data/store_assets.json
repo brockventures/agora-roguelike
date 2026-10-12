@@ -7,7 +7,7 @@
 	"short_description": "An orbital Bloomberg terminal roguelike. Build trade cartels across Sol, execute hostile takeovers of rival barons, and light the planetary Stabilisers before the Doomsday Clock strikes zero.",
 	"about_the_game": "AGORA Roguelike is an orbital financial terminal simulator and space trading roguelike. Operating over a living Sol astrodynamics tactical map, you deploy vessels along high-risk shipping corridors, manipulate spot commodity markets at Earth, Mars, Ceres, and Luna, and engineer hostile takeovers of ruthless sector barons before systemic collapse extinguishes humanity's last colonies.",
 	"key_features": [
-		"Orbital Bloomberg Terminal HUD: Full 1280x800 native command deck designed for controller-first mastery and Steam Deck Verified play.",
+		"Orbital Bloomberg Terminal HUD: Full 1280x800 native command deck designed for controller-first mastery and Steam Deck play (targeting Verified).",
 		"Dynamic Sol Astrodynamics: Real-time planetary orbits, alignment corridors, perishable cargo decay, and pirate-infested asteroid belt transit lanes.",
 		"Hostile Takeovers & Corporate Insolvency: Squeeze rival barons, purchase controlling 501-share stakes, or deploy Golden Parachutes when filing Chapter 11.",
 		"Procedural Crisis Deck: Dynamic solar flares, supply shocks, embargoes, and antitrust audits that force on-the-fly route pivoting.",
@@ -15,29 +15,46 @@
 	],
 	"capsules": {
 		"header_capsule": {
-			"width": 460,
-			"height": 215,
-			"usage": "Store search results, category pages, discovery queue"
+			"width": 920,
+			"height": 430,
+			"usage": "Store search results, category pages, discovery queue",
+			"file": "art/store/header_capsule.png"
 		},
 		"small_capsule": {
-			"width": 231,
-			"height": 87,
-			"usage": "Special offers, recommendation lists, daily deals"
+			"width": 462,
+			"height": 174,
+			"usage": "Special offers, recommendation lists, daily deals",
+			"file": "art/store/small_capsule.png"
 		},
 		"main_capsule": {
-			"width": 616,
-			"height": 353,
-			"usage": "Top of store page, featured carousel banners"
+			"width": 1232,
+			"height": 706,
+			"usage": "Top of store page, featured carousel banners",
+			"file": "art/store/main_capsule.png"
 		},
 		"vertical_capsule": {
-			"width": 374,
-			"height": 448,
-			"usage": "Steam Library grid display, collections"
+			"width": 748,
+			"height": 896,
+			"usage": "Steam Library grid display, collections",
+			"file": "art/store/vertical_capsule.png"
 		},
 		"page_background": {
 			"width": 1438,
 			"height": 810,
-			"usage": "Store page ambient backdrop"
+			"usage": "Store page ambient backdrop",
+			"file": "art/store/page_background.png"
+		},
+		"library_capsule": {
+			"width": 600,
+			"height": 900,
+			"file": "art/store/library_capsule.png",
+			"usage": "Steam Library portrait grid (1x size is 300x450)"
+		},
+		"library_hero": {
+			"width": 3840,
+			"height": 1240,
+			"file": "art/store/library_hero.png",
+			"usage": "Steam Library hero banner behind the game page (1x size is 1920x620)"
 		}
 	},
 	"steam_features": [
@@ -45,16 +62,10 @@
 		"Steam Cloud",
 		"Steam Achievements",
 		"Full Controller Support",
-		"Steam Deck Verified"
+		"Steam Deck (targeting Verified; rating is assigned by Valve)"
 	],
 	"supported_languages": [
-		"English",
-		"French",
-		"Italian",
-		"German",
-		"Spanish - Spain",
-		"Japanese",
-		"Simplified Chinese"
+		"English"
 	],
 	"system_requirements": {
 		"linux": {
@@ -99,7 +110,7 @@
 	},
 	"steam_ai_disclosure": {
 		"has_generative_ai": true,
-		"pre_generated_content": "Pre-production conceptual ideation and visual reference proofs for encounter deck card art utilized AI assistance tools, followed by extensive human curation, SVG re-vectorization, palette harmonization, and hand-fitted cel-shaded composition.",
+		"pre_generated_content": "Card illustrations, map icons and store capsule art were generated with Google's Gemini image model from prompts and approved reference images written by the team, then cropped, sized and reviewed by the team. Game code and on-screen text were written with AI coding assistants under human review.",
 		"live_generated_content": false,
 		"live_generation_details": "No generative AI is executed or queried at runtime during gameplay."
 	},

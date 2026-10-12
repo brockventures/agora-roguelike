@@ -39,3 +39,19 @@ Output goes to `<out>/batch-<n>/<id>.png` with a `manifest.json` beside it.
 4. Approved art is committed by the 6.3 to 6.5 tasks, not by this harness.
 
 Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, sample, [ref], source, prompt) and run `python3 -m unittest tests.test_art_harness`.
+
+## Store capsules
+
+Steam store capsules for #29 (Steam store assets) are built from one Gemini key-art take by `tools/art/make_capsules.py`. Regenerate the files and the review sheet with:
+
+```
+python3 tools/art/make_capsules.py
+```
+
+The script reads `art/store/keyart-raw-1.png`, crops and resizes it to each size in `game/data/store_assets.json`, overlays the "AGORA" wordmark and "ROGUELIKE" tagline (Archivo, bone cream and teal), and writes `art/store/capsules-sheet.png` for review. The page background and library hero carry no text.
+
+Key art prompt (Gemini, 16:9, with `card_art/antitrust_audit.png` and `card_art/card_mars.png` as style references):
+
+> Match the art style of the reference images exactly: flat cel-shaded illustration, uniform ink contours, flat graphic shadow cuts, mineral and rust palette with teal accents. Wide establishing shot of a corporate trading armada in orbit above a rust-red Mars, a cargo freighter in the foreground right, a ring of orbital trading platforms with glowing ticker-board panels, a distant small Sun at upper left. Leave the left third of the frame calm and dark (deep space) for a title. Absolutely no text, letters, numbers, logos or UI anywhere.
+
+These capsules are SAMPLES pending design approval. Do not upload them to Steamworks until the design is signed off.

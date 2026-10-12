@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GAME = ROOT / "game"
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 STORE_ASSETS_PATH = GAME / "data" / "store_assets.json"
 STEAM_CONFIG_PATH = GAME / "data" / "steam.json"
 
@@ -42,16 +43,30 @@ class TestSteamStoreAssets(unittest.TestCase):
     def test_capsule_asset_dimensions_valve_compliance(self):
         capsules = self.data["capsules"]
         expected = {
-            "header_capsule": (460, 215),
-            "small_capsule": (231, 87),
-            "main_capsule": (616, 353),
-            "vertical_capsule": (374, 448),
+            "header_capsule": (920, 430),
+            "small_capsule": (462, 174),
+            "main_capsule": (1232, 706),
+            "vertical_capsule": (748, 896),
             "page_background": (1438, 810),
+            "library_capsule": (600, 900),
+            "library_hero": (3840, 1240),
         }
         for name, (w, h) in expected.items():
             self.assertIn(name, capsules, f"Missing capsule spec: {name}")
             self.assertEqual(capsules[name]["width"], w, f"{name} width mismatch")
             self.assertEqual(capsules[name]["height"], h, f"{name} height mismatch")
+
+    def test_capsule_files_exist_at_spec_size(self):
+        for name, spec in self.data["capsules"].items():
+            rel = spec.get("file")
+            self.assertTrue(rel, f"{name} has no file")
+            path = ROOT / rel
+            self.assertTrue(path.is_file(), f"{name}: {rel} missing")
+            raw = path.read_bytes()
+            self.assertEqual(raw[:8], PNG_MAGIC, f"{name}: not a PNG")
+            w = int.from_bytes(raw[16:20], "big")
+            h = int.from_bytes(raw[20:24], "big")
+            self.assertEqual((w, h), (spec["width"], spec["height"]), f"{name} pixel size mismatch")
 
     def test_system_requirements(self):
         reqs = self.data["system_requirements"]
@@ -74,7 +89,14 @@ class TestSteamStoreAssets(unittest.TestCase):
         ai = self.data["steam_ai_disclosure"]
         self.assertTrue(ai["has_generative_ai"])
         self.assertTrue(ai["pre_generated_content"])
+        self.assertIn("Gemini", ai["pre_generated_content"])
         self.assertFalse(ai["live_generated_content"])
+
+    def test_supported_languages_are_english_only(self):
+        self.assertEqual(self.data["supported_languages"], ["English"])
+
+    def test_steam_deck_verified_is_not_claimed_as_a_feature(self):
+        self.assertNotIn("Steam Deck Verified", self.data["steam_features"])
 
     def test_trailer_storyboard(self):
         trailer = self.data["trailer_storyboard"]
