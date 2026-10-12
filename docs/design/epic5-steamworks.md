@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary & Deliverables Matrix
 
-Epic 5 establishes the commercial Steamworks infrastructure, automated multi-platform release engineering, Steam Deck Verified targeting, and store presence for *AGORA Roguelike*:
+Epic 5 establishes the commercial Steamworks infrastructure, automated multi-platform release engineering, Steam Deck Verified targeting, and store presence for *AGORA*:
 
 | Deliverable Area | Target Specification | Shipped Implementation | Status |
 |---|---|---|---|
@@ -56,7 +56,7 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 
 ### Copywriting & Positioning
 
-- **Game Title:** AGORA Roguelike
+- **Game Title:** AGORA
 - **Tagline (Short Description, <= 300 chars):**  
   *An orbital Bloomberg terminal roguelike. Build trade cartels across Sol, execute hostile takeovers of rival barons, and light the planetary Stabilisers before the Doomsday Clock strikes zero.*
 - **Key Features:**
@@ -89,7 +89,7 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 To complete Steam Direct onboarding under Placeholder Studios (App 3064620):
 
 1. **Steamworks Partner Portal Setup:**
-   - Log in to partner portal and navigate to **App 3064620 (AGORA Roguelike)**.
+   - Log in to partner portal and navigate to **App 3064620 (AGORA)**.
    - Enter store metadata and copy from `game/data/store_assets.json`.
    - Upload graphic capsules matching the exact resolutions in `store_assets.json`.
 2. **Achievements & Stats Staging:**

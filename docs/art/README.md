@@ -48,7 +48,21 @@ Steam store capsules for #29 (Steam store assets) are built from one Gemini key-
 python3 tools/art/make_capsules.py
 ```
 
-The script reads `art/store/keyart-raw-1.png`, crops and resizes it to each size in `game/data/store_assets.json`, overlays the "AGORA" wordmark and "ROGUELIKE" tagline (Archivo, bone cream and teal), and writes `art/store/capsules-sheet.png` for review. The page background and library hero carry no text.
+v2 key art (Ryan's feedback, #29): the Sun is larger in the background with the Stabiliser scaffolding built around it, and the focal point is a ship in the foreground. Three scene prompts share the style text below. Regenerate the raw takes with `python3 skills/image-gen/scripts/gen-image.py --manifest <manifest> <outdir>` (Gemini backend, 16:9, takes 2), then build each capsule set with:
+
+```
+python3 tools/art/make_capsules.py --key art/store/keyart-v2-cargo.png --out-suffix=-cargo
+python3 tools/art/make_capsules.py --key art/store/keyart-v2-money.png --out-suffix=-money
+python3 tools/art/make_capsules.py --key art/store/keyart-v2-candles.png --out-suffix=-candles
+```
+
+Style (all three): flat cel-shaded illustration, uniform ink contours, flat graphic shadow cuts, ochre (#c99a2e), bone (#e6dcc3), ink black (#1c1a17), slate (#2c353b) and teal (#4fb3a9) accents; a huge unstable flaring amber Sun in the upper right with a massive curved scaffolding arc (the Stabiliser) around about a third of its limb; the left third calm and dark for a title; no text, letters, numbers, logos or UI.
+
+- cargo: a battered corporate cargo freighter in the foreground, three-quarter view, visibly crammed with trade goods (stacked containers, ore sacks, fuel drums and crates lashed to the hull).
+- money: a sleek corporate trading ship in the foreground, three-quarter view, with a glittering stream of gold credit chips and coins pouring out of its engine exhaust.
+- candles: a corporate trading ship in the foreground, three-quarter view, its engine trail stylized as a rising green and red candlestick chart.
+
+The script reads `art/store/keyart-raw-1.png`, crops and resizes it to each size in `game/data/store_assets.json`, overlays the "AGORA" wordmark (Archivo, bone cream), and writes `art/store/capsules-sheet.png` for review. The page background and library hero carry no text.
 
 Key art prompt (Gemini, 16:9, with `card_art/antitrust_audit.png` and `card_art/card_mars.png` as style references):
 

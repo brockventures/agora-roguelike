@@ -18,7 +18,7 @@ class TestSteamStoreAssets(unittest.TestCase):
         self.steam_cfg = json.loads(STEAM_CONFIG_PATH.read_text(encoding="utf-8"))
 
     def test_basic_metadata_and_partner_alignment(self):
-        self.assertEqual(self.data["app_name"], "AGORA Roguelike")
+        self.assertEqual(self.data["app_name"], "AGORA")
         self.assertEqual(self.data["app_id_target"], 3064620)
         self.assertEqual(self.data["publisher"], "Placeholder Studios")
         self.assertEqual(self.steam_cfg.get("target_app_id"), 3064620)

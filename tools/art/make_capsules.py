@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Build the Steam store capsule SAMPLES from the chosen key art (#29, Steam store assets).
 
-Reads art/store/keyart-raw-1.png (the approved-for-sample take) and the Archivo
-variable font, then writes the capsule PNGs, a copy of the key art at each size,
-and art/store/capsules-sheet.png for review. These are samples pending design
-approval; see docs/art/README.md ("Store capsules").
+Reads art/store/keyart-raw-1.png (the approved-for-sample take, or the --key
+given) and the Archivo variable font, then writes the capsule PNGs, a copy of
+the key art at each size, and art/store/capsules-sheet.png for review. These
+are samples pending design approval; see docs/art/README.md ("Store capsules").
 
-Usage: python3 tools/art/make_capsules.py [--key PATH]
+Usage: python3 tools/art/make_capsules.py [--key PATH] [--out-suffix SUFFIX]
+  --out-suffix SUFFIX  write <name><SUFFIX>.png and capsules-sheet<SUFFIX>.png
+                       (e.g. -cargo), so variants do not overwrite each other.
 """
 
 import argparse
@@ -21,23 +23,21 @@ DEFAULT_KEY = STORE / "keyart-raw-1.png"
 
 BONE = (0xE6, 0xDC, 0xC3)
 INK = (0x1A, 0x14, 0x10)
-TEAL = (0x4F, 0xB3, 0xA9)
 SHEET_BG = (0x0F, 0x0D, 0x0B)
 WEIGHT = 700
 WORD = "AGORA"
-TAGLINE = "ROGUELIKE"
 
-# name -> (width, height, layout, wordmark height fraction, tagline?)
+# name -> (width, height, layout, wordmark height fraction)
 # layout: "left" (left third, vertically centered) | "top" (centered, top third)
 #         "bg" (no text) | "hero" (no text)
 SPECS = [
-    ("header_capsule", 920, 430, "left", 0.22, True),
-    ("small_capsule", 462, 174, "left", 0.45, False),
-    ("main_capsule", 1232, 706, "left", 0.22, True),
-    ("vertical_capsule", 748, 896, "top", 0.22, True),
-    ("page_background", 1438, 810, "bg", 0, False),
-    ("library_capsule", 600, 900, "top", 0.22, True),
-    ("library_hero", 3840, 1240, "hero", 0, False),
+    ("header_capsule", 920, 430, "left", 0.22),
+    ("small_capsule", 462, 174, "left", 0.45),
+    ("main_capsule", 1232, 706, "left", 0.22),
+    ("vertical_capsule", 748, 896, "top", 0.22),
+    ("page_background", 1438, 810, "bg", 0),
+    ("library_capsule", 600, 900, "top", 0.22),
+    ("library_hero", 3840, 1240, "hero", 0),
 ]
 
 
@@ -119,7 +119,6 @@ def compose(key, name, w, h, layout, wm_frac):
 
     scale = h / 706  # stroke is 2-3 px at the main capsule height, scaled up or down
     stroke_w = max(2, round(2.5 * scale))
-    tag_stroke = max(1, round(stroke_w * 0.6))
     wm_target = round(h * wm_frac)
     if layout == "left":
         max_w = round(w * 0.34)
@@ -127,11 +126,7 @@ def compose(key, name, w, h, layout, wm_frac):
     else:
         max_w = round(w * 0.80)
     wordmark = fit_text(WORD, wm_target, max_w, stroke_w, BONE, INK)
-    tagline = None
-    if name_has_tagline(name):
-        tag_target = max(6, round(wordmark.height * 0.28))
-        tagline = fit_text(TAGLINE, tag_target, max_w, tag_stroke, TEAL, INK, tracking=0.35)
-    block_h = wordmark.height + (round(wordmark.height * 0.10) + tagline.height if tagline else 0)
+    block_h = wordmark.height
     if layout == "left":
         top = (h - block_h) // 2
         wm_x = x0
@@ -139,15 +134,7 @@ def compose(key, name, w, h, layout, wm_frac):
         top = round(h * 0.12)
         wm_x = (w - wordmark.width) // 2
     base.alpha_composite(wordmark, (wm_x, top))
-    if tagline:
-        tag_y = top + wordmark.height + round(wordmark.height * 0.10)
-        tag_x = wm_x if layout == "left" else (w - tagline.width) // 2
-        base.alpha_composite(tagline, (tag_x, tag_y))
     return base
-
-
-def name_has_tagline(name):
-    return dict((s[0], s[5]) for s in SPECS)[name]
 
 
 def build_sheet(items, out_path):
@@ -175,19 +162,22 @@ def build_sheet(items, out_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--key", default=str(DEFAULT_KEY), help="key art PNG (16:9)")
+    parser.add_argument("--out-suffix", default="",
+                        help="suffix for output names: <name><suffix>.png, capsules-sheet<suffix>.png")
     args = parser.parse_args()
 
     STORE.mkdir(parents=True, exist_ok=True)
     key = Image.open(args.key).convert("RGB")
     items = []
-    for name, w, h, layout, wm_frac, _ in SPECS:
+    for name, w, h, layout, wm_frac in SPECS:
         img = compose(key, name, w, h, layout, wm_frac)
-        out = STORE / f"{name}.png"
+        out = STORE / f"{name}{args.out_suffix}.png"
         img.save(out)
         items.append((name, img))
         print(f"wrote {out.relative_to(ROOT)} {img.width}x{img.height}")
-    build_sheet(items, STORE / "capsules-sheet.png")
-    print(f"wrote {(STORE / 'capsules-sheet.png').relative_to(ROOT)}")
+    sheet = STORE / f"capsules-sheet{args.out_suffix}.png"
+    build_sheet(items, sheet)
+    print(f"wrote {sheet.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
