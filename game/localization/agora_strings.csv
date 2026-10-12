@@ -607,13 +607,14 @@ DEMO_SUM_EYEBROW,STEAM NEXT FEST DEMO
 DEMO_SUM_TITLE,DEMO COMPLETE // 3 QUARTERS SURVIVED
 DEMO_COMPLETE_BODY,"You have reached the end of the 3-quarter Steam Next Fest demo window. The Sol System stands on the brink of corporate consolidation."
 DEMO_WISHLIST_PROMPT,Wishlist Agora Station on Steam to unlock the full 120-round campaign and Sol Rescue.
-SUM_CAUSE_NATIONALIZED,Nationalized by Sol System Government,""
-SUM_CAUSE_SOVEREIGN_BUYOUT,Sovereign Buyout: Sol State Privatized,""
-SOVEREIGN_DECREE_TITLE,EMERGENCY SOVEREIGN EXPROPRIATION DECREE,""
-SOVEREIGN_DECREE_BODY,The dying Sol System Government has issued an executive seizure order to nationalize the corporation and confiscate all monopoly assets.,"
-SOVEREIGN_SEIZURE_TIMER,SEIZURE COUNTDOWN,""
-SOVEREIGN_ROUNDS_LEFT,%d ROUNDS REMAINING,""
-SOVEREIGN_BRIBE_COST,CABINET BRIBE,""
-SOVEREIGN_DEBT_REQ,SOVEREIGN DEBT LEVERAGE,""
-SOVEREIGN_BUYOUT_COST,HOSTILE STATE BUYOUT,""
-SUM_SEV_SOVEREIGN,Sovereign Buyout Bonus,""
+SUM_CAUSE_NATIONALIZED,Nationalized by Sol System Government
+SUM_CAUSE_SOVEREIGN_BUYOUT,Sovereign Buyout: Sol State Privatized
+SOVEREIGN_DECREE_TITLE,EMERGENCY SOVEREIGN EXPROPRIATION DECREE
+SOVEREIGN_DECREE_BODY,"The dying Sol System Government has issued an executive seizure order to nationalize the corporation and confiscate all monopoly assets."
+SOVEREIGN_SEIZURE_TIMER,SEIZURE COUNTDOWN
+SOVEREIGN_ROUNDS_LEFT,%d ROUNDS REMAINING
+SOVEREIGN_BRIBE_COST,CABINET BRIBE
+SOVEREIGN_DEBT_REQ,SOVEREIGN DEBT LEVERAGE
+SOVEREIGN_BUYOUT_COST,HOSTILE STATE BUYOUT
+SUM_SEV_SOVEREIGN,Sovereign Buyout Bonus
+HL_SOVEREIGN_DECREE,"EMERGENCY DECREE: Sol System Government orders expropriation of all corporate assets!"

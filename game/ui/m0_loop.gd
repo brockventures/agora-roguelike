@@ -107,6 +107,9 @@ const ALL_ACTIONS: Array[String] = [
 	ACT_COMMODITY_PREV, ACT_COMMODITY_NEXT, ACT_UP, ACT_DOWN, ACT_LEFT, ACT_RIGHT,
 	ACT_SUBMIT, ACT_CANCEL, ACT_CHAPTER_11, ACT_SPEED, ACT_PAUSE, ACT_LOCALE, ACT_SHARES, ACT_CREDIT,
 	ACT_PROJECT,
+]
+
+const SOVEREIGN_ACTIONS: Array[String] = [
 	ACT_SOVEREIGN_BRIBE, ACT_SOVEREIGN_DEBT_CHOKE, ACT_SOVEREIGN_PRIVATIZE, ACT_SOVEREIGN_DISMISS,
 ]
 
@@ -1580,7 +1583,7 @@ func handle_input(event: InputEvent) -> bool:
 
 ## Applies one m0_* action. Returns true when it did something.
 func dispatch_action(action: String) -> bool:
-	if hud == null or not ALL_ACTIONS.has(action):
+	if hud == null or not (ALL_ACTIONS.has(action) or SOVEREIGN_ACTIONS.has(action)):
 		return false
 	if action == ACT_LOCALE:
 		Loc.cycle_locale()
@@ -1758,6 +1761,7 @@ func run_summary() -> Dictionary:
 		"severance_peak_pts": peak_pts,
 		"severance_rescue_pts": rescue_pts,
 		"severance_consolation_pts": consolation_pts,
+		"severance_sovereign_pts": controller.sovereign_severance_award if controller != null else 0,
 		"rescue_phases_done": controller.rescue.phases_done() if controller.rescue != null else 0,
 		"rescue_phases_total": controller.rescue.phase_count() if controller.rescue != null else 0,
 		"rescue": rescue_stats(),

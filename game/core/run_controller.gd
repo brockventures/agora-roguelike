@@ -94,6 +94,7 @@ var rescue: RescueProject = null
 ## it finished. Both are 0 except on the run that ended that way, saved only when non-zero.
 var rescue_severance_award: int = 0
 var sovereign: SovereignTakeover = null
+var sovereign_enabled: bool = false
 var sovereign_severance_award: int = 0
 var consolation_severance_award: int = 0
 
@@ -502,7 +503,8 @@ func open_rescue() -> bool:
 		return false
 	rescue = p
 	sync_rent_bonus()
-	_trigger_sovereign_decree()
+	if sovereign_enabled:
+		_trigger_sovereign_decree()
 	return true
 
 ## Every book mod the world emits: the barons', then the rivals', then the open Rescue Project's
@@ -708,6 +710,11 @@ func attach_policies() -> void:
 	if policies == null:
 		policies = PolicyState.new()
 
+## Attach Secret Final Boss (idempotent). Whoever starts a run that should have the sovereign
+## boss calls this; bare controllers and replay goldens stay untouched (#33).
+func attach_sovereign() -> void:
+	sovereign_enabled = true
+
 ## Adopt a policy with the pending pick. The caller resumes the clock (as it does after a
 ## contract). False when nothing is pending or `id` is not on offer.
 func adopt_policy(id: String) -> bool:
@@ -839,6 +846,8 @@ func to_dict() -> Dictionary:
 		out["rescue_severance_award"] = rescue_severance_award
 	if consolation_severance_award > 0:
 		out["consolation_severance_award"] = consolation_severance_award
+	if sovereign_enabled:
+		out["sovereign_enabled"] = true
 	if sovereign != null:
 		out["sovereign"] = sovereign.to_dict()
 	if sovereign_severance_award > 0:
@@ -874,6 +883,7 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.consolation_severance_award = maxi(0, int(d.get("consolation_severance_award", 0)))
 	if d.has("sovereign") and d["sovereign"] is Dictionary:
 		rc.sovereign = SovereignTakeover.from_dict(d["sovereign"])
+	rc.sovereign_enabled = bool(d.get("sovereign_enabled", false)) or rc.sovereign != null
 	rc.sovereign_severance_award = maxi(0, int(d.get("sovereign_severance_award", 0)))
 	rc._corp_start_tick = maxi(0, int(d.get("corp_start_tick", 0)))
 	rc.end_reason = str(d.get("end_reason", ""))

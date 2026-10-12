@@ -8,6 +8,7 @@ const SEED: int = 42
 func _make_monopoly_rc(cr: int = 100000, debt: int = 0) -> RunController:
 	var clock := DoomsdayClock.new(360000, 0, 0, 0)
 	var rc := RunController.new(null, SEED, clock, {}, 10)
+	rc.attach_sovereign()
 	rc.world = Barons.for_new_run()
 	for id in rc.world.ids():
 		Takeover.take(rc.world, id, Takeover.PLAYER, rc)

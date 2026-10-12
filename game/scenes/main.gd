@@ -236,6 +236,7 @@ func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 	var rc := RunController.new(_loaded_profile, p_seed)
 	rc.world = Barons.for_new_run()  # Epic 3: the sector barons make the books
 	rc.attach_policies()  # #160: run-only corporate policies (rounds 20/50/80 and the first takeover)
+	rc.attach_sovereign()  # #33: Secret Final Boss (Sol Government nationalization decree)
 	bags = Bags.new("m0", null, p_seed)
 	initialize_systems(rc)
 	return rc
@@ -275,6 +276,7 @@ func continue_saved_run() -> bool:
 	# An older save past round 20 therefore catches up on the milestones it missed at the next
 	# round boundary (PolicyState.on_round).
 	rc.attach_policies()
+	rc.attach_sovereign()
 	# profile.json is written whenever the profile changes (perk buys, filings),
 	# the run slot's embedded copy only at round autosaves, so after a crash the
 	# file is the newer one: it wins, and the run is re-pointed at it (D3).
@@ -3099,6 +3101,8 @@ func _summary_model() -> Dictionary:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_RESCUE"), "value": tr("SUM_SEV_VALUE") % int(r["severance_rescue_pts"])})
 	if int(r.get("severance_consolation_pts", 0)) > 0:
 		rows.append({"kind": "kv", "key": tr("SUM_SEV_CONSOLATION") % [int(r["rescue_phases_done"]), int(r["rescue_phases_total"])], "value": tr("SUM_SEV_VALUE") % int(r["severance_consolation_pts"])})
+	if int(r.get("severance_sovereign_pts", 0)) > 0:
+		rows.append({"kind": "kv", "key": tr("SUM_SEV_SOVEREIGN"), "value": tr("SUM_SEV_VALUE") % int(r["severance_sovereign_pts"])})
 	rows.append({"kind": "kv", "key": tr("SUM_SEVERANCE"), "value": tr("SUM_SEVERANCE_VALUE") % [int(r["severance_awarded"]), int(r["severance_balance"])]})
 	var won: bool = is_win  # a rescued run's summary is a win, not a collapse
 	return {"eyebrow": tr("RESC_SUM_EYEBROW" if won else "SUM_EYEBROW"), "title": tr("RESC_SUM_TITLE" if won else "SUM_TITLE"), "band": "teal" if won else "alert", "wide": true, "art": tr("SUM_ART"),
