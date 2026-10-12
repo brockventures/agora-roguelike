@@ -253,6 +253,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: emergency_antitrust_sweep
 - prompt: Encounter card illustration, wide 4:3 composition: An emergency enforcement sweep: armored patrol cutters swarming a trading dock with searchlight beams, crates being sealed with plain bands, panicked traders at the rail.
 
@@ -260,6 +261,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: localized_shortage
 - prompt: Encounter card illustration, wide 4:3 composition: A bare Mars warehouse: rows of empty shelves and one lonely crate, a dust-red window onto the desert, a worker shrugging beside an empty loading lift.
 
@@ -267,6 +269,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: supply_chain_shortage
 - prompt: Encounter card illustration, wide 4:3 composition: A stalled convoy of cargo haulers parked dead in a dark lane, thrusters cold, a stranded dock crane waiting beside an empty berth.
 
@@ -274,6 +277,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: systemic_margin_collapse
 - prompt: Encounter card illustration, wide 4:3 composition: A trading floor in cascade collapse: shattered holographic panels, scattered paper slips, a toppled chair and rust-red emergency light, traders frozen in alarm.
 
@@ -281,6 +285,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: ares_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: Heavy industrial enforcers from a rust-coloured arms combine calling in debts: broad-shouldered figures in heavy suits at a dock gangway, a ledger-less contract slab held out menacingly.
 
@@ -288,6 +293,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: titan_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: A frozen cryo-hydro depot sealed shut: icy blockade barriers across a dock, frost-covered tanks, teal glow, a lone trader locked outside.
 
@@ -295,6 +301,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: sol_retaliation
 - prompt: Encounter card illustration, wide 4:3 composition: A central government audit fleet looming over a small trader ship, a tall pale-bone administrative tower station behind, one beam locking onto the hull.
 
@@ -302,6 +309,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: ares_opportunistic_squeeze
 - prompt: Encounter card illustration, wide 4:3 composition: Ares Heavy syndicate market squeeze: armored industrial syndicate managers in heavy rust-trimmed work suits watching an automated order terminal flicker, bulk gantry cranes idling, traders negotiating under harsh orange sodium worklights.
 
@@ -309,6 +317,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: titan_opportunistic_hoard
 - prompt: Encounter card illustration, wide 4:3 composition: Titan Cryo-Hydro hoarding market supply: massive frost-caked propellant storage spheres sealed behind security barricades, automated cryo-pumps draining terminal fuel lines, chilled teal vapor clouds, dock workers standing locked out at the gate.
 
@@ -316,6 +325,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - batch: 6.5
 - aspect: 4:3
 - sample: no
+- ref: antitrust_audit
 - source: sol_opportunistic_levy
 - prompt: Encounter card illustration, wide 4:3 composition: A surprise levy at a dock: a toll gate dropping across a berth, officials sliding a heavy strongbox into a collection hopper while a trader hands over crates.
 
