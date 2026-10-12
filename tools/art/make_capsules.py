@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Build the Steam store capsule SAMPLES from the chosen key art (#29, Steam store assets).
+"""Build the Steam store capsules from the approved key art (#29, Steam store assets).
 
-Reads art/store/keyart-raw-1.png (the approved-for-sample take, or the --key
-given) and the Archivo variable font, then writes the capsule PNGs, a copy of
-the key art at each size, and art/store/capsules-sheet.png for review. These
-are samples pending design approval; see docs/art/README.md ("Store capsules").
+Reads art/store/keyart.png (approved by Ryan 2026-10-12, or the --key given) and
+the Archivo variable font, then writes the capsule PNGs and
+art/store/capsules-sheet.png for review; see docs/art/README.md ("Store capsules").
 
 Usage: python3 tools/art/make_capsules.py [--key PATH] [--out-suffix SUFFIX]
   --out-suffix SUFFIX  write <name><SUFFIX>.png and capsules-sheet<SUFFIX>.png
@@ -14,12 +13,12 @@ Usage: python3 tools/art/make_capsules.py [--key PATH] [--out-suffix SUFFIX]
 import argparse
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 STORE = ROOT / "art" / "store"
 FONT = ROOT / "game" / "assets" / "fonts" / "Archivo-VF.ttf"
-DEFAULT_KEY = STORE / "keyart-raw-1.png"
+DEFAULT_KEY = STORE / "keyart.png"
 
 BONE = (0xE6, 0xDC, 0xC3)
 INK = (0x1A, 0x14, 0x10)
@@ -120,37 +119,66 @@ def compose(key, name, w, h, layout, wm_frac):
 
     scale = h / 706  # stroke is 2-3 px at the main capsule height, scaled up or down
     stroke_w = max(2, round(2.5 * scale))
-    wm_target = round(h * wm_frac)
-    if layout == "left":
-        max_w = round(w * 0.34)
-        x0 = round(w * 0.07)
-    else:
-        max_w = round(w * 0.80)
-    wordmark = fit_text(WORD, wm_target, max_w, stroke_w, BONE, INK)
-    line2 = None
-    if WORD2:
-        line2 = fit_text(WORD2, max(8, round(wm_target * 0.34)), wordmark.width, stroke_w, BONE, INK, tracking=0.32)
-        if line2.width < wordmark.width:  # stretch tracking so both lines share one width
-            n = len(WORD2) - 1
-            extra = (wordmark.width - line2.width) / n
-            size = round(line2.height / 0.72)
-            line2 = render_text(WORD2, size, BONE, INK, stroke_w, 0.32 + extra / size)
-            if line2.height != max(8, round(wm_target * 0.34)):
-                pass
-        gap = max(4, round(wm_target * 0.16))
-        block = Image.new("RGBA", (max(wordmark.width, line2.width), wordmark.height + gap + line2.height), (0, 0, 0, 0))
-        block.alpha_composite(wordmark, (0, 0))
-        block.alpha_composite(line2, ((block.width - line2.width) // 2, wordmark.height + gap))
-        wordmark = block
-    block_h = wordmark.height
-    if layout == "left":
-        top = (h - block_h) // 2
-        wm_x = x0
-    else:
-        top = round(h * 0.12)
-        wm_x = (w - wordmark.width) // 2
-    base.alpha_composite(wordmark, (wm_x, top))
+    busy = busy_mask(base)
+    best = None
+    # Largest title first; for each size, the first clear spot wins. A spot is clear
+    # when no art detail (ship, candles, Sun, ring) sits under the padded title box.
+    for shrink in (1.0, 0.92, 0.85, 0.78, 0.72, 0.66, 0.6):
+        wm_target = round(h * wm_frac * shrink)
+        max_w = round(w * (0.34 if layout == "left" else 0.80) * shrink)
+        block = title_block(wm_target, max_w, stroke_w)
+        bw, bh = block.size
+        pad = max(6, round(bh * 0.12))
+        if layout == "left":
+            xs = [round(w * f) for f in (0.07, 0.06, 0.05, 0.08)]
+            ys = [(h - bh) // 2] + [round(h * f) for f in (0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10, 0.45, 0.50, 0.55)]
+        else:
+            xs = [(w - bw) // 2] + [round(w * f) for f in (0.07, 0.05)]
+            ys = [round(h * f) for f in (0.12, 0.08, 0.05, 0.16, 0.20)]
+        for y in ys:
+            for x in xs:
+                if x + bw > w or y + bh > h or y < 0:
+                    continue
+                hit = busy.crop((max(0, x - pad), max(0, y - pad), min(w, x + bw + pad), min(h, y + bh + pad)))
+                score = sum(hit.histogram()[1:])
+                if best is None or score < best[0]:
+                    best = (score, block, x, y)
+                if score == 0:
+                    break
+            if best[0] == 0:
+                break
+        if best[0] == 0:
+            break
+    _, block, wm_x, top = best
+    base.alpha_composite(block, (wm_x, top))
     return base
+
+
+def busy_mask(img):
+    """1 where the art has detail (edges, bright subjects), 0 on flat sky."""
+    gray = img.convert("L")
+    smooth = gray.filter(ImageFilter.GaussianBlur(12))
+    diff = ImageChops.difference(gray, smooth).point(lambda v: 255 if v > 10 else 0)
+    bright = gray.point(lambda v: 255 if v > 80 else 0)
+    return ImageChops.lighter(diff, bright).filter(ImageFilter.MaxFilter(5))
+
+
+def title_block(wm_target, max_w, stroke_w):
+    """AGORA over a tracked-out STATION, both lines the same width."""
+    wordmark = fit_text(WORD, wm_target, max_w, stroke_w, BONE, INK)
+    if not WORD2:
+        return wordmark
+    line2_h = max(8, round(wm_target * 0.34))
+    line2 = fit_text(WORD2, line2_h, wordmark.width, stroke_w, BONE, INK, tracking=0.32)
+    if line2.width < wordmark.width:  # stretch tracking so both lines share one width
+        extra = (wordmark.width - line2.width) / (len(WORD2) - 1)
+        size = round(line2_h / 0.72)
+        line2 = render_text(WORD2, size, BONE, INK, stroke_w, 0.32 + extra / size)
+    gap = max(4, round(wm_target * 0.16))
+    block = Image.new("RGBA", (max(wordmark.width, line2.width), wordmark.height + gap + line2.height), (0, 0, 0, 0))
+    block.alpha_composite(wordmark, (0, 0))
+    block.alpha_composite(line2, ((block.width - line2.width) // 2, wordmark.height + gap))
+    return block
 
 
 def build_sheet(items, out_path):

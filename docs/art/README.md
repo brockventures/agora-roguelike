@@ -42,41 +42,19 @@ Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, samp
 
 ## Store capsules
 
-Steam store capsules for #29 (Steam store assets) are built from one Gemini key-art take by `tools/art/make_capsules.py`. Regenerate the files and the review sheet with:
+Steam store capsules for #29 (Steam store assets). Design approved by Ryan on 2026-10-12: the working title "Agora Station", a trading ship whose engine trail is an orbital arc of candlesticks, and the dying Sun with the Stabiliser ring floating clear of it.
+
+- `art/store/keyart-source.png` is the raw Gemini take.
+- `art/store/keyart.png` is the same image with the mottled sky smoothed by `tools/art/clean_background.py`.
+- `tools/art/make_capsules.py` crops `keyart.png` to each size in `game/data/store_assets.json` and writes `art/store/capsules-sheet.png` for review. It sets the two-line title ("AGORA" over a tracked-out "STATION", Archivo, bone cream) at the largest size that clears the art. The page background and library hero carry no text.
+
+Regenerate:
 
 ```
+python3 tools/art/clean_background.py art/store/keyart-source.png art/store/keyart.png
 python3 tools/art/make_capsules.py
 ```
 
-v2 key art (Ryan's feedback, #29): the Sun is larger in the background with the Stabiliser scaffolding built around it, and the focal point is a ship in the foreground. Three scene prompts share the style text below. Regenerate the raw takes with `python3 skills/image-gen/scripts/gen-image.py --manifest <manifest> <outdir>` (Gemini backend, 16:9, takes 2), then build each capsule set with:
+Key art prompt (Gemini, 16:9, built from two earlier takes as references: the money-trail ship scene and the orbital candlestick scene):
 
-```
-python3 tools/art/make_capsules.py --key art/store/keyart-v2-cargo.png --out-suffix=-cargo
-python3 tools/art/make_capsules.py --key art/store/keyart-v2-money.png --out-suffix=-money
-python3 tools/art/make_capsules.py --key art/store/keyart-v2-candles.png --out-suffix=-candles
-```
-
-Style (all three): flat cel-shaded illustration, uniform ink contours, flat graphic shadow cuts, ochre (#c99a2e), bone (#e6dcc3), ink black (#1c1a17), slate (#2c353b) and teal (#4fb3a9) accents; a huge unstable flaring amber Sun in the upper right with a massive curved scaffolding arc (the Stabiliser) around about a third of its limb; the left third calm and dark for a title; no text, letters, numbers, logos or UI.
-
-- cargo: a battered corporate cargo freighter in the foreground, three-quarter view, visibly crammed with trade goods (stacked containers, ore sacks, fuel drums and crates lashed to the hull).
-- money: a sleek corporate trading ship in the foreground, three-quarter view, with a glittering stream of gold credit chips and coins pouring out of its engine exhaust.
-- candles: a corporate trading ship in the foreground, three-quarter view, its engine trail stylized as a rising green and red candlestick chart.
-
-The script reads `art/store/keyart-raw-1.png`, crops and resizes it to each size in `game/data/store_assets.json`, overlays the "AGORA" wordmark (Archivo, bone cream), and writes `art/store/capsules-sheet.png` for review. The page background and library hero carry no text.
-
-Key art prompt (Gemini, 16:9, with `card_art/antitrust_audit.png` and `card_art/card_mars.png` as style references):
-
-> Match the art style of the reference images exactly: flat cel-shaded illustration, uniform ink contours, flat graphic shadow cuts, mineral and rust palette with teal accents. Wide establishing shot of a corporate trading armada in orbit above a rust-red Mars, a cargo freighter in the foreground right, a ring of orbital trading platforms with glowing ticker-board panels, a distant small Sun at upper left. Leave the left third of the frame calm and dark (deep space) for a title. Absolutely no text, letters, numbers, logos or UI anywhere.
-
-### v3 scene: orbital candlestick trail
-
-Gemini, 16:9, references `art/store/keyart-v2-money.png` and `art/store/keyart-v2-candles.png`. Picks: `keyart-v3-orbit.png`, runner-up `keyart-v3-orbit-b.png`.
-
-> Match the flat cel-shaded illustration style of the reference images exactly: uniform ink contours, flat graphic shadow cuts, ochre, bone, ink black, slate and teal palette. Absolutely no text, letters, numbers, logos, currency symbols or UI anywhere. Leave the left third of the frame calm, dark deep space for a title. Foreground lower right: the exact sleek teal, bone and rust-red trading starship from the first reference image, three-quarter view, large and in sharp focus. Its engine trail is a wide elliptical orbital arc of bold green and red financial candlestick bars with thin wicks that curves away from the ship and loops around the Sun in the distance, like a planet's orbit line: the candles nearest the ship are big, thick, saturated and crisp, and they shrink and fade to fully transparent as the orbit curves behind the Sun. Background upper right: a dying amber Sun, fully visible as a complete circle, about 40 percent of the frame height, its surface scarred with dark blackened veins, necrotic patches and cracked charcoal sunspot clusters. The Stabiliser megastructure: a separate thin skeletal scaffolding ring, half-built with missing segments, floating far out from the Sun like a planetary ring seen at an angle. Its radius is about 1.6 times the Sun's radius, so a thick band of empty black space separates the ring from the Sun on every side; the ring never touches, crosses or overlaps the solar disc.
-
-```
-python3 tools/art/make_capsules.py --key art/store/keyart-v3-orbit.png --out-suffix=-v3
-python3 tools/art/make_capsules.py --key art/store/keyart-v3-orbit-b.png --out-suffix=-v3b
-```
-
-These capsules are SAMPLES pending design approval. Do not upload them to Steamworks until the design is signed off.
+> Match the flat cel-shaded illustration style of the reference images exactly. Absolutely no text, letters, numbers, logos, currency symbols or UI anywhere. Leave the left third of the frame calm, dark deep space for a title. Recreate the first reference image's composition exactly: same ship, same position lower right, same candlestick trail arcing away in an orbital path and fading to transparent, same free-floating half-built scaffolding ring well clear of the Sun, same whole Sun fully in frame upper right. Change only the Sun: render it in the style of the second reference image's Sun, with a ragged flaring fiery corona edge with small flame licks around the limb, deeper amber-orange, and bold black cracked veins and charred necrotic patches across the surface. The ring must stay separated from the Sun by a band of empty black space all the way around.
