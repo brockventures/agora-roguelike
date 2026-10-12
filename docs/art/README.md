@@ -68,4 +68,15 @@ Key art prompt (Gemini, 16:9, with `card_art/antitrust_audit.png` and `card_art/
 
 > Match the art style of the reference images exactly: flat cel-shaded illustration, uniform ink contours, flat graphic shadow cuts, mineral and rust palette with teal accents. Wide establishing shot of a corporate trading armada in orbit above a rust-red Mars, a cargo freighter in the foreground right, a ring of orbital trading platforms with glowing ticker-board panels, a distant small Sun at upper left. Leave the left third of the frame calm and dark (deep space) for a title. Absolutely no text, letters, numbers, logos or UI anywhere.
 
+### v3 scene: orbital candlestick trail
+
+Gemini, 16:9, references `art/store/keyart-v2-money.png` and `art/store/keyart-v2-candles.png`. Picks: `keyart-v3-orbit.png`, runner-up `keyart-v3-orbit-b.png`.
+
+> Match the flat cel-shaded illustration style of the reference images exactly: uniform ink contours, flat graphic shadow cuts, ochre, bone, ink black, slate and teal palette. Absolutely no text, letters, numbers, logos, currency symbols or UI anywhere. Leave the left third of the frame calm, dark deep space for a title. Foreground lower right: the exact sleek teal, bone and rust-red trading starship from the first reference image, three-quarter view, large and in sharp focus. Its engine trail is a wide elliptical orbital arc of bold green and red financial candlestick bars with thin wicks that curves away from the ship and loops around the Sun in the distance, like a planet's orbit line: the candles nearest the ship are big, thick, saturated and crisp, and they shrink and fade to fully transparent as the orbit curves behind the Sun. Background upper right: a dying amber Sun, fully visible as a complete circle, about 40 percent of the frame height, its surface scarred with dark blackened veins, necrotic patches and cracked charcoal sunspot clusters. The Stabiliser megastructure: a separate thin skeletal scaffolding ring, half-built with missing segments, floating far out from the Sun like a planetary ring seen at an angle. Its radius is about 1.6 times the Sun's radius, so a thick band of empty black space separates the ring from the Sun on every side; the ring never touches, crosses or overlaps the solar disc.
+
+```
+python3 tools/art/make_capsules.py --key art/store/keyart-v3-orbit.png --out-suffix=-v3
+python3 tools/art/make_capsules.py --key art/store/keyart-v3-orbit-b.png --out-suffix=-v3b
+```
+
 These capsules are SAMPLES pending design approval. Do not upload them to Steamworks until the design is signed off.
