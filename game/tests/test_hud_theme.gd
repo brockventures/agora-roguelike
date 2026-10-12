@@ -293,7 +293,7 @@ func test_gamepad_focus_is_drawn_on_the_ladder_the_zone_frame_and_the_settings_l
 	scene.settings_menu.open()
 	scene.settings_menu.cursor = 2
 	scene._refresh_readouts()
-	var settings_bar: bool = scene.settings_focus_bar.visible
+	var settings_bar: bool = scene.settings_view.focus_visible()
 	var frames_hidden: bool = not (scene.focus_frames[GamepadFocus.Zone.ORDER_BOOK] as Panel).visible and not scene.sidebar_focus_bar.visible
 	scene.free()
 	if not ladder_bar:
@@ -344,7 +344,7 @@ func test_crt_is_an_opt_in_setting_off_by_default_and_it_toggles_on() -> String:
 	var on_shader: bool = mat.get_shader_parameter("enabled") == true
 	var on_model: bool = scene.vector_orrery.crt_enabled
 	scene._refresh_readouts()
-	var row_text: String = scene.settings_label.text
+	var row_text: String = scene.settings_menu.text()
 	scene.settings_menu._activate()
 	var off_again: bool = mat.get_shader_parameter("enabled") == false and not scene.vector_orrery.crt_enabled
 	scene.free()
