@@ -204,7 +204,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - sample: no
 - ref: hull-hauler
 - source: dynamic map transit icons
-- prompt: Tiny map transit marker icon: the hauler hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
+- prompt: Tiny map transit marker icon: top-down plan view seen directly from above, pointing straight up. The hauler hull reduced to a bold readable rectangular silhouette with a blunt nose at the top and a flared rear thruster bell at the bottom, in ochre (#c99a2e) armor and dark ink (#1c1a17) structure with thick ink outlines. Exactly one single vessel, centered, filling 85% of the frame. No insets, no circular badges, no frames, no other ships, centered on a plain flat pale paper background.
 
 ### icon-interceptor
 - batch: 6.4
@@ -212,7 +212,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - sample: no
 - ref: hull-interceptor
 - source: dynamic map transit icons
-- prompt: Tiny map transit marker icon: the interceptor hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
+- prompt: Tiny map transit marker icon: top-down plan view seen directly from above, pointing straight up. The interceptor hull reduced to a sharp wedge chevron silhouette pointing up, with swept rust-red (#a8431f) wings, bone-white (#e6dcc3) fuselage accents, and twin aft thrusters with thick ink outlines. Exactly one single vessel, centered, filling 85% of the frame, on a plain flat pale paper background.
 
 ### icon-freighter
 - batch: 6.4
@@ -220,7 +220,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - sample: no
 - ref: hull-freighter
 - source: dynamic map transit icons
-- prompt: Tiny map transit marker icon: the freighter hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
+- prompt: Tiny map transit marker icon: top-down plan view seen directly from above, pointing straight up. The freighter hull reduced to a long elongated central bar spine with cross-strut cargo racks in dark teal-green (#2f6f6a), bone-white (#e6dcc3) forward bridge pod at the top, and a wide heavy engine block at the bottom with thick ink outlines. Exactly one single vessel, centered, filling 85% of the frame. No secondary ships, no cut-off objects, centered on a plain flat pale paper background.
 
 ### icon-scout
 - batch: 6.4
@@ -228,7 +228,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - sample: no
 - ref: hull-scout
 - source: dynamic map transit icons
-- prompt: Tiny map transit marker icon: the scout hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
+- prompt: Tiny map transit marker icon: top-down plan view seen directly from above, pointing straight up. The scout hull reduced to a bold readable dart-like silhouette with a forward sensor antenna spike pointing up at the top, bubble canopy, bone-white (#e6dcc3) hull with dark ink (#1c1a17) accents, and a slim aft drive with thick ink outlines. Exactly one large single vessel, centered, filling 85% of the frame, on a plain flat pale paper background.
 
 ### icon-scrap_barge
 - batch: 6.4
@@ -236,7 +236,7 @@ The five archetypes match `FleetView.ARCHETYPES` and `FLEET_ARCH_TONES` in `game
 - sample: no
 - ref: hull-scrap_barge
 - source: dynamic map transit icons
-- prompt: Tiny map transit marker icon: the scrap barge hull reduced to a bold readable silhouette seen from above, pointing up, thick ink outline, two flat colors plus black, centered on a plain flat pale background.
+- prompt: Tiny map transit marker icon: top-down plan view seen directly from above, pointing straight up. The scrap barge hull reduced to an asymmetrical, blocky industrial salvage rig silhouette pointing up with crane booms extending outward, in dark ink-grey (#1c1a17) with bone-white (#e6dcc3) salvage plates and thick ink outlines. Strictly ink and bone tones, no rust, no teal. Exactly one large single vessel, centered, filling 85% of the frame, on a plain flat pale paper background.
 
 ## Batch 6.5: encounter deck (16 cards, 4:3)
 

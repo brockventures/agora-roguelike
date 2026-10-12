@@ -16,7 +16,7 @@ Every ship archetype is grounded directly to `FleetView.ARCHETYPES` (in `game/ui
 2. **Text-Free Invariant:** 100% text-free rasters. Hull numbers, registration codes, faction logos, and telemetry are rendered dynamically in Godot for #40 localization.
 3. **Orientation & Framing:**
    - **Profile Sheets (`hull-*`, 3:2):** Strict side profile facing right, centered, flat pale paper background (`#d9cdb0`) with zero cast ground shadows for clean compositing.
-   - **Transit Markers (`icon-*`, 1:1):** Top-down readable silhouette, pointing up, bold ink outlines, flat primary archetype tone plus black.
+   - **Transit Markers (`icon-*`, 1:1):** Top-down readable silhouette, pointing up, bold ink outlines, flat primary archetype tone plus black. [Contact Sheet Proof](../screens/vessel-samples/transit-marker-sheet.png)
 4. **Color Tokens:** Grounded to `docs/design-system/tokens/colors.css`:
    - Ink: `#1c1a17`
    - Slate: `#2c353b`
