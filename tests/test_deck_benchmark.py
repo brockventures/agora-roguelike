@@ -7,6 +7,7 @@ Validates:
 """
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -52,9 +53,12 @@ class TestSteamDeckBenchmark(unittest.TestCase):
         self.assertIn("60 FPS & battery benchmark", res.stdout)
 
     def test_benchmark_execution_and_telemetry_schema(self):
-        godot_bin = shutil.which("godot") or shutil.which("godot4")
+        godot_bin = os.environ.get("GODOT") or shutil.which("godot") or shutil.which("godot4")
         if not godot_bin:
-            self.skipTest("Godot binary not available on PATH")
+            self.skipTest("Godot binary not available (set GODOT or put godot on PATH)")
+        bat_status = Path("/sys/class/power_supply/BAT1/status")
+        if bat_status.is_file() and bat_status.read_text().strip() == "Discharging":
+            self.skipTest("machine is on battery; the UNMEASURED assertions do not apply")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_json = Path(tmp_dir) / "benchmark.json"
@@ -79,10 +83,14 @@ class TestSteamDeckBenchmark(unittest.TestCase):
                 text=True,
                 timeout=30,
             )
+            # INCOMPLETE (power unmeasured) exits 0; only FAIL exits 1.
             self.assertEqual(res.returncode, 0, f"Benchmark run failed:\n{res.stdout}\n{res.stderr}")
             self.assertIn("ACCEPTANCE CRITERIA STATUS:", res.stdout)
-            self.assertIn("[PASS] 60 FPS locked frame rate", res.stdout)
-            self.assertIn("[PASS] Power draw < 9W", res.stdout)
+            self.assertIn("host: ", res.stdout)
+            self.assertIn("[UNMEASURED] Power draw < 9W", res.stdout)
+            self.assertIn("OVERALL RESULT: INCOMPLETE", res.stdout)
+            self.assertNotIn("[PASS] Power draw", res.stdout)
+            self.assertNotIn("OVERALL RESULT: PASS", res.stdout)
             self.assertIn("[PASS] Native 1280x800 resolution", res.stdout)
 
             self.assertTrue(out_json.is_file(), "Telemetry JSON must be created")
@@ -104,16 +112,13 @@ class TestSteamDeckBenchmark(unittest.TestCase):
             self.assertEqual(fps_data["frame_drops"], 0)
             self.assertTrue(fps_data["passed"])
 
-            # Validate power profiling
+            # Validate power profiling: nothing is modeled, so an undocked-less run is UNMEASURED
             pwr_data = data["power_profiling"]
-            self.assertLess(pwr_data["deck_lcd_total_w"], 9.0)
-            self.assertLess(pwr_data["deck_oled_total_w"], 9.0)
-            self.assertGreaterEqual(pwr_data["deck_lcd_hours"], 4.5)
-            self.assertGreaterEqual(pwr_data["deck_oled_hours"], 4.5)
-            self.assertTrue(pwr_data["passed"])
-
-            # Overall pass
-            self.assertTrue(data["overall_passed"])
+            self.assertEqual(pwr_data["status"], "UNMEASURED")
+            self.assertEqual(pwr_data["system_power_w"], -1.0)
+            self.assertEqual(pwr_data["battery_hours"], -1)
+            self.assertEqual(data["overall_status"], "INCOMPLETE")
+            self.assertFalse(data["overall_passed"])
 
 
 if __name__ == "__main__":

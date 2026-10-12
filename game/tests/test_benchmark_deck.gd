@@ -9,8 +9,6 @@ const BENCHMARK_SCRIPT_PATH := "res://tools/benchmark_deck.gd"
 const FRAME_BUDGET_MS: float = 16.6667
 const FRAME_DROP_THRESHOLD_MS: float = 18.0
 
-const DECK_LCD_BATTERY_WH: float = 40.0
-const DECK_OLED_BATTERY_WH: float = 50.0
 const DECK_MAX_POWER_BUDGET_W: float = 9.0
 const DECK_MIN_BATTERY_HOURS: float = 4.5
 
@@ -84,23 +82,21 @@ func test_60_fps_target_and_frame_budget() -> String:
 	return "ok"
 
 
-func test_deck_power_model_satisfies_sub_9w_and_battery_endurance() -> String:
-	# Modeled Steam Deck power profiles (Aerith Zen 2 / Sephiroth OLED 2D workload)
-	var apu_w: float = 4.20
-	var lcd_total_w: float = apu_w + 3.90  # 8.10 W
-	var oled_total_w: float = apu_w + 3.00 # 7.20 W
+func test_power_is_measured_not_modeled() -> String:
+	var text: String = FileAccess.get_file_as_string(BENCHMARK_SCRIPT_PATH)
+	for banned in ["modeled_apu_power_w", "4.20", "3.90", "3.00", "deck_lcd_total_w", "deck_oled_total_w"]:
+		if text.find(banned) != -1:
+			return "Benchmark still contains hardcoded power constant %s" % banned
+	if text.find("/sys/class/power_supply/BAT1") == -1:
+		return "Benchmark does not read BAT1 sysfs"
+	if text.find("UNMEASURED") == -1:
+		return "Benchmark has no UNMEASURED power state"
+	return "ok"
 
-	if lcd_total_w >= DECK_MAX_POWER_BUDGET_W:
-		return "Steam Deck LCD power draw %.2f W exceeds %.1f W budget" % [lcd_total_w, DECK_MAX_POWER_BUDGET_W]
-	if oled_total_w >= DECK_MAX_POWER_BUDGET_W:
-		return "Steam Deck OLED power draw %.2f W exceeds %.1f W budget" % [oled_total_w, DECK_MAX_POWER_BUDGET_W]
 
-	var lcd_hours: float = DECK_LCD_BATTERY_WH / lcd_total_w
-	var oled_hours: float = DECK_OLED_BATTERY_WH / oled_total_w
-
-	if lcd_hours < DECK_MIN_BATTERY_HOURS:
-		return "Steam Deck LCD battery endurance %.2f h below %.1f h target" % [lcd_hours, DECK_MIN_BATTERY_HOURS]
-	if oled_hours < DECK_MIN_BATTERY_HOURS:
-		return "Steam Deck OLED battery endurance %.2f h below %.1f h target" % [oled_hours, DECK_MIN_BATTERY_HOURS]
-
+func test_missing_sysfs_path_is_unreadable() -> String:
+	# The reader returns -1.0 for missing paths; a null FileAccess is the signal it keys on.
+	var f = FileAccess.open("/nonexistent/agora/bat1/current_now", FileAccess.READ)
+	if f != null:
+		return "Expected null FileAccess for a missing sysfs path"
 	return "ok"
