@@ -122,5 +122,19 @@ class TestSteamStoreAssets(unittest.TestCase):
         self.assertLessEqual(total_duration, 60)
 
 
+    def test_next_fest_demo_target(self):
+        demo = self.data.get("next_fest_demo", {})
+        self.assertEqual(demo.get("run_limit_quarters"), 3)
+        self.assertEqual(demo.get("run_limit_rounds"), 90)
+        self.assertEqual(demo.get("full_run_quarters"), 4)
+        self.assertEqual(demo.get("full_run_rounds"), 120)
+        self.assertGreaterEqual(demo.get("coming_soon_window_days_min", 0), 14)
+        presets = demo.get("demo_presets", [])
+        self.assertIn("Linux x86_64 Demo", presets)
+        self.assertIn("Windows Desktop Demo", presets)
+        self.assertIn("Steam Deck Demo", presets)
+        self.assertTrue(demo.get("wishlist_call_to_action"))
+
+
 if __name__ == "__main__":
     unittest.main()

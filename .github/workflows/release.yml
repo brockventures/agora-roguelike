@@ -64,6 +64,15 @@ jobs:
           - preset: "Steam Deck"
             slug: steamdeck
             dir: steamdeck
+          - preset: "Linux x86_64 Demo"
+            slug: linux-x86_64-demo
+            dir: linux-demo
+          - preset: "Windows Desktop Demo"
+            slug: windows-x86_64-demo
+            dir: windows-demo
+          - preset: "Steam Deck Demo"
+            slug: steamdeck-demo
+            dir: steamdeck-demo
     steps:
       - uses: actions/checkout@v4
       - name: Resolve version

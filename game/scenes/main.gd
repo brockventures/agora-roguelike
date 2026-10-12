@@ -2958,6 +2958,8 @@ func _build_modals() -> void:
 ## What the resolution modal shows: {eyebrow, title, band, wide, rows, actions}. A row is
 ## {"kind": "text"|"muted"|"kv"|"perk"|"start", ...}; an action is [button, caption].
 func _resolution_model() -> Dictionary:
+	if loop.overlay_state == M0Loop.OVERLAY_DEMO_COMPLETE:
+		return _demo_complete_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CRISIS:
 		return _crisis_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
@@ -3137,6 +3139,19 @@ func _rescue_summary_rows(r: Dictionary) -> Array:
 
 ## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
 ## run summary, then the Golden Parachutes perks and a new run.
+func _demo_complete_model() -> Dictionary:
+	var r: Dictionary = loop.run_summary()
+	var rows: Array = [
+		{"kind": "text", "text": tr("DEMO_COMPLETE_BODY")},
+		{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r.get("rounds_survived", 90)))},
+		{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r.get("net_worth", 0)))},
+		{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r.get("peak_net_worth", 0)))},
+		{"kind": "muted", "text": tr("DEMO_WISHLIST_PROMPT")}
+	]
+	return {"eyebrow": tr("DEMO_SUM_EYEBROW"), "title": tr("DEMO_SUM_TITLE"), "band": "teal", "wide": true,
+		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
+
+
 func _rescued_model() -> Dictionary:
 	var r: Dictionary = loop.run_summary()
 	var st: Dictionary = r.get("rescue", {})
@@ -4090,6 +4105,8 @@ static func _cause_text(reason: String) -> String:
 			return Loc.t("SUM_CAUSE_MANUAL")
 		"rescued":
 			return Loc.t("SUM_CAUSE_RESCUED")
+		"demo_limit":
+			return Loc.t("SUM_CAUSE_DEMO_LIMIT")
 	return Loc.t("SUM_CAUSE_COLLAPSE")
 
 
