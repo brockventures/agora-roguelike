@@ -20,12 +20,13 @@ GEMINI_API_KEY=... python3 tools/art/generate.py --batch 6.3
 python3 tools/art/generate.py --batch 6.5 --ids card-cme-flare --out /tmp/art
 ```
 
-Flags: `--batch 6.3|6.4|6.5`, `--sample`, `--ids ...`, `--out DIR` (default `art_out/`, gitignored), `--dry-run`, `--model` (default `gemini-2.5-flash-image`, or `GEMINI_IMAGE_MODEL`).
+Flags: `--batch 6.3|6.4|6.5`, `--sample`, `--ids ...`, `--ref ANCHOR`, `--out DIR` (default `art_out/`, gitignored), `--dry-run`, `--model` (default `gemini-2.5-flash-image`, or `GEMINI_IMAGE_MODEL`).
 
 Output goes to `<out>/batch-<n>/<id>.png` with a `manifest.json` beside it.
 
 ## Safeguards
 
+- **Reference-image conditioning:** entries specifying `- ref: <anchor_id>` (or `--ref`) pass the approved canonical icon (e.g. `game/assets/map_icons/<anchor_id>_256.png`) as an input image part to Gemini alongside the prompt, ensuring viewports maintain landmark and silhouette fidelity across scales.
 - **Banned terms:** `tools/art/banned_terms.txt` lists brands, franchises, marks, text requests and the two named influences. Any prompt containing a listed term (whole-word, case-insensitive) is refused before any call. Add terms there.
 - **Text-free:** every final prompt carries a fixed no-text sentence and an `Avoid:` clause from the bible's negative block.
 - **Border sweep:** after generation, uniform borders are trimmed and the image is cropped to the exact ratio. An image more than 15% off its ratio, or one the trim would shrink by half, is rejected. Cards are 4:3.
@@ -37,4 +38,4 @@ Output goes to `<out>/batch-<n>/<id>.png` with a `manifest.json` beside it.
 3. A full run of that batch is refused until every sample piece is `approved`. Regenerating a piece with a changed prompt resets it to `pending`.
 4. Approved art is committed by the 6.3 to 6.5 tasks, not by this harness.
 
-Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, sample, source, prompt) and run `python3 -m unittest tests.test_art_harness`.
+Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, sample, [ref], source, prompt) and run `python3 -m unittest tests.test_art_harness`.
