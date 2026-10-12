@@ -91,6 +91,18 @@ static func load_app_id() -> int:
 	return int(v) if (v is int or v is float) and int(v) > 0 else DEFAULT_APP_ID
 
 
+## The registered target Steamworks App ID under Mike's partner account (Issue #30).
+func get_target_app_id() -> int:
+	var cfg: Dictionary = _read_json(CONFIG_PATH)
+	var v = cfg.get("target_app_id", DEFAULT_APP_ID)
+	return int(v) if (v is int or v is float) and int(v) > 0 else DEFAULT_APP_ID
+
+
+## Partner account and onboarding configuration dictionary.
+func get_partner_config() -> Dictionary:
+	return _read_json(CONFIG_PATH)
+
+
 ## The GodotSteam object when the extension is loaded, else null. Never throws.
 static func detect_backend() -> Object:
 	if Engine.has_singleton(BACKEND_NAME):

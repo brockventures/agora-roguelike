@@ -375,3 +375,15 @@ func test_main_persistence_routes_store_through_the_service() -> String:
 	main.free()
 	_rm_rf(store.dir)
 	return "ok" if ok else "autosave did not reach Steam Cloud: %s" % str(fake.files.keys())
+
+
+func test_target_app_id_and_partner_config() -> String:
+	var svc := SteamService.new()
+	if svc.get_target_app_id() != 3064620:
+		return "expected target_app_id 3064620, got %d" % svc.get_target_app_id()
+	var cfg: Dictionary = svc.get_partner_config()
+	if str(cfg.get("publisher", "")) != "Placeholder Studios":
+		return "expected publisher 'Placeholder Studios', got '%s'" % str(cfg.get("publisher", ""))
+	if str(cfg.get("partner_account", "")) != "mcarmody":
+		return "expected partner_account 'mcarmody', got '%s'" % str(cfg.get("partner_account", ""))
+	return "ok"

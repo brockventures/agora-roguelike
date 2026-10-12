@@ -15,7 +15,7 @@ The Steam layer is fully optional. The game runs, and every test passes, with no
 | `game/core/steam_service.gd` | `SteamService`: runtime detection (`Engine.has_singleton("Steam")`, `ClassDB`), every call through dynamic `.call()` so nothing fails to parse without the extension. Achievements, stats, local mirror, cloud helpers, Steam Input polling. |
 | `game/core/steam_hooks.gd` | `SteamHooks`: connects `RunController` and `CrisisDeck` signals to the service. `Main` binds it to each new run. |
 | `game/core/steam_hub.gd` | Autoload `SteamHub`: initialises the service, pumps callbacks, turns Steam Input edges into `InputEventAction`. Named `SteamHub`, not `Steam`, because `Steam` is GodotSteam's own singleton name. |
-| `game/data/steam.json`, `game/data/achievements.json` | App ID; achievement and stat definitions. |
+| `game/data/steam.json`, `game/data/achievements.json`, `game/data/store_assets.json` | App ID, partner metadata; achievements, stats; store copy, capsules, and IARC survey. Full architecture documented in `docs/design/epic5-steamworks.md`. |
 | `game/steam/` | Steam Input action manifest and default Steam Deck layout. |
 
 ## Achievements and stats
