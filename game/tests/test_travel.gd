@@ -465,7 +465,7 @@ func test_header_and_map_show_the_voyage() -> String:
 	m.hud.set_station("ceres")
 	m.loop.dispatch_action(M0Loop.ACT_SUBMIT)
 	m._refresh_readouts()
-	if r == "ok" and (m.panel_text(m.ticket_panel).find("IN TRANSIT to Ceres, ETA 2 rounds") < 0):
+	if r == "ok" and (m.panel_text(m.ticket_panel).find("IN TRANSIT to Agora Station, ETA 2 rounds") < 0):
 		r = "ticket lacks the destination and ETA: %s" % m.panel_text(m.ticket_panel)
 	if r == "ok" and m.panel_text(m.ticket_panel).find("Depart") >= 0:
 		r = "prompts still offer Depart in transit"
