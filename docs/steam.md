@@ -6,6 +6,7 @@ The Steam layer is fully optional. The game runs, and every test passes, with no
 
 - **App ID is 480 (Spacewar), Valve's public dev test app.** It lives in one place, `game/data/steam.json`, and can be overridden per run with `AGORA_STEAM_APP_ID`.
 - **TODO, blocked on #30 (Steamworks onboarding, a human step under Mike's account):** put the real App ID in `steam.json`, rename `game/steam/game_actions_480.vdf` to `game_actions_<appid>.vdf` (`tests/test_steam_files.py` enforces the name), and create the achievements and stats below in the Steamworks partner site.
+- **Warning:** 3064620 is The Atlas Problem, a separate released game on the same partner account; AGORA needs a new Steam Direct app.
 - **GodotSteam is not vendored.** Nothing in the repo needs the binary; add it per "Adding GodotSteam" when you want to test against real Steam.
 
 ## Pieces

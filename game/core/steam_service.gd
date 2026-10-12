@@ -91,11 +91,12 @@ static func load_app_id() -> int:
 	return int(v) if (v is int or v is float) and int(v) > 0 else DEFAULT_APP_ID
 
 
-## The registered target Steamworks App ID under Mike's partner account (Issue #30).
+## The registered target Steamworks App ID under Mike's partner account (#30, Steamworks onboarding).
+## 0 means AGORA has no Steam app yet; it is returned as-is, never replaced by DEFAULT_APP_ID.
 func get_target_app_id() -> int:
 	var cfg: Dictionary = _read_json(CONFIG_PATH)
 	var v = cfg.get("target_app_id", DEFAULT_APP_ID)
-	return int(v) if (v is int or v is float) and int(v) > 0 else DEFAULT_APP_ID
+	return int(v) if (v is int or v is float) and int(v) >= 0 else DEFAULT_APP_ID
 
 
 ## Partner account and onboarding configuration dictionary.

@@ -18,10 +18,25 @@ class TestSteamStoreAssets(unittest.TestCase):
 
     def test_basic_metadata_and_partner_alignment(self):
         self.assertEqual(self.data["app_name"], "AGORA Roguelike")
-        self.assertEqual(self.data["app_id_target"], 3064620)
+        self.assertEqual(self.data["app_id_target"], 0)
         self.assertEqual(self.data["publisher"], "Placeholder Studios")
-        self.assertEqual(self.steam_cfg.get("target_app_id"), 3064620)
+        self.assertEqual(self.steam_cfg.get("target_app_id"), 0)
         self.assertEqual(self.steam_cfg.get("publisher"), "Placeholder Studios")
+
+    def test_no_borrowed_app_id_under_game(self):
+        # 3064620 is The Atlas Problem, a different released game on the same partner account.
+        warning = "3064620 is The Atlas Problem, never use it."
+        skip = {GAME / "tests" / "test_steam.gd"}  # the guard assertion names the ID on purpose
+        hits = []
+        for path in sorted(GAME.rglob("*")):
+            if not path.is_file() or path in skip or path.suffix in {".png", ".import"}:
+                continue
+            if b"\x00" in path.read_bytes()[:4096]:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore").replace(warning, "")
+            if "3064620" in text:
+                hits.append(str(path.relative_to(ROOT)))
+        self.assertEqual(hits, [], "3064620 (The Atlas Problem) must not appear under game/")
 
     def test_descriptions_length_and_structure(self):
         short_desc = self.data["short_description"]
