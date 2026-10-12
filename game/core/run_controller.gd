@@ -1012,7 +1012,7 @@ func has_regulatory_perk() -> bool:
 		return true
 	if perk_modifiers.has("corrupt_regulator"):
 		return true
-	if policies != null and (policies.has_pick("risk_transfer") or policies.has_pick("cost_containment")):
+	if policies != null and (policies.picks.has("risk_transfer") or policies.picks.has("cost_containment")):
 		return true
 	return false
 
@@ -1021,7 +1021,7 @@ func has_debt_leverage() -> bool:
 		return true
 	if perk_modifiers.has("corrupt_regulator") or perk_modifiers.has("hostile_buyout_line"):
 		return true
-	if policies != null and (policies.has_pick("lbo_framework") or policies.has_pick("covenant_relief")):
+	if policies != null and (policies.picks.has("lbo_framework") or policies.picks.has("covenant_relief")):
 		return true
 	return false
 
@@ -1030,7 +1030,7 @@ func has_buyout_perk() -> bool:
 		return true
 	if perk_modifiers.has("hostile_buyout_line") or perk_modifiers.has("corrupt_regulator"):
 		return true
-	if policies != null and (policies.has_pick("lbo_framework") or policies.has_pick("rollup_mandate")):
+	if policies != null and (policies.picks.has("lbo_framework") or policies.picks.has("rollup_mandate")):
 		return true
 	return false
 

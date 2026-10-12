@@ -1816,7 +1816,8 @@ func run_summary() -> Dictionary:
 	var round_pts: int = rounds * Parachutes.SEVERANCE_PER_ROUND
 	var rescue_pts: int = controller.rescue_severance_award
 	var consolation_pts: int = controller.consolation_severance_award
-	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts - rescue_pts - consolation_pts)
+	var sovereign_pts: int = controller.sovereign_severance_award if controller != null else 0
+	var filing_pts: int = maxi(0, award - peak_pts - baron_pts - round_pts - rescue_pts - consolation_pts - sovereign_pts)
 	var filings_count: int = (filing_pts / Parachutes.SEVERANCE_PER_FILING) if Parachutes.SEVERANCE_PER_FILING > 0 else 0
 	return {
 		"reason": controller.end_reason,

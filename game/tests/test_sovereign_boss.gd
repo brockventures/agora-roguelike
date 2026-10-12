@@ -280,3 +280,51 @@ func test_m0_loop_sovereign_overlay_actions() -> String:
 		return "expected status 'bribed'"
 
 	return "ok"
+
+
+func test_policy_perks_integration() -> String:
+	var rc := _make_monopoly_rc(100000, 30000)
+	rc.policies = PolicyState.new()
+	if rc.has_regulatory_perk() or rc.has_debt_leverage() or rc.has_buyout_perk():
+		return "expected perks false initially"
+
+	rc.policies.picks.append("risk_transfer")
+	if not rc.has_regulatory_perk():
+		return "expected regulatory perk with risk_transfer"
+	if not rc.policies.has_pick("risk_transfer"):
+		return "expected policies.has_pick('risk_transfer') to be true"
+
+	rc.policies.picks.append("covenant_relief")
+	if not rc.has_debt_leverage():
+		return "expected debt leverage with covenant_relief"
+
+	rc.policies.picks.append("rollup_mandate")
+	if not rc.has_buyout_perk():
+		return "expected buyout perk with rollup_mandate"
+
+	return "ok"
+
+
+func test_sovereign_buyout_run_summary_breakdown() -> String:
+	var rc := _make_monopoly_rc(150000, 0)
+	var hud := OrbitalHUD.new(rc)
+	var loop := M0Loop.new(hud)
+	rc.open_rescue()
+	var priv_ok: bool = rc.resolve_sovereign_privatize()
+	if not priv_ok:
+		return "expected resolve_sovereign_privatize to succeed"
+	if not rc.is_sovereign_buyout():
+		return "expected is_sovereign_buyout() to be true after privatize"
+	var r: Dictionary = loop.run_summary()
+	if r.get("reason", "") != "sovereign_buyout":
+		return "expected reason 'sovereign_buyout', got '%s'" % str(r.get("reason", ""))
+	if int(r.get("severance_sovereign_pts", 0)) != 800:
+		return "expected 800 sovereign pts, got %d" % int(r.get("severance_sovereign_pts", 0))
+	if int(r.get("severance_filings_pts", 0)) != 0:
+		return "expected 0 filings pts, got %d" % int(r.get("severance_filings_pts", 0))
+	if int(r.get("severance_filings", 0)) != 0:
+		return "expected 0 filings count, got %d" % int(r.get("severance_filings", 0))
+	var parts: int = int(r["severance_filings_pts"]) + int(r["severance_peak_pts"]) + int(r["barons_severance"]) + int(r["severance_rounds_pts"]) + int(r["severance_rescue_pts"]) + int(r["severance_consolation_pts"]) + int(r["severance_sovereign_pts"])
+	if parts != int(r["severance_awarded"]):
+		return "breakdown %d != award %d (%s)" % [parts, int(r["severance_awarded"]), str(r)]
+	return "ok"
