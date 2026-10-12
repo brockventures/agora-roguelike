@@ -221,7 +221,7 @@ func test_a_delivery_moves_cargo_and_cr_and_posts_a_line() -> String:
 	# 60 of 200 units of a 4000 CR phase: 1200 CR.
 	if rc.cr != cr0 - 1200 or rc.cargo != {"FOOD": 10} or rc.rescue.deposits != {"MACHINERY": 60}:
 		return "cr %d cargo %s deposits %s" % [rc.cr - cr0, str(rc.cargo), str(rc.rescue.deposits)]
-	if not _any(_texts(c["hud"]), "Stabiliser: 60 units delivered at LUNA for 1200 CR"):
+	if not _any(_texts(c["hud"]), "Stabiliser: 60 units delivered at LUNA FUEL DEPOT for 1200 CR"):
 		return "no delivery line: %s" % str(_texts(c["hud"]))
 	return "ok"
 
@@ -293,7 +293,7 @@ func test_continuing_from_the_monopoly_summary_opens_the_project() -> String:
 	var tail: Array = m.world_mods.slice(-2)
 	if tail != rc.rescue.embargo_mods():
 		return "the market has no embargo: %s" % str(tail)
-	if not _any(_texts(c["hud"]), "Sol System Rescue Project open: build the Stabiliser in 4 phases. Phase 1, Anchor Yard, is at LUNA"):
+	if not _any(_texts(c["hud"]), "Sol System Rescue Project open: build the Stabiliser in 4 phases. Phase 1, Anchor Yard, is at LUNA FUEL DEPOT"):
 		return "no open line: %s" % str(_texts(c["hud"]))
 	# A second continue (a re-taken monopoly after a filing) keeps the project it has.
 	var before: String = JSON.stringify(rc.rescue.to_dict())

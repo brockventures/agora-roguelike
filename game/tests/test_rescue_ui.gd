@@ -52,7 +52,7 @@ func test_the_card_names_the_phase_its_bill_and_its_fee() -> String:
 	var c := _ctx("mars")
 	var lp: M0Loop = c["loop"]
 	var rows: Array = lp.rescue_lines("mars")
-	if str(rows[0]["kind"]) != "chip" or str(rows[0]["text"]) != "PHASE 1 OF 4  ANCHOR YARD  LUNA":
+	if str(rows[0]["kind"]) != "chip" or str(rows[0]["text"]) != "PHASE 1 OF 4  ANCHOR YARD  LUNA FUEL DEPOT":
 		return "chip: %s" % str(rows[0])
 	for want in ["MACHINERY 0 / 100", "ORE 0 / 100", "FEE 4000 CR LEFT"]:
 		if not _has(rows, want):
@@ -142,7 +142,7 @@ func test_every_phase_name_has_a_key_and_the_ticker_names_it() -> String:
 	c["loop"]._post_rescue_open()
 	var found: bool = false
 	for h in (c["hud"] as OrbitalHUD).galnet_headlines:
-		found = found or str(h["text"]).contains("Phase 1, Anchor Yard, is at LUNA")
+		found = found or str(h["text"]).contains("Phase 1, Anchor Yard, is at LUNA FUEL DEPOT")
 	return "ok" if found else "the open line does not name the phase"
 
 
