@@ -55,9 +55,9 @@ func test_picks_land_on_the_milestone_rounds_with_the_first_listed_offer() -> St
 	var recs := _fixture()
 	for sd in pg.SEEDS:
 		var rec: Dictionary = recs[str(sd)]
-		var picks: Array = pg.picks_of(rec)
+		var picks: Array = pg.picks_of(pg.play(sd))
 		if RunSave.canonical(picks) != RunSave.canonical(rec["picks"]):
-			return "seed %d: the pinned picks %s disagree with the inputs %s" % [sd, str(rec["picks"]), str(picks)]
+			return "seed %d: the pinned picks %s disagree with the bot's %s" % [sd, str(rec["picks"]), str(picks)]
 		if picks.size() != 2 or int(picks[0]["round"]) != 20 or int(picks[1]["round"]) != 50:
 			return "seed %d: picks %s, wanted one at round 20 and one at round 50" % [sd, str(picks)]
 		if str(picks[0]["id"]) != "supply_chain" or str(picks[1]["id"]) != "risk_transfer":
@@ -78,22 +78,37 @@ func test_the_golden_run_ends_holding_the_picks_with_the_modifiers_stacked() -> 
 
 
 func test_dropping_a_pick_desyncs_the_replay() -> String:
+	var pg = load(PG)
 	var rec := _json(_fixture()["84"])
-	var inputs: Array = rec["inputs"]
-	for i in inputs.size():
-		if str(inputs[i]["action"]).begins_with(Replay.POLICY_PREFIX):
-			(rec["inputs"] as Array).remove_at(i)
-			break
+	var idx: int = int(pg.play(84).get_meta("pick_inputs")[0])
+	if str(rec["inputs"][idx]["action"]) != M0Loop.ACT_SUBMIT or int(rec["inputs"][idx]["tick"]) != 600:
+		return "input #%d is not the round 20 pick: %s" % [idx, str(rec["inputs"][idx])]
+	(rec["inputs"] as Array).remove_at(idx)
 	return "ok" if not bool(Replay.replay(rec)["ok"]) else "a replay with a pick dropped still matched"
 
 
-func test_a_replay_that_picks_a_forbidden_policy_is_refused() -> String:
+## The pick is the modal's own input, not a private one: the D-pad moves the cursor in the
+## recording like any other press, and a pick made one row down lands on another policy.
+func test_a_cursor_that_wanders_and_returns_picks_the_same_policy_and_the_same_hash() -> String:
+	var pg = load(PG)
 	var rec := _json(_fixture()["84"])
-	for e in rec["inputs"]:
-		if str(e["action"]) == "policy:risk_transfer":
-			e["action"] = "policy:no_such_policy"
+	var idx: int = int(pg.play(84).get_meta("pick_inputs")[0])
+	var at: Dictionary = (rec["inputs"] as Array)[idx]
+	(rec["inputs"] as Array).insert(idx, {"frame": at["frame"], "tick": at["tick"], "action": M0Loop.ACT_UP})
+	(rec["inputs"] as Array).insert(idx, {"frame": at["frame"], "tick": at["tick"], "action": M0Loop.ACT_DOWN})
 	var res := Replay.replay(rec)
-	return "ok" if not bool(res["ok"]) and str(res["error"]).contains("refused") else "got %s" % str(res)
+	return "ok" if bool(res["ok"]) else "D-pad down then up before A changed the run: %s" % str(res)
+
+
+func test_a_dpad_press_before_the_pick_changes_the_policy_and_the_hash() -> String:
+	var pg = load(PG)
+	var rec := _json(_fixture()["84"])
+	var idx: int = int(pg.play(84).get_meta("pick_inputs")[0])
+	(rec["inputs"] as Array).insert(idx, {"frame": rec["inputs"][idx]["frame"], "tick": rec["inputs"][idx]["tick"], "action": M0Loop.ACT_DOWN})
+	var res := Replay.replay(rec)
+	if bool(res["ok"]):
+		return "a recording that moved the cursor before the pick still matched"
+	return "ok" if str(res["error"]) == "state hash mismatch" else "wanted a hash mismatch, got %s" % str(res)
 
 
 func test_a_save_at_round_55_restores_and_continues_to_the_same_hash() -> String:

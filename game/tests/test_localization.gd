@@ -8,7 +8,7 @@ const SCAN_DIRS := ["res://ui", "res://scenes", "res://core"]
 ## Literal keys the scan recognises (the prefixes the code base uses for tr keys).
 ## Sound ids (ORDER_FILL, TICKER_BLIP) share prefixes with text keys; they are not UI text.
 const NOT_TEXT_FILES := ["tactile_audio.gd"]
-const KEY_PREFIXES := "HUD|HL|REJ|SIDE|BOARD|CH11|CRISIS|SUM|PERKS?|SLEEP|SET|TICKER|FLEET|ORDER|LANG|MAKER"
+const KEY_PREFIXES := "HUD|HL|REJ|SIDE|BOARD|CH11|CRISIS|SUM|PERKS?|SLEEP|SET|TICKER|FLEET|ORDER|LANG|MAKER|POLICY"
 
 
 static func csv_rows() -> Dictionary:
@@ -98,7 +98,9 @@ func test_every_csv_key_is_reachable() -> String:
 		corpus += FileAccess.get_file_as_string(path)
 	# The tutorial's beat copy is named in its data table, not in a script.
 	corpus += FileAccess.get_file_as_string("res://data/onboarding.json")
-	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_"]
+	# A corporate policy's name and card line are named by its node in policies.json (#160).
+	corpus += FileAccess.get_file_as_string("res://data/policies.json")
+	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "POLICY_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_"]
 	var dead: Array = []
 	for k in rows:
 		var fam := false
@@ -135,6 +137,16 @@ func test_data_files_have_derived_keys_and_english_matches() -> String:
 	for p in pk["perks"]:
 		want.call("PERK_%s_NAME" % Loc.slug(p["id"]), str(p["name"]))
 		want.call("PERK_BRANCH_" + Loc.slug(p["branch"]), str(p["branch"]))
+	# #160: every corporate policy names a CSV row for its title and its card line, and every
+	# branch has a label row.
+	var pol: Parachutes = Parachutes.load_policies()
+	for id in pol.perks:
+		var node: Dictionary = pol.perks[id]
+		for k in ["name_key", "desc_key"]:
+			if str(node[k]) == "" or not rows.has(str(node[k])):
+				problems.append("policy %s: no CSV row for %s '%s'" % [id, k, node[k]])
+		if not rows.has("POLICY_BRANCH_" + Loc.slug(str(node["branch"]))):
+			problems.append("policy branch %s has no POLICY_BRANCH_ row" % node["branch"])
 	for st in StationMarket.STATION_NAMES:
 		want.call("STATION_" + Loc.slug(st), str(StationMarket.STATION_NAMES[st]))
 	for c in Transit.COMMODITIES:
@@ -277,4 +289,52 @@ func test_derived_text_follows_the_locale() -> String:
 	Loc.set_locale(Loc.LOCALE_EN)
 	if st == "Arcadia Foundries" or tag == "Not enough CR" or crisis_name == "Localized Shortage":
 		return "derived text did not change under pseudo: %s / %s / %s" % [st, tag, crisis_name]
+	return "ok"
+
+
+## #160: a policy's `_DESC` takes exactly the numbers its node's effects give it (one per effect,
+## computed by Loc.policy_args), so the copy can never disagree with policies.json or fail to
+## format. Checked in English and under pseudo-localization.
+func test_every_policy_desc_takes_the_arguments_its_effects_give() -> String:
+	var rows := csv_rows()
+	var pol: Parachutes = Parachutes.load_policies()
+	var bad: Array = []
+	var holes := RegEx.create_from_string("%[sd]")
+	for id in pol.perks:
+		var node: Dictionary = pol.perks[id]
+		var tpl: String = str(rows.get(str(node["desc_key"]), ""))
+		var want: int = holes.search_all(tpl.replace("%%", "")).size()
+		var args: Array = Loc.policy_args(node)
+		if want != args.size():
+			bad.append("%s: the line takes %d numbers, its effects give %d" % [id, want, args.size()])
+		for locale in [Loc.LOCALE_EN, Loc.LOCALE_PSEUDO]:
+			Loc.set_locale(locale)
+			var line: String = Loc.policy_desc(node)
+			if line == "" or line.contains("%d") or line.contains("%s"):
+				bad.append("%s (%s): unformatted line '%s'" % [id, locale, line])
+	Loc.set_locale(Loc.LOCALE_EN)
+	return "ok" if bad.is_empty() else str(bad)
+
+
+## The numbers in the copy are the numbers in the data: spot-check the arithmetic behind each op.
+func test_policy_numbers_are_computed_from_the_effects() -> String:
+	var pol: Parachutes = Parachutes.load_policies()
+	var want := {
+		"supply_chain": "15", "risk_transfer": "30", "corridor_access": "40 / 100", "cost_containment": "10",
+		"covenant_relief": "30", "wind_down": "15", "training_module": "2", "prepack_reorg": "3,000",
+		"exit_package": "25", "synergy_review": "20", "lbo_framework": "40", "rollup_mandate": "30"}
+	for id in want:
+		var got: Array = []
+		for a in Loc.policy_args(pol.perks[id]):
+			got.append(str(a))
+		if " / ".join(PackedStringArray(got)) != want[id]:
+			return "%s: numbers %s, wanted %s" % [id, str(got), want[id]]
+	# Changing the data changes the copy: a node with a different value gives a different number.
+	var node: Dictionary = (pol.perks["supply_chain"] as Dictionary).duplicate(true)
+	node["effects"][0]["value"] = 2500
+	if str(Loc.policy_args(node)[0]) != "25":
+		return "copy did not follow the data"
+	# Grace is rounds of the live round length.
+	if Loc.policy_args(pol.perks["training_module"], 30)[0] != 60:
+		return "grace did not follow the round length"
 	return "ok"

@@ -235,6 +235,7 @@ static func initial_run_seed() -> int:
 func start_new_run(p_seed: int = DEFAULT_RUN_SEED) -> RunController:
 	var rc := RunController.new(_loaded_profile, p_seed)
 	rc.world = Barons.for_new_run()  # Epic 3: the sector barons make the books
+	rc.attach_policies()  # #160: run-only corporate policies (rounds 20/50/80 and the first takeover)
 	bags = Bags.new("m0", null, p_seed)
 	initialize_systems(rc)
 	return rc
@@ -269,6 +270,11 @@ func continue_saved_run() -> bool:
 		push_warning("run save ignored: %s" % str(r["error"]))
 		return false
 	var rc: RunController = r["controller"]
+	# A save without the `policies` key is a run that had not reached its first grant, or one from
+	# before policies existed: either way it gets a fresh state (the inverse of RunSave.capture).
+	# An older save past round 20 therefore catches up on the milestones it missed at the next
+	# round boundary (PolicyState.on_round).
+	rc.attach_policies()
 	# profile.json is written whenever the profile changes (perk buys, filings),
 	# the run slot's embedded copy only at round autosaves, so after a crash the
 	# file is the newer one: it wins, and the run is re-pointed at it (D3).
@@ -2242,6 +2248,9 @@ func _card_notes() -> Array:
 		out.append({"kind": "chip", "text": tr("CRISIS_SIDEBAR") % [Loc.crisis_name(c).to_upper(), maxi(0, int(c["expires_round"]) - round_num)], "bg": HudTheme.RUST_DARK, "fg": HudTheme.BONE})
 		for line in CrisisDeck.describe(c, true):
 			out.append({"kind": "line", "text": str(line), "color": HudTheme.INK})
+	# What the corp has adopted this run (#160): last, because every entry above is about the
+	# book or the crisis in front of the player and this is the standing sheet.
+	out.append_array(_policy_notes())
 	return out
 
 
@@ -2931,6 +2940,8 @@ func _resolution_model() -> Dictionary:
 		return _contract_model()
 	if loop.overlay_state == M0Loop.OVERLAY_MONOPOLY:
 		return _monopoly_model()
+	if loop.overlay_state == M0Loop.OVERLAY_POLICY:
+		return _policy_model()
 	if loop.overlay_state == M0Loop.OVERLAY_RESCUED:
 		return _rescued_model()
 	if loop.overlay_state == M0Loop.OVERLAY_CHAPTER_11:
@@ -2976,6 +2987,60 @@ func _contract_model() -> Dictionary:
 			{"kind": "text", "text": tr("CONTRACT_SQUEEZE") % [int(p.get("squeeze_window_rounds", 0)), qty, com, int(p.get("squeeze_price_bps_max", 0)) / 100]},
 			{"kind": "muted", "text": tr("HUD_CLOCK_HALTED")}],
 		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_ACCEPT")], [tr("HUD_PAD_B"), tr("HUD_ACT_DECLINE")]]}
+
+
+## The Policy Committee modal (#160 section 9): a granted pick, mandatory (A adopts, there is no
+## B). Rows reuse the perk screen's `perk` kind: one per node the player can take now, then the
+## nodes an owned policy forecloses, dimmed and tagged EXCLUDED (the cursor never lands on them).
+## The cursor row's description follows as one muted line, so the height is bounded by the rows.
+func _policy_model() -> Dictionary:
+	var ps: PolicyState = controller.policies
+	if ps == null:
+		return {"eyebrow": "", "title": "", "band": "teal", "wide": true, "rows": [], "actions": []}
+	var tree: Parachutes = ps.tree()
+	var rows: Array = []
+	var desc: String = ""
+	var offers: int = 0
+	for pr in loop.policy_rows():
+		var node: Dictionary = tree.perks[str(pr["id"])]
+		var offered: bool = str(pr["state"]) == "offer"
+		var cursor: bool = offered and offers == loop.policy_cursor
+		if offered:
+			offers += 1
+		var tag: String = tr("POLICY_TAG_EXCLUDED")
+		if offered:
+			tag = tr("POLICY_TAG_FORK") if _policy_is_fork(node) else tr("POLICY_TAG_ROOT")
+		rows.append({"kind": "perk", "cursor": cursor, "dim": not offered, "branch_share": 0.34, "tier": "", "name": Loc.policy_name(node), "branch": Loc.policy_branch(str(node["branch"])), "tag": tag})
+		if cursor:
+			desc = Loc.policy_desc(node)
+	if desc != "":
+		rows.append({"kind": "muted", "text": desc})
+	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
+	return {"eyebrow": tr("POLICY_EYEBROW") % [ps.picks.size() + 1, _policy_total(tree)], "title": tr("POLICY_TITLE"), "band": "teal", "wide": true, "rows": rows,
+		"actions": [[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")], [tr("HUD_PAD_A"), tr("HUD_ACT_ADOPT")]]}
+
+
+## A fork is a capstone (it needs its root and shuts out its sibling); a root needs nothing.
+func _policy_is_fork(node: Dictionary) -> bool:
+	return not (node["requires"] as Array).is_empty()
+
+
+## Picks a run can earn: the milestones plus the first takeover (the "n" of "n OF n").
+func _policy_total(tree: Parachutes) -> int:
+	return tree.milestones.size() + (1 if tree.takeover_pick else 0)
+
+
+## The held-policy chip and the adopted names under it (desk notes): once anything has been
+## granted, and after a filing too (POLICIES 0/n, the rescinded policies gone).
+func _policy_notes() -> Array:
+	var out: Array = []
+	var ps: PolicyState = controller.policies
+	if ps == null or not ps.has_granted():
+		return out
+	out.append({"kind": "chip", "text": tr("POLICY_CARD_CHIP") % [ps.picks.size(), _policy_total(ps.tree())], "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
+	for id in ps.picks:
+		out.append({"kind": "line", "text": tr("HUD_BULLET") % Loc.policy_name(ps.tree().perks[id]), "color": HudTheme.INK})
+	return out
 
 
 func _summary_model() -> Dictionary:
@@ -3238,23 +3303,36 @@ func _refresh_resolution() -> void:
 				tr_l.text = str(r.get("tier", ""))
 				br.text = str(r.get("branch", ""))
 				tg.text = str(r.get("tag", ""))
-				var w_tier: float = maxf(kit.natural_width(tr_l, "T9"), kit.natural_width(tr_l, tr_l.text)) + 8.0 if is_perk else 0.0
-				var w_tag: float = maxf(maxf(kit.natural_width(tg, "999 locked"), kit.natural_width(tg, tg.text)), 80.0) if is_perk else 0.0
-				var w_branch: float = minf(kit.natural_width(br, br.text) + 8.0, inner * 0.3) if is_perk else 0.0
+				# A policy row drops the tier column: ROOT / FORK says the same, and the 27-character
+				# names need the room at 130% in the pseudo locale.
+				var has_tier: bool = is_perk and str(r.get("tier", "")) != ""
+				var w_tier: float = maxf(kit.natural_width(tr_l, "T9"), kit.natural_width(tr_l, tr_l.text)) + 8.0 if has_tier else 0.0
+				var w_tag: float = maxf(maxf(0.0 if r.has("branch_share") else kit.natural_width(tg, "999 locked"), kit.natural_width(tg, tg.text)), 80.0) if is_perk else 0.0
+				var w_branch: float = minf(kit.natural_width(br, br.text) + 8.0, inner * float(r.get("branch_share", 0.3))) if is_perk else 0.0
 				var x: float = x0 + 4.0 + mark_w + 8.0
 				tr_l.position = Vector2(x, y + (rh - HudKit.line_height(tr_l)) * 0.5)
 				tr_l.size = Vector2(w_tier, HudKit.line_height(tr_l))
-				x += w_tier + (8.0 if is_perk else 0.0)
+				x += w_tier + (8.0 if has_tier else 0.0)
 				var name_w: float = inner - (x - x0) - w_tag - w_branch - 24.0 if is_perk else inner - (x - x0)
 				kit.fit_text(nm, str(r["name"]) if is_perk else str(r["text"]), name_w)
 				nm.position = Vector2(x, y + (rh - HudKit.line_height(nm)) * 0.5)
 				nm.size = Vector2(name_w, HudKit.line_height(nm))
+				# The branch is fitted into its column (narrower type before it would wrap), so a long
+				# branch name in the pseudo locale cannot run past the column into the tag.
+				if is_perk:
+					kit.fit_text(br, br.text, w_branch)
 				br.position = Vector2(x0 + inner - w_tag - w_branch - 12.0, y + (rh - HudKit.line_height(br)) * 0.5)
 				br.size = Vector2(w_branch, HudKit.line_height(br))
 				tg.position = Vector2(x0 + inner - w_tag - 4.0, y + (rh - HudKit.line_height(tg)) * 0.5)
 				tg.size = Vector2(w_tag, HudKit.line_height(tg))
 				for key in ["tier", "branch", "tag"]:
 					(pr[key] as CanvasItem).visible = is_perk
+				# A dimmed row (a policy an owned one forecloses) reads as unavailable; the pooled
+				# labels take their own colours back on any other row.
+				var dim: bool = bool(r.get("dim", false))
+				nm.add_theme_color_override("font_color", HudTheme.BONE_DIM if dim else HUD_TEXT_COLOR)
+				tg.add_theme_color_override("font_color", HudTheme.BONE_DIM if dim else HUD_TEXT_COLOR)
+				mk.add_theme_color_override("font_color", HUD_TEXT_COLOR)
 				if bool(r["cursor"]):
 					cursor_rect = Rect2(x0, y, inner, rh)
 				y += rh + 4.0
@@ -3270,7 +3348,7 @@ func _refresh_resolution() -> void:
 	var h_total: float = _layout_footer(_res, w, y, model["actions"])
 	resolution_modal.size = Vector2(w, h_total)
 	resolution_modal.position = Vector2(rect.position.x, maxf(72.0, 64.0 + (736.0 - h_total) * 0.5))
-	var perks_on: bool = loop.overlay_state == M0Loop.OVERLAY_COLLAPSED and loop.collapse_phase == M0Loop.PHASE_PERKS
+	var perks_on: bool = (loop.overlay_state == M0Loop.OVERLAY_COLLAPSED and loop.collapse_phase == M0Loop.PHASE_PERKS) or loop.overlay_state == M0Loop.OVERLAY_POLICY
 	resolution_focus_bar.visible = perks_on and cursor_rect.size != Vector2.ZERO
 	if resolution_focus_bar.visible:
 		HudTheme.place_focus_bar(resolution_focus_bar, cursor_rect)

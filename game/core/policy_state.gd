@@ -79,6 +79,19 @@ func offers() -> Array[String]:
 	return out
 
 
+## True when `id` is not owned, is enabled, and an owned policy forecloses it (either side lists
+## the other in `excludes`). The pick modal shows these as unavailable rather than hiding them.
+func excluded_by_owned(id: String) -> bool:
+	if picks.has(id) or not _tree.perks.has(id) or not bool(_tree.perks[id]["enabled"]):
+		return false
+	for owned in picks:
+		if (_tree.perks[id]["excludes"] as Array).has(owned):
+			return true
+		if _tree.perks.has(owned) and (_tree.perks[owned]["excludes"] as Array).has(id):
+			return true
+	return false
+
+
 ## Adopt `id`: needs a pending grant and `id` in offers(). Picks are mandatory and final.
 func pick(id: String) -> bool:
 	if pending() <= 0 or not offers().has(id):
