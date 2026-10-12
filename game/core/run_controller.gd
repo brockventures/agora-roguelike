@@ -128,7 +128,7 @@ func can_depart(destination: String, mkt: StationMarket = null, lane: String = "
 		var rounds: int = Transit.calculate_trip_rounds(docked_at, dest, get_current_round(), 0)
 		out["rounds"] = rounds
 		out["ticks"] = Transit.calculate_transit_ticks(rounds, ticks_per_round)
-		out["toll"] = Transit.calculate_toll(docked_at, dest)
+		out["toll"] = Transit.calculate_toll(docked_at, dest, 0.0, toll_discount_bps())
 		if lane != "":
 			out["toll"] = int(Corridors.smuggle_lane(docked_at, dest, lane).get("toll_cr", 0))
 		if cr < int(out["toll"]):
@@ -225,7 +225,10 @@ func _arrive() -> void:
 	var toll_paid: int = 0
 	if world != null:
 		toll_due = world.docking_toll_due(StationMarket.PLAYER_ID, docked_at)
-		toll_paid = world.docking_toll(StationMarket.PLAYER_ID, docked_at, cr)
+		var disc: int = toll_discount_bps()
+		if disc > 0:
+			toll_due = toll_due * (10000 - disc) / 10000
+		toll_paid = mini(toll_due, maxi(0, cr))
 		cr -= toll_paid
 	info["docking_toll_due"] = toll_due
 	info["docking_toll"] = toll_paid
@@ -382,6 +385,10 @@ func haircut_bps() -> int:
 ## Engine fuel discount in bps, 0..10000. Pass to Transit.calculate_fuel_burn.
 func fuel_discount_bps() -> int:
 	return clampi(Parachutes.apply_stat(modifiers, "fuel_discount_bps", 0), 0, 10000)
+
+## Toll discount in bps, 0..10000 (#160): scales the belt toll and the docking toll.
+func toll_discount_bps() -> int:
+	return clampi(Parachutes.apply_stat(modifiers, "toll_discount_bps", 0), 0, 10000)
 
 ## Hazard odds factor in bps (10000 = x1.0). Pass to Hazards.quote/roll as odds_bps.
 func hazard_odds_bps() -> int:
@@ -571,7 +578,7 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 			profile.rescues_completed += 1
 		elif reason == "collapse":
 			consolation_severance_award = rescue.consolation_severance()
-	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award, rescue_severance_award, consolation_severance_award)
+	severance_award = Parachutes.award_severance(profile, filings, peak_net_worth, barons_broken_award, rounds_survived_award, rescue_severance_award, consolation_severance_award, Parachutes.apply_stat(modifiers, "severance_bps", Parachutes.BPS))
 	next_seed = p_next_seed
 	carry_over = _build_carry_over(lost)
 	severance_awarded.emit(severance_award)
