@@ -283,6 +283,22 @@ class ReferenceImageTests(unittest.TestCase):
             self.assertIsNotNone(ref_img)
             self.assertTrue(str(ref_img).endswith("earth_256.png"))
 
+    def test_vessel_transit_icons_exist_in_game_assets(self):
+        root = Path(__file__).resolve().parent.parent
+        map_icons = root / "game" / "assets" / "map_icons"
+        for name in ("hauler", "interceptor", "freighter", "scout", "scrap_barge"):
+            for size in (128, 256):
+                path = map_icons / f"vessel_{name}_{size}.png"
+                self.assertTrue(path.exists(), f"missing {path}")
+
+    def test_station_cards_exist_in_game_card_art(self):
+        root = Path(__file__).resolve().parent.parent
+        card_art = root / "game" / "assets" / "card_art"
+        for name in ("ceres", "earth", "luna", "mars"):
+            path = card_art / f"card_{name}.png"
+            self.assertTrue(path.exists(), f"missing {path}")
+
 
 if __name__ == "__main__":
     unittest.main()
+

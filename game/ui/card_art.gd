@@ -26,6 +26,19 @@ const CARDS: Dictionary = {
 	# Special / Hazard cards
 	"cme_flare": "cme_flare",
 	"cme_relay_blackout": "cme_flare",
+	# Station Overview Deck (Subtasks 6.3 / 6.6)
+	"card_ceres": "card_ceres",
+	"card_earth": "card_earth",
+	"card_luna": "card_luna",
+	"card_mars": "card_mars",
+	"station_ceres": "card_ceres",
+	"station_earth": "card_earth",
+	"station_luna": "card_luna",
+	"station_mars": "card_mars",
+	"ceres": "card_ceres",
+	"earth": "card_earth",
+	"luna": "card_luna",
+	"mars": "card_mars",
 }
 
 static var _cache: Dictionary = {}

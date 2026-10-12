@@ -67,3 +67,58 @@ static func draw_icon(ci: CanvasItem, id: String, center: Vector2, scale: float 
 	var origin: Vector2 = center - Vector2(row["center"]) * size
 	ci.draw_texture_rect(tex, Rect2(origin, Vector2(size, size)), false)
 	return true
+
+
+## Canonical vessel archetype to transit icon filename stem mapping (#73 Subtask 6.4/6.6).
+const VESSEL_ICONS: Dictionary = {
+	"HAULER": "vessel_hauler",
+	"INTERCEPTOR": "vessel_interceptor",
+	"FREIGHTER": "vessel_freighter",
+	"SCOUT": "vessel_scout",
+	"SCRAP_BARGE": "vessel_scrap_barge",
+	"hauler": "vessel_hauler",
+	"interceptor": "vessel_interceptor",
+	"freighter": "vessel_freighter",
+	"scout": "vessel_scout",
+	"scrap_barge": "vessel_scrap_barge",
+}
+
+
+## Returns the transit marker icon texture for a vessel archetype, or null when missing.
+static func vessel_texture(archetype: String) -> Texture2D:
+	var key: String = archetype.to_upper().replace(" ", "_")
+	var stem: String = str(VESSEL_ICONS.get(key, VESSEL_ICONS.get(archetype.to_lower(), "vessel_hauler")))
+	var cache_key: String = "vessel:" + stem
+	if _cache.has(cache_key):
+		return _cache[cache_key]
+	var path: String = DIR + stem + "_256.png"
+	if not ResourceLoader.exists(path):
+		path = DIR + stem + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path) as Texture2D
+	_cache[cache_key] = tex
+	return tex
+
+
+## Draws the vessel transit marker centered at `center`, optionally rotated by `heading_rad`
+## (in radians, where 0 is pointing along negative Y / screen up), scaled to `size_px`.
+## Returns false (drawing nothing) when no texture exists so caller can fall back to flat disc.
+static func draw_vessel(ci: CanvasItem, archetype: String, center: Vector2, heading_rad: float = 0.0, size_px: float = 24.0) -> bool:
+	var tex: Texture2D = vessel_texture(archetype)
+	if tex == null:
+		return false
+	var half: float = size_px * 0.5
+	if absf(heading_rad) > 0.001:
+		ci.draw_set_transform(center, heading_rad, Vector2.ONE)
+		ci.draw_texture_rect(tex, Rect2(-half, -half, size_px, size_px), false)
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	else:
+		ci.draw_texture_rect(tex, Rect2(center.x - half, center.y - half, size_px, size_px), false)
+	return true
+
+
+## Clears the texture cache (useful for tests or hot-reloading).
+static func clear_cache() -> void:
+	_cache.clear()
+

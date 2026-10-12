@@ -109,3 +109,23 @@ func test_all_eleven_crisis_deck_cards_load_and_have_4x3_aspect() -> String:
 			return "'%s' aspect ratio must be 4:3 (got %f from %sx%s)" % [cid, aspect, w, h]
 	return "ok"
 
+
+func test_station_overview_cards_load_and_have_4x3_aspect() -> String:
+	var stations: Array[String] = ["ceres", "earth", "luna", "mars"]
+	for st in stations:
+		var card_key: String = "station_%s" % st
+		if not CardArt.has_art(card_key):
+			return "CardArt.has_art('%s') returned false" % card_key
+		var tex: Texture2D = CardArt.texture(card_key)
+		if tex == null:
+			return "CardArt.texture('%s') returned null" % card_key
+		var w: float = float(tex.get_width())
+		var h: float = float(tex.get_height())
+		if w <= 0.0 or h <= 0.0:
+			return "invalid dimensions for station card '%s': %sx%s" % [card_key, w, h]
+		var aspect: float = w / h
+		if absf(aspect - 4.0 / 3.0) > 0.02:
+			return "'%s' aspect ratio must be 4:3 (got %f from %sx%s)" % [card_key, aspect, w, h]
+	return "ok"
+
+

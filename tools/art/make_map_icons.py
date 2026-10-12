@@ -188,13 +188,19 @@ def main() -> None:
     if do_vessels:
         vessel_src_dir = Path(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else ROOT / "art_out" / "batch-6.4"
         VESSEL_SAMPLES.mkdir(parents=True, exist_ok=True)
+        OUT.mkdir(parents=True, exist_ok=True)
         for name, stem in VESSEL_ICONS.items():
             src = vessel_src_dir / f"{stem}.png"
+            if not src.exists():
+                src = VESSEL_SAMPLES / f"{stem}.png"
             if not src.exists():
                 continue
             fitted = build_vessel(src, work_size=1024)
             fitted.save(VESSEL_SAMPLES / f"{stem}.png", optimize=True)
             print("wrote vessel sample", VESSEL_SAMPLES / f"{stem}.png")
+            for s in SIZES:
+                fitted.resize((s, s), Image.LANCZOS).save(OUT / f"vessel_{name}_{s}.png", optimize=True)
+                print("wrote", OUT / f"vessel_{name}_{s}.png")
 
 
 if __name__ == "__main__":
