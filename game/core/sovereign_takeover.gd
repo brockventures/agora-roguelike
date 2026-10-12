@@ -11,10 +11,11 @@ extends RefCounted
 ## 3. Tri-Fold Counter-Strategies / Win Conditions:
 ##    - Cabinet Buyout (Liquid Liquidity): Bribe the corrupt cabinet ministers (base 45,000 CR,
 ##      discounted with corrupt_regulator or regulatory policies).
-##    - Debt Choke (Sovereign Debt Leverage): Exploit high debt leverage (>= 35,000 CR principal debt,
-##      or >= 20,000 CR with debt-leverage perks/policies) to force a sovereign treasury insolvency default.
+##    - Debt Choke (Sovereign Debt Leverage): Deploy corporate debt leverage against the Sol Treasury
+##      (requires debt >= 35,000 CR, or >= 20,000 CR with debt-leverage perks/policies, plus 25,000 CR
+##      restructuring capital) to force sovereign default and debt relief.
 ##    - Sovereign Privatization (State Buyout): Outright hostile buyout and privatization of the Sol
-##      System Government into a corporate subsidiary (requires monopoly + 75,000 CR, discounted with buyout perks).
+##      System Government into a corporate subsidiary (75,000 CR, discounted with buyout perks).
 
 const VERSION: int = 1
 const DEFAULT_PATH: String = "res://data/sovereign.json"
@@ -38,6 +39,8 @@ var bribe_cost_cr: int = 45000
 var bribe_discount_bps: int = 2500
 var debt_choke_required_debt: int = 35000
 var debt_choke_leverage_debt: int = 20000
+var debt_choke_cost_cr: int = 25000
+var debt_choke_discount_bps: int = 2500
 var privatize_cost_cr: int = 75000
 var privatize_discount_bps: int = 3333
 
@@ -73,6 +76,8 @@ static func load_default(path: String = DEFAULT_PATH) -> SovereignTakeover:
 	st.bribe_discount_bps = int(data.get("bribe_discount_bps", 2500))
 	st.debt_choke_required_debt = int(data.get("debt_choke_required_debt", 35000))
 	st.debt_choke_leverage_debt = int(data.get("debt_choke_leverage_debt", 20000))
+	st.debt_choke_cost_cr = int(data.get("debt_choke_cost_cr", 25000))
+	st.debt_choke_discount_bps = int(data.get("debt_choke_discount_bps", 2500))
 	st.privatize_cost_cr = int(data.get("privatize_cost_cr", 75000))
 	st.privatize_discount_bps = int(data.get("privatize_discount_bps", 3333))
 	var sev = data.get("severance_bonus")
@@ -128,11 +133,18 @@ func can_bribe(cr: int, has_regulatory_perk: bool) -> bool:
 	return is_active() and cr >= get_bribe_cost(has_regulatory_perk)
 
 
-func can_debt_choke(debt_cr: int, has_debt_leverage: bool) -> bool:
+func get_debt_choke_cost(has_debt_leverage: bool) -> int:
+	if has_debt_leverage:
+		return debt_choke_cost_cr * (10000 - debt_choke_discount_bps) / 10000
+	return debt_choke_cost_cr
+
+
+func can_debt_choke(cr: int, debt_cr: int, has_debt_leverage: bool) -> bool:
 	if not is_active():
 		return false
-	var req: int = debt_choke_leverage_debt if has_debt_leverage else debt_choke_required_debt
-	return debt_cr >= req
+	var req_debt: int = debt_choke_leverage_debt if has_debt_leverage else debt_choke_required_debt
+	var req_cr: int = get_debt_choke_cost(has_debt_leverage)
+	return debt_cr >= req_debt and cr >= req_cr
 
 
 func get_privatize_cost(has_buyout_perk: bool) -> int:
@@ -141,8 +153,8 @@ func get_privatize_cost(has_buyout_perk: bool) -> int:
 	return privatize_cost_cr
 
 
-func can_privatize(cr: int, has_monopoly: bool, has_buyout_perk: bool) -> bool:
-	return is_active() and has_monopoly and cr >= get_privatize_cost(has_buyout_perk)
+func can_privatize(cr: int, has_buyout_perk: bool) -> bool:
+	return is_active() and cr >= get_privatize_cost(has_buyout_perk)
 
 
 func resolve(method: String) -> int:
@@ -167,6 +179,8 @@ func to_dict() -> Dictionary:
 		"bribe_discount_bps": bribe_discount_bps,
 		"debt_choke_required_debt": debt_choke_required_debt,
 		"debt_choke_leverage_debt": debt_choke_leverage_debt,
+		"debt_choke_cost_cr": debt_choke_cost_cr,
+		"debt_choke_discount_bps": debt_choke_discount_bps,
 		"privatize_cost_cr": privatize_cost_cr,
 		"privatize_discount_bps": privatize_discount_bps,
 		"severance_bonus": severance_bonus.duplicate(),
@@ -188,6 +202,8 @@ static func from_dict(d: Dictionary) -> SovereignTakeover:
 	st.bribe_discount_bps = int(d.get("bribe_discount_bps", 2500))
 	st.debt_choke_required_debt = int(d.get("debt_choke_required_debt", 35000))
 	st.debt_choke_leverage_debt = int(d.get("debt_choke_leverage_debt", 20000))
+	st.debt_choke_cost_cr = int(d.get("debt_choke_cost_cr", 25000))
+	st.debt_choke_discount_bps = int(d.get("debt_choke_discount_bps", 2500))
 	st.privatize_cost_cr = int(d.get("privatize_cost_cr", 75000))
 	st.privatize_discount_bps = int(d.get("privatize_discount_bps", 3333))
 	var sb = d.get("severance_bonus")

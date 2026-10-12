@@ -3146,23 +3146,87 @@ func _rescue_summary_rows(r: Dictionary) -> Array:
 ## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
 ## run summary, then the Golden Parachutes perks and a new run.
 func _sovereign_decree_model() -> Dictionary:
-	var sov = loop.controller.sovereign if (loop != null and loop.controller != null) else null
+	var sov: SovereignTakeover = loop.controller.sovereign if (loop != null and loop.controller != null) else null
 	var rounds_left: int = sov.rounds_remaining(loop.controller.ticks_per_round) if sov != null else 0
 	var reg: bool = loop.controller.has_regulatory_perk() if (loop != null and loop.controller != null) else false
 	var lev: bool = loop.controller.has_debt_leverage() if (loop != null and loop.controller != null) else false
 	var buy: bool = loop.controller.has_buyout_perk() if (loop != null and loop.controller != null) else false
+	var cr: int = loop.controller.cr if (loop != null and loop.controller != null) else 0
+	var debt: int = loop.controller.doomsday.principal_debt if (loop != null and loop.controller != null and loop.controller.doomsday != null) else 0
+
+	var can_b: bool = sov.can_bribe(cr, reg) if sov != null else false
+	var can_d: bool = sov.can_debt_choke(cr, debt, lev) if sov != null else false
+	var can_p: bool = sov.can_privatize(cr, buy) if sov != null else false
+
 	var rows: Array = [
 		{"kind": "text", "text": tr("SOVEREIGN_DECREE_BODY")},
 		{"kind": "kv", "key": tr("SOVEREIGN_SEIZURE_TIMER"), "value": tr("SOVEREIGN_ROUNDS_LEFT") % rounds_left},
-		{"kind": "kv", "key": tr("SOVEREIGN_BRIBE_COST"), "value": tr("HUD_CR_VALUE") % _fmt(sov.get_bribe_cost(reg) if sov != null else 0)},
-		{"kind": "kv", "key": tr("SOVEREIGN_DEBT_REQ"), "value": tr("HUD_CR_VALUE") % _fmt(sov.debt_choke_leverage_debt if (sov != null and lev) else (sov.debt_choke_required_debt if sov != null else 0))},
-		{"kind": "kv", "key": tr("SOVEREIGN_BUYOUT_COST"), "value": tr("HUD_CR_VALUE") % _fmt(sov.get_privatize_cost(buy) if sov != null else 0)},
 	]
+
+	var b_cost: int = sov.get_bribe_cost(reg) if sov != null else 0
+	var d_req: int = (sov.debt_choke_leverage_debt if lev else sov.debt_choke_required_debt) if sov != null else 0
+	var d_cost: int = sov.get_debt_choke_cost(lev) if sov != null else 0
+	var p_cost: int = sov.get_privatize_cost(buy) if sov != null else 0
+
+	var options: Array = [
+		{
+			"name": tr("SOVEREIGN_ACT_BRIBE"),
+			"branch": tr("SOVEREIGN_BRANCH_CORRUPT"),
+			"tag": tr("HUD_CR_VALUE") % _fmt(b_cost),
+			"enabled": can_b,
+			"desc": tr("SOVEREIGN_DESC_BRIBE") % _fmt(b_cost),
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_DEBT_CHOKE"),
+			"branch": tr("SOVEREIGN_BRANCH_LEVERAGE"),
+			"tag": tr("SOVEREIGN_TAG_DEBT") % [_fmt(d_req), _fmt(d_cost)],
+			"enabled": can_d,
+			"desc": tr("SOVEREIGN_DESC_DEBT_CHOKE") % [_fmt(d_req), _fmt(d_cost)],
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_PRIVATIZE"),
+			"branch": tr("SOVEREIGN_BRANCH_BUYOUT"),
+			"tag": tr("HUD_CR_VALUE") % _fmt(p_cost),
+			"enabled": can_p,
+			"desc": tr("SOVEREIGN_DESC_PRIVATIZE") % _fmt(p_cost),
+		},
+		{
+			"name": tr("SOVEREIGN_ACT_DISMISS"),
+			"branch": tr("SOVEREIGN_BRANCH_STAND_DOWN"),
+			"tag": tr("SOVEREIGN_TAG_RESUME"),
+			"enabled": true,
+			"desc": tr("SOVEREIGN_DESC_DISMISS"),
+		},
+	]
+
+	var cursor_idx: int = loop.sovereign_cursor if loop != null else 0
+	for i in range(options.size()):
+		var opt: Dictionary = options[i]
+		rows.append({
+			"kind": "perk",
+			"cursor": i == cursor_idx,
+			"dim": not bool(opt["enabled"]),
+			"branch_share": 0.28,
+			"tier": "",
+			"name": str(opt["name"]),
+			"branch": str(opt["branch"]),
+			"tag": str(opt["tag"]),
+		})
+
+	var cur_opt: Dictionary = options[clampi(cursor_idx, 0, options.size() - 1)]
+	rows.append({"kind": "muted", "text": str(cur_opt["desc"])})
+	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
+
 	return {
+		"eyebrow": tr("SOVEREIGN_DECREE_EYEBROW"),
 		"title": tr("SOVEREIGN_DECREE_TITLE"),
+		"band": "alert",
+		"wide": true,
 		"rows": rows,
 		"actions": [
-			[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]
+			[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")],
+			[tr("HUD_PAD_A"), tr("HUD_ACT_EXECUTE") if bool(cur_opt["enabled"]) else tr("HUD_ACT_LOCKED")],
+			[tr("HUD_PAD_B"), tr("HUD_ACT_DISMISS")]
 		]
 	}
 

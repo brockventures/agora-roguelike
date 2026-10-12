@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "_placeholder": "Every number is a tuning guess for Ryan pending design sign-off, in rounds / ticks / CR. Costs and countdown timer are placeholders (#33, #160).",
   "decree_title": "Emergency Sovereign Expropriation Decree",
   "timer_rounds": 15,
   "ticks_per_round": 900,
@@ -7,6 +8,8 @@
   "bribe_discount_bps": 2500,
   "debt_choke_required_debt": 35000,
   "debt_choke_leverage_debt": 20000,
+  "debt_choke_cost_cr": 25000,
+  "debt_choke_discount_bps": 2500,
   "privatize_cost_cr": 75000,
   "privatize_discount_bps": 3333,
   "severance_bonus": {

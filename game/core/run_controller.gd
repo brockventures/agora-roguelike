@@ -1046,15 +1046,20 @@ func resolve_sovereign_bribe() -> bool:
 
 func resolve_sovereign_debt_choke() -> bool:
 	var debt: int = doomsday.principal_debt if doomsday != null else 0
-	if sovereign == null or not sovereign.can_debt_choke(debt, has_debt_leverage()):
+	if sovereign == null or not sovereign.can_debt_choke(cr, debt, has_debt_leverage()):
 		return false
+	var cost: int = sovereign.get_debt_choke_cost(has_debt_leverage())
+	cr -= cost
+	var debt_relief: int = mini(debt, sovereign.debt_choke_leverage_debt if has_debt_leverage() else sovereign.debt_choke_required_debt)
+	if doomsday != null and debt_relief > 0:
+		doomsday.principal_debt = maxi(0, doomsday.principal_debt - debt_relief)
 	var award: int = sovereign.resolve(SovereignTakeover.STATUS_DEBT_CHOKED)
 	sovereign_severance_award = award
 	sovereign_resolved.emit(SovereignTakeover.STATUS_DEBT_CHOKED, award)
 	return true
 
 func resolve_sovereign_privatize() -> bool:
-	if sovereign == null or not sovereign.can_privatize(cr, has_monopoly(), has_buyout_perk()):
+	if sovereign == null or not sovereign.can_privatize(cr, has_buyout_perk()):
 		return false
 	var cost: int = sovereign.get_privatize_cost(has_buyout_perk())
 	cr -= cost

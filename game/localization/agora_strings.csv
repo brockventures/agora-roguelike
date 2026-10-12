@@ -618,3 +618,25 @@ SOVEREIGN_DEBT_REQ,SOVEREIGN DEBT LEVERAGE
 SOVEREIGN_BUYOUT_COST,HOSTILE STATE BUYOUT
 SUM_SEV_SOVEREIGN,Sovereign Buyout Bonus
 HL_SOVEREIGN_DECREE,"EMERGENCY DECREE: Sol System Government orders expropriation of all corporate assets!"
+
+SOVEREIGN_DECREE_EYEBROW,SOL SYSTEM CRISIS // EMERGENCY ASSET SEIZURE
+SOVEREIGN_ACT_BRIBE,CABINET BRIBE
+SOVEREIGN_ACT_DEBT_CHOKE,SOVEREIGN DEBT CHOKE
+SOVEREIGN_ACT_PRIVATIZE,HOSTILE STATE BUYOUT
+SOVEREIGN_ACT_DISMISS,DISMISS & DELIBERATE
+SOVEREIGN_BRANCH_CORRUPT,MINISTERIAL
+SOVEREIGN_BRANCH_LEVERAGE,LEVERAGE
+SOVEREIGN_BRANCH_BUYOUT,PRIVATIZATION
+SOVEREIGN_BRANCH_STAND_DOWN,CLOCK
+SOVEREIGN_TAG_DEBT,%s DEBT // %s CR
+SOVEREIGN_TAG_RESUME,RESUME CLOCK
+SOVEREIGN_DESC_BRIBE,"Pay off corrupt Sol Cabinet ministers (%s CR) to withdraw the nationalization decree."
+SOVEREIGN_DESC_DEBT_CHOKE,"Leverage %s CR in corporate debt with %s CR restructuring capital to force Sol Treasury capitulation."
+SOVEREIGN_DESC_PRIVATIZE,"Execute an outright hostile buyout (%s CR) of the Sol System Government to privatize the state."
+SOVEREIGN_DESC_DISMISS,"Temporarily close the decree overlay to gather credits and leverage. Seizure timer continues ticking down."
+HUD_ACT_EXECUTE,EXECUTE
+HUD_ACT_LOCKED,LOCKED
+HUD_ACT_DISMISS,DISMISS
+HL_SOVEREIGN_BRIBED,"DECREE REVOKED: Sol Cabinet bought off. Nationalization proceedings terminated."
+HL_SOVEREIGN_DEBT_CHOKED,"DECREE WITHDRAWN: Sol Treasury defaults under corporate debt leverage. State capitulates."
+HL_SOVEREIGN_PRIVATIZED,"STATE PRIVATIZED: Sol System Government acquired as a wholly owned corporate subsidiary!"
