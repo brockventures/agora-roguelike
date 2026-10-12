@@ -92,11 +92,13 @@ def resolve_reference(ref, root=ROOT):
         candidates.append(root / "game" / "assets" / "map_icons" / f"{short}_256.png")
     candidates.extend([
         root / ref_str,
+        root / "game" / "assets" / "card_art" / f"{ref_str}.png",
         root / "docs" / "screens" / "vessel-samples" / f"{ref_str}.png",
         root / "game" / "assets" / "map_icons" / f"{ref_str}.png",
         root / "art_out" / f"{ref_str}.png",
         root / "art_out" / "batch-6.3" / f"{ref_str}.png",
         root / "art_out" / "batch-6.4" / f"{ref_str}.png",
+        root / "art_out" / "batch-6.5" / f"{ref_str}.png",
     ])
     for cand in candidates:
         if cand.is_file():

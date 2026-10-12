@@ -32,23 +32,23 @@ Keyed 1:1 to the crisis IDs in `game/data/crises.json`:
 
 ### `antitrust_audit` (`card-antitrust-audit` - Sample Gate)
 - **Name in Data:** "Antitrust Audit" (`tier: mid`, `kind: audit`)
-- **Visual Anatomy:** A squad of stern regulatory officials in grey trench coats boarding an industrial warehouse dock; harsh conical overhead floodlamp illuminating stacked shipping crates; an empty hearing podium with an emblem-free scale of justice; glowing rust-red inspection light.
+- **Visual Anatomy:** A squad of stern regulatory officials in grey trench coats boarding an industrial warehouse dock; harsh conical overhead floodlamp illuminating stacked shipping crates; an empty hearing podium with an emblem-free scale of justice; glowing rust-red inspection light. [Card Proof](../screens/encounter-samples/card-antitrust-audit.png)
 
 ### `emergency_antitrust_sweep` (`card-emergency-antitrust-sweep`)
 - **Name in Data:** "Emergency Antitrust Sweep" (`tier: endgame`, `kind: audit`)
-- **Visual Anatomy:** Armored customs cutters swarming a station docking slip with crossing searchlight beams; shipping containers being sealed with magnetic security bands; dockworkers and traders scattering from gangways.
+- **Visual Anatomy:** Armored customs cutters swarming a station docking slip with crossing searchlight beams; shipping containers being sealed with magnetic security bands; dockworkers and traders scattering from gangways. [Card Proof](../screens/encounter-samples/card-emergency-antitrust-sweep.png)
 
 ### `localized_shortage` (`card-localized-shortage`)
 - **Name in Data:** "Localized Shortage" (`tier: early`, `kind: shortage`)
-- **Visual Anatomy:** Cavernous Mars subterranean warehouse with endless rows of barren shelving; a single lonely crate under an amber worklight; a rust-red window overlooking the dusty Martian desert; a worker gesturing at an empty freight lift.
+- **Visual Anatomy:** Cavernous Mars subterranean warehouse with endless rows of barren shelving; a single lonely crate under an amber worklight; a rust-red window overlooking the dusty Martian desert; a worker gesturing at an empty freight lift. [Card Proof](../screens/encounter-samples/card-localized-shortage.png)
 
 ### `supply_chain_shortage` (`card-supply-chain-shortage`)
 - **Name in Data:** "Supply Chain Shortage" (`tier: mid`, `kind: shortage`)
-- **Visual Anatomy:** A stalled convoy of cargo haulers parked dead in a dark lane with cold unlit thrusters; a stranded dock crane waiting beside an empty berth.
+- **Visual Anatomy:** A stalled convoy of cargo haulers parked dead in a dark lane with cold unlit thrusters; a stranded dock crane waiting beside an empty berth. [Card Proof](../screens/encounter-samples/card-supply-chain-shortage.png)
 
 ### `systemic_margin_collapse` (`card-systemic-margin-collapse`)
 - **Name in Data:** "Systemic Margin Collapse" (`tier: endgame`, `kind: collapse`)
-- **Visual Anatomy:** Chaos across an orbital trading exchange floor; shattered glass-slate holographic quote boards; scattered physical paper transaction slips; toppled operator stools; stark rust-red emergency strobes reflecting on alarmed traders.
+- **Visual Anatomy:** Chaos across an orbital trading exchange floor; shattered glass-slate holographic quote boards; scattered physical paper transaction slips; toppled operator stools; stark rust-red emergency strobes reflecting on alarmed traders. [Card Proof](../screens/encounter-samples/card-systemic-margin-collapse.png)
 
 ---
 
@@ -58,27 +58,27 @@ Keyed 1:1 to the baron event IDs in `game/data/crises.json`:
 
 ### `ares_retaliation` (`card-ares-retaliation`)
 - **Name in Data:** "Ares Markers" (`baron_archetype: short_squeezer`, `origin: consequence`)
-- **Visual Anatomy:** Heavy industrial enforcers from a rust-coloured arms combine calling in debts: broad-shouldered figures in heavy suits at a dock gangway, a ledger-less contract slab held out menacingly.
+- **Visual Anatomy:** Heavy industrial enforcers from a rust-coloured arms combine calling in debts: broad-shouldered figures in heavy suits at a dock gangway, a ledger-less contract slab held out menacingly. [Card Proof](../screens/encounter-samples/card-ares-retaliation.png)
 
 ### `titan_retaliation` (`card-titan-retaliation`)
 - **Name in Data:** "Titan Embargo" (`baron_archetype: hoarder`, `origin: consequence`)
-- **Visual Anatomy:** A frozen cryo-hydro depot sealed shut: icy blockade barriers across a dock, frost-covered tanks, dark teal glow, a lone trader locked outside.
+- **Visual Anatomy:** A frozen cryo-hydro depot sealed shut: icy blockade barriers across a dock, frost-covered tanks, dark teal glow, a lone trader locked outside. [Card Proof](../screens/encounter-samples/card-titan-retaliation.png)
 
 ### `sol_retaliation` (`card-sol-retaliation`)
 - **Name in Data:** "Sol Audit" (`baron_archetype: auctioneer`, `origin: consequence`)
-- **Visual Anatomy:** A central government audit fleet looming over a small trader ship; a tall pale-bone administrative tower station behind; one tractor beam locking onto the hull.
+- **Visual Anatomy:** Cavernous orbital customs docking hangar with Sol central government audit inspectors and heavy armored patrol cutters impounding a small merchant vessel; inked steel gangways and heavy metal deck plates; tall pale-bone administrative inspection tower rising behind the berth; harsh conical overhead floodlights and glowing teal tractor beam pinning the ship to the mooring cradle. [Card Proof](../screens/encounter-samples/card-sol-retaliation.png)
 
 ### `ares_opportunistic_squeeze` (`card-ares-opportunistic-squeeze`)
 - **Name in Data:** "Ares Squeeze" (`baron_archetype: short_squeezer`, `origin: random`)
-- **Visual Anatomy:** Ares Heavy syndicate leaning on a station trading desk: armored syndicate managers in rust-trimmed work suits watching an automated order terminal flicker; bulk gantry cranes idling; traders negotiating under harsh orange sodium lamps.
+- **Visual Anatomy:** Ares Heavy syndicate leaning on a station trading desk: armored syndicate managers in rust-trimmed work suits watching an automated order terminal flicker; bulk gantry cranes idling; traders negotiating under harsh orange sodium lamps. [Card Proof](../screens/encounter-samples/card-ares-opportunistic-squeeze.png)
 
 ### `titan_opportunistic_hoard` (`card-titan-opportunistic-hoard`)
 - **Name in Data:** "Titan Hoard" (`baron_archetype: hoarder`, `origin: random`)
-- **Visual Anatomy:** Titan Cryo-Hydro hoarding propellant and cornering the book: massive frost-caked propellant storage spheres sealed behind security barricades; automated cryo-pumps draining terminal fuel lines; chilled teal vapor clouds; dock workers locked out at the gate.
+- **Visual Anatomy:** Titan Cryo-Hydro hoarding propellant and cornering the book: massive frost-caked propellant storage spheres sealed behind security barricades; automated cryo-pumps draining terminal fuel lines; chilled teal vapor clouds; dock workers locked out at the gate. [Card Proof](../screens/encounter-samples/card-titan-opportunistic-hoard.png)
 
 ### `sol_opportunistic_levy` (`card-sol-opportunistic-levy`)
 - **Name in Data:** "Sol Levy" (`baron_archetype: auctioneer`, `origin: random`)
-- **Visual Anatomy:** A surprise levy at a dock: a toll gate dropping across a berth; customs collectors sliding an armored lockbox into a pneumatic intake hopper while a trader hands over cargo canisters.
+- **Visual Anatomy:** A surprise levy at a dock: a toll gate dropping across a berth; customs collectors sliding an armored lockbox into a pneumatic intake hopper while a trader hands over cargo canisters. [Card Proof](../screens/encounter-samples/card-sol-opportunistic-levy.png)
 
 ---
 
@@ -89,7 +89,7 @@ Keyed to concrete hazard mechanics in `game/core/hazards.gd`:
 ### CME Relay Blackout (`card-cme-flare` - Sample Gate)
 - **Source:** `Hazards.check_cme_relay_interference` / `CME_RELAY_CORRIDORS`
 - **Status:** Approved Sample Gate
-- **Visual Anatomy:** A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler; radio relay dishes sparking electrical discharges; shock-front bands rippling through dark teal space.
+- **Visual Anatomy:** A coronal mass ejection engulfing the inner system: a huge ochre and rust solar flare arc rolling toward a small hauler; radio relay dishes sparking electrical discharges; shock-front bands rippling through dark teal space. [Card Proof](../screens/encounter-samples/card-cme-flare.png)
 
 ### Transit Storm Delay (`card-storm-delay`) — [Proposed]
 - **Source:** `Hazards.P_DELAY` (`DELAY_ROUNDS: 1-3 rounds`)

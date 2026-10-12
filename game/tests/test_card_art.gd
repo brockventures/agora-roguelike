@@ -79,3 +79,33 @@ func test_cache_and_clear_cache() -> String:
 	if tex3 == null:
 		return "CardArt should reload cleanly after clear_cache"
 	return "ok"
+
+func test_all_eleven_crisis_deck_cards_load_and_have_4x3_aspect() -> String:
+	var crisis_ids: Array[String] = [
+		"antitrust_audit",
+		"emergency_antitrust_sweep",
+		"localized_shortage",
+		"supply_chain_shortage",
+		"systemic_margin_collapse",
+		"ares_retaliation",
+		"titan_retaliation",
+		"sol_retaliation",
+		"ares_opportunistic_squeeze",
+		"titan_opportunistic_hoard",
+		"sol_opportunistic_levy",
+	]
+	for cid in crisis_ids:
+		if not CardArt.has_art(cid):
+			return "CardArt.has_art('%s') returned false" % cid
+		var tex: Texture2D = CardArt.texture(cid)
+		if tex == null:
+			return "CardArt.texture('%s') returned null" % cid
+		var w: float = float(tex.get_width())
+		var h: float = float(tex.get_height())
+		if w <= 0.0 or h <= 0.0:
+			return "invalid dimensions for '%s': %sx%s" % [cid, w, h]
+		var aspect: float = w / h
+		if absf(aspect - 4.0 / 3.0) > 0.02:
+			return "'%s' aspect ratio must be 4:3 (got %f from %sx%s)" % [cid, aspect, w, h]
+	return "ok"
+

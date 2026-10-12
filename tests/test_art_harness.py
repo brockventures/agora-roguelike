@@ -243,11 +243,17 @@ class ReferenceImageTests(unittest.TestCase):
         self.assertEqual(bible["entries"]["card-ceres"].get("ref"), "ceres")
         self.assertEqual(bible["entries"]["icon-hauler"].get("ref"), "hull-hauler")
         self.assertEqual(bible["entries"]["icon-interceptor"].get("ref"), "hull-interceptor")
+        self.assertEqual(bible["entries"]["card-emergency-antitrust-sweep"].get("ref"), "antitrust_audit")
 
     def test_resolve_reference_finds_map_icons(self):
         path = G.resolve_reference("earth")
         self.assertTrue(path.exists())
         self.assertTrue(path.name.endswith("earth_256.png"))
+
+    def test_resolve_reference_finds_card_art(self):
+        path = G.resolve_reference("antitrust_audit")
+        self.assertTrue(path.exists())
+        self.assertTrue(str(path).endswith("game/assets/card_art/antitrust_audit.png"))
 
     def test_resolve_reference_finds_vessel_sample(self):
         path = G.resolve_reference("hull-hauler")
