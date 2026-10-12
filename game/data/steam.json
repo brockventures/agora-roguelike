@@ -1,13 +1,10 @@
 {
 	"app_id": 480,
-	"target_app_id": 3064620,
+	"target_app_id": 0,
 	"partner_account": "mcarmody",
 	"publisher": "Placeholder Studios",
-	"depots": {
-		"3064621": "Content",
-		"3064622": "SteamDeck"
-	},
+	"depots": {},
 	"cloud_quota_bytes": 1048576,
 	"cloud_max_files": 16,
-	"todo": "480 is Spacewar, Valve's public dev test app. Replace with the real App ID once Steamworks onboarding (#30, Steamworks onboarding, a human step under Mike's account) is done. Overridable per run with the AGORA_STEAM_APP_ID environment variable. Keep steam/game_actions_<appid>.vdf in step."
+	"todo": "480 is Spacewar, Valve's public dev test app. Replace with the real App ID once Steamworks onboarding (#30, Steamworks onboarding, a human step under Mike's account) is done. Overridable per run with the AGORA_STEAM_APP_ID environment variable. Keep steam/game_actions_<appid>.vdf in step. target_app_id 0 means AGORA has no Steam app yet; 3064620 is The Atlas Problem, never use it."
 }
