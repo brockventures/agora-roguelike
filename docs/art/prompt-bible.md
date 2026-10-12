@@ -303,7 +303,7 @@ Eleven cards come 1:1 from real ids in `game/data/crises.json` (the 8 standard a
 - sample: no
 - ref: antitrust_audit
 - source: sol_retaliation
-- prompt: Encounter card illustration, wide 4:3 composition: A central government audit fleet looming over a small trader ship, a tall pale-bone administrative tower station behind, one beam locking onto the hull.
+- prompt: Encounter card illustration, wide 4:3 composition: Inside a cavernous orbital customs docking hangar, Sol central government audit inspectors and heavy armored patrol cutters impounding a small merchant vessel. Inked steel gangways, heavy metal deck plates on the ground, tall pale-bone administrative inspection tower rising behind the berth, harsh conical overhead floodlights cutting across the dock, glowing teal tractor beam pinning the ship to the mooring cradle. Stark dark slate and teal shadows, heavy ligne claire ink contours, flat graphic shadows, running to the image edges with no border or frame.
 
 ### card-ares-opportunistic-squeeze
 - batch: 6.5

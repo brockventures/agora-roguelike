@@ -66,7 +66,7 @@ Keyed 1:1 to the baron event IDs in `game/data/crises.json`:
 
 ### `sol_retaliation` (`card-sol-retaliation`)
 - **Name in Data:** "Sol Audit" (`baron_archetype: auctioneer`, `origin: consequence`)
-- **Visual Anatomy:** A central government audit fleet looming over a small trader ship; a tall pale-bone administrative tower station behind; one tractor beam locking onto the hull. [Card Proof](../screens/encounter-samples/card-sol-retaliation.png)
+- **Visual Anatomy:** Cavernous orbital customs docking hangar with Sol central government audit inspectors and heavy armored patrol cutters impounding a small merchant vessel; inked steel gangways and heavy metal deck plates; tall pale-bone administrative inspection tower rising behind the berth; harsh conical overhead floodlights and glowing teal tractor beam pinning the ship to the mooring cradle. [Card Proof](../screens/encounter-samples/card-sol-retaliation.png)
 
 ### `ares_opportunistic_squeeze` (`card-ares-opportunistic-squeeze`)
 - **Name in Data:** "Ares Squeeze" (`baron_archetype: short_squeezer`, `origin: random`)
