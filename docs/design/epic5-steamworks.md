@@ -18,7 +18,7 @@ Epic 5 establishes the commercial Steamworks infrastructure, automated multi-pla
 | **Release Manifests & Controls** | Action set manifest and default Deck layout shipped beside binary | `game_actions_480.vdf` packaged into release zips via workflow | **CLOSED (#102, PR #103)** |
 | **Automated Export Pipeline** | Tagged release workflow for Linux, Windows, Steam Deck | `.github/workflows/release.yml`, version stamping, SHA-256 checksums | **CLOSED (#28, PR #100)** |
 | **Steam Deck Sleep Lifecycle** | Delta > 1.0s wake detection, tick purge, audio re-arm, focus hold | `SimClock` clamp, `MainScene` audio recovery, physical hardware signed off | **CLOSED (#41, PR #96)** |
-| **Steam Deck Hardware Benchmark** | 60 FPS locked, 0 frame drops, <9W power budget, 1280x800 native | `benchmark_deck.gd`, `--benchmark` launcher flag, `docs/steam-deck-benchmark.md` | **CLOSED (#38, PR #197)** |
+| **Steam Deck Hardware Benchmark** | 60 FPS locked, 0 frame drops, <9W power budget, 1280x800 native | Sysfs BAT1 telemetry harness merged (`benchmark_deck.gd`); live physical profiling pending | **HARNESS MERGED (#38, PR #199)** |
 | **Store Assets & Capsule Specs** | Copy, capsule dimensions, IARC survey, trailer storyboard, AI disclosure | `game/data/store_assets.json`, tested via `test_steam_store_assets.py` | **STAGED (#29)** |
 | **Steam Direct Onboarding Staging** | Placeholder Studios App 3064620 configuration, depots, cloud quotas | `game/data/steam.json` partner metadata, `get_target_app_id()` API | **STAGED (#30)** |
 | **Review Gate & Human Steering** | Comprehensive architecture audit and partner handover | Delivered in `docs/design/epic5-steamworks.md`, receipts to #agora | **COMPLETE (#31)** |
