@@ -22,7 +22,7 @@ func test_scene_file_and_script_exist() -> String:
 
 func test_project_settings_main_scene_and_display() -> String:
 	var main_scene = ProjectSettings.get_setting("application/run/main_scene")
-	if main_scene != MAIN_SCENE_PATH:
+	if main_scene != "res://scenes/title.tscn":
 		return "application/run/main_scene mismatch: %s" % str(main_scene)
 
 	var w = ProjectSettings.get_setting("display/window/size/viewport_width")

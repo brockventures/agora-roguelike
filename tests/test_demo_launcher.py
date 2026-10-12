@@ -58,7 +58,7 @@ class TestDemoLauncher(unittest.TestCase):
         project_godot = REPO_ROOT / "game" / "project.godot"
         self.assertTrue(project_godot.exists())
         content = project_godot.read_text()
-        self.assertIn('run/main_scene="res://scenes/main.tscn"', content)
+        self.assertIn('run/main_scene="res://scenes/title.tscn"', content)
         self.assertIn("window/size/viewport_width=1280", content)
         self.assertIn("window/size/viewport_height=800", content)
         self.assertIn('window/stretch/mode="canvas_items"', content)
