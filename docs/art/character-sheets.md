@@ -37,6 +37,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
 ---
 
 ## 3. Luna (The Interstellar Gas Station / Fuel Depot)
+- **Station:** Luna Fuel Depot (working name).
 - **Palette Tokens:** STRICT MONOCHROME GREYSCALE. Pale bone-white / light-grey highland regolith (`#e6dcc3`), dark charcoal / slate-black basalt maria (`#2c353b`), stark ink-black shadow cuts (`#1c1a17`). Zero rust, zero brown, zero yellow, zero ochre on the lunar surface.
 - **Planetary Geography:** The authentic Moon. Realistic cratered highland regolith contrasted with stark, dark charcoal lunar basalt plains (maria) across the face.
 - **Industrial Anchors:**
@@ -68,6 +69,7 @@ Every location has a fixed set of physical and architectural design tokens. Whet
 ---
 
 ## 5. Ceres (The Asteroid Mining Rig)
+- **Station:** Agora Station, the system's main trading junction, built into the Ceres hub.
 - **Palette Tokens:** Deep graphite slate (`#2c353b`), bone white impact ejecta (`#e6dcc3`), exposed ochre mineral veins (`#c99a2e`), ink black shadows (`#1c1a17`).
 - **Geological Anatomy:** Deliberately stylized as an asymmetrical, craggy, heavily pockmarked grey asteroid rock with an irregular potato silhouette. While the real astronomical dwarf planet is in hydrostatic equilibrium (nearly round), this deliberate visual stylization ensures immediate silhouette readability and distinct contrast against spherical planets on the tactical map and card frames.
 - **Industrial Anchors:**
