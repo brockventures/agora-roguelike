@@ -47,6 +47,7 @@ AGORA Roguelike — M0 Playable Vertical Slice Launcher
 
 Options:
   --deck            Preset for Steam Deck Game Mode (fullscreen, 1280x800 native)
+  --benchmark       Run Steam Deck 60 FPS & battery benchmark suite
   --fetch           Download verified Godot 4.7.2 binary to .godot-bin/
   -f, --fullscreen  Launch in fullscreen mode
   -w, --windowed    Launch in windowed mode (default: 1280x800)
@@ -58,6 +59,7 @@ Note: Any additional flags (e.g. --quit-after <N>, --verbose) are forwarded to G
 Steam Deck Note:
   1. In Steam Desktop Mode, run: ./run_demo.sh --fetch
   2. Add ./run_demo.sh as a Non-Steam Game with launch option: --deck
+  3. To benchmark hardware targets: ./run_demo.sh --deck --benchmark
 
 Controls (M0 loop):
   LB / RB (Q / E)         Tab prev / next (Map, Market, Fleet)
@@ -77,6 +79,7 @@ EXTRA_ARGS=()
 PRESET_DECK=false
 PRESET_WINDOWED=false
 PRESET_FULLSCREEN=false
+DO_BENCHMARK=false
 DO_FETCH=false
 HEADLESS=false
 
@@ -88,6 +91,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --deck)
             PRESET_DECK=true
+            shift
+            ;;
+        --benchmark)
+            DO_BENCHMARK=true
             shift
             ;;
         -f|--fullscreen)
@@ -116,7 +123,7 @@ done
 if [ "$DO_FETCH" = true ]; then
     fetch_godot
     # If called with only --fetch, exit cleanly after fetch
-    if [ "$PRESET_DECK" = false ] && [ "$PRESET_FULLSCREEN" = false ] && [ "$PRESET_WINDOWED" = false ] && [ "$HEADLESS" = false ] && [ ${#EXTRA_ARGS[@]} -eq 0 ]; then
+    if [ "$PRESET_DECK" = false ] && [ "$PRESET_FULLSCREEN" = false ] && [ "$PRESET_WINDOWED" = false ] && [ "$HEADLESS" = false ] && [ "$DO_BENCHMARK" = false ] && [ ${#EXTRA_ARGS[@]} -eq 0 ]; then
         exit 0
     fi
 fi
@@ -151,6 +158,10 @@ elif [ "$PRESET_FULLSCREEN" = true ]; then
     GODOT_ARGS+=("--fullscreen")
 elif [ "$PRESET_WINDOWED" = true ]; then
     GODOT_ARGS+=("--windowed" "--resolution" "1280x800")
+fi
+
+if [ "$DO_BENCHMARK" = true ]; then
+    GODOT_ARGS+=("-s" "res://tools/benchmark_deck.gd")
 fi
 
 # Execute Godot engine

@@ -33,6 +33,7 @@ class TestDemoLauncher(unittest.TestCase):
         )
         self.assertEqual(res.returncode, 0, f"--help failed: {res.stderr}")
         self.assertIn("--deck", res.stdout)
+        self.assertIn("--benchmark", res.stdout)
         self.assertIn("--fetch", res.stdout)
         self.assertIn("--headless", res.stdout)
         self.assertIn("--fullscreen", res.stdout)
