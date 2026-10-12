@@ -2,7 +2,9 @@
 """Builds the small map icons for the Sol tactical map (#73 Visual Identity & Art Asset Pipeline).
 
 Reads the generated 1:1 illustrations (batch 6.3: station-*.png, body-sol.png), flood-fills the
-dark background in from the corners to transparent (enclosed ink outlines stay), blurs the edge
+dark background in from the corners to transparent, also keys enclosed background pockets (regions
+the corner fill cannot reach, e.g. between gantry beams) when they are big enough that they are
+not a thin ink line or small shadow, blurs the edge
 a touch, applies a soft circular window so stray stars vanish without hard-clipping the subject,
 then downsamples to 128px and 256px (high DPI) into game/assets/map_icons/.
 
@@ -21,6 +23,9 @@ ICONS = {"earth": "station-earth", "luna": "station-luna", "mars": "station-mars
 SIZES = (128, 256)
 WORK = 512        # work resolution before the final downsample
 KEY_THRESH = 34   # flood-fill colour tolerance against the corner background
+POCKET_MIN_AREA = 400  # enclosed background-coloured regions at least this many px (of 512x512) are keyed
+POCKET_MEAN_DIST = 7   # ...and only when their mean colour is this close to the backdrop (a plate behind a rig is
+                       # 1-6 away; dark art inside the subject, e.g. Earth ocean or Mars basins, is 7+ away)
 WINDOW_INNER = 0.44  # fraction of the half-width kept fully opaque
 WINDOW_OUTER = 0.50  # fully transparent beyond this
 MARGIN = 0.05     # empty border kept around the subject after the crop
@@ -34,6 +39,51 @@ def _window(size: int) -> Image.Image:
     return m.filter(ImageFilter.GaussianBlur(size * (WINDOW_OUTER - WINDOW_INNER) / 2.0))
 
 
+def _mean_dist(px: bytes, comp: list, corner: tuple) -> float:
+    """Euclidean distance between the region's mean RGB and the backdrop colour."""
+    n = len(comp)
+    mean = [sum(px[3 * i + c] for i in comp) / n for c in range(3)]
+    return sum((mean[c] - corner[c]) ** 2 for c in range(3)) ** 0.5
+
+
+def _pockets(im: Image.Image, is_bg: Image.Image, corner: tuple) -> Image.Image:
+    """Mask (255 = key) of enclosed regions within KEY_THRESH of the corner background colour that the
+    corner flood fill never reached and whose connected area is >= POCKET_MIN_AREA. 4-connected,
+    row-major scan, so deterministic."""
+    w, h = im.size
+    close = None
+    for band, c in zip(im.split(), corner):
+        d = band.point(lambda v, c=c: 255 if abs(v - c) <= KEY_THRESH else 0)
+        close = d if close is None else ImageChops.multiply(close, d)
+    px = im.tobytes()
+    cand = bytearray(close.tobytes())
+    bg = is_bg.tobytes()
+    for i in range(w * h):
+        if bg[i]:
+            cand[i] = 0
+    seen = bytearray(w * h)
+    out = bytearray(w * h)
+    for start in range(w * h):
+        if not cand[start] or seen[start]:
+            continue
+        comp = [start]
+        seen[start] = 1
+        k = 0
+        while k < len(comp):
+            i = comp[k]
+            k += 1
+            x = i % w
+            for j in ((i - w) if i >= w else -1, (i + w) if i + w < w * h else -1,
+                      (i - 1) if x > 0 else -1, (i + 1) if x < w - 1 else -1):
+                if j >= 0 and cand[j] and not seen[j]:
+                    seen[j] = 1
+                    comp.append(j)
+        if len(comp) >= POCKET_MIN_AREA and _mean_dist(px, comp, corner) <= POCKET_MEAN_DIST:
+            for i in comp:
+                out[i] = 255
+    return Image.frombytes("L", (w, h), bytes(out))
+
+
 def build(src: Path) -> Image.Image:
     im = Image.open(src).convert("RGB").resize((WORK, WORK), Image.LANCZOS)
     key = im.copy()
@@ -44,6 +94,9 @@ def build(src: Path) -> Image.Image:
     is_bg = ImageChops.multiply(ImageChops.multiply(r.point(lambda v: 255 if v == 255 else 0),
                                                     g.point(lambda v: 255 if v == 0 else 0)),
                                 b.point(lambda v: 255 if v == 255 else 0))
+    corner = tuple(round(sum(im.getpixel(p)[c] for p in ((0, 0), (WORK - 1, 0), (0, WORK - 1), (WORK - 1, WORK - 1))) / 4)
+                   for c in range(3))
+    is_bg = ImageChops.lighter(is_bg, _pockets(im, is_bg, corner))
     alpha = ImageChops.invert(is_bg).filter(ImageFilter.GaussianBlur(1.2))
     alpha = ImageChops.multiply(alpha, _window(WORK))
     out = im.convert("RGBA")
