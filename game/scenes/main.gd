@@ -3940,7 +3940,13 @@ func _draw_rival_fleets(layout: Dictionary) -> void:
 	for v in rivals:
 		tactical_map_panel.draw_dashed_line(Vector2(v["start"]), Vector2(v["end"]), HudTheme.SLATE, 2.0, 8.0, true)
 	for v in rivals:
-		HudTheme.draw_flat_disc(tactical_map_panel, Vector2(v["hull"]), 6.0, HudTheme.BONE, HudTheme.INK)
+		var start_pt: Vector2 = Vector2(v["start"])
+		var end_pt: Vector2 = Vector2(v["end"])
+		var heading: float = (end_pt - start_pt).angle() + PI * 0.5
+		var hull_pos: Vector2 = Vector2(v["hull"])
+		var arch: String = FleetView.FREIGHTER if str(v.get("fleet", "")).begins_with("baron") else FleetView.SCOUT
+		if not MapIcons.draw_vessel(tactical_map_panel, arch, hull_pos, heading, 18.0):
+			HudTheme.draw_flat_disc(tactical_map_panel, hull_pos, 6.0, HudTheme.BONE, HudTheme.INK)
 		if v["spot"] != null:
 			var spot: Vector2 = v["spot"]
 			var tag: String = str(v["tag"])
@@ -3949,8 +3955,8 @@ func _draw_rival_fleets(layout: Dictionary) -> void:
 
 
 ## The player's ship on its lane, drawn over the stations: a dashed ink lane
-## (rust across the belt), a small ochre hull and a YOU tag. (The home station's dashed
-## ring is drawn with the nodes.)
+## (rust across the belt), an illustrated vessel transit marker (or small ochre disc fallback),
+## and a YOU tag. (The home station's dashed ring is drawn with the nodes.)
 func _draw_player_ship(round_num: int, font: Font, _discs: Dictionary, layout: Dictionary) -> void:
 	var voyage: Dictionary = tactical_map.get_player_transit(round_num)
 	if voyage.is_empty():
@@ -3960,8 +3966,14 @@ func _draw_player_ship(round_num: int, font: Font, _discs: Dictionary, layout: D
 	var lane: Color = HudTheme.RUST if bool(voyage["is_belt"]) else HudTheme.INK
 	tactical_map_panel.draw_dashed_line(a, b, lane, 3.0, 10.0, true)
 	var ship: Vector2 = _map_point(Vector2(voyage["pos"]))
-	HudTheme.draw_flat_disc(tactical_map_panel, ship, 9.0, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
+	var heading: float = (b - a).angle() + PI * 0.5
+	var arch: String = FleetView.HAULER
+	if controller != null and controller.ships.size() > 0:
+		arch = FleetView.archetype_of(controller.ships[0])
+	if not MapIcons.draw_vessel(tactical_map_panel, arch, ship, heading, 24.0):
+		HudTheme.draw_flat_disc(tactical_map_panel, ship, 9.0, HudTheme.OCHRE, HudTheme.OCHRE_DARK)
 	_draw_map_text(font, Vector2(layout["ship_tag"]), tr("MAP_SHIP_TAG"), scaled_size(MAP_FONT_SIZE), HudTheme.RUST_DARK)
+
 
 
 # --- Refresh ---
