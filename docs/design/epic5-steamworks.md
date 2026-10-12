@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary & Deliverables Matrix
 
-Epic 5 establishes the commercial Steamworks infrastructure, automated multi-platform release engineering, Steam Deck Verified compliance, and store presence for *AGORA Roguelike*:
+Epic 5 establishes the commercial Steamworks infrastructure, automated multi-platform release engineering, Steam Deck Verified targeting, and store presence for *AGORA*:
 
 | Deliverable Area | Target Specification | Shipped Implementation | Status |
 |---|---|---|---|
@@ -56,11 +56,11 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 
 ### Copywriting & Positioning
 
-- **Game Title:** AGORA Roguelike
+- **Game Title:** AGORA
 - **Tagline (Short Description, <= 300 chars):**  
   *An orbital Bloomberg terminal roguelike. Build trade cartels across Sol, execute hostile takeovers of rival barons, and light the planetary Stabilisers before the Doomsday Clock strikes zero.*
 - **Key Features:**
-  1. *Orbital Bloomberg Terminal HUD:* Native 1280x800 command deck optimized for controller-first mastery and Steam Deck Verified play.
+  1. *Orbital Bloomberg Terminal HUD:* Native 1280x800 command deck optimized for controller-first mastery and Steam Deck play (targeting Verified).
   2. *Dynamic Sol Astrodynamics:* Real-time planetary orbits, alignment corridors, perishable cargo decay, and asteroid belt hazard corridors.
   3. *Hostile Takeovers & Corporate Insolvency:* Squeeze rival barons, purchase controlling 501-share stakes, or deploy Golden Parachutes.
   4. *Procedural Crisis Deck:* Dynamic solar flares, supply shocks, embargoes, and antitrust audits.
@@ -68,17 +68,19 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 
 ### Capsule Asset Dimensions
 
-- **Header Capsule:** `460 x 215 px` (Store search, category listings)
-- **Small Capsule:** `231 x 87 px` (Discovery queues, recommendation widgets)
-- **Main Capsule:** `616 x 353 px` (Storefront carousel feature)
-- **Vertical Capsule:** `374 x 448 px` (Steam Library grid cards)
-- **Page Background:** `1438 x 810 px` (Ambient store theme backdrop)
+- **Header Capsule:** `920 x 430 px` (Store search, category listings)
+- **Small Capsule:** `462 x 174 px` (Discovery queues, recommendation widgets)
+- **Main Capsule:** `1232 x 706 px` (Storefront carousel feature)
+- **Vertical Capsule:** `748 x 896 px` (Steam Library grid cards)
+- **Page Background:** `1438 x 810 px`
+- **Library Capsule:** `600 x 900 px`
+- **Library Hero:** `3840 x 1240 px` (Steam Library hero banner)
 
 ### IARC & Content Rating Disclosures
 
 - **Rating Target:** ESRB Everyone (E) / PEGI 3 / USK 0 / IARC 3+.
 - **Content:** Zero graphic violence, blood, or gore; mild corporate financial satire; deterministic commodities trading with zero real-money gambling or loot box mechanics.
-- **Steam AI Disclosure:** Pre-production conceptual ideation and visual reference proofs for encounter deck card art utilized AI assistance tools, followed by extensive human curation, SVG re-vectorization, palette harmonization, and hand-fitted cel-shaded composition. No real-time generation during gameplay.
+- **Steam AI Disclosure:** Card illustrations, map icons and store capsule art were generated with Google's Gemini image model from prompts and approved reference images written by the team, then cropped, sized and reviewed by the team. Game code and on-screen text were written with AI coding assistants under human review. No real-time generation during gameplay.
 
 ---
 
@@ -87,7 +89,7 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 To complete Steam Direct onboarding under Placeholder Studios (AGORA's own App ID (not yet registered; #30, Steamworks onboarding)):
 
 1. **Steamworks Partner Portal Setup:**
-   - Log in to partner portal and navigate to **AGORA's own App ID (not yet registered; #30, Steamworks onboarding)** (AGORA Roguelike).
+   - Log in to partner portal and navigate to **AGORA's own App ID (not yet registered; #30, Steamworks onboarding)** (Agora Station).
    - Enter store metadata and copy from `game/data/store_assets.json`.
    - Upload graphic capsules matching the exact resolutions in `store_assets.json`.
 2. **Achievements & Stats Staging:**

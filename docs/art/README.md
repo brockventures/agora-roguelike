@@ -39,3 +39,22 @@ Output goes to `<out>/batch-<n>/<id>.png` with a `manifest.json` beside it.
 4. Approved art is committed by the 6.3 to 6.5 tasks, not by this harness.
 
 Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, sample, [ref], source, prompt) and run `python3 -m unittest tests.test_art_harness`.
+
+## Store capsules
+
+Steam store capsules for #29 (Steam store assets). Design approved by Ryan on 2026-10-12: the working title "Agora Station", a trading ship whose engine trail is an orbital arc of candlesticks, and the dying Sun with the Stabiliser ring floating clear of it.
+
+- `art/store/keyart-source.png` is the raw Gemini take.
+- `art/store/keyart.png` is the same image with the mottled sky smoothed by `tools/art/clean_background.py`.
+- `tools/art/make_capsules.py` crops `keyart.png` to each size in `game/data/store_assets.json` and writes `art/store/capsules-sheet.png` for review. It sets the two-line title ("AGORA" over a tracked-out "STATION", Archivo, bone cream) at the largest size that clears the art. The page background and library hero carry no text.
+
+Regenerate:
+
+```
+python3 tools/art/clean_background.py art/store/keyart-source.png art/store/keyart.png
+python3 tools/art/make_capsules.py
+```
+
+Key art prompt (Gemini, 16:9, built from two earlier takes as references: the money-trail ship scene and the orbital candlestick scene):
+
+> Match the flat cel-shaded illustration style of the reference images exactly. Absolutely no text, letters, numbers, logos, currency symbols or UI anywhere. Leave the left third of the frame calm, dark deep space for a title. Recreate the first reference image's composition exactly: same ship, same position lower right, same candlestick trail arcing away in an orbital path and fading to transparent, same free-floating half-built scaffolding ring well clear of the Sun, same whole Sun fully in frame upper right. Change only the Sun: render it in the style of the second reference image's Sun, with a ragged flaring fiery corona edge with small flame licks around the limb, deeper amber-orange, and bold black cracked veins and charred necrotic patches across the surface. The ring must stay separated from the Sun by a band of empty black space all the way around.
