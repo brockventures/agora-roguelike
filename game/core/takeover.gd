@@ -669,6 +669,7 @@ static func take(w: Barons, id: String, buyer: String, rc: RunController) -> Dic
 		ev["debt"] = rc.doomsday.add_principal(assumed)
 		s.treasury_cr = 0
 		ev["forced_ch11"] = not bool(pre["insolvent"]) and bool(rc.assess()["insolvent"])
+		rc.grant_takeover_policy()  # #160: the corp's first baron earns a policy pick
 	else:
 		# A rival fleet takes the baron: the baron nets its own books against the debt.
 		s.treasury_cr = maxi(0, s.treasury_cr - debt)

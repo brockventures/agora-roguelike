@@ -14,6 +14,13 @@ func _owned(ids: Array) -> MetaProfile:
 		p.add_unlock(str(id))
 	return p
 
+## Hands the controller held picks (bypassing grants) and rebuilds its effective modifiers.
+func _hold(rc: RunController, ids: Array) -> void:
+	rc.policies = PolicyState.new()
+	for id in ids:
+		rc.policies.picks.append(str(id))
+	rc._refresh_modifiers()
+
 func _clock(debt: int = 0) -> DoomsdayClock:
 	return DoomsdayClock.new(36000, debt, 0, 100)
 
@@ -265,7 +272,7 @@ func test_init_site_perk_base_equals_effective_without_policies() -> String:
 
 func test_apply_modifiers_stacks_held_policies_over_the_base() -> String:
 	var rc := RunController.new(_owned(["fuel_hedge"]), 1, _clock())
-	rc.policy_picks = ["supply_chain"]
+	_hold(rc, ["supply_chain"])
 	rc.apply_modifiers(rc.perk_modifiers)
 	if rc.perk_modifiers["fuel_discount_bps"]["add"] != 1000:
 		return "base polluted: %s" % str(rc.perk_modifiers)
@@ -279,7 +286,7 @@ func test_apply_modifiers_stacks_held_policies_over_the_base() -> String:
 func test_filing_site_settles_with_policies_then_clears_them() -> String:
 	var p := _owned(["seed_capital", "fuel_hedge"])
 	var rc := RunController.new(p, 1, _clock(1000000))
-	rc.policy_picks = ["training_module", "prepack_reorg", "supply_chain"]
+	_hold(rc, ["training_module", "prepack_reorg", "supply_chain"])
 	rc._refresh_modifiers()
 	if rc.bankruptcy_grace_ticks() != 1800 or rc.fuel_discount_bps() != 2500:
 		return "policies not in force before the filing"
@@ -290,8 +297,8 @@ func test_filing_site_settles_with_policies_then_clears_them() -> String:
 	# and the seed_capital bonus; then the policies were rescinded.
 	if rc.cr != Chapter11.FRESH_START_CR + 3000 + 2000:
 		return "stake %d" % rc.cr
-	if not rc.policy_picks.is_empty():
-		return "picks survived the filing: %s" % str(rc.policy_picks)
+	if not rc.policies.picks.is_empty():
+		return "picks survived the filing: %s" % str(rc.policies.picks)
 	if rc.modifiers != rc.perk_modifiers or rc.fuel_discount_bps() != 1000 or rc.bankruptcy_grace_ticks() != 0:
 		return "modifiers still carry policies: %s" % str(rc.modifiers)
 	if rc.perk_modifiers != Parachutes.load().modifiers(rc.profile):
@@ -301,14 +308,14 @@ func test_filing_site_settles_with_policies_then_clears_them() -> String:
 func test_filing_site_clears_policies_for_explicit_modifier_runs_too() -> String:
 	var explicit := {"fuel_discount_bps": _m(500)}
 	var rc := RunController.new(null, 1, _clock(1000000), explicit)
-	rc.policy_picks = ["supply_chain"]
+	_hold(rc, ["supply_chain"])
 	rc._refresh_modifiers()
 	if rc.fuel_discount_bps() != 2000:
 		return "stack %d" % rc.fuel_discount_bps()
 	rc.cr = 0
 	if rc.file_bankruptcy().is_empty():
 		return "filing rejected"
-	if rc.perk_modifiers != explicit or rc.modifiers != explicit or not rc.policy_picks.is_empty():
+	if rc.perk_modifiers != explicit or rc.modifiers != explicit or not rc.policies.picks.is_empty():
 		return "explicit base lost or policy kept: %s" % str(rc.modifiers)
 	return "ok"
 
@@ -328,7 +335,7 @@ func test_filing_site_without_policies_is_unchanged() -> String:
 func test_from_dict_site_rederives_base_and_effective() -> String:
 	var p := _owned(["fuel_hedge", "corrupt_regulator"])
 	var rc := RunController.new(p, 1, _clock())
-	rc.policy_picks = ["supply_chain"]
+	_hold(rc, ["supply_chain"])
 	rc._refresh_modifiers()
 	var d := rc.to_dict()
 	# The saved key is the permanent base, so a load can never double count a policy.
@@ -354,16 +361,15 @@ func test_from_dict_site_rederives_base_and_effective() -> String:
 	return "ok"
 
 func test_from_dict_site_goes_through_the_seam_when_picks_are_held() -> String:
-	# Picks are not saved until PolicyState lands, so a loaded controller holds none; the seam
-	# is exercised by handing the loaded controller picks and refreshing.
+	# RunController.to_dict never carries picks (RunSave does); hand the loaded controller picks.
 	var back := RunController.from_dict(RunController.new(_owned(["fuel_hedge"]), 1, _clock()).to_dict())
-	back.policy_picks = ["supply_chain"]
+	_hold(back, ["supply_chain"])
 	back._refresh_modifiers()
 	return "ok" if back.fuel_discount_bps() == 2500 and back.perk_modifiers["fuel_discount_bps"]["add"] == 1000 else "got %s" % str(back.modifiers)
 
 func test_policies_do_not_unlock_tender_offers() -> String:
 	var rc := RunController.new(null, 1, _clock())
-	rc.policy_picks = ["synergy_review"]
+	_hold(rc, ["synergy_review"])
 	rc._refresh_modifiers()
 	if not rc.modifiers.has("takeover_threshold_shares"):
 		return "policy did not reach the effective modifiers"
@@ -372,7 +378,7 @@ func test_policies_do_not_unlock_tender_offers() -> String:
 	var perk_rc := RunController.new(_owned(["hostile_buyout_line"]), 1, _clock())
 	if not Takeover.tender_unlocked(perk_rc):
 		return "the perk no longer unlocks tender offers"
-	perk_rc.policy_picks = ["synergy_review"]
+	_hold(perk_rc, ["synergy_review"])
 	perk_rc._refresh_modifiers()
 	return "ok" if Takeover.tender_unlocked(perk_rc) else "perk lost its unlock when a policy was added"
 
@@ -380,6 +386,6 @@ func test_threshold_reads_the_effective_modifiers() -> String:
 	var rc := RunController.new(_owned(["hostile_buyout_line"]), 1, _clock())
 	var w := Barons.new()
 	var base := Takeover.threshold_for(w, Takeover.PLAYER, rc)
-	rc.policy_picks = ["synergy_review", "rollup_mandate"]
+	_hold(rc, ["synergy_review", "rollup_mandate"])
 	rc._refresh_modifiers()
 	return "ok" if Takeover.threshold_for(w, Takeover.PLAYER, rc) == base - 50 else "threshold %d from %d" % [Takeover.threshold_for(w, Takeover.PLAYER, rc), base]
