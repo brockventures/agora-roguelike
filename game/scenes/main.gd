@@ -137,6 +137,11 @@ var _onb_hold: String = ""
 var _onb_shown: Dictionary = {}
 var _onb_ctrl: RunController = null
 
+## Set by TitleScreen just before the scene change: "new" starts a fresh run even when a
+## save exists, "continue" (or "") keeps the resume-if-possible start. Reset once Main has
+## read it, so a later scene load (or running main.tscn directly) gets the default.
+static var launch_mode: String = ""
+
 
 func _init() -> void:
 	custom_minimum_size = VIEWPORT_SIZE
@@ -153,8 +158,12 @@ func _ready() -> void:
 	if save_store == null and DisplayServer.get_name() != "headless":
 		enable_persistence(SaveStore.new())
 	if controller == null:
-		# Resume the autosaved run when there is a usable one, else start fresh.
-		if not continue_saved_run():
+		var mode: String = launch_mode
+		launch_mode = ""
+		if mode == "new":
+			start_new_run(initial_run_seed())
+		# Otherwise resume the autosaved run when there is a usable one, else start fresh.
+		elif not continue_saved_run():
 			start_new_run(initial_run_seed())
 	_build_readouts()
 	_setup_audio()

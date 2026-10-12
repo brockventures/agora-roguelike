@@ -637,3 +637,9 @@ HUD_ACT_DISMISS,DISMISS
 HL_SOVEREIGN_BRIBED,"DECREE REVOKED: Sol Cabinet bought off. Nationalization proceedings terminated."
 HL_SOVEREIGN_DEBT_CHOKED,"DECREE WITHDRAWN: Sol Treasury defaults under corporate debt leverage. State capitulates."
 HL_SOVEREIGN_PRIVATIZED,"STATE PRIVATIZED: Sol System Government acquired as a wholly owned corporate subsidiary!"
+TITLE_SUBTITLE,ROGUELIKE
+TITLE_NEW,Incorporate
+TITLE_CONTINUE,Reconvene the Board
+TITLE_SETTINGS,Corporate Governance
+TITLE_QUIT,Adjourn
+TITLE_FOOTER,Agora Station Registry of Companies. All filings are final.
