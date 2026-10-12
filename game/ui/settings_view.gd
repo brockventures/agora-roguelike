@@ -275,17 +275,29 @@ func _place_row(r: Dictionary, part: Dictionary, rect: Rect2) -> void:
 			_set_chip(chip, "‹ %s ›" % text, HudTheme.PAPER_DEEP, HudTheme.INK, zone_w, rw, rh)
 		"toggle":
 			if bool(part["on"]):
-				_set_chip(chip, text, HudTheme.TEAL, HudTheme.INK, zone_w, rw, rh)
+				_set_chip(chip, text, _on_fill(), _ink_on(_on_fill()), zone_w, rw, rh)
 			else:
+				# The muted pair of the HUD's maker tags (SLATE with BONE).
 				_set_chip(chip, text, HudTheme.SLATE, HudTheme.BONE, zone_w, rw, rh)
 		"binding":
 			if text == Loc.t("SET_LISTENING"):
-				_set_chip(chip, text, HudTheme.TEAL, HudTheme.BONE, zone_w, rw, rh)
+				_set_chip(chip, text, _on_fill(), _ink_on(_on_fill()), zone_w, rw, rh)
 			else:
 				_kit.fit_text(value, text, zone_w)
 				value.position = Vector2(zone_x, 0.0)
 				value.size = Vector2(zone_w, rh)
 				value.visible = true
+
+
+## The fill of the HUD's bid tag ("+ BID" on the ladder), in the current palette.
+func _on_fill() -> Color:
+	return Palette.bid_color()
+
+
+## The text colour the ladder uses on a side tag (main.gd _ink_on): whichever of INK or BONE
+## contrasts more with the fill.
+func _ink_on(fill: Color) -> Color:
+	return HudTheme.INK if HudTheme.contrast(HudTheme.INK, fill) >= HudTheme.contrast(HudTheme.BONE, fill) else HudTheme.BONE
 
 
 func _set_chip(chip: HudKit.Plate, text: String, bg: Color, fg: Color, max_w: float, rw: float, rh: float) -> void:

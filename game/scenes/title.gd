@@ -77,6 +77,7 @@ func build_screen() -> void:
 		settings.apply_all(not _locale_pinned_by_env())
 		settings.changed.connect(_on_settings_changed)
 	settings_menu = SettingsMenu.new(settings)
+	settings_menu.close_key = "SET_CLOSE_TITLE"
 	settings_menu.closed.connect(_on_settings_closed)
 	_build_stage()
 	_build_art()

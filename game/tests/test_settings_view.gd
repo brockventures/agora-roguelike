@@ -34,7 +34,7 @@ func _prefs_count(m: SettingsMenu) -> int:
 func test_row_parts_kind_per_row() -> String:
 	var m := _menu()
 	var expect: Dictionary = {
-		SettingsMenu.Row.SCALE: "slider",
+		SettingsMenu.Row.SCALE: "choice",
 		SettingsMenu.Row.PALETTE: "choice",
 		SettingsMenu.Row.LANGUAGE: "choice",
 		SettingsMenu.Row.CRT: "toggle",
@@ -61,25 +61,43 @@ func test_row_parts_kind_per_row() -> String:
 	return "ok"
 
 
-func test_slider_fraction_in_range_and_moves_on_change() -> String:
+func test_text_size_is_a_three_step_choice() -> String:
 	var m := _menu()
 	var scale_row: int = _row_of(m, SettingsMenu.Row.SCALE)
 	m.cursor = scale_row
-	var before: float = float(m.row_parts(scale_row)["fraction"])
+	var before: Dictionary = m.row_parts(scale_row)
+	if str(before["kind"]) != "choice" or str(before["value"]) != "100%":
+		return "text size starts as %s %s, expected choice 100%%" % [before["kind"], before["value"]]
 	m._change(1)
-	var after: float = float(m.row_parts(scale_row)["fraction"])
-	if before < 0.0 or before > 1.0 or after < 0.0 or after > 1.0:
-		return "fraction outside 0..1: %f, %f" % [before, after]
-	if is_equal_approx(before, after):
-		return "text size slider did not move (%f)" % before
 	if str(m.row_parts(scale_row)["value"]) != "115%":
-		return "text size value is %s, expected 115%%" % m.row_parts(scale_row)["value"]
+		return "text size after one step is %s, expected 115%%" % m.row_parts(scale_row)["value"]
+	m._change(1)
+	m._change(1)
+	if str(m.row_parts(scale_row)["value"]) != "130%":
+		return "text size at the top is %s, expected 130%%" % m.row_parts(scale_row)["value"]
+	return "ok"
+
+
+func test_alert_volume_slider_fraction_in_range_and_moves() -> String:
+	var m := _menu()
 	var vol_row: int = _row_of(m, SettingsMenu.Row.ALERT_VOLUME)
 	m.cursor = vol_row
 	m._change(-1)
-	var vol: float = float(m.row_parts(vol_row)["fraction"])
-	if absf(vol - 0.9) > 0.001 or str(m.row_parts(vol_row)["value"]) != "90%":
-		return "alert volume row shows %s at %f" % [m.row_parts(vol_row)["value"], vol]
+	var part: Dictionary = m.row_parts(vol_row)
+	var vol: float = float(part["fraction"])
+	if str(part["kind"]) != "slider" or absf(vol - 0.9) > 0.001 or str(part["value"]) != "90%":
+		return "alert volume row shows %s %s at %f" % [part["kind"], part["value"], vol]
+	return "ok"
+
+
+func test_close_row_uses_close_key() -> String:
+	var m := _menu()
+	var close_row: int = m.rows().size() - 1
+	if str(m.row_parts(close_row)["label"]) != Loc.t("SET_CLOSE") or not m.text().contains(Loc.t("SET_CLOSE")):
+		return "default close row is not Back to game"
+	m.close_key = "SET_CLOSE_TITLE"
+	if str(m.row_parts(close_row)["label"]) != Loc.t("SET_CLOSE_TITLE") or not m.text().contains(Loc.t("SET_CLOSE_TITLE")):
+		return "close_key is not used by row_parts and text"
 	return "ok"
 
 

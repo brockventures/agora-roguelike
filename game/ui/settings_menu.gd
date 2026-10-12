@@ -27,6 +27,8 @@ var message: Array = []
 ## The live first-hour tutorial model, set by Main (#36). Null in a bare menu, which then
 ## builds a throwaway one over `settings` so the row works the same (the model only reads).
 var onboarding: Onboarding = null
+## Translation key of the close row. The title screen sets SET_CLOSE_TITLE ("Back to title").
+var close_key: String = "SET_CLOSE"
 var _held: Dictionary = {}
 
 
@@ -90,7 +92,7 @@ func row_text(i: int, row: Dictionary) -> String:
 			return "%s %s   %s" % [mark, InputRemap.action_label(a), value]
 		Row.RESET:
 			return "%s %s" % [mark, Loc.t("SET_RESET")]
-	return "%s %s" % [mark, Loc.t("SET_CLOSE")]
+	return "%s %s" % [mark, Loc.t(close_key)]
 
 
 func tr_row(mark: String, key: String, value: String) -> String:
@@ -144,12 +146,9 @@ func row_parts(i: int) -> Dictionary:
 	var out: Dictionary = {"label": "", "kind": "button", "value": "", "fraction": 0.0, "on": false, "cursor": i == cursor, "section": "footer"}
 	match kind:
 		Row.SCALE:
-			var lo: float = AccessibilitySettings.TEXT_SCALES[0]
-			var hi: float = AccessibilitySettings.TEXT_SCALES[-1]
 			out["label"] = Loc.t("SET_TEXT_SIZE")
-			out["kind"] = "slider"
+			out["kind"] = "choice"
 			out["value"] = "%d%%" % int(round(settings.text_scale * 100.0))
-			out["fraction"] = clampf((settings.text_scale - lo) / (hi - lo), 0.0, 1.0)
 		Row.PALETTE:
 			out["label"] = Loc.t("SET_PALETTE")
 			out["kind"] = "choice"
@@ -188,7 +187,7 @@ func row_parts(i: int) -> Dictionary:
 		Row.RESET:
 			out["label"] = Loc.t("SET_RESET")
 		_:
-			out["label"] = Loc.t("SET_CLOSE")
+			out["label"] = Loc.t(close_key)
 	if out["kind"] == "toggle":
 		out["value"] = Loc.t("SET_ON" if bool(out["on"]) else "SET_OFF")
 	if int(kind) <= Row.TUTORIAL:

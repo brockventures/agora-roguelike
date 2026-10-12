@@ -291,6 +291,7 @@ SET_KEY,Key
 SET_LISTENING,Press a button or key...
 SET_RESET,Reset to defaults
 SET_CLOSE,Back to game
+SET_CLOSE_TITLE,Back to title
 SET_HINT,D-pad move   Left/Right change   A select   B or View back
 SET_SECTION_PREFS,Preferences
 SET_SECTION_CONTROLS,Controls
