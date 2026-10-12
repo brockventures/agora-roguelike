@@ -114,6 +114,53 @@ static func perk_branch(branch: String) -> String:
 	return data_text("PERK_BRANCH_" + slug(branch), branch)
 
 
+## A corporate policy's name (#160): its `name_key` row, else the node's id.
+static func policy_name(node: Dictionary) -> String:
+	return data_text(str(node.get("name_key", "")), str(node.get("id", "")))
+
+
+static func policy_branch(branch: String) -> String:
+	return data_text("POLICY_BRANCH_" + slug(branch), branch)
+
+
+## The numbers a policy's `_DESC` string takes, one per effect in the node's order, computed from
+## the effect itself so the CSV can never disagree with policies.json: a mul_bps value shows as
+## the percent it moves the stat (7000 -> 30, 12500 -> 25), an add on a bps stat as percent points
+## (1500 -> 15) except interest, which is quoted in bps; ticks as rounds; CR with grouping.
+static func policy_args(node: Dictionary, ticks_per_round: int = DoomsdayClock.TICKS_PER_ROUND) -> Array:
+	var out: Array = []
+	for e in node.get("effects", []):
+		var v: int = int(e["value"])
+		if str(e["op"]) == "mul_bps":
+			out.append(absi(Parachutes.BPS - v) / 100)
+			continue
+		match str(e["stat"]):
+			"interest_bps", "takeover_threshold_shares":
+				out.append(absi(v))
+			"bankruptcy_grace_ticks":
+				out.append(absi(v) / maxi(1, ticks_per_round))
+			"fresh_start_cr":
+				out.append(group_digits(absi(v)))
+			_:
+				out.append(absi(v) / 100 if str(e["stat"]).ends_with("_bps") else absi(v))
+	return out
+
+
+## A policy's card line in the current locale, its numbers computed from its effects.
+static func policy_desc(node: Dictionary) -> String:
+	return format(str(node.get("desc_key", "")), policy_args(node))
+
+
+## 3000 -> "3,000".
+static func group_digits(n: int) -> String:
+	var s: String = str(absi(n))
+	var out: String = ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
+
+
 ## A Rescue Project phase's name: its `RESCUE_PHASE_<ID>_NAME` row, else the data's own name.
 static func rescue_phase_name(ph: Dictionary) -> String:
 	return data_text("RESCUE_PHASE_%s_NAME" % slug(str(ph.get("id", ""))), str(ph.get("name", "")))

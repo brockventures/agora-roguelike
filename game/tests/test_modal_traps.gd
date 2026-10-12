@@ -9,7 +9,7 @@ const FRAME: float = 1.0 / 60.0 + 0.0001
 const TPR: int = 4
 
 ## The modal kinds this walks: each a way to raise it and its documented closing action.
-const KINDS: Array[String] = ["crisis", "contract", "monopoly", "chapter11", "summary", "perks", "sleep"]
+const KINDS: Array[String] = ["crisis", "contract", "monopoly", "policy", "chapter11", "summary", "perks", "sleep"]
 
 
 func _scene() -> Node:
@@ -61,6 +61,11 @@ func _raise(scene: Node, kind: String) -> bool:
 			for id in rc.world.ids():
 				loop._post_baron_event(Takeover.take(rc.world, id, Takeover.PLAYER, rc))
 			return loop.overlay_state == M0Loop.OVERLAY_MONOPOLY
+		"policy":
+			rc.attach_policies()
+			rc.policies.earned = 1
+			loop._raise_policy_if_pending()
+			return loop.overlay_state == M0Loop.OVERLAY_POLICY
 		"chapter11":
 			rc.doomsday.principal_debt = 1000000
 			loop.advance(FRAME)
@@ -86,6 +91,9 @@ func _live(kind: String) -> Array:
 			return [M0Loop.ACT_SUBMIT, M0Loop.ACT_CHAPTER_11]
 		"contract":
 			return [M0Loop.ACT_SUBMIT, M0Loop.ACT_CANCEL, M0Loop.ACT_CHAPTER_11]
+		"policy":
+			# D-pad moves the cursor, A adopts, X still files; there is no B (a pick cannot be declined).
+			return [M0Loop.ACT_UP, M0Loop.ACT_DOWN, M0Loop.ACT_SUBMIT, M0Loop.ACT_CHAPTER_11]
 		"chapter11":
 			return [M0Loop.ACT_CHAPTER_11]
 		"summary":
@@ -101,7 +109,7 @@ func _live(kind: String) -> Array:
 func _state(scene: Node) -> Array:
 	var loop: M0Loop = scene.loop
 	var rc: RunController = scene.controller
-	return [loop._capture_focus(), rc.cr, rc.cargo.duplicate(), rc.sim_clock.speed, rc.sim_clock.paused, loop.total_fills, loop.overlay_state, loop.collapse_phase, loop.perk_cursor, rc.docked_at, rc.profile.severance_points]
+	return [loop._capture_focus(), rc.cr, rc.cargo.duplicate(), rc.sim_clock.speed, rc.sim_clock.paused, loop.total_fills, loop.overlay_state, loop.collapse_phase, loop.perk_cursor, loop.policy_cursor, rc.docked_at, rc.profile.severance_points]
 
 
 func test_every_modal_traps_the_gamepad() -> String:
@@ -130,7 +138,7 @@ func test_every_modal_traps_the_gamepad() -> String:
 		var e := InputEventJoypadButton.new()
 		e.button_index = JOY_BUTTON_DPAD_DOWN
 		e.pressed = true
-		if kind != "perks" and loop.handle_input(e):
+		if kind != "perks" and kind != "policy" and loop.handle_input(e):
 			bad.append("%s: a D-pad press was consumed behind the modal" % kind)
 		# The mouse is swallowed by the blocker and the dim shows.
 		if not scene._blocker.visible or scene._blocker.mouse_filter != Control.MOUSE_FILTER_STOP:
@@ -158,7 +166,7 @@ func _controls(root: Node) -> Array:
 func test_documented_actions_close_a_modal_and_restore_focus() -> String:
 	var bad: Array = []
 	var closers: Dictionary = {
-		"crisis": M0Loop.ACT_SUBMIT, "contract": M0Loop.ACT_SUBMIT, "monopoly": M0Loop.ACT_SUBMIT,
+		"crisis": M0Loop.ACT_SUBMIT, "contract": M0Loop.ACT_SUBMIT, "monopoly": M0Loop.ACT_SUBMIT, "policy": M0Loop.ACT_SUBMIT,
 		"chapter11": M0Loop.ACT_CHAPTER_11,
 	}
 	for kind in closers:
