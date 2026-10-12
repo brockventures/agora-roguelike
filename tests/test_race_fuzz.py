@@ -27,6 +27,7 @@ def run_fuzz(*args, timeout=120):
                           capture_output=True, text=True, timeout=timeout)
 
 
+@unittest.skipUnless(os.environ.get("AGORA_SLOW_TESTS") == "1", "slow tier: set AGORA_SLOW_TESTS=1 to run")
 class TestRaceFuzzSmoke(unittest.TestCase):
     def test_serial_run_is_clean(self):
         r = run_fuzz("--seed", "7", "--serial", "--ops", "300", "--rounds", "6", "--check-every", "100")

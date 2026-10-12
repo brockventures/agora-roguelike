@@ -30,6 +30,11 @@ python tools/golden/check_drift.py
 python tools/fuzz_harness.py 1500
 ```
 
+### Tests: filters and the slow tier
+
+- `game/tests/run.sh <godot> [filter...]` runs only the Godot test files whose name contains a filter, e.g. `game/tests/run.sh "$PWD/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" test_bag doomsday`. No filter runs the full suite.
+- `AGORA_SLOW_TESTS=1 python -m unittest discover -s tests` includes the slow tier (economy sim, race fuzz). Without the variable those classes are skipped. CI runs the slow tier only on pushes to `main`, not on pull requests.
+
 ## Design system
 
 Mike's AGORA design system export lives in `docs/design-system/` (start at `Foundations.dc.html`; `github.md` maps screens to repo files). Tokens are mirrored in `game/ui/hud_theme.gd` and `game/core/palette.gd`, and `game/tests/test_hud_theme.gd` checks them against `docs/design-system/tokens/*.css`. Archivo is bundled in `game/assets/fonts/`.
