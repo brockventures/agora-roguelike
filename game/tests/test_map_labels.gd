@@ -222,7 +222,7 @@ func test_route_card_shows_the_pick_with_a_belt_toll_only_on_a_belt_lane() -> St
 	scene.free()
 	if not belt_on:
 		return "no belt toll indicator on Mars to Ceres"
-	for want in ["ARCADIA FOUNDRIES", "CERES", "BELT TOLL 25 CR", "rounds"]:
+	for want in ["ARCADIA FOUNDRIES", "AGORA STATION", "BELT TOLL 25 CR", "rounds"]:
 		if not body.contains(want):
 			return "route card text %s lacks %s" % [var_to_str(body), want]
 	if belt_off:

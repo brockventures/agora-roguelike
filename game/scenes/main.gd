@@ -1451,7 +1451,19 @@ func _refresh_route_card() -> void:
 	var row_h: Dictionary = {}
 	for k in vals:
 		var vl: Label = _route_card[k + "_val"]
+		var full_fs: int = kit.scaled(int(vl.get_meta(HudKit.BASE_SIZE_META)))
+		vl.add_theme_font_size_override("font_size", full_fs)
 		var w: float = kit.fit_text(vl, vals[k], val_max)
+		# A name too long even at the narrowest width axis steps its size down (floor 80%) before it wraps.
+		if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			for pct in [90, 85, 80]:
+				vl.add_theme_font_size_override("font_size", maxi(1, full_fs * pct / 100))
+				w = kit.fit_text(vl, vals[k], val_max)
+				if vl.autowrap_mode == TextServer.AUTOWRAP_OFF:
+					break
+			if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+				vl.add_theme_font_size_override("font_size", full_fs)
+				w = kit.fit_text(vl, vals[k], val_max)
 		val_w = maxf(val_w, w)
 		var h: float = HudKit.line_height(vl)
 		if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
@@ -3671,7 +3683,7 @@ func _draw_dashed_ring(center: Vector2, radius: float, color: Color, width: floa
 ## node, the Sun, the route card and earlier labels. `placed` starts with the boxes already
 ## taken (the SOL tag, the card) and gains each label's box. Fixed spot order and station
 ## order, no randomness: the same round always draws the same labels.
-func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: int, placed: Array, texts: Dictionary = {}, short_texts: Dictionary = {}, failed: Array = []) -> Dictionary:
+func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: int, placed: Array, texts: Dictionary = {}, short_texts: Dictionary = {}, failed: Array = [], wrapped: Dictionary = {}) -> Dictionary:
 	var ascent: float = font.get_ascent(fs)
 	var height: float = ascent + font.get_descent(fs)
 	var bounds: Rect2 = _map_label_bounds()
@@ -3698,22 +3710,56 @@ func _map_label_offsets(discs: Dictionary, widths: Dictionary, font: Font, fs: i
 			if chosen.size != Vector2.ZERO:
 				break
 		if chosen.size == Vector2.ZERO:
+			# No single-line spot fits: try the label on two lines, broken at the space nearest the middle.
+			for txt in tries:
+				var parts: PackedStringArray = _wrap_label_in_two(str(txt))
+				if parts.size() != 2:
+					continue
+				var w2: float = maxf(font.get_string_size(parts[0], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, font.get_string_size(parts[1], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+				var box_h: float = 2.0 * height + MAP_LABEL_LINE_GAP
+				for off in _map_label_spots(w2, height, 3):
+					var b2 := Rect2(Vector2(discs[st]) + off + Vector2(0.0, -ascent), Vector2(w2, box_h)).grow(1.0)
+					if _map_label_fits(b2, st, discs, placed, bounds):
+						out[st] = off
+						chosen = b2
+						texts[st] = parts[0] + "\n" + parts[1]
+						widths[st] = w2
+						wrapped[st] = {"centered": absf(float(off.x) + w2 * 0.5) < 0.01}
+						break
+				if chosen.size != Vector2.ZERO:
+					break
+		if chosen.size == Vector2.ZERO:
 			failed.append(st)
 			chosen = Rect2(Vector2(discs[st]) + Vector2(out[st]) + Vector2(0.0, -ascent), Vector2(float(widths[st]), height)).grow(1.0)
 		placed.append(chosen)
 	return out
 
 
+const MAP_LABEL_LINE_GAP: float = 2.0
+
+
+## `text` broken at the space nearest its middle: ["LUNA FUEL", "DEPOT"]. Empty when it has no space.
+static func _wrap_label_in_two(text: String) -> PackedStringArray:
+	var mid: float = text.length() * 0.5
+	var best: int = -1
+	for i in text.length():
+		if text[i] == " " and (best < 0 or absf(i - mid) < absf(best - mid)):
+			best = i
+	if best < 0:
+		return PackedStringArray()
+	return PackedStringArray([text.substr(0, best), text.substr(best + 1)])
+
+
 ## The spots tried around a node for a label of width `wd`, in order: the eight around it,
 ## then rows further above and below, then stepped out sideways (leader offsets).
-func _map_label_spots(wd: float, height: float) -> Array:
+func _map_label_spots(wd: float, height: float, reach: int = 0) -> Array:
 	var near: float = SolTacticalMap.STATION_NODE_RADIUS_PX + 4.0
 	var spots: Array = [Vector2(near, 5.0), Vector2(-near - wd, 5.0), Vector2(-wd * 0.5, -near - 6.0), Vector2(-wd * 0.5, near + 16.0),
 		Vector2(near - 4.0, -near), Vector2(near - 4.0, near + 14.0), Vector2(-near + 4.0 - wd, -near), Vector2(-near + 4.0 - wd, near + 14.0)]
-	for lift in [1, 2, 3]:
+	for lift in range(1, 4 + reach):
 		spots.append(Vector2(-wd * 0.5, -near - 6.0 - (height + 2.0) * float(lift)))
 		spots.append(Vector2(-wd * 0.5, near + 16.0 + (height + 2.0) * float(lift)))
-	for lift in [1, 2]:
+	for lift in range(1, 3 + reach):
 		spots.append(Vector2(near + 10.0, 5.0 - (height + 2.0) * float(lift)))
 		spots.append(Vector2(near + 10.0, 5.0 + (height + 2.0) * float(lift)))
 		spots.append(Vector2(-near - 10.0 - wd, 5.0 - (height + 2.0) * float(lift)))
@@ -3791,6 +3837,7 @@ func map_layout(round_num: int, site_tag: bool = true) -> Dictionary:
 	var boxes: Dictionary = {}
 	var offsets: Dictionary = {}
 	var final_texts: Dictionary = texts
+	var wrapped: Dictionary = {}
 	var sol_pos: Vector2 = Vector2.ZERO
 	var sol_text: String = tr("MAP_SOL_TAG")
 	var bounds: Rect2 = _map_label_bounds()
@@ -3819,9 +3866,11 @@ func map_layout(round_num: int, site_tag: bool = true) -> Dictionary:
 		var try_texts: Dictionary = texts.duplicate()
 		var try_widths: Dictionary = widths.duplicate()
 		var failed: Array = []
-		offsets = _map_label_offsets(discs, try_widths, font, fs, placed, try_texts, short_texts, failed)
+		wrapped = {}
+		offsets = _map_label_offsets(discs, try_widths, font, fs, placed, try_texts, short_texts, failed, wrapped)
 		for st in discs:
-			boxes[st] = Rect2(Vector2(discs[st]) + Vector2(offsets[st]) + Vector2(0.0, -ascent), Vector2(try_widths[st], height)).grow(1.0)
+			var lines_h: float = 2.0 * height + MAP_LABEL_LINE_GAP if wrapped.has(st) else height
+			boxes[st] = Rect2(Vector2(discs[st]) + Vector2(offsets[st]) + Vector2(0.0, -ascent), Vector2(try_widths[st], lines_h)).grow(1.0)
 		final_texts = try_texts
 		all_placed = failed.is_empty()
 		if all_placed:
@@ -3854,7 +3903,7 @@ func map_layout(round_num: int, site_tag: bool = true) -> Dictionary:
 			rivals.append({"fleet": id, "hull": hull, "tag": tag, "spot": spot, "start": _map_point(Vector2(v["start_pos"])), "end": _map_point(Vector2(v["end_pos"]))})
 			if spot != null:
 				boxes["fleet_" + id] = placed[placed.size() - 1]
-	return {"discs": discs, "texts": final_texts, "offsets": offsets, "sol_pos": sol_pos, "sol_text": sol_text, "ship_tag": ship_tag, "rivals": rivals, "boxes": boxes}
+	return {"discs": discs, "texts": final_texts, "wrapped": wrapped, "offsets": offsets, "sol_pos": sol_pos, "sol_text": sol_text, "ship_tag": ship_tag, "rivals": rivals, "boxes": boxes}
 
 
 func _draw_map() -> void:
@@ -3897,7 +3946,20 @@ func _draw_map() -> void:
 			HudTheme.draw_flat_disc(tactical_map_panel, pos, SolTacticalMap.STATION_NODE_RADIUS_PX, HudTheme.RUST if is_docked else HudTheme.TEAL, HudTheme.RUST_DARK if is_docked else HudTheme.TEAL_DARK)
 	_draw_map_text(font, Vector2(layout["sol_pos"]), str(layout["sol_text"]), fs, HudTheme.INK)
 	for st in stations:
-		_draw_map_text(font, Vector2(discs[st]) + Vector2(offsets[st]), str(texts[st]), fs, HudTheme.RUST_DARK if st == docked else HudTheme.INK)
+		var wrap_info: Dictionary = layout["wrapped"].get(st, {})
+		if wrap_info.is_empty():
+			_draw_map_text(font, Vector2(discs[st]) + Vector2(offsets[st]), str(texts[st]), fs, HudTheme.RUST_DARK if st == docked else HudTheme.INK)
+		else:
+			var lines: PackedStringArray = str(texts[st]).split("\n")
+			var origin: Vector2 = Vector2(discs[st]) + Vector2(offsets[st])
+			var full_w: float = 0.0
+			for ln in lines:
+				full_w = maxf(full_w, font.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+			var line_h: float = font.get_ascent(fs) + font.get_descent(fs) + MAP_LABEL_LINE_GAP
+			for i in lines.size():
+				var lw: float = font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+				var dx: float = (full_w - lw) * 0.5 if bool(wrap_info["centered"]) else 0.0
+				_draw_map_text(font, origin + Vector2(dx, line_h * i), lines[i], fs, HudTheme.RUST_DARK if st == docked else HudTheme.INK)
 	_draw_rival_fleets(layout)
 	_draw_player_ship(round_num, font, discs, layout)
 

@@ -379,8 +379,10 @@ func test_main_persistence_routes_store_through_the_service() -> String:
 
 func test_target_app_id_and_partner_config() -> String:
 	var svc := SteamService.new()
-	if svc.get_target_app_id() != 3064620:
-		return "expected target_app_id 3064620, got %d" % svc.get_target_app_id()
+	if svc.get_target_app_id() != 0:
+		return "expected target_app_id 0 (AGORA has no Steam app yet), got %d" % svc.get_target_app_id()
+	if svc.get_target_app_id() == 3064620:
+		return "target_app_id must never be 3064620 (The Atlas Problem)"
 	var cfg: Dictionary = svc.get_partner_config()
 	if str(cfg.get("publisher", "")) != "Placeholder Studios":
 		return "expected publisher 'Placeholder Studios', got '%s'" % str(cfg.get("publisher", ""))

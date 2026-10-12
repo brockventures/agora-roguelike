@@ -83,7 +83,7 @@ CAT_COLLAPSE,COLLAPSE
 CAT_CRISIS,CRISIS
 TICKER_LINE,%s: %s
 HL_SEED_REGULATION,SOL SYSTEM COMMERCE COMMISSION: Doomsday debt enforcement protocol active.
-HL_SEED_MARKET,CERES MINING GUILD: Deep-core ore extractors reporting record yields at Station Alpha.
+HL_SEED_MARKET,CERES MINING GUILD: Deep-core ore extractors reporting record yields at Agora Station.
 HL_SEED_TRANSIT,ORBITAL CORRIDORS: Earth-Luna syzygy alignment open for low-burn bulk transit.
 HL_CRISIS_LIFTED,"%s has lifted, books restored"
 HL_ARRIVED,FLEET ARRIVAL: %d %s docked at %s from %s
@@ -240,8 +240,8 @@ SIDE_CONTRACT,"CONTRACT %d %s by rd %d"
 MAP_CONTRACT,"Contract: %d %s to %s, due round %d."
 STATION_EARTH,Kennedy Elevator
 STATION_MARS,Arcadia Foundries
-STATION_LUNA,Luna
-STATION_CERES,Ceres
+STATION_LUNA,Luna Fuel Depot
+STATION_CERES,Agora Station
 COMMODITY_FRAG,FRAG
 COMMODITY_FUEL,FUEL
 COMMODITY_FOOD,FOOD

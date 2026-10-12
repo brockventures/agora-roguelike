@@ -3,7 +3,7 @@
 **Epic Issue:** [Issue #26](https://github.com/brockventures/agora-roguelike/issues/26)  
 **Status:** Completed & Staged for Partner Review  
 **Milestone:** M4 / Steam Deck Verified Target  
-**Partner Publisher:** Placeholder Studios (@mcarmody, App ID 3064620)  
+**Partner Publisher:** Placeholder Studios (@mcarmody, AGORA's own App ID (not yet registered; #30, Steamworks onboarding))  
 **Date:** October 2026  
 
 ---
@@ -20,7 +20,7 @@ Epic 5 establishes the commercial Steamworks infrastructure, automated multi-pla
 | **Steam Deck Sleep Lifecycle** | Delta > 1.0s wake detection, tick purge, audio re-arm, focus hold | `SimClock` clamp, `MainScene` audio recovery, physical hardware signed off | **CLOSED (#41, PR #96)** |
 | **Steam Deck Hardware Benchmark** | 60 FPS locked, 0 frame drops, <9W power budget, 1280x800 native | Sysfs BAT1 telemetry harness merged (`benchmark_deck.gd`); live physical profiling pending | **HARNESS MERGED (#38, PR #199)** |
 | **Store Assets & Capsule Specs** | Copy, capsule dimensions, IARC survey, trailer storyboard, AI disclosure | `game/data/store_assets.json`, tested via `test_steam_store_assets.py` | **STAGED (#29)** |
-| **Steam Direct Onboarding Staging** | Placeholder Studios App 3064620 configuration, depots, cloud quotas | `game/data/steam.json` partner metadata, `get_target_app_id()` API | **STAGED (#30)** |
+| **Steam Direct Onboarding Staging** | AGORA's own App ID (not yet registered; #30, Steamworks onboarding) configuration, depots, cloud quotas | `game/data/steam.json` partner metadata, `get_target_app_id()` API | **PENDING (#30)** |
 | **Review Gate & Human Steering** | Comprehensive architecture audit and partner handover | Delivered in `docs/design/epic5-steamworks.md`, receipts to #agora | **COMPLETE (#31)** |
 
 ---
@@ -86,10 +86,10 @@ All store metadata conforms strictly to Valve's onboarding requirements:
 
 ## 4. Partner Handover Checklist for Mike (@mcarmody)
 
-To complete Steam Direct onboarding under Placeholder Studios (App 3064620):
+To complete Steam Direct onboarding under Placeholder Studios (AGORA's own App ID (not yet registered; #30, Steamworks onboarding)):
 
 1. **Steamworks Partner Portal Setup:**
-   - Log in to partner portal and navigate to **App 3064620 (AGORA)**.
+   - Log in to partner portal and navigate to **AGORA's own App ID (not yet registered; #30, Steamworks onboarding)** (Agora Station).
    - Enter store metadata and copy from `game/data/store_assets.json`.
    - Upload graphic capsules matching the exact resolutions in `store_assets.json`.
 2. **Achievements & Stats Staging:**
@@ -101,4 +101,4 @@ To complete Steam Direct onboarding under Placeholder Studios (App 3064620):
 4. **Steam Input Layout Publishing:**
    - Upload default Steam Deck layout `game/steam/controller_steamdeck_default.vdf` into Steamworks Partner configurator.
 5. **App ID Switchover:**
-   - Once store staging is complete, update `"app_id": 3064620` in `game/data/steam.json` and rename `game/steam/game_actions_480.vdf` to `game_actions_3064620.vdf`.
+   - Once store staging is complete, update `"app_id"` in `game/data/steam.json` to AGORA's own App ID (not yet registered; #30, Steamworks onboarding) and rename `game/steam/game_actions_480.vdf` to `game_actions_<appid>.vdf`.
