@@ -1,11 +1,11 @@
 {
-	"app_name": "AGORA",
+	"app_name": "Agora Station",
 	"app_id_target": 3064620,
 	"developer": "Brock Ventures",
 	"publisher": "Placeholder Studios",
 	"release_target": "2026",
 	"short_description": "An orbital Bloomberg terminal roguelike. Build trade cartels across Sol, execute hostile takeovers of rival barons, and light the planetary Stabilisers before the Doomsday Clock strikes zero.",
-	"about_the_game": "AGORA is an orbital financial terminal simulator and space trading roguelike. Operating over a living Sol astrodynamics tactical map, you deploy vessels along high-risk shipping corridors, manipulate spot commodity markets at Earth, Mars, Ceres, and Luna, and engineer hostile takeovers of ruthless sector barons before systemic collapse extinguishes humanity's last colonies.",
+	"about_the_game": "Agora Station is an orbital financial terminal simulator and space trading roguelike. Operating over a living Sol astrodynamics tactical map, you deploy vessels along high-risk shipping corridors, manipulate spot commodity markets at Earth, Mars, Ceres, and Luna, and engineer hostile takeovers of ruthless sector barons before systemic collapse extinguishes humanity's last colonies.",
 	"key_features": [
 		"Orbital Bloomberg Terminal HUD: Full 1280x800 native command deck designed for controller-first mastery and Steam Deck play (targeting Verified).",
 		"Dynamic Sol Astrodynamics: Real-time planetary orbits, alignment corridors, perishable cargo decay, and pirate-infested asteroid belt transit lanes.",

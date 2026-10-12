@@ -26,6 +26,7 @@ INK = (0x1A, 0x14, 0x10)
 SHEET_BG = (0x0F, 0x0D, 0x0B)
 WEIGHT = 700
 WORD = "AGORA"
+WORD2 = "STATION"  # working title "Agora Station" (Ryan, 2026-10-12); second line, tracked to AGORA's width
 
 # name -> (width, height, layout, wordmark height fraction)
 # layout: "left" (left third, vertically centered) | "top" (centered, top third)
@@ -126,6 +127,21 @@ def compose(key, name, w, h, layout, wm_frac):
     else:
         max_w = round(w * 0.80)
     wordmark = fit_text(WORD, wm_target, max_w, stroke_w, BONE, INK)
+    line2 = None
+    if WORD2:
+        line2 = fit_text(WORD2, max(8, round(wm_target * 0.34)), wordmark.width, stroke_w, BONE, INK, tracking=0.32)
+        if line2.width < wordmark.width:  # stretch tracking so both lines share one width
+            n = len(WORD2) - 1
+            extra = (wordmark.width - line2.width) / n
+            size = round(line2.height / 0.72)
+            line2 = render_text(WORD2, size, BONE, INK, stroke_w, 0.32 + extra / size)
+            if line2.height != max(8, round(wm_target * 0.34)):
+                pass
+        gap = max(4, round(wm_target * 0.16))
+        block = Image.new("RGBA", (max(wordmark.width, line2.width), wordmark.height + gap + line2.height), (0, 0, 0, 0))
+        block.alpha_composite(wordmark, (0, 0))
+        block.alpha_composite(line2, ((block.width - line2.width) // 2, wordmark.height + gap))
+        wordmark = block
     block_h = wordmark.height
     if layout == "left":
         top = (h - block_h) // 2
