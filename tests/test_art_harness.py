@@ -224,6 +224,7 @@ class SweepTests(unittest.TestCase):
 
 
 
+@unittest.skipIf(Image is None, "Pillow not installed: reference image tests need it")
 class ReferenceImageTests(unittest.TestCase):
     def test_ref_field_parsed_from_bible(self):
         bible = G.load_bible()
