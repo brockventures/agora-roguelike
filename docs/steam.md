@@ -58,3 +58,12 @@ Shipping: Steam looks for `game_actions_<appid>.vdf` next to the executable (the
 ## Not verified
 
 The code was run only against `game/tests/steam_fake.gd`, which mimics the GodotSteam method names and return shapes from its documentation. It has not run against a real GodotSteam build or Steam client. Specifically unverified: the `steamInitEx` status codes, `fileRead` return shape, and the hand-written layout VDF (re-export it from Steam's configurator before shipping).
+
+## Steam Deck Hardware Verification & Benchmarks (#38)
+
+Comprehensive 60 FPS frame pacing, zero-frame-drop transit/ticker animations, 1280x800 native 16:10 display verification, and sub-9W battery profiling benchmarks are documented in [docs/steam-deck-benchmark.md](steam-deck-benchmark.md).
+
+Run the automated benchmark via:
+```bash
+./run_demo.sh --deck --benchmark
+```
