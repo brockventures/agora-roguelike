@@ -34,6 +34,9 @@ signal monopoly_achieved()
 signal run_rescued()
 signal stage_changed(old_stage: int, new_stage: int)
 signal round_advanced(round_num: int)
+## #160: a policy pick was granted (count = picks now waiting), and one was adopted.
+signal policy_pending(count: int)
+signal policy_adopted(id: String)
 ## A systemic margin collapse drained CR from the player this round (#12).
 signal margin_call_applied(amount_cr: int)
 ## The player's ship left the docked station (see depart()); info is transit_info().
@@ -282,9 +285,10 @@ var modifiers: Dictionary = {}
 ## dict the caller passed). This is what to_dict() saves under "modifiers", so a load never
 ## double counts a policy. tender_unlocked reads it, so a policy cannot unlock tender offers.
 var perk_modifiers: Dictionary = {}
-## Held run-only policy ids (#160). Interim holder until PolicyState (a later PR) replaces it;
-## not saved yet, so a save does not carry picks. Cleared by a Chapter 11 filing (section 7).
-var policy_picks: Array[String] = []
+## The run-only corporate policies (#160). Null until a loop attaches one (attach_policies), so
+## a bare controller grants nothing, never pauses for a pick and saves no `policies` key (RunSave
+## writes it only after the first grant). A Chapter 11 filing rescinds them (section 7).
+var policies: PolicyState = null
 
 ## Doomsday values before modifiers, captured at first apply so re-applying is
 ## idempotent instead of stacking.
@@ -671,9 +675,29 @@ func _refresh_modifiers() -> void:
 ## perk_modifiers stacked with the held policies. No policies: a plain copy, so the result is
 ## identical to the pre-policy dictionary however odd the base is.
 func _effective_modifiers() -> Dictionary:
-	if policy_picks.is_empty():
+	if policies == null or policies.picks.is_empty():
 		return perk_modifiers.duplicate(true)
-	return Parachutes.combine(perk_modifiers, Parachutes.load_policies().modifiers_for(policy_picks))
+	return Parachutes.combine(perk_modifiers, policies.tree().modifiers_for(policies.picks))
+
+## Attach a fresh PolicyState (idempotent). Whoever starts a run that should have policies calls
+## this; the constructor never does, so goldens and bare controllers stay untouched.
+func attach_policies() -> void:
+	if policies == null:
+		policies = PolicyState.new()
+
+## Adopt a policy with the pending pick. The caller resumes the clock (as it does after a
+## contract). False when nothing is pending or `id` is not on offer.
+func adopt_policy(id: String) -> bool:
+	if policies == null or not policies.pick(id):
+		return false
+	_refresh_modifiers()
+	policy_adopted.emit(id)
+	return true
+
+## The first baron takeover (Takeover.take) grants the corp's one takeover pick.
+func grant_takeover_policy() -> void:
+	if policies != null and policies.on_takeover():
+		policy_pending.emit(policies.pending())
 
 ## File for Chapter 11. Valid only when pending or currently insolvent (and the
 ## run has not collapsed); otherwise returns {} and changes nothing. Filing is
@@ -708,9 +732,11 @@ func file_bankruptcy() -> Dictionary:
 	# The new corp's stake still reads the policies the failed corp held (Pre-Packaged
 	# Reorganization); they are rescinded right after (#160 section 7).
 	cr = fresh_start_cr()
-	if not policy_picks.is_empty():
-		policy_picks = []
-		_refresh_modifiers()
+	if policies != null:
+		var held: bool = not policies.picks.is_empty()
+		policies.reset_for_new_corp()
+		if held:
+			_refresh_modifiers()
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
 	pending_bankruptcy = false
@@ -899,6 +925,8 @@ func _on_sub_ticked(total: int) -> void:
 	if ticks_per_round > 0 and total > 0 and (total % ticks_per_round) == 0:
 		var round_num: int = int(total / ticks_per_round)
 		audit_units_traded = 0
+		if policies != null and policies.on_round(round_num) > 0:
+			policy_pending.emit(policies.pending())
 		if crisis_deck != null:
 			_advance_crisis_deck(round_num)
 		round_advanced.emit(round_num)
@@ -930,6 +958,10 @@ func _interrupt_check() -> bool:
 		trip = true
 	# Likewise an unanswered baron contract offer (Epic 3 task 4).
 	if world != null and world.has_pending_offer():
+		trip = true
+	# A granted policy pick stops the clock on the sub-tick it landed (#160 section 9), through
+	# the same serialized auto-pause as every modal.
+	if policies != null and policies.pending() > 0:
 		trip = true
 	if not pending_bankruptcy:
 		var a := assess()

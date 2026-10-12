@@ -13,6 +13,8 @@ extends RefCounted
 ##               controller carries a world, so a run without barons hashes as before.
 ##   rescue      RescueProject (#32): the Sol System Rescue Project. Present only when the
 ##               controller carries one, so a run that never opens it hashes as before.
+##   policies    PolicyState (#160): the run-only corporate policies. Present only once the
+##               first pick has been granted, so a run before that hashes as before.
 ##   bags        Bags (streak counters, drawn/remaining marbles, forced queue),
 ##               so bad-luck protection is never wiped by a save/load cycle
 ##
@@ -33,6 +35,10 @@ static func capture(controller: RunController, market: StationMarket, bags: Bags
 		out["world"] = controller.world.to_dict()
 	if controller.rescue != null:
 		out["rescue"] = controller.rescue.to_dict()
+	# #160: only once something has been granted, so a run before its first grant hashes exactly
+	# as it does with no policies attached.
+	if controller.policies != null and controller.policies.has_granted():
+		out["policies"] = controller.policies.to_dict()
 	return out
 
 
@@ -61,6 +67,10 @@ static func restore(data: Dictionary) -> Dictionary:
 	var rd = data.get("rescue", null)
 	if rd is Dictionary:
 		rc.rescue = RescueProject.from_dict(rd)
+	var pol = data.get("policies", null)
+	if pol is Dictionary:
+		rc.policies = PolicyState.from_dict(pol)
+		rc._refresh_modifiers()  # the picks stack over the perk base, which from_dict rebuilt
 	# The world's mods include the open project's site embargo, so they are rebuilt only now.
 	if rc.world != null:
 		mkt.world_mods = rc.world_mods()

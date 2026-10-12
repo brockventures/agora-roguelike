@@ -18,6 +18,8 @@ extends RefCounted
 
 const KIND_REPLAY: String = "replay"
 const DEFAULT_FRAME_DELTA: float = 1.0 / 60.0 + 0.0001
+## A recorded policy pick (#160) is the input "policy:<id>".
+const POLICY_PREFIX: String = "policy:"
 
 
 class Session extends RefCounted:
@@ -35,16 +37,23 @@ class Session extends RefCounted:
 	## game does). Off by default: a plain session has no world and hashes as it
 	## did before Epic 3. Recorded as `world` only when set.
 	var with_world: bool = false
+	## True when corporate policies (#160) are attached. Off by default: the world goldens run
+	## past round 20, and a pick there would stop the clock and move both pins. Recorded as
+	## `policies` only when set.
+	var with_policies: bool = false
 
-	func _init(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false) -> void:
+	func _init(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false, p_policies: bool = false) -> void:
 		seed = p_seed
 		with_world = p_world
+		with_policies = p_policies
 		frame_delta = p_frame_delta
 		_start_profile = p_profile.duplicate(true)
 		var profile := MetaProfile.from_dict(p_profile)
 		controller = RunController.new(profile, p_seed, null, {}, p_ticks_per_round)
 		if p_world:
 			controller.world = Barons.for_new_run()
+		if p_policies:
+			controller.attach_policies()
 		hud = OrbitalHUD.new(controller)
 		loop = M0Loop.new(hud)
 		loop.dock_at(M0Loop.M0_STATION)
@@ -65,6 +74,17 @@ class Session extends RefCounted:
 			inputs.append({"frame": frames, "tick": controller.sim_clock.total_ticks, "action": action})
 		return loop.dispatch_action(action)
 
+	## Adopts policy `id` with the pending pick and resumes the clock, logging it as the input
+	## `policy:<id>` when recording. Stands in for the pick modal's A press until the modal
+	## lands (the modal's input will replace this). False, and nothing logged, when it is refused.
+	func adopt_policy(id: String) -> bool:
+		if not controller.adopt_policy(id):
+			return false
+		if recording:
+			inputs.append({"frame": frames, "tick": controller.sim_clock.total_ticks, "action": POLICY_PREFIX + id})
+		controller.sim_clock.resume()
+		return true
+
 	func state_hash() -> String:
 		return RunSave.state_hash(controller, loop.market, bags)
 
@@ -82,11 +102,13 @@ class Session extends RefCounted:
 		}
 		if with_world:
 			rec["world"] = true
+		if with_policies:
+			rec["policies"] = true
 		return rec
 
 
-static func start_recording(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false) -> Session:
-	var s := Session.new(p_seed, p_profile, p_frame_delta, p_ticks_per_round, p_world)
+static func start_recording(p_seed: int, p_profile: Dictionary = {}, p_frame_delta: float = DEFAULT_FRAME_DELTA, p_ticks_per_round: int = RunController.DEFAULT_TICKS_PER_ROUND, p_world: bool = false, p_policies: bool = false) -> Session:
+	var s := Session.new(p_seed, p_profile, p_frame_delta, p_ticks_per_round, p_world, p_policies)
 	s.recording = true
 	return s
 
@@ -108,7 +130,7 @@ static func replay(rec: Dictionary) -> Dictionary:
 	var s := Session.new(int(rec["seed"]), profile if profile is Dictionary else {},
 		_frame_delta_of(rec),
 		int(rec.get("ticks_per_round", RunController.DEFAULT_TICKS_PER_ROUND)),
-		bool(rec.get("world", false)))
+		bool(rec.get("world", false)), bool(rec.get("policies", false)))
 	var total_frames: int = int(rec["frames"])
 	var idx: int = 0
 	for entry in rec["inputs"]:
@@ -124,7 +146,13 @@ static func replay(rec: Dictionary) -> Dictionary:
 		if tick != int(entry["tick"]):
 			result["error"] = "input #%d: sim is on tick %d, recording says %d" % [idx, tick, int(entry["tick"])]
 			return _finish(result, s)
-		s.loop.dispatch_action(str(entry["action"]))
+		var act: String = str(entry["action"])
+		if act.begins_with(POLICY_PREFIX):
+			if not s.adopt_policy(act.substr(POLICY_PREFIX.length())):
+				result["error"] = "input #%d: policy pick '%s' was refused" % [idx, act]
+				return _finish(result, s)
+		else:
+			s.loop.dispatch_action(act)
 		idx += 1
 	s.advance_frames(maxi(0, total_frames - s.frames))
 	_finish(result, s)
