@@ -1451,7 +1451,19 @@ func _refresh_route_card() -> void:
 	var row_h: Dictionary = {}
 	for k in vals:
 		var vl: Label = _route_card[k + "_val"]
+		var full_fs: int = kit.scaled(int(vl.get_meta(HudKit.BASE_SIZE_META)))
+		vl.add_theme_font_size_override("font_size", full_fs)
 		var w: float = kit.fit_text(vl, vals[k], val_max)
+		# A name too long even at the narrowest width axis steps its size down (floor 80%) before it wraps.
+		if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			for pct in [90, 85, 80]:
+				vl.add_theme_font_size_override("font_size", maxi(1, full_fs * pct / 100))
+				w = kit.fit_text(vl, vals[k], val_max)
+				if vl.autowrap_mode == TextServer.AUTOWRAP_OFF:
+					break
+			if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+				vl.add_theme_font_size_override("font_size", full_fs)
+				w = kit.fit_text(vl, vals[k], val_max)
 		val_w = maxf(val_w, w)
 		var h: float = HudKit.line_height(vl)
 		if vl.autowrap_mode != TextServer.AUTOWRAP_OFF:
