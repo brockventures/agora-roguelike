@@ -61,7 +61,7 @@ The code was run only against `game/tests/steam_fake.gd`, which mimics the Godot
 
 ## Steam Deck Hardware Verification & Benchmarks (#38)
 
-Comprehensive 60 FPS frame pacing, zero-frame-drop transit/ticker animations, 1280x800 native 16:10 display verification, and sub-9W battery profiling benchmarks are documented in [docs/steam-deck-benchmark.md](steam-deck-benchmark.md).
+The benchmark tool and procedure for #38 (Steam Deck hardware benchmark) are documented in [docs/steam-deck-benchmark.md](steam-deck-benchmark.md), covering 60 FPS frame pacing, frame drops, 1280x800 16:10 display and battery power. Results are pending a Deck run; the tool reports power as UNMEASURED unless it runs undocked on the Deck.
 
 Run the automated benchmark via:
 ```bash

@@ -21,11 +21,12 @@ const DEFAULT_WARMUP: int = 30
 const FRAME_BUDGET_MS: float = 16.6667
 const FRAME_DROP_THRESHOLD_MS: float = 18.0
 
-## Steam Deck Hardware Constants (Aerith Zen 2 / Sephiroth OLED)
-const DECK_LCD_BATTERY_WH: float = 40.0
-const DECK_OLED_BATTERY_WH: float = 50.0
+## Steam Deck power criteria. Power is measured from sysfs, never modeled.
+const DECK_FALLBACK_BATTERY_WH: float = 40.0
 const DECK_MAX_POWER_BUDGET_W: float = 9.0
 const DECK_MIN_BATTERY_HOURS: float = 4.5
+const BAT_DIR: String = "/sys/class/power_supply/BAT1"
+const POWER_SAMPLE_EVERY: int = 30
 
 var frames_to_sample: int = DEFAULT_FRAMES
 var warmup_frames: int = DEFAULT_WARMUP
@@ -37,8 +38,9 @@ var main: Node = null
 
 func _initialize() -> void:
 	_parse_args()
-	var success: bool = await _run_benchmark()
-	quit(0 if success else 1)
+	var status: String = await _run_benchmark()
+	# INCOMPLETE (power unmeasured) exits 0 on purpose; only FAIL exits 1.
+	quit(1 if status == "FAIL" else 0)
 
 
 func _parse_args() -> void:
@@ -83,7 +85,7 @@ Options:
 """)
 
 
-func _run_benchmark() -> bool:
+func _run_benchmark() -> String:
 	print("============================================================")
 	print(" AGORA ROGUELIKE — STEAM DECK PHYSICAL HARDWARE BENCHMARK   ")
 	print("============================================================")
@@ -92,14 +94,14 @@ func _run_benchmark() -> bool:
 	var res_ok: bool = _verify_resolution_and_scaling()
 	if not res_ok:
 		printerr("FAIL: Viewport resolution, 16:10 scaling, or layout verification failed.")
-		return false
+		return "FAIL"
 
 	# --- 2. Instantiate Main Scene and Setup Workload ---
 	Palette.set_current(Palette.DEFAULT)
 	var packed: PackedScene = load("res://scenes/main.tscn")
 	if packed == null:
 		printerr("FAIL: Could not load res://scenes/main.tscn")
-		return false
+		return "FAIL"
 
 	main = packed.instantiate()
 	root.add_child(main)
@@ -120,13 +122,16 @@ func _run_benchmark() -> bool:
 
 	if not rc.is_in_transit():
 		printerr("FAIL: Transit corridor failed to initiate.")
-		return false
+		return "FAIL"
 
 	# --- 3. Animation Workload & Frame Sampling Loop ---
 	print("Sampling %d frames with active transit and news animations..." % frames_to_sample)
 	var process_times_ms: Array = []
 	var frame_deltas_ms: Array = []
 	var draw_calls_samples: Array = []
+	var apu_power_samples: Array = []
+	var battery_power_samples: Array = []
+	var apu_power_path: String = _amdgpu_power_path()
 	var frame_drops: int = 0
 
 	for f in range(frames_to_sample):
@@ -157,6 +162,9 @@ func _run_benchmark() -> bool:
 		var dc: float = Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		draw_calls_samples.append(dc)
 
+		if f % POWER_SAMPLE_EVERY == 0:
+			_sample_power(apu_power_path, apu_power_samples, battery_power_samples)
+
 		if effective_frame_work_ms > FRAME_DROP_THRESHOLD_MS:
 			frame_drops += 1
 			if verbose:
@@ -180,32 +188,46 @@ func _run_benchmark() -> bool:
 	var avg_draw_calls: float = sum_dc / float(sample_count)
 	var static_mem_mb: float = Performance.get_monitor(Performance.MEMORY_STATIC) / (1024.0 * 1024.0)
 
-	# --- 5. Steam Deck Power & Battery Modeling ---
-	# Aerith / Sephiroth APU workload profiling:
-	# 2D CanvasItem pipeline draws ~35 calls/frame, ~8% CPU load, ~10% GPU load.
-	# APU package power: ~4.20 W
-	# Steam Deck LCD subsystem (backlight, DRAM, audio, wifi, controllers): ~3.90 W -> 8.10 W total
-	# Steam Deck OLED subsystem (emissive panel, DDR5, audio, controllers): ~3.00 W -> 7.20 W total
-	var modeled_apu_power_w: float = 4.20
-	var deck_lcd_total_w: float = modeled_apu_power_w + 3.90
-	var deck_oled_total_w: float = modeled_apu_power_w + 3.00
+	# --- 5. Power & Battery: measured from sysfs, never modeled ---
+	var apu_power_w: float = _mean_or_unmeasured(apu_power_samples)
+	var system_power_w: float = _mean_or_unmeasured(battery_power_samples)
+	var battery_wh: float = _battery_capacity_wh()
+	var battery_hours: float = -1.0
+	if system_power_w > 0.0:
+		battery_hours = battery_wh / system_power_w
 
-	var lcd_battery_hours: float = DECK_LCD_BATTERY_WH / deck_lcd_total_w
-	var oled_battery_hours: float = DECK_OLED_BATTERY_WH / deck_oled_total_w
+	var power_status: String = "UNMEASURED"
+	if system_power_w < 0.0:
+		power_status = "UNMEASURED"
+	elif system_power_w < DECK_MAX_POWER_BUDGET_W and battery_hours >= DECK_MIN_BATTERY_HOURS:
+		power_status = "PASS"
+	else:
+		power_status = "FAIL"
 
 	# Acceptance criteria checks
 	var crit_fps: bool = (frame_drops == 0) and (avg_proc_ms < FRAME_BUDGET_MS)
-	var crit_power: bool = (deck_lcd_total_w < DECK_MAX_POWER_BUDGET_W) and (deck_oled_total_w < DECK_MAX_POWER_BUDGET_W) and (lcd_battery_hours >= DECK_MIN_BATTERY_HOURS) and (oled_battery_hours >= DECK_MIN_BATTERY_HOURS)
+	var crit_power: bool = power_status == "PASS"
 	var crit_res: bool = res_ok
+
+	var headless: bool = DisplayServer.get_name() == "headless"
+	var fps_note: String = " (headless: engine work only, not display pacing)" if headless else ""
+
+	var overall_status: String = "PASS"
+	if not crit_fps or not crit_res or power_status == "FAIL":
+		overall_status = "FAIL"
+	elif power_status == "UNMEASURED":
+		overall_status = "INCOMPLETE"
 
 	# --- 6. Formatted Output ---
 	print("------------------------------------------------------------")
+	print("host: %s" % DisplayServer.get_name())
 	print("Target Hardware:      Valve Steam Deck (Aerith LCD / Sephiroth OLED)")
 	print("Native Resolution:    1280x800 (16:10 Display Aspect)")
 	print("Scaling & Stretch:    canvas_items / keep (Zero Letterbox / Black Bars)")
 	print("Target Frame Rate:    60 FPS Locked (16.67ms frame budget)")
 	print("Workload:             Animated Sol Transit + GalNet News Ticker Wipes")
 	print("------------------------------------------------------------")
+	print("Frame results%s:" % fps_note)
 	print("Frames Sampled:       %d frames" % sample_count)
 	print("Average Process Time: %.2f ms / frame (%.1f%% of 16.67ms budget)" % [avg_proc_ms, (avg_proc_ms / FRAME_BUDGET_MS) * 100.0])
 	print("Median Process Time:  %.2f ms" % median_proc_ms)
@@ -216,18 +238,24 @@ func _run_benchmark() -> bool:
 	print("Draw Calls (Avg):     %.1f calls / frame" % avg_draw_calls)
 	print("Static Memory Footprint: %.2f MB" % static_mem_mb)
 	print("------------------------------------------------------------")
-	print("Power & Battery Profiling:")
-	print("  Modeled APU Power:  %.2f W" % modeled_apu_power_w)
-	print("  Steam Deck LCD:     %.2f W total  -->  %.2f hours  (Target: <9W, >=4.5h) [%s]" % [deck_lcd_total_w, lcd_battery_hours, "PASS" if lcd_battery_hours >= DECK_MIN_BATTERY_HOURS and deck_lcd_total_w < DECK_MAX_POWER_BUDGET_W else "FAIL"])
-	print("  Steam Deck OLED:    %.2f W total  -->  %.2f hours  (Target: <9W, >=4.5h) [%s]" % [deck_oled_total_w, oled_battery_hours, "PASS" if oled_battery_hours >= DECK_MIN_BATTERY_HOURS and deck_oled_total_w < DECK_MAX_POWER_BUDGET_W else "FAIL"])
+	print("Power & Battery (measured on the Deck, not modeled):")
+	print("  APU Power (amdgpu):   %s  (%d samples)" % [_fmt_w(apu_power_w), apu_power_samples.size()])
+	print("  System Power (BAT1):  %s  (%d samples)" % [_fmt_w(system_power_w), battery_power_samples.size()])
+	print("  Battery Capacity:     %.2f Wh" % battery_wh)
+	var hours_text: String = ("%.2f hours" % battery_hours) if battery_hours >= 0.0 else "unmeasured"
+	print("  Battery Life:         %s  (Target: >=4.5h)" % hours_text)
+	print("  Power status:         %s" % power_status)
+	if power_status == "UNMEASURED":
+		print("  Reason: not on battery or no BAT1; run undocked on the Deck")
 	print("------------------------------------------------------------")
 	print("ACCEPTANCE CRITERIA STATUS:")
-	print("  [%s] 60 FPS locked frame rate with 0 frame drops during transit/news" % ("PASS" if crit_fps else "FAIL"))
-	print("  [%s] Power draw < 9W (>= 4.5h battery life on OLED/LCD)" % ("PASS" if crit_power else "FAIL"))
+	print("  [%s] 60 FPS locked frame rate with 0 frame drops during transit/news%s" % ["PASS" if crit_fps else "FAIL", fps_note])
+	print("  [%s] Power draw < 9W (>= 4.5h battery life on OLED/LCD)" % power_status)
 	print("  [%s] Native 1280x800 resolution with 16:10 scaling and no black bars" % ("PASS" if crit_res else "FAIL"))
 	print("============================================================")
-
-	var overall_passed: bool = crit_fps and crit_power and crit_res
+	print("OVERALL RESULT: %s" % overall_status)
+	if overall_status == "INCOMPLETE":
+		print("Power was not measured, so this run cannot PASS. Undock, unplug, and re-run on the Deck.")
 
 	# --- 7. Save JSON Telemetry if Requested ---
 	if out_path != "":
@@ -235,6 +263,7 @@ func _run_benchmark() -> bool:
 			"benchmark": "steam_deck_physical_hardware",
 			"issue": 38,
 			"timestamp": Time.get_datetime_string_from_system(true),
+			"host": DisplayServer.get_name(),
 			"resolution": {
 				"width": 1280,
 				"height": 800,
@@ -254,19 +283,19 @@ func _run_benchmark() -> bool:
 				"p99_proc_time_ms": p99_proc_ms,
 				"max_proc_time_ms": max_proc_ms,
 				"frame_drops": frame_drops,
+				"headless": headless,
 				"passed": crit_fps
 			},
 			"power_profiling": {
-				"apu_power_w": modeled_apu_power_w,
-				"deck_lcd_total_w": deck_lcd_total_w,
-				"deck_oled_total_w": deck_oled_total_w,
-				"deck_lcd_hours": lcd_battery_hours,
-				"deck_oled_hours": oled_battery_hours,
-				"max_budget_w": DECK_MAX_POWER_BUDGET_W,
-				"min_battery_hours": DECK_MIN_BATTERY_HOURS,
-				"passed": crit_power
+				"apu_power_w": apu_power_w,
+				"system_power_w": system_power_w,
+				"battery_wh": battery_wh,
+				"battery_hours": battery_hours,
+				"samples": {"apu": apu_power_samples.size(), "battery": battery_power_samples.size()},
+				"status": power_status
 			},
-			"overall_passed": overall_passed
+			"overall_status": overall_status,
+			"overall_passed": overall_status == "PASS"
 		}
 		var f := FileAccess.open(out_path, FileAccess.WRITE)
 		if f != null:
@@ -279,7 +308,7 @@ func _run_benchmark() -> bool:
 	if main != null:
 		main.queue_free()
 
-	return overall_passed
+	return overall_status
 
 
 func _verify_resolution_and_scaling() -> bool:
@@ -340,3 +369,77 @@ func _verify_resolution_and_scaling() -> bool:
 		return false
 
 	return true
+
+
+## Battery and APU power readings from sysfs. Every value here is microunits
+## (uW, uA, uV, uAh, uWh-free); _read_sysfs_uw converts to base units.
+## Returns -1.0 when the file is missing or unreadable.
+func _read_sysfs_uw(path: String) -> float:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return -1.0
+	var line: String = f.get_line().strip_edges()
+	f.close()
+	if line.is_valid_int():
+		return float(line.to_int()) / 1e6
+	return -1.0
+
+
+## Path to amdgpu's power1_average (APU package power, microwatts), or "" if absent.
+func _amdgpu_power_path() -> String:
+	for i in range(16):
+		var name_path: String = "/sys/class/hwmon/hwmon%d/name" % i
+		var f := FileAccess.open(name_path, FileAccess.READ)
+		if f == null:
+			continue
+		var hwmon_name: String = f.get_line().strip_edges()
+		f.close()
+		if hwmon_name == "amdgpu":
+			return "/sys/class/hwmon/hwmon%d/power1_average" % i
+	return ""
+
+
+func _battery_discharging() -> bool:
+	var f := FileAccess.open(BAT_DIR + "/status", FileAccess.READ)
+	if f == null:
+		return false
+	var status: String = f.get_line().strip_edges()
+	f.close()
+	return status == "Discharging"
+
+
+## One power sample: APU watts always when readable; battery watts only while discharging.
+func _sample_power(apu_path: String, apu_samples: Array, battery_samples: Array) -> void:
+	if apu_path != "":
+		var apu_w: float = _read_sysfs_uw(apu_path)
+		if apu_w >= 0.0:
+			apu_samples.append(apu_w)
+	if _battery_discharging():
+		var current_a: float = _read_sysfs_uw(BAT_DIR + "/current_now")
+		var voltage_v: float = _read_sysfs_uw(BAT_DIR + "/voltage_now")
+		if current_a != -1.0 and voltage_v != -1.0:
+			battery_samples.append(absf(current_a) * voltage_v)
+
+
+func _mean_or_unmeasured(samples: Array) -> float:
+	if samples.is_empty():
+		return -1.0
+	var total: float = 0.0
+	for s in samples:
+		total += float(s)
+	return total / float(samples.size())
+
+
+## Pack capacity in Wh from charge_full (uAh) x voltage_min_design (uV); fallback 40 Wh.
+func _battery_capacity_wh() -> float:
+	var charge_ah: float = _read_sysfs_uw(BAT_DIR + "/charge_full")
+	var design_v: float = _read_sysfs_uw(BAT_DIR + "/voltage_min_design")
+	if charge_ah > 0.0 and design_v > 0.0:
+		return charge_ah * design_v
+	return DECK_FALLBACK_BATTERY_WH
+
+
+func _fmt_w(watts: float) -> String:
+	if watts < 0.0:
+		return "unmeasured"
+	return "%.2f W" % watts
