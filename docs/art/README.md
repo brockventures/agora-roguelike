@@ -42,11 +42,11 @@ Adding an asset: add a `###` entry to `prompt-bible.md` (id, batch, aspect, samp
 
 ## Store capsules
 
-Steam store capsules for #29 (Steam store assets). Design approved by Ryan on 2026-10-12: the working title "Agora Station", a trading ship whose engine trail is an orbital arc of candlesticks, and the dying Sun with the Stabiliser ring floating clear of it.
+Steam store capsules for #29 (Steam store assets). Design approved by Ryan on 2026-10-12: the title "Short the Sun" (approved 14:55 PT, replacing the working title "Agora Station"), a trading ship whose engine trail is an orbital arc of candlesticks, and the dying Sun with the Stabiliser ring floating clear of it.
 
 - `art/store/keyart-source.png` is the raw Gemini take.
 - `art/store/keyart.png` is the same image with the mottled sky smoothed by `tools/art/clean_background.py`.
-- `tools/art/make_capsules.py` crops `keyart.png` to each size in `game/data/store_assets.json` and writes `art/store/capsules-sheet.png` for review. It sets the two-line title ("AGORA" over a tracked-out "STATION", Archivo, bone cream) at the largest size that clears the art. The page background and library hero carry no text.
+- `tools/art/make_capsules.py` crops `keyart.png` to each size in `game/data/store_assets.json` and writes `art/store/capsules-sheet.png` for review. It sets the two-line title ("SHORT" over a tracked-out "THE SUN", Archivo, bone cream) at the largest size that clears the art. The page background and library hero carry no text.
 
 Regenerate:
 
