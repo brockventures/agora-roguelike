@@ -257,3 +257,45 @@ func test_binding_run_controller() -> String:
 
 	scene.free()
 	return "ok"
+
+
+func test_ticket_persistent_inventory_and_locked_submit_prompt() -> String:
+	var packed: PackedScene = load(MAIN_SCENE_PATH)
+	var scene: Node = packed.instantiate()
+	var main: Variant = scene
+	var rc := RunController.new(null, 42)
+	rc.docked_at = "mars"
+	rc.cargo_capacity = 50
+	rc.cargo = {"ORE": 12}
+	rc.cr = 5000
+	main.initialize_systems(rc)
+	main._resolve_child_nodes()
+	main._build_readouts()
+	main.loop.set_tab(M0Loop.Tab.MARKET)
+	main.hud.set_station("mars")
+	main.hud.set_commodity("ORE")
+	main._refresh_readouts()
+
+	var stock_v: Label = main._ticket.get("stock_v")
+	var hold_v: Label = main._ticket.get("hold_v")
+	if stock_v == null or hold_v == null:
+		scene.free()
+		return "Ticket stock_v or hold_v label missing"
+	if not stock_v.text.contains("UNITS"):
+		scene.free()
+		return "expected TicketStockValue to show UNITS, got '%s'" % stock_v.text
+	if hold_v.text != "12 HELD · 38 FREE":
+		scene.free()
+		return "expected TicketHoldValue '12 HELD · 38 FREE', got '%s'" % hold_v.text
+
+	# Switch to SELL with 0 held FOOD -> submit prompt should show LOCKED
+	main.hud.set_commodity("FOOD")
+	main.hud.gamepad_focus.set_order_side(GamepadFocus.OrderSide.SELL)
+	main._refresh_readouts()
+	var pr: Array = main.prompts()
+	if pr.is_empty() or pr[0][1] != TranslationServer.translate("HUD_ACT_LOCKED"):
+		scene.free()
+		return "expected A prompt to show LOCKED when order cannot be submitted, got %s" % str(pr)
+
+	scene.free()
+	return "ok"

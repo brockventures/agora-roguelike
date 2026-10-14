@@ -86,6 +86,7 @@ func set_order_side(p_side: OrderSide) -> void:
 		active_side = p_side
 		var side_str: String = "BUY" if active_side == OrderSide.BUY else "SELL"
 		order_side_changed.emit(side_str)
+		clamp_quantity()
 		_emit_depth_snap()
 
 ## Toggles between BUY and SELL order sides.
@@ -99,6 +100,7 @@ func toggle_order_side() -> String:
 ## Snaps D-pad selection to a specific depth level (0..4).
 func snap_depth_level(index: int) -> int:
 	ladder_index = clampi(index, 0, MAX_LADDER_DEPTH - 1)
+	clamp_quantity()
 	_emit_depth_snap()
 	return ladder_index
 
@@ -119,17 +121,110 @@ func step_ladder_cursor(direction: int) -> int:
 	if new_side != active_side:
 		active_side = new_side
 		order_side_changed.emit("BUY" if active_side == OrderSide.BUY else "SELL")
+	clamp_quantity()
 	_emit_depth_snap()
 	return ladder_index
 
+## Computes the maximum order quantity allowed for current side, commodity, and station based on inventory, capacity, and liquid capital.
+func get_max_allowed_quantity() -> int:
+	if hud == null:
+		return MAX_ORDER_QTY
+	var rc: RunController = hud.controller
+	if rc == null:
+		return MAX_ORDER_QTY
+	var station: String = hud.active_station
+	var commodity: String = hud.active_commodity
+	var quote: Dictionary = get_focused_quote()
+	var px: float = float(quote.get("price", 0.0))
+	var avail_qty: int = int(quote.get("available_qty", 0))
+	var is_buy: bool = (active_side == OrderSide.BUY)
+
+	var mkt: StationMarket = hud.market
+	var station_avail: int = 0
+	if mkt != null and mkt.has_book(station, commodity):
+		var sweep: Dictionary = mkt.sweep_quote(station, commodity, "BUY" if is_buy else "SELL", MAX_ORDER_QTY, px if px > 0.0 else 999999.0)
+		station_avail = int(sweep.get("filled", 0))
+	else:
+		station_avail = avail_qty if avail_qty > 0 else MAX_ORDER_QTY
+
+	if is_buy:
+		var max_buy: int = station_avail
+		var remaining_capacity: int = rc.get_remaining_cargo_capacity()
+		max_buy = mini(max_buy, remaining_capacity)
+		if px > 0.0:
+			var max_affordable: int = int(rc.cr / px)
+			max_buy = mini(max_buy, max_affordable)
+		if rc.trade_cap_qty() > 0:
+			max_buy = mini(max_buy, rc.audit_units_remaining())
+		return maxi(0, max_buy)
+	else:
+		var held: int = int(rc.cargo.get(commodity, 0))
+		var max_sell: int = held
+		if station_avail > 0:
+			max_sell = mini(max_sell, station_avail)
+		if rc.trade_cap_qty() > 0:
+			max_sell = mini(max_sell, rc.audit_units_remaining())
+		return maxi(0, max_sell)
+
+## Returns the total available stock/depth at the active station for the active commodity.
+func get_station_stock() -> int:
+	if hud == null:
+		return 0
+	var station: String = hud.active_station
+	var commodity: String = hud.active_commodity
+	var quote: Dictionary = get_focused_quote()
+	var px: float = float(quote.get("price", 0.0))
+	var is_buy: bool = (active_side == OrderSide.BUY)
+	var mkt: StationMarket = hud.market
+	if mkt != null and mkt.has_book(station, commodity):
+		var sweep: Dictionary = mkt.sweep_quote(station, commodity, "BUY" if is_buy else "SELL", MAX_ORDER_QTY, px if px > 0.0 else 999999.0)
+		return int(sweep.get("filled", 0))
+	return int(quote.get("available_qty", 0))
+
+## Returns true if the current order quantity, side, and dock state represent a valid submittable order.
+func can_submit_order() -> bool:
+	if hud == null:
+		return false
+	if order_qty <= 0:
+		return false
+	var rc: RunController = hud.controller
+	if rc != null:
+		if rc.is_in_transit():
+			return false
+		if rc.docked_at != hud.active_station:
+			return false
+		var quote: Dictionary = get_focused_quote()
+		var px: float = float(quote.get("price", 0.0))
+		if px <= 0.0:
+			return false
+		var max_allowed: int = get_max_allowed_quantity()
+		if order_qty > max_allowed:
+			return false
+	return true
+
+## Clamps the active order quantity to valid bounds based on current inventory, capacity, and credits.
+func clamp_quantity() -> int:
+	var max_allowed: int = get_max_allowed_quantity()
+	var target: int = 0
+	if max_allowed > 0:
+		target = clampi(order_qty, 1, max_allowed)
+	if target != order_qty:
+		order_qty = target
+		quantity_changed.emit(order_qty)
+	return order_qty
+
 ## Adjusts order execution quantity with bounds clamping.
 func adjust_quantity(delta: int) -> int:
-	order_qty = clampi(order_qty + delta, 1, MAX_ORDER_QTY)
+	var max_allowed: int = get_max_allowed_quantity()
+	if max_allowed <= 0:
+		order_qty = 0
+	else:
+		order_qty = clampi(order_qty + delta, 1, max_allowed)
 	quantity_changed.emit(order_qty)
 	return order_qty
 
 func set_quantity(qty: int) -> int:
-	order_qty = clampi(qty, 1, MAX_ORDER_QTY)
+	order_qty = clampi(qty, 0, MAX_ORDER_QTY)
 	quantity_changed.emit(order_qty)
 	return order_qty
 
@@ -172,6 +267,7 @@ func execute_focused_order() -> Dictionary:
 	var station: String = hud.active_station
 	var commodity: String = hud.active_commodity
 	var rc: RunController = hud.controller
+	var check_qty: int = maxi(1, order_qty)
 
 	# 0. In-transit gate (#111): a ship between stations trades nowhere.
 	if rc != null and rc.is_in_transit():
@@ -210,13 +306,33 @@ func execute_focused_order() -> Dictionary:
 		_note_rejection(rej_px)
 		return rej_px
 
+	if order_qty <= 0 and get_max_allowed_quantity() > 0:
+		last_rejection_reason = "INVALID_QUANTITY"
+		var rej_zero: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty}
+		_note_rejection(rej_zero)
+		return rej_zero
+
 	# Antitrust audit (#12): unit cap per round while one is active. Cumulative
 	# over the round (D5), so several small orders cannot add up past the cap.
-	if rc != null and rc.trade_cap_qty() > 0 and order_qty > rc.audit_units_remaining():
+	if rc != null and rc.trade_cap_qty() > 0 and check_qty > rc.audit_units_remaining():
 		last_rejection_reason = "AUDIT_TRADE_CAP"
 		var rej_audit: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty, "cap": rc.trade_cap_qty(), "remaining": rc.audit_units_remaining()}
 		_note_rejection(rej_audit)
 		return rej_audit
+
+	if not is_buy and rc != null:
+		var held_cargo: int = int(rc.cargo.get(commodity, 0))
+		if held_cargo < check_qty:
+			last_rejection_reason = "INSUFFICIENT_CARGO"
+			var rej_cargo_early: Dictionary = {
+				"ok": false,
+				"reason": last_rejection_reason,
+				"held": held_cargo,
+				"required": check_qty,
+				"quote": quote
+			}
+			_note_rejection(rej_cargo_early)
+			return rej_cargo_early
 
 	# Sol Central's call auction (Epic 3 task 6): at Earth, in an auction round, the
 	# commodity being auctioned takes limit orders into a buffer instead of sweeping
@@ -224,10 +340,10 @@ func execute_focused_order() -> Dictionary:
 	if rc != null and rc.world != null:
 		var au: Dictionary = rc.world.auction_at(station, rc.get_current_round(), rc.run_seed)
 		if not au.is_empty() and str(au["commodity"]) == commodity:
-			var q: Dictionary = rc.world.submit_auction_order(rc, station, "BUY" if is_buy else "SELL", order_qty, int(round(px)))
+			var q: Dictionary = rc.world.submit_auction_order(rc, station, "BUY" if is_buy else "SELL", check_qty, int(round(px)))
 			if not bool(q["ok"]):
 				last_rejection_reason = str(q["reason"])
-				var rej_au: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote, "order_qty": order_qty}
+				var rej_au: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote, "order_qty": check_qty}
 				_note_rejection(rej_au)
 				return rej_au
 			var queued: Dictionary = {
@@ -247,13 +363,13 @@ func execute_focused_order() -> Dictionary:
 	var side_str: String = "BUY" if is_buy else "SELL"
 	var sweep: Dictionary = {}
 	if use_book:
-		sweep = mkt.sweep_quote(station, commodity, side_str, order_qty, px)
-		if int(sweep["filled"]) < order_qty:
+		sweep = mkt.sweep_quote(station, commodity, side_str, check_qty, px)
+		if int(sweep["filled"]) < check_qty:
 			last_rejection_reason = "INSUFFICIENT_LIQUIDITY"
 			var rej_liq: Dictionary = {
 				"ok": false,
 				"reason": last_rejection_reason,
-				"order_qty": order_qty,
+				"order_qty": check_qty,
 				"available_qty": int(sweep["filled"]),
 				"quote": quote
 			}
@@ -263,19 +379,19 @@ func execute_focused_order() -> Dictionary:
 	# 2. Level Available Quantity Gate (Marvin Review Catch):
 	# A single book depth level cannot fill more units than its resting liquidity.
 	var avail_qty: int = int(quote.get("available_qty", 0))
-	if not use_book and avail_qty > 0 and order_qty > avail_qty:
+	if not use_book and avail_qty > 0 and check_qty > avail_qty:
 		last_rejection_reason = "EXCEEDS_AVAILABLE_QTY"
 		var rej_qty: Dictionary = {
 			"ok": false,
 			"reason": last_rejection_reason,
-			"order_qty": order_qty,
+			"order_qty": check_qty,
 			"available_qty": avail_qty,
 			"quote": quote
 		}
 		_note_rejection(rej_qty)
 		return rej_qty
 
-	var total_cost: int = int(sweep["cost"]) if use_book else int(round(px * float(order_qty)))
+	var total_cost: int = int(sweep["cost"]) if use_book else int(round(px * float(check_qty)))
 
 	# Antitrust fee (#12) on the swept notional; zero with no audit active.
 	var fee: int = rc.trade_fee(total_cost) if rc != null else 0
@@ -298,18 +414,24 @@ func execute_focused_order() -> Dictionary:
 			# 4. Cargo Capacity Gate (Marvin Review Catch):
 			# Purchasing cargo cannot exceed the vessel's physical hold capacity.
 			var remaining_capacity: int = rc.get_remaining_cargo_capacity()
-			if order_qty > remaining_capacity:
+			if check_qty > remaining_capacity:
 				last_rejection_reason = "INSUFFICIENT_CARGO_CAPACITY"
 				var rej_cap: Dictionary = {
 					"ok": false,
 					"reason": last_rejection_reason,
 					"remaining_capacity": remaining_capacity,
-					"order_qty": order_qty,
+					"order_qty": check_qty,
 					"cargo_capacity": rc.cargo_capacity,
 					"total_cargo": rc.get_total_cargo()
 				}
 				_note_rejection(rej_cap)
 				return rej_cap
+
+			if order_qty <= 0:
+				last_rejection_reason = "INVALID_QUANTITY"
+				var rej_zero_buy: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty}
+				_note_rejection(rej_zero_buy)
+				return rej_zero_buy
 
 			## Deduct CR and credit cargo
 			rc.cr -= total_cost + fee
@@ -318,20 +440,30 @@ func execute_focused_order() -> Dictionary:
 		else:
 			## SELL: Player must hold sufficient units of the commodity
 			var current_cargo: int = int(rc.cargo.get(commodity, 0))
-			if current_cargo < order_qty:
+			if current_cargo < check_qty:
 				last_rejection_reason = "INSUFFICIENT_CARGO"
 				var rej_cargo: Dictionary = {
 					"ok": false,
 					"reason": last_rejection_reason,
 					"held": current_cargo,
-					"required": order_qty,
+					"required": check_qty,
 					"quote": quote
 				}
 				_note_rejection(rej_cargo)
 				return rej_cargo
+			if order_qty <= 0:
+				last_rejection_reason = "INVALID_QUANTITY"
+				var rej_zero_sell: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty}
+				_note_rejection(rej_zero_sell)
+				return rej_zero_sell
 			## Deduct cargo and credit CR
 			rc.cargo[commodity] = current_cargo - order_qty
 			rc.cr += maxi(0, total_cost - fee)
+	elif order_qty <= 0:
+		last_rejection_reason = "INVALID_QUANTITY"
+		var rej_zero_norc: Dictionary = {"ok": false, "reason": last_rejection_reason, "order_qty": order_qty}
+		_note_rejection(rej_zero_norc)
+		return rej_zero_norc
 
 	if rc != null:
 		rc.record_audit_trade(order_qty)
@@ -374,24 +506,28 @@ func handle_action(action: String) -> bool:
 			if hud != null:
 				var s: String = hud.cycle_station(-1)
 				station_navigated.emit(s)
+				clamp_quantity()
 				_emit_depth_snap()
 				return true
 		"rb", "station_next":
 			if hud != null:
 				var s: String = hud.cycle_station(1)
 				station_navigated.emit(s)
+				clamp_quantity()
 				_emit_depth_snap()
 				return true
 		"lt", "commodity_prev":
 			if hud != null:
 				var c: String = hud.cycle_commodity(-1)
 				commodity_navigated.emit(c)
+				clamp_quantity()
 				_emit_depth_snap()
 				return true
 		"rt", "commodity_next":
 			if hud != null:
 				var c: String = hud.cycle_commodity(1)
 				commodity_navigated.emit(c)
+				clamp_quantity()
 				_emit_depth_snap()
 				return true
 		"dpad_up", "up":
@@ -447,6 +583,8 @@ func _note_rejection(payload: Dictionary) -> void:
 ## Player-facing text for a rejection reason code. Pass the payload for context.
 static func rejection_message(reason: String, payload: Dictionary = {}) -> String:
 	match reason:
+		"INVALID_QUANTITY":
+			return Loc.t("REJ_INVALID_QTY")
 		"NOT_DOCKED_AT_STATION":
 			var st: String = str(payload.get("active_station", ""))
 			return Loc.t("REJ_NOT_DOCKED") % (Loc.station(st) if st != "" else Loc.t("REJ_THIS_STATION"))
