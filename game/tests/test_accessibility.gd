@@ -150,8 +150,9 @@ func test_settings_screen_text_fits_at_every_text_scale() -> String:
 		for i in menu.rows().size():
 			menu.cursor = i
 			scene._refresh_readouts()
-			var f: Array = fit.overflow_of("settings[row %d @%.2f]" % [i, scale], scene.settings_label, scene.settings_label.text, scene.settings_label.size, scene.settings_modal.size)
-			report.append_array(f)
+			for l in _labels(scene.settings_view):
+				if l.visible:
+					report.append_array(fit.overflow_of("settings[row %d @%.2f] %s" % [i, scale, l.name], l, l.text, l.size, scene.settings_view.size))
 		scene.free()
 	return "ok" if report.is_empty() else str(report.slice(0, 6))
 

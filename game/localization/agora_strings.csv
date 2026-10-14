@@ -291,7 +291,10 @@ SET_KEY,Key
 SET_LISTENING,Press a button or key...
 SET_RESET,Reset to defaults
 SET_CLOSE,Back to game
+SET_CLOSE_TITLE,Back to title
 SET_HINT,D-pad move   Left/Right change   A select   B or View back
+SET_SECTION_PREFS,Preferences
+SET_SECTION_CONTROLS,Controls
 SET_LISTEN_HINT,Press the new button or key. View or Esc cancels.
 SET_SCROLL,(%d / %d)
 SET_MSG_BOUND,%s is now %s
@@ -405,7 +408,6 @@ CONTRACT_EYEBROW,DEFENSE CONTRACT
 SUM_EYEBROW,RUN OVER
 SUM_SEVERANCE_VALUE,+%d (balance %d)
 PERKS_EYEBROW,SEVERANCE %d
-SET_EYEBROW,ACCESSIBILITY AND CONTROLS
 MAP_DOCKED_TAG,%s · DOCKED
 HUD_ACT_CONTINUE,Continue
 MONO_EYEBROW,MONOPOLY

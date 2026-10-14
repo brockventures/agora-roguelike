@@ -33,7 +33,6 @@ const FOOTER_SIZE: int = 14
 const FOOTER_ALPHA: float = 0.6
 const SHADE_COLOR: Color = Color(0.07, 0.06, 0.05)
 ## Settings rows shown at once; SettingsMenu.text() scrolls the rest with the cursor.
-const SETTINGS_ROWS: int = 16
 
 ## How the menu leaves the title. The default is the real scene change; tests replace it.
 var change_scene: Callable
@@ -51,7 +50,8 @@ var _art: TextureRect = null
 var _continue_button: Button = null
 var _settings_button: Button = null
 var _settings_panel: Panel = null
-var _settings_label: Label = null
+var _settings_view: SettingsView = null
+var kit: HudKit = HudKit.new()
 var _drift: Tween = null
 
 
@@ -77,6 +77,7 @@ func build_screen() -> void:
 		settings.apply_all(not _locale_pinned_by_env())
 		settings.changed.connect(_on_settings_changed)
 	settings_menu = SettingsMenu.new(settings)
+	settings_menu.close_key = "SET_CLOSE_TITLE"
 	settings_menu.closed.connect(_on_settings_closed)
 	_build_stage()
 	_build_art()
@@ -246,23 +247,15 @@ func _build_settings_panel() -> void:
 	_settings_panel.anchor_right = 0.5
 	_settings_panel.anchor_top = 0.5
 	_settings_panel.anchor_bottom = 0.5
-	_settings_panel.offset_left = -380.0
-	_settings_panel.offset_right = 380.0
-	_settings_panel.offset_top = -300.0
-	_settings_panel.offset_bottom = 300.0
+	_settings_panel.offset_left = -520.0
+	_settings_panel.offset_right = 520.0
+	_settings_panel.offset_top = -310.0
+	_settings_panel.offset_bottom = 310.0
 	_settings_panel.visible = false
 	_page.add_child(_settings_panel)
-	_settings_label = Label.new()
-	_settings_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_settings_label.offset_left = 24.0
-	_settings_label.offset_top = 20.0
-	_settings_label.offset_right = -24.0
-	_settings_label.offset_bottom = -20.0
-	_settings_label.add_theme_font_override("font", HudTheme.role_font(HudTheme.ROLE_BODY))
-	_settings_label.add_theme_font_size_override("font_size", 18)
-	_settings_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_settings_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_settings_panel.add_child(_settings_label)
+	_settings_view = SettingsView.new()
+	_settings_panel.add_child(_settings_view)
+	_settings_view.setup(settings_menu, kit, Vector2(1040.0, 620.0))
 
 
 func _start_drift() -> void:
@@ -304,7 +297,8 @@ func _refresh_settings() -> void:
 		return
 	_settings_panel.visible = settings_menu.is_open
 	if settings_menu.is_open:
-		_settings_label.text = settings_menu.text(SETTINGS_ROWS)
+		kit.apply_scale(settings.text_scale)
+		_settings_view.refresh()
 
 
 func _on_settings_changed() -> void:

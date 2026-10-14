@@ -79,7 +79,6 @@ var market_highlight: ColorRect = null
 ## Focus bars (rows) and zone frames, built in _build_readouts.
 var sidebar_focus_bar: ColorRect = null
 var resolution_focus_bar: ColorRect = null
-var settings_focus_bar: ColorRect = null
 var focus_frames: Dictionary = {}
 ## Per-voice bookkeeping for stealing: play order and whether it carries a priority sound.
 var _voice_order: Array[int] = []
@@ -104,7 +103,7 @@ var is_initialized: bool = false
 var settings: AccessibilitySettings = AccessibilitySettings.new()
 var settings_menu: SettingsMenu = null
 var settings_modal: Panel = null
-var settings_label: Label = null
+var settings_view: SettingsView = null
 ## Label metadata key holding the font size at 100% text scale.
 const BASE_SIZE_META: String = HudKit.BASE_SIZE_META
 ## Label metadata flag: this label sits in a view that scrolls when its content is taller
@@ -2867,7 +2866,6 @@ func _refresh_fleet() -> void:
 var _res: Dictionary = {}
 var _dim: HudKit.Plate = null
 var _blocker: Control = null
-var _settings_parts: Dictionary = {}
 
 ## Width of a modal's 4:3 art frame (height is three quarters of it).
 const MODAL_ART_W: float = 240.0
@@ -2955,13 +2953,11 @@ func _build_modals() -> void:
 	sleep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sleep_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	sleep_modal.visible = false
-	var st: Dictionary = _make_modal("SettingsPanel", HudLayout.MODAL_WIDE_RECT)
-	_settings_parts = st
-	settings_modal = st["panel"]
-	settings_focus_bar = HudTheme.make_focus_bar(settings_modal, FOCUS_BAR_DARK_FILL, FOCUS_BAR_DARK_EDGE)
-	settings_label = kit.label(settings_modal, "SettingsText", HudTheme.ROLE_BODY, 18, HUD_TEXT_COLOR)
-	settings_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	settings_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	settings_modal = _make_panel("SettingsPanel", HudLayout.MODAL_WIDE_RECT, "ModalPanel")
+	hud_container.add_child(settings_modal)
+	settings_view = SettingsView.new()
+	settings_modal.add_child(settings_view)
+	settings_view.setup(settings_menu, kit, Vector2(SETTINGS_MODAL_W, HudLayout.MODAL_WIDE_RECT.size.y + 60.0))
 	settings_modal.visible = false
 	resolution_modal.visible = false
 
@@ -3512,34 +3508,22 @@ func _refresh_sleep() -> void:
 	sleep_modal.size = Vector2(HudLayout.BANNER_RECT.size.x, h + 32.0)
 
 
+## Width of the settings modal: two cards (Preferences, Controls) side by side (#193).
+const SETTINGS_MODAL_W: float = 1000.0
+
 func _refresh_settings() -> void:
 	settings_modal.visible = settings_menu.is_open
 	if not settings_modal.visible:
-		settings_label.text = ""
-		settings_focus_bar.visible = false
 		return
-	var m: Dictionary = _settings_parts
-	var w: float = HudLayout.MODAL_WIDE_RECT.size.x
-	var y: float = _layout_band(m, w, tr("SET_EYEBROW"), tr("SET_TITLE"), "teal", [])
-	var h_total: float = HudLayout.MODAL_WIDE_RECT.size.y + 60.0
-	var lh: float = HudKit.line_height(settings_label) + float(settings_label.get_theme_constant("line_spacing"))
-	var body_top: float = y + 14.0
-	(m["foot"] as CanvasItem).visible = false
-	for host in m["actions"]:
-		(host as CanvasItem).visible = false
-	var body_h: float = h_total - HudLayout.BORDER - 12.0 - body_top
-	# Rows, a blank, the hint and the scroll line take 3 lines of the body.
-	var max_rows: int = int(body_h / lh) - 3
-	var lines: PackedStringArray = settings_menu.text(max_rows).split("\n")
-	var body: PackedStringArray = lines.slice(2)
-	settings_label.text = "\n".join(body)
-	settings_label.position = Vector2(HudLayout.BORDER + 24.0, body_top)
-	settings_label.size = Vector2(w - 2.0 * (HudLayout.BORDER + 24.0), body_h)
+	# The modal is as tall as its cards need (never shorter than the 460 px design), so
+	# larger text grows it instead of clipping the rows.
+	var w: float = SETTINGS_MODAL_W
+	settings_view.size = Vector2(w, settings_view.size.y)
+	var h_total: float = maxf(HudLayout.MODAL_WIDE_RECT.size.y + 60.0, settings_view.required_height())
+	settings_view.size = Vector2(w, h_total)
 	settings_modal.size = Vector2(w, h_total)
-	settings_modal.position = Vector2(HudLayout.MODAL_WIDE_RECT.position.x, maxf(72.0, 64.0 + (736.0 - h_total) * 0.5))
-	settings_focus_bar.visible = true
-	HudTheme.place_focus_bar(settings_focus_bar, Rect2(settings_label.position.x - 4.0, settings_label.position.y + lh * float(settings_menu.cursor_line(max_rows) - 2), settings_label.size.x + 4.0, lh))
-
+	settings_modal.position = Vector2((HudLayout.VIEWPORT.x - w) * 0.5, maxf(72.0, 64.0 + (736.0 - h_total) * 0.5))
+	settings_view.refresh()
 
 
 # --- Toasts: trading fills, rejected orders and GalNet alerts (Toast.dc.html) ---

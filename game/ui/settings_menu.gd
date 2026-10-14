@@ -27,6 +27,8 @@ var message: Array = []
 ## The live first-hour tutorial model, set by Main (#36). Null in a bare menu, which then
 ## builds a throwaway one over `settings` so the row works the same (the model only reads).
 var onboarding: Onboarding = null
+## Translation key of the close row. The title screen sets SET_CLOSE_TITLE ("Back to title").
+var close_key: String = "SET_CLOSE"
 var _held: Dictionary = {}
 
 
@@ -90,7 +92,7 @@ func row_text(i: int, row: Dictionary) -> String:
 			return "%s %s   %s" % [mark, InputRemap.action_label(a), value]
 		Row.RESET:
 			return "%s %s" % [mark, Loc.t("SET_RESET")]
-	return "%s %s" % [mark, Loc.t("SET_CLOSE")]
+	return "%s %s" % [mark, Loc.t(close_key)]
 
 
 func tr_row(mark: String, key: String, value: String) -> String:
@@ -120,15 +122,77 @@ func text(max_rows: int = 99) -> String:
 	for i in range(first, first + shown):
 		out.append(row_text(i, all[i]))
 	out.append("")
-	if listening_action != "":
-		out.append(Loc.t("SET_LISTEN_HINT"))
-	elif not message.is_empty():
-		out.append(Loc.t(str(message[0])) % message.slice(1))
-	else:
-		out.append(Loc.t("SET_HINT"))
+	out.append(footer_text())
 	if shown < n:
 		out.append(Loc.t("SET_SCROLL") % [cursor + 1, n])
 	return "\n".join(out)
+
+
+## The one line under the list: the listen prompt while rebinding, else the last result
+## (message), else the control hint. text() ends with it; the view draws it on its own.
+func footer_text() -> String:
+	if listening_action != "":
+		return Loc.t("SET_LISTEN_HINT")
+	if not message.is_empty():
+		return Loc.t(str(message[0])) % message.slice(1)
+	return Loc.t("SET_HINT")
+
+
+## One row as the view draws it: {"label", "kind" (slider|choice|toggle|binding|button),
+## "value", "fraction" (sliders, 0..1), "on" (toggles), "cursor", "section" (prefs|controls|footer)}.
+func row_parts(i: int) -> Dictionary:
+	var row: Dictionary = rows()[i]
+	var kind: int = int(row["kind"])
+	var out: Dictionary = {"label": "", "kind": "button", "value": "", "fraction": 0.0, "on": false, "cursor": i == cursor, "section": "footer"}
+	match kind:
+		Row.SCALE:
+			out["label"] = Loc.t("SET_TEXT_SIZE")
+			out["kind"] = "choice"
+			out["value"] = "%d%%" % int(round(settings.text_scale * 100.0))
+		Row.PALETTE:
+			out["label"] = Loc.t("SET_PALETTE")
+			out["kind"] = "choice"
+			out["value"] = Palette.label(settings.palette)
+		Row.LANGUAGE:
+			out["label"] = Loc.t("SET_LANGUAGE")
+			out["kind"] = "choice"
+			out["value"] = Loc.locale_label()
+		Row.CRT:
+			out["label"] = Loc.t("SET_CRT")
+			out["kind"] = "toggle"
+			out["on"] = settings.crt_filter
+		Row.ALERT_VOLUME:
+			out["label"] = Loc.t("SET_ALERT_VOLUME")
+			out["kind"] = "slider"
+			out["value"] = "%d%%" % int(round(settings.alert_volume * 100.0))
+			out["fraction"] = clampf(settings.alert_volume, 0.0, 1.0)
+		Row.ALERT_MUTE:
+			out["label"] = Loc.t("SET_ALERT_MUTE")
+			out["kind"] = "toggle"
+			out["on"] = settings.alert_mute
+		Row.REDUCED_MOTION:
+			out["label"] = Loc.t("SET_REDUCED_MOTION")
+			out["kind"] = "toggle"
+			out["on"] = settings.reduced_motion
+		Row.TUTORIAL:
+			out["label"] = Loc.t("SET_TUTORIAL")
+			out["kind"] = "toggle"
+			out["on"] = settings.tutorial_enabled
+		Row.ACTION:
+			var a: String = str(row["action"])
+			out["label"] = InputRemap.action_label(a)
+			out["kind"] = "binding"
+			out["value"] = Loc.t("SET_LISTENING") if a == listening_action else InputRemap.binding_text(settings.bindings.get(a, {}))
+			out["section"] = "controls"
+		Row.RESET:
+			out["label"] = Loc.t("SET_RESET")
+		_:
+			out["label"] = Loc.t(close_key)
+	if out["kind"] == "toggle":
+		out["value"] = Loc.t("SET_ON" if bool(out["on"]) else "SET_OFF")
+	if int(kind) <= Row.TUTORIAL:
+		out["section"] = "prefs"
+	return out
 
 
 ## Routes one input event. Returns true when the screen consumed it (always,
