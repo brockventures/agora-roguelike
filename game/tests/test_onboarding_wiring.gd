@@ -443,17 +443,38 @@ func test_round_burn_pulse_and_checklist_wiring() -> String:
 	var m := _main(true, 11, true)
 	var heard: Array = []
 	m.tactile_audio.sound_played.connect(func(id, _bus, _db, _p): heard.append(id))
-	if m.get_flight_checklist_notes().size() != 4:
+	var chk0: Array = m.get_flight_checklist_notes()
+	if chk0.size() != 4:
 		m.free()
-		return "Expected chip + 3 checklist lines on Run 1, got %s" % str(m.get_flight_checklist_notes())
+		return "Expected chip + 3 checklist lines on Run 1, got %s" % str(chk0)
+	var card0: String = str(m._card_notes())
+	if not card0.contains("FLIGHT CHECKLIST 0/3") or not card0.contains("[ ] 1. Purchase propellant at Earth"):
+		m.free()
+		return "Desk notes (_card_notes) did not include initial flight checklist: %s" % card0
+	m._onb_on_order_executed({"side": "BUY", "station": "earth", "commodity": "FUEL", "price": 15.0, "qty": 2, "total_cr": 30, "fee": 0})
+	var card1: String = str(m._card_notes())
+	if not card1.contains("FLIGHT CHECKLIST 1/3") or not card1.contains("[x] 1. Purchase propellant at Earth"):
+		m.free()
+		return "Step 1 did not tick on _card_notes after buying FUEL at Earth: %s" % card1
+	m._onb_on_departed({"origin": "earth", "destination": "luna"})
+	var card2: String = str(m._card_notes())
+	if not card2.contains("FLIGHT CHECKLIST 2/3") or not card2.contains("[x] 2. Plot orbital burn to Luna"):
+		m.free()
+		return "Step 2 did not tick on _card_notes after departing to Luna: %s" % card2
+	m._onb_on_order_executed({"side": "SELL", "station": "luna", "commodity": "FUEL", "price": 25.0, "qty": 1, "total_cr": 25, "fee": 0})
+	if not m.get_flight_checklist_notes().is_empty() or str(m._card_notes()).contains("FLIGHT CHECKLIST"):
+		m.free()
+		return "Checklist should auto-dismiss from _card_notes after profitable sell"
 	m._onb_on_round_advanced(1)
 	if m.round_pulse_count != 1 or m.round_pulse_timer <= 0.0 or not heard.has(TactileAudio.ROUND_PULSE):
 		m.free()
 		return "Round advance did not trigger visual/tactile burn pulse: count=%d timer=%f heard=%s" % [m.round_pulse_count, m.round_pulse_timer, str(heard)]
-	m.controller.corp_number = 2
-	m._onb_sync_context()
-	if not m.get_flight_checklist_notes().is_empty():
-		m.free()
-		return "Flight checklist notes should be empty on Run 2+"
+	var m2 := _main(true, 11, true)
+	m2.controller.corp_number = 2
+	m2._onb_sync_context()
+	var empty_run2: bool = m2.get_flight_checklist_notes().is_empty()
+	m2.free()
 	m.free()
+	if not empty_run2:
+		return "Flight checklist notes should be empty on Run 2+"
 	return "ok"

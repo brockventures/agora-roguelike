@@ -512,8 +512,12 @@ func test_first_run_flight_checklist_and_round_pulse() -> String:
 	if int(st0.get("total_steps", 0)) != 3 or int(st0.get("completed_count", -1)) != 0:
 		return "Expected 0/3 checklist state at start, got %s" % str(st0)
 
-	# Step 1: Purchase propellant at Earth
-	ob.handle(_ev("order_executed", {"side": "BUY", "station": "earth", "commodity": "FUEL"}))
+	# Step 1: Purchase propellant at Earth (non-FUEL or non-Earth buys must not tick it)
+	ob.handle(_ev("order_executed", {"side": "BUY", "station": "earth", "commodity": "WATER", "price": 20.0, "qty": 2}))
+	ob.handle(_ev("order_executed", {"side": "BUY", "station": "mars", "commodity": "FUEL", "price": 15.0, "qty": 2}))
+	if not steps_done.is_empty():
+		return "Non-FUEL or non-Earth BUY should not complete Step 1: %s" % str(steps_done)
+	ob.handle(_ev("order_executed", {"side": "BUY", "station": "earth", "commodity": "FUEL", "price": 15.0, "qty": 2}))
 	if steps_done != ["purchase_propellant"] or not ob.is_checklist_active():
 		return "Step 1 (purchase_propellant) did not complete cleanly: %s" % str(steps_done)
 
@@ -522,13 +526,19 @@ func test_first_run_flight_checklist_and_round_pulse() -> String:
 	if ob.round_pulse_count() != 1 or pulse_rounds != [1]:
 		return "Round advance should trigger tactile round pulse feedback, got %s" % str(pulse_rounds)
 
-	# Step 2: Plot orbital burn to Luna
+	# Step 2: Plot orbital burn to Luna (other destinations must not tick it)
+	ob.handle(_ev("transit_departed", {"destination": "mars"}))
+	if steps_done != ["purchase_propellant"]:
+		return "Non-Luna departure should not complete Step 2: %s" % str(steps_done)
 	ob.handle(_ev("transit_departed", {"destination": "luna"}))
 	if steps_done != ["purchase_propellant", "plot_orbital_burn"] or not ob.is_checklist_active():
 		return "Step 2 (plot_orbital_burn) did not complete cleanly: %s" % str(steps_done)
 
-	# Step 3: Execute profitable trade fill -> dismisses automatically upon completion
-	ob.handle(_ev("order_executed", {"side": "SELL", "station": "luna", "commodity": "FUEL"}))
+	# Step 3: Execute profitable trade fill -> unprofitable sell must not tick, profitable sell completes & dismisses
+	ob.handle(_ev("order_executed", {"side": "SELL", "station": "luna", "commodity": "WATER", "price": 18.0, "qty": 1}))
+	if steps_done != ["purchase_propellant", "plot_orbital_burn"]:
+		return "Unprofitable SELL (18.0 <= 20.0 buy cost) should not complete Step 3: %s" % str(steps_done)
+	ob.handle(_ev("order_executed", {"side": "SELL", "station": "luna", "commodity": "WATER", "price": 28.0, "qty": 1}))
 	if steps_done != ["purchase_propellant", "plot_orbital_burn", "profitable_trade_fill"]:
 		return "Step 3 (profitable_trade_fill) did not complete cleanly: %s" % str(steps_done)
 	if not ob.is_checklist_complete() or ob.is_checklist_active() or completed_signals.size() != 1:

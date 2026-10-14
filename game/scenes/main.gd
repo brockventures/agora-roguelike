@@ -805,6 +805,10 @@ func _onb_on_order_executed(payload: Dictionary) -> void:
 		"side": str(payload.get("side", "")),
 		"station": str(payload.get("station", "")),
 		"commodity": str(payload.get("commodity", "")),
+		"price": float(payload.get("price", 0.0)),
+		"qty": int(payload.get("qty", 0)),
+		"total_cr": int(payload.get("total_cr", 0)),
+		"fee": int(payload.get("fee", 0)),
 	})
 
 
@@ -820,8 +824,11 @@ func _onb_on_round_advanced(round_num: int) -> void:
 	_onb_event("round_advanced")
 
 
-func _onb_on_departed(_info: Dictionary) -> void:
-	_onb_event("transit_departed")
+func _onb_on_departed(info: Dictionary) -> void:
+	_onb_event("transit_departed", {
+		"origin": str(info.get("origin", "")),
+		"destination": str(info.get("destination", "")),
+	})
 
 
 func _onb_on_arrived(_info: Dictionary) -> void:
@@ -961,11 +968,11 @@ func get_flight_checklist_notes() -> Array:
 	if onboarding == null or _modal_has_focus() or not onboarding.is_checklist_active():
 		return out
 	var st: Dictionary = onboarding.checklist_state()
-	out.append({"kind": "chip", "text": "FLIGHT CHECKLIST %d/%d" % [int(st["completed_count"]), int(st["total_steps"])], "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
+	out.append({"kind": "chip", "text": tr("ONB_CHK_CHIP") % [int(st["completed_count"]), int(st["total_steps"])], "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
 	for step in st["steps"]:
 		var sd: Dictionary = step as Dictionary
-		var mark: String = "[x]" if bool(sd["done"]) else "[ ]"
-		out.append({"kind": "line", "text": "%s %d. %s" % [mark, int(sd["step"]), str(sd["label"])], "color": HudTheme.TEAL_DARK if bool(sd["done"]) else HudTheme.INK})
+		var tpl: String = tr("ONB_CHK_DONE" if bool(sd["done"]) else "ONB_CHK_TODO")
+		out.append({"kind": "line", "text": tpl % [int(sd["step"]), tr(str(sd["title_key"]))], "color": HudTheme.TEAL_DARK if bool(sd["done"]) else HudTheme.INK})
 	return out
 
 
@@ -2313,6 +2320,7 @@ func _card_notes() -> Array:
 		var who: String = _maker_name(str(o.get("counterparty_id", ""))) if str(o.get("counterparty_id", "")) != "" else str(o.get("counterparty", ""))
 		out.append({"kind": "line", "text": tr("SIDE_FILLED") % [tr("ORDER_" + str(o["side"]).to_upper()), o["qty"], o["price"], tr("SIDE_FILLED_VS") % who if who != "" else "", tr("SIDE_FILLED_FEE") % int(o["fee"]) if int(o.get("fee", 0)) > 0 else ""], "color": HudTheme.INK})
 	out.append_array(_onb_notes())
+	out.append_array(get_flight_checklist_notes())
 	var st: String = hud.active_station
 	var com: String = hud.active_commodity
 	# The Stabiliser card (#32): the open phase, its bill and what a delivery would do here.
