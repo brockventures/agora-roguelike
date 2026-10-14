@@ -71,6 +71,9 @@ const CRITICAL_RATIO_BPS: int = 4000   # <= 40% ticks remaining -> CRITICAL
 const IMMINENT_RATIO_BPS: int = 1500   # <= 15% ticks remaining -> IMMINENT
 const COLLAPSED_RATIO_BPS: int = 0     # <= 0 ticks remaining -> COLLAPSED
 
+# Commission favour Enforcement (#149) lowers this per run; derived from the profile, not saved.
+var unstable_ratio_bps: int = UNSTABLE_RATIO_BPS
+
 # Stage burn rate multipliers expressed in tenths (10 = 1.0x, 15 = 1.5x, etc.)
 const STAGE_BURN_MULTIPLIER_TENTHS := {
 	Stage.NORMAL: 10,
@@ -185,7 +188,7 @@ func _compute_stage(rem: int, tot: int) -> Stage:
 		return Stage.IMMINENT
 	elif rem * 10000 <= tot * CRITICAL_RATIO_BPS:
 		return Stage.CRITICAL
-	elif rem * 10000 <= tot * UNSTABLE_RATIO_BPS:
+	elif rem * 10000 <= tot * unstable_ratio_bps:
 		return Stage.UNSTABLE
 	else:
 		return Stage.NORMAL
@@ -201,7 +204,7 @@ func _get_ticks_until_next_stage() -> int:
 		return 0
 	match stage:
 		Stage.NORMAL:
-			var thresh := (total_ticks * UNSTABLE_RATIO_BPS) / 10000
+			var thresh := (total_ticks * unstable_ratio_bps) / 10000
 			return maxi(0, ticks_remaining - thresh)
 		Stage.UNSTABLE:
 			var thresh := (total_ticks * CRITICAL_RATIO_BPS) / 10000

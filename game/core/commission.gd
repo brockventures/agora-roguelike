@@ -14,7 +14,7 @@ static func _fallback() -> Dictionary:
 	return {
 		"skeletons_per_rescue": 1,
 		"commissioners": [
-			{"id": "enforcement", "cost": 1},
+			{"id": "enforcement", "cost": 1, "unstable_ratio_bps": 7000},
 			{"id": "customs", "cost": 1},
 			{"id": "treasury", "cost": 1},
 			{"id": "press", "cost": 1},
@@ -48,6 +48,15 @@ static func cost(id: String) -> int:
 		if e is Dictionary and e.get("id") == id:
 			return int(e.get("cost", 0))
 	return 0
+
+static func has_favour(profile: MetaProfile, id: String) -> bool:
+	return profile != null and id != CHAIR and ids().has(id) and profile.consultants.has(id)
+
+static func param(id: String, key: String, default_value: int) -> int:
+	for e in _entries():
+		if e is Dictionary and e.get("id") == id:
+			return int(e.get(key, default_value))
+	return default_value
 
 static func skeletons_per_rescue() -> int:
 	return int(_load().get("skeletons_per_rescue", 1))

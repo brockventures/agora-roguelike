@@ -175,8 +175,13 @@ static func _fire(w: Barons, id: String, round_num: int, rc: RunController, orig
 	# A random event moves prices and stock only (#134): it never fines, whatever fine_bps
 	# a data file carries. Only a retaliation (the player's own doing) is fined.
 	var fine: int = 0
+	var deferred: bool = false
 	if origin == "consequence":
 		fine = maxi(0, rc.net_worth()) * int(fx.get("fine_bps", 0)) / 10000
+		if fine > 0 and rc.treasury_waiver_available():
+			rc.treasury_waiver_used = true
+			fine = 0
+			deferred = true
 	var res: Dictionary = w.penalize(rc, fine, origin)
 	var name: String = str(def.get("name", ""))
 	if deck != null:
@@ -185,5 +190,5 @@ static func _fire(w: Barons, id: String, round_num: int, rc: RunController, orig
 	return {
 		"kind": "retaliation", "baron": id, "origin": origin, "name": name, "station": anchor,
 		"requested": int(res["requested"]), "fine": int(res["applied"]), "clamped": bool(res["clamped"]),
-		"forced_ch11": bool(res["forced_ch11"]),
+		"forced_ch11": bool(res["forced_ch11"]), "deferred": deferred,
 	}

@@ -2,7 +2,7 @@
   "_placeholder": "Costs and payout are placeholders pending Ryan's arc-length answer (commission-cycle.md section 8, question 1).",
   "skeletons_per_rescue": 1,
   "commissioners": [
-    {"id": "enforcement", "cost": 1},
+    {"id": "enforcement", "cost": 1, "unstable_ratio_bps": 7000},
     {"id": "customs", "cost": 1},
     {"id": "treasury", "cost": 1},
     {"id": "press", "cost": 1},
