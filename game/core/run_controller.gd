@@ -140,6 +140,9 @@ func can_depart(destination: String, mkt: StationMarket = null, lane: String = "
 		out["toll"] = Transit.calculate_toll(docked_at, dest, 0.0, toll_discount_bps())
 		if lane != "":
 			out["toll"] = int(Corridors.smuggle_lane(docked_at, dest, lane).get("toll_cr", 0))
+		if lane == "" and int(out["toll"]) > 0 and customs_waiver_available():
+			out["toll"] = 0
+			out["customs_waived"] = true
 		if cr < int(out["toll"]):
 			out["reason"] = "INSUFFICIENT_CR"
 		else:
@@ -175,6 +178,8 @@ func depart(destination: String, mkt: StationMarket = null, lane: String = "") -
 	var check: Dictionary = can_depart(destination, mkt, lane)
 	if not bool(check["ok"]):
 		return check
+	if bool(check.get("customs_waived", false)):
+		customs_waiver_used = true
 	var dest: String = destination.to_lower().strip_edges()
 	var now: int = sim_clock.total_ticks
 	var fuel_paid: int = 0
@@ -237,6 +242,10 @@ func _arrive() -> void:
 		var disc: int = toll_discount_bps()
 		if disc > 0:
 			toll_due = toll_due * (10000 - disc) / 10000
+		if toll_due > 0 and customs_waiver_available():
+			customs_waiver_used = true
+			toll_due = 0
+			info["customs_waived"] = true
 		toll_paid = mini(toll_due, maxi(0, cr))
 		cr -= toll_paid
 	info["docking_toll_due"] = toll_due
@@ -330,6 +339,9 @@ var carry_over: Dictionary = {}
 ## Units traded so far this round while an audit cap was active (D5). Reset on
 ## every round boundary. Saved.
 var audit_units_traded: int = 0
+## Commission favours (#149): one belt-or-docking toll and one retaliation fine waived per corp. Saved only when true.
+var customs_waiver_used: bool = false
+var treasury_waiver_used: bool = false
 ## Seed for the next corp, set when the run ends.
 var next_seed: int = 0
 ## Consecutive sim ticks the corp has stayed insolvent while auto-filing waits
@@ -362,6 +374,7 @@ func _init(p_profile: MetaProfile = null, p_seed: int = 0, p_doomsday: DoomsdayC
 	if not mods.is_empty():
 		apply_modifiers(mods)
 		cr = Parachutes.apply_stat(modifiers, "starting_cr", Chapter11.FRESH_START_CR)
+	_apply_commission()  # no-op on the default path; apply_modifiers() covers the rest (#149)
 	_track_peak(assess())
 
 ## Set the active modifiers and apply the live doomsday knobs (interest_bps,
@@ -386,6 +399,7 @@ func apply_modifiers(mods: Dictionary) -> void:
 	else:
 		doomsday.base_burn_per_second = maxi(0, int(_doomsday_base["burn"]))
 		doomsday.burn_per_second_bps = -1
+	_apply_commission()
 
 ## Liquidation haircut in bps after modifiers.
 func haircut_bps() -> int:
@@ -398,6 +412,16 @@ func fuel_discount_bps() -> int:
 ## Toll discount in bps, 0..10000 (#160): scales the belt toll and the docking toll.
 func toll_discount_bps() -> int:
 	return clampi(Parachutes.apply_stat(modifiers, "toll_discount_bps", 0), 0, 10000)
+
+## Commission favours (#149): live knobs derived from the profile's consultants.
+func _apply_commission() -> void:
+	doomsday.unstable_ratio_bps = Commission.param("enforcement", "unstable_ratio_bps", DoomsdayClock.UNSTABLE_RATIO_BPS) if Commission.has_favour(profile, "enforcement") else DoomsdayClock.UNSTABLE_RATIO_BPS
+
+func customs_waiver_available() -> bool:
+	return Commission.has_favour(profile, "customs") and not customs_waiver_used
+
+func treasury_waiver_available() -> bool:
+	return Commission.has_favour(profile, "treasury") and not treasury_waiver_used
 
 ## Hazard odds factor in bps (10000 = x1.0). Pass to Hazards.quote/roll as odds_bps.
 func hazard_odds_bps() -> int:
@@ -758,6 +782,8 @@ func file_bankruptcy() -> Dictionary:
 	corp_number += 1
 	_corp_start_tick = sim_clock.total_ticks
 	insolvent_ticks = 0
+	customs_waiver_used = false
+	treasury_waiver_used = false
 	if not _modifiers_explicit:
 		apply_modifiers(_derive_modifiers(profile))
 	# The new corp's stake still reads the policies the failed corp held (Pre-Packaged
@@ -837,6 +863,10 @@ func to_dict() -> Dictionary:
 	}
 	if _corp_start_tick > 0:
 		out["corp_start_tick"] = _corp_start_tick
+	if customs_waiver_used:
+		out["customs_waiver_used"] = true
+	if treasury_waiver_used:
+		out["treasury_waiver_used"] = true
 	if not transit.is_empty():
 		out["transit"] = transit.duplicate()
 	if barons_broken_award > 0:
@@ -893,6 +923,8 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.next_seed = int(d.get("next_seed", 0))
 	rc.insolvent_ticks = maxi(0, int(d.get("insolvent_ticks", 0)))
 	rc.audit_units_traded = maxi(0, int(d.get("audit_units_traded", 0)))
+	rc.customs_waiver_used = bool(d.get("customs_waiver_used", false))
+	rc.treasury_waiver_used = bool(d.get("treasury_waiver_used", false))
 	rc.docked_at = str(d.get("docked_at", "earth")).to_lower()
 	rc.transit = _sanitise_transit(d.get("transit", {}), rc.ticks_per_round)
 	if not rc.transit.is_empty():
@@ -912,6 +944,7 @@ static func from_dict(d: Dictionary) -> RunController:
 	rc.modifiers = rc._effective_modifiers()
 	if not rc._doomsday_base.is_empty():
 		rc._refresh_modifiers()
+	rc._apply_commission()
 	rc._wire()
 	return rc
 
