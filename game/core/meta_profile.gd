@@ -19,6 +19,10 @@ var severance_points: int = 0
 var barons_broken: int = 0
 ## Sol System Rescue Projects completed (#32). Saved only when non-zero, like barons_broken.
 var rescues_completed: int = 0
+## Commission cycle (#149): Skeletons earned by rescues, and commissioners on retainer.
+## Both saved only when non-empty, like barons_broken, so old profiles hash as before.
+var skeletons: int = 0
+var consultants: Array[String] = []
 ## Runs (corps) finished under this profile, bumped when a corp ends.
 var runs_completed: int = 0
 
@@ -60,6 +64,10 @@ func to_dict() -> Dictionary:
 		out["barons_broken"] = barons_broken
 	if rescues_completed > 0:
 		out["rescues_completed"] = rescues_completed
+	if skeletons > 0:
+		out["skeletons"] = skeletons
+	if not consultants.is_empty():
+		out["consultants"] = consultants.duplicate()
 	return out
 
 static func from_dict(d: Dictionary) -> MetaProfile:
@@ -77,6 +85,9 @@ static func from_dict(d: Dictionary) -> MetaProfile:
 	p.barons_broken = maxi(0, int(bb)) if (bb is int or bb is float) else 0
 	var rs = d.get("rescues_completed", 0)
 	p.rescues_completed = maxi(0, int(rs)) if (rs is int or rs is float) else 0
+	var sk = d.get("skeletons", 0)
+	p.skeletons = maxi(0, int(sk)) if (sk is int or sk is float) else 0
+	p.consultants = _sanitise_ids(d.get("consultants", []))
 	return p
 
 static func _sanitise_ids(raw) -> Array[String]:

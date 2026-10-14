@@ -76,3 +76,31 @@ func test_from_dict_bad_count_types_and_missing_keys() -> String:
 	if q.bankruptcies_filed != 0 or not q.patents.is_empty():
 		return "empty dict should yield default profile"
 	return "ok"
+
+func test_skeletons_and_consultants_roundtrip() -> String:
+	var p := MetaProfile.new()
+	p.skeletons = 2
+	p.consultants = ["press"]
+	var d: Dictionary = p.to_dict()
+	if int(d["skeletons"]) != 2 or d["consultants"] != ["press"]:
+		return "saved keys wrong: %s" % str(d)
+	var q := MetaProfile.from_dict(JSON.parse_string(JSON.stringify(d)))
+	if q.skeletons != 2 or q.consultants != ["press"]:
+		return "round trip lost data: %d %s" % [q.skeletons, str(q.consultants)]
+	return "ok"
+
+func test_default_profile_omits_commission_keys() -> String:
+	var d: Dictionary = MetaProfile.new().to_dict()
+	if d.has("skeletons") or d.has("consultants"):
+		return "default profile must not save commission keys"
+	return "ok"
+
+func test_from_dict_sanitises_commission_fields() -> String:
+	if MetaProfile.from_dict({"skeletons": -3}).skeletons != 0:
+		return "negative skeletons should clamp to 0"
+	if MetaProfile.from_dict({"skeletons": "x"}).skeletons != 0:
+		return "non-number skeletons should become 0"
+	var q := MetaProfile.from_dict({"consultants": [1, "", "press", "press"]})
+	if q.consultants != ["press"]:
+		return "consultants should sanitise to [press], got %s" % str(q.consultants)
+	return "ok"
