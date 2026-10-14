@@ -54,9 +54,13 @@ var _settings_view: SettingsView = null
 var _capture_label: Label = null
 var kit: HudKit = HudKit.new()
 var _drift: Tween = null
+var _held: Dictionary = {}
+var _last_stick_ms: Dictionary = {}
+var cursor: int = 0
 
 
 func _init() -> void:
+	SettingsMenu.ensure_ui_joypad_bindings()
 	change_scene = _change_to_scene
 
 
@@ -68,6 +72,7 @@ func _ready() -> void:
 ## Builds the whole screen. _ready calls it; tests call it on a node that is not in the
 ## tree (the headless test runner has no main loop to add it to). Nothing here needs the tree.
 func build_screen() -> void:
+	SettingsMenu.ensure_ui_joypad_bindings()
 	Loc.apply_env()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if save_store == null and DisplayServer.get_name() != "headless":
@@ -87,6 +92,7 @@ func build_screen() -> void:
 	_build_settings_panel()
 	_apply_crt()
 	_continue_button.disabled = not has_usable_run()
+	_focus_first()
 	_start_drift()
 
 
@@ -102,20 +108,50 @@ func _input(event: InputEvent) -> void:
 	if settings_menu.is_open:
 		settings_menu.handle_event(event)
 		_refresh_settings()
-		get_viewport().set_input_as_handled()
+		if is_inside_tree():
+			get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("ui_down"):
+	if event is InputEventJoypadMotion:
+		_stick(event)
+		if is_inside_tree():
+			get_viewport().set_input_as_handled()
+		return
+	if not event.is_pressed() or event.is_echo():
+		return
+	if InputMap.has_action(InputRemap.ACT_SETTINGS) and event.is_action_pressed(InputRemap.ACT_SETTINGS):
+		_on_settings_pressed()
+		if is_inside_tree():
+			get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ui_down") or (InputMap.has_action(M0Loop.ACT_DOWN) and event.is_action_pressed(M0Loop.ACT_DOWN)):
 		_move_focus(1)
-	elif event.is_action_pressed("ui_up"):
+	elif event.is_action_pressed("ui_up") or (InputMap.has_action(M0Loop.ACT_UP) and event.is_action_pressed(M0Loop.ACT_UP)):
 		_move_focus(-1)
-	elif event.is_action_pressed("ui_accept"):
-		var focused := _stage.gui_get_focus_owner() as Button
+	elif SettingsMenu._is_accept(event) or (InputMap.has_action(M0Loop.ACT_SUBMIT) and event.is_action_pressed(M0Loop.ACT_SUBMIT)):
+		var focused: Button = _focused_button()
 		if focused == null or focused.disabled:
 			return
 		focused.pressed.emit()
 	else:
 		return
-	get_viewport().set_input_as_handled()
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
+
+
+func _stick(event: InputEventJoypadMotion) -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	for a in ["ui_up", "ui_down"]:
+		if event.is_action_pressed(a) and absf(event.axis_value) >= SettingsMenu.STICK_PRESS:
+			if not _held.get(a, false):
+				var last_ms: int = int(_last_stick_ms.get(a, -1000))
+				var dt: int = now_ms - last_ms
+				if dt > 0 and dt < SettingsMenu.STICK_DEBOUNCE_MSEC:
+					continue
+				_held[a] = true
+				_last_stick_ms[a] = now_ms
+				_move_focus(-1 if a == "ui_up" else 1)
+		elif event.is_action(a) and absf(event.axis_value) < SettingsMenu.STICK_RELEASE:
+			_held[a] = false
 
 
 func _build_stage() -> void:
@@ -298,22 +334,42 @@ func _apply_crt() -> void:
 
 
 func _focus_first() -> void:
-	for b in menu_buttons:
-		if not b.disabled:
-			b.grab_focus()
+	for i in menu_buttons.size():
+		if not menu_buttons[i].disabled:
+			cursor = i
+			if is_inside_tree():
+				menu_buttons[i].grab_focus()
 			return
 
 
+func _focused_button() -> Button:
+	if _stage != null and is_inside_tree():
+		var owner := _stage.gui_get_focus_owner() as Button
+		if owner != null and not owner.disabled:
+			var idx: int = menu_buttons.find(owner)
+			if idx >= 0:
+				cursor = idx
+			return owner
+	if cursor >= 0 and cursor < menu_buttons.size() and not menu_buttons[cursor].disabled:
+		return menu_buttons[cursor]
+	_focus_first()
+	return menu_buttons[cursor] if cursor >= 0 and cursor < menu_buttons.size() else null
+
+
 func _move_focus(dir: int) -> void:
-	var live: Array[Button] = []
-	for b in menu_buttons:
-		if not b.disabled:
-			live.append(b)
+	var live: Array[int] = []
+	for i in menu_buttons.size():
+		if not menu_buttons[i].disabled:
+			live.append(i)
 	if live.is_empty():
 		return
-	var cur: int = live.find(_stage.gui_get_focus_owner())
-	var next: int = 0 if cur < 0 else posmod(cur + dir, live.size())
-	live[next].grab_focus()
+	var cur_btn: Button = _focused_button()
+	var cur_idx: int = menu_buttons.find(cur_btn) if cur_btn != null else cursor
+	var pos: int = live.find(cur_idx)
+	var next_pos: int = 0 if pos < 0 else posmod(pos + dir, live.size())
+	cursor = live[next_pos]
+	if is_inside_tree():
+		menu_buttons[cursor].grab_focus()
 
 
 func _refresh_settings() -> void:
@@ -334,7 +390,10 @@ func _on_settings_changed() -> void:
 
 func _on_settings_closed() -> void:
 	_refresh_settings()
-	if is_inside_tree():
+	var idx: int = menu_buttons.find(_settings_button)
+	if idx >= 0:
+		cursor = idx
+	if is_inside_tree() and _settings_button != null:
 		_settings_button.grab_focus()
 
 

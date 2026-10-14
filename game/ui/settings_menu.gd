@@ -17,6 +17,10 @@ signal closed
 
 enum Row { SCALE, PALETTE, LANGUAGE, CRT, ALERT_VOLUME, ALERT_MUTE, REDUCED_MOTION, TUTORIAL, ACTION, RESET, CLOSE }
 
+const STICK_PRESS: float = 0.55
+const STICK_RELEASE: float = 0.25
+const STICK_DEBOUNCE_MSEC: int = 220
+
 var settings: AccessibilitySettings = null
 var is_open: bool = false
 var cursor: int = 0
@@ -30,18 +34,41 @@ var onboarding: Onboarding = null
 ## Translation key of the close row. The title screen sets SET_CLOSE_TITLE ("Back to title").
 var close_key: String = "SET_CLOSE"
 var _held: Dictionary = {}
+var _last_stick_ms: Dictionary = {}
 
 
 func _init(p_settings: AccessibilitySettings = null) -> void:
+	ensure_ui_joypad_bindings()
 	settings = p_settings if p_settings != null else AccessibilitySettings.new()
 
 
+## Godot 4's built-in ui_accept / ui_cancel actions ship with keyboard keys only (Enter/Space/Esc)
+## and no joypad face buttons. Ensure A (button 0) and B (button 1) are registered on them so
+## menu and modal screens work out of the box on Steam Deck and gamepads.
+static func ensure_ui_joypad_bindings() -> void:
+	_ensure_joy_button("ui_accept", JOY_BUTTON_A)
+	_ensure_joy_button("ui_cancel", JOY_BUTTON_B)
+
+
+static func _ensure_joy_button(action: String, btn_index: int) -> void:
+	if not InputMap.has_action(action):
+		return
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventJoypadButton and int(ev.button_index) == btn_index:
+			return
+	var jb := InputEventJoypadButton.new()
+	jb.button_index = btn_index
+	InputMap.action_add_event(action, jb)
+
+
 func open() -> void:
+	ensure_ui_joypad_bindings()
 	is_open = true
 	cursor = 0
 	listening_action = ""
 	message = []
 	_held.clear()
+	_last_stick_ms.clear()
 
 
 func close() -> void:
@@ -219,25 +246,47 @@ func handle_event(event: InputEvent) -> bool:
 		_change(-1)
 	elif event.is_action_pressed("ui_right", true):
 		_change(1)
-	elif event.is_action_pressed("ui_accept") and not event.is_echo():
+	elif _is_accept(event):
 		_activate()
-	elif event.is_action_pressed("ui_cancel") and not event.is_echo():
+	elif _is_cancel(event):
 		close()
 	return true
 
 
-## A held stick steps once per push, like the game's own stick handling.
+static func _is_accept(event: InputEvent) -> bool:
+	if event.is_echo():
+		return false
+	if event.is_action_pressed("ui_accept"):
+		return true
+	return event is InputEventJoypadButton and event.pressed and int(event.button_index) == JOY_BUTTON_A
+
+
+static func _is_cancel(event: InputEvent) -> bool:
+	if event.is_echo():
+		return false
+	if event.is_action_pressed("ui_cancel"):
+		return true
+	return event is InputEventJoypadButton and event.pressed and int(event.button_index) == JOY_BUTTON_B
+
+
+## A held stick steps once per push with hysteresis and a 220ms real-time debounce.
 func _stick(event: InputEventJoypadMotion) -> void:
+	var now_ms: int = Time.get_ticks_msec()
 	for a in ["ui_up", "ui_down", "ui_left", "ui_right"]:
-		if event.is_action_pressed(a):
+		if event.is_action_pressed(a) and absf(event.axis_value) >= STICK_PRESS:
 			if not _held.get(a, false):
+				var last_ms: int = int(_last_stick_ms.get(a, -1000))
+				var dt: int = now_ms - last_ms
+				if dt > 0 and dt < STICK_DEBOUNCE_MSEC:
+					continue
 				_held[a] = true
+				_last_stick_ms[a] = now_ms
 				match a:
 					"ui_up": move(-1)
 					"ui_down": move(1)
 					"ui_left": _change(-1)
 					"ui_right": _change(1)
-		elif event.is_action(a):
+		elif event.is_action(a) and absf(event.axis_value) < STICK_RELEASE:
 			_held[a] = false
 
 

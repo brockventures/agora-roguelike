@@ -1609,17 +1609,24 @@ func file_chapter_11() -> Dictionary:
 ## Routes a Godot InputEvent through the m0_* actions. Sticks fire once per push.
 func handle_input(event: InputEvent) -> bool:
 	var handled: bool = false
+	var now_ms: int = Time.get_ticks_msec()
 	for action in ALL_ACTIONS:
 		if not event.is_action(action):
 			continue
 		if event is InputEventJoypadMotion:
+			var motion := event as InputEventJoypadMotion
 			# is_action() ignores the stick direction, so check each action's
-			# own pressed state and track held axes per action.
-			if event.is_action_pressed(action):
+			# own pressed state and track held axes per action with hysteresis + debounce.
+			if event.is_action_pressed(action) and absf(motion.axis_value) >= SettingsMenu.STICK_PRESS:
 				if not _held.get(action, false):
+					var last_ms: int = int(_held.get("_ms_" + action, -1000))
+					var dt: int = now_ms - last_ms
+					if dt > 0 and dt < SettingsMenu.STICK_DEBOUNCE_MSEC:
+						continue
 					_held[action] = true
+					_held["_ms_" + action] = now_ms
 					handled = dispatch_action(action) or handled
-			else:
+			elif absf(motion.axis_value) < SettingsMenu.STICK_RELEASE:
 				_held[action] = false
 		elif not event.is_echo() and event.is_action_pressed(action):
 			return dispatch_action(action)
