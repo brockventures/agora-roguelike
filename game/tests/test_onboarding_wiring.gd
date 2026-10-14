@@ -437,3 +437,23 @@ func test_policy_signals_are_translated() -> String:
 	var ok: bool = ob.is_seen("policy") and ob.active_id() == "" and not m.is_onboarding_held()
 	m.free()
 	return "ok" if ok else "policy_adopted should complete the beat with no hold"
+
+
+func test_round_burn_pulse_and_checklist_wiring() -> String:
+	var m := _main(true, 11, true)
+	var heard: Array = []
+	m.tactile_audio.sound_played.connect(func(id, _bus, _db, _p): heard.append(id))
+	if m.get_flight_checklist_notes().size() != 4:
+		m.free()
+		return "Expected chip + 3 checklist lines on Run 1, got %s" % str(m.get_flight_checklist_notes())
+	m._onb_on_round_advanced(1)
+	if m.round_pulse_count != 1 or m.round_pulse_timer <= 0.0 or not heard.has(TactileAudio.ROUND_PULSE):
+		m.free()
+		return "Round advance did not trigger visual/tactile burn pulse: count=%d timer=%f heard=%s" % [m.round_pulse_count, m.round_pulse_timer, str(heard)]
+	m.controller.corp_number = 2
+	m._onb_sync_context()
+	if not m.get_flight_checklist_notes().is_empty():
+		m.free()
+		return "Flight checklist notes should be empty on Run 2+"
+	m.free()
+	return "ok"

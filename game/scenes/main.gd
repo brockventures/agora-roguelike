@@ -134,6 +134,9 @@ var _saved_profile_dict: Dictionary = {}
 var onboarding: Onboarding = null
 var _onb_hold: String = ""
 var _onb_shown: Dictionary = {}
+const ROUND_PULSE_DURATION: float = 0.35
+var round_pulse_timer: float = 0.0
+var round_pulse_count: int = 0
 var _onb_ctrl: RunController = null
 
 ## Set by TitleScreen just before the scene change: "new" starts a fresh run even when a
@@ -176,6 +179,8 @@ func _process(delta: float) -> void:
 	# The map ring and the ticker wipe run on UI frame time alone: a pause, a modal, the
 	# settings screen and the sim speed never move them.
 	advance_motion(delta)
+	if round_pulse_timer > 0.0 and not SimClock.is_wake_delta(delta):
+		round_pulse_timer = maxf(0.0, round_pulse_timer - maxf(0.0, delta))
 	# Toasts age on UI time alone (a modal, the settings screen or a pause does not hold them).
 	# A toast waits (neither drawn nor aged) while a modal owns the screen, so it never
 	# covers the dialog and is still there when the dialog closes.
@@ -796,10 +801,22 @@ func _onb_on_tab_changed(tab_name: String) -> void:
 
 
 func _onb_on_order_executed(payload: Dictionary) -> void:
-	_onb_event("order_executed", {"side": str(payload.get("side", "")), "station": str(payload.get("station", ""))})
+	_onb_event("order_executed", {
+		"side": str(payload.get("side", "")),
+		"station": str(payload.get("station", "")),
+		"commodity": str(payload.get("commodity", "")),
+	})
 
 
-func _onb_on_round_advanced(_round_num: int) -> void:
+func trigger_round_pulse(_round_num: int = 0) -> void:
+	round_pulse_count += 1
+	round_pulse_timer = 0.0 if settings.reduced_motion else ROUND_PULSE_DURATION
+	if tactile_audio != null:
+		tactile_audio.play_sfx(TactileAudio.ROUND_PULSE)
+
+
+func _onb_on_round_advanced(round_num: int) -> void:
+	trigger_round_pulse(round_num)
 	_onb_event("round_advanced")
 
 
@@ -856,6 +873,7 @@ func _onb_sync_context(skip_fills: bool = false) -> void:
 	}
 	if not skip_fills:
 		ctx["fills"] = loop.total_fills
+	onboarding.set_run_number(controller.corp_number)
 	onboarding.set_context(ctx)
 
 
@@ -935,6 +953,20 @@ func _onb_core_count() -> int:
 		if str((b as Dictionary)["kind"]) == Onboarding.KIND_CORE:
 			n += 1
 	return n
+
+
+## Interactive 3-step first-run flight checklist rows (#194), empty once completed or on Run 2+.
+func get_flight_checklist_notes() -> Array:
+	var out: Array = []
+	if onboarding == null or _modal_has_focus() or not onboarding.is_checklist_active():
+		return out
+	var st: Dictionary = onboarding.checklist_state()
+	out.append({"kind": "chip", "text": "FLIGHT CHECKLIST %d/%d" % [int(st["completed_count"]), int(st["total_steps"])], "bg": HudTheme.TEAL_DARK, "fg": HudTheme.BONE})
+	for step in st["steps"]:
+		var sd: Dictionary = step as Dictionary
+		var mark: String = "[x]" if bool(sd["done"]) else "[ ]"
+		out.append({"kind": "line", "text": "%s %d. %s" % [mark, int(sd["step"]), str(sd["label"])], "color": HudTheme.TEAL_DARK if bool(sd["done"]) else HudTheme.INK})
+	return out
 
 
 # --- Accessibility settings (#37) ---
@@ -1210,7 +1242,8 @@ func _refresh_header() -> void:
 	var tab_names: Array = []
 	for i in M0Loop.TAB_NAMES.size():
 		tab_names.append(Loc.tab(i))
-	if not _changed("header", [texts, tab_names, int(loop.tab), stage != "NORMAL", Loc.current()]):
+	var pulsing: bool = round_pulse_timer > 0.0 and not settings.reduced_motion
+	if not _changed("header", [texts, tab_names, int(loop.tab), stage != "NORMAL", pulsing, Loc.current()]):
 		return
 	var chips: Array = _hdr["chips"]
 	for i in chips.size():
@@ -1220,8 +1253,8 @@ func _refresh_header() -> void:
 	var alarm: bool = stage != "NORMAL"
 	(chips[4]["label"] as Label).add_theme_color_override("font_color", HudTheme.BONE if alarm else HudTheme.BONE_DIM)
 	var dd: HudKit.Plate = chips[4]["plate"]
-	dd.fill = HudTheme.RUST_DARK if alarm else Color(0, 0, 0, 0)
-	dd.cut = HudTheme.RUST if alarm else Color(0, 0, 0, 0)
+	dd.fill = HudTheme.RUST_DARK if alarm else (HudTheme.TEAL_DARK if pulsing else Color(0, 0, 0, 0))
+	dd.cut = HudTheme.RUST if alarm else (HudTheme.OCHRE if pulsing else Color(0, 0, 0, 0))
 	dd.cut_size = 48.0
 	_layout_header(tab_names)
 

@@ -495,3 +495,48 @@ func test_policy_beat_fires_on_pending_and_completes_on_adoption() -> String:
 	var quiet := Onboarding.new(AccessibilitySettings.new())
 	quiet.handle({"type": "policy_adopted"})
 	return "ok" if quiet.is_seen("policy") else "adopting first should mark the beat done silently"
+
+
+func test_first_run_flight_checklist_and_round_pulse() -> String:
+	var ob := _ob()
+	var steps_done: Array = []
+	var completed_signals: Array = []
+	var pulse_rounds: Array = []
+	ob.checklist_step_completed.connect(func(sid: String) -> void: steps_done.append(sid))
+	ob.checklist_completed.connect(func() -> void: completed_signals.append(true))
+	ob.round_pulse_triggered.connect(func(r: int) -> void: pulse_rounds.append(r))
+
+	if not ob.is_checklist_active() or ob.is_checklist_complete():
+		return "Run 1 should start with active, incomplete 3-step flight checklist"
+	var st0: Dictionary = ob.checklist_state()
+	if int(st0.get("total_steps", 0)) != 3 or int(st0.get("completed_count", -1)) != 0:
+		return "Expected 0/3 checklist state at start, got %s" % str(st0)
+
+	# Step 1: Purchase propellant at Earth
+	ob.handle(_ev("order_executed", {"side": "BUY", "station": "earth", "commodity": "FUEL"}))
+	if steps_done != ["purchase_propellant"] or not ob.is_checklist_active():
+		return "Step 1 (purchase_propellant) did not complete cleanly: %s" % str(steps_done)
+
+	# Round commit pulse feedback
+	ob.handle(_ev("round_advanced", {"round": 1}))
+	if ob.round_pulse_count() != 1 or pulse_rounds != [1]:
+		return "Round advance should trigger tactile round pulse feedback, got %s" % str(pulse_rounds)
+
+	# Step 2: Plot orbital burn to Luna
+	ob.handle(_ev("transit_departed", {"destination": "luna"}))
+	if steps_done != ["purchase_propellant", "plot_orbital_burn"] or not ob.is_checklist_active():
+		return "Step 2 (plot_orbital_burn) did not complete cleanly: %s" % str(steps_done)
+
+	# Step 3: Execute profitable trade fill -> dismisses automatically upon completion
+	ob.handle(_ev("order_executed", {"side": "SELL", "station": "luna", "commodity": "FUEL"}))
+	if steps_done != ["purchase_propellant", "plot_orbital_burn", "profitable_trade_fill"]:
+		return "Step 3 (profitable_trade_fill) did not complete cleanly: %s" % str(steps_done)
+	if not ob.is_checklist_complete() or ob.is_checklist_active() or completed_signals.size() != 1:
+		return "Checklist should auto-dismiss upon completing all 3 steps: %s" % str(ob.checklist_state())
+
+	# Subsequent runs skip cleanly
+	var ob_run2 := _ob()
+	ob_run2.set_run_number(2)
+	if ob_run2.is_checklist_active():
+		return "Checklist must skip cleanly on subsequent runs (Run 2+)"
+	return "ok"

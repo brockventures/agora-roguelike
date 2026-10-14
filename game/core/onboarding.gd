@@ -26,6 +26,17 @@ extends RefCounted
 ## Emitted once when a beat is marked done (after the settings changed). Read-only for
 ## listeners: SteamHooks (the onboarding_step stat, the Orientation Complete achievement).
 signal beat_completed(id: String)
+signal checklist_step_completed(step_id: String)
+signal checklist_completed()
+signal round_pulse_triggered(round_num: int)
+
+const CHECKLIST_IDS: Array[String] = ["purchase_propellant", "plot_orbital_burn", "profitable_trade_fill"]
+const ROUND_PULSE_DURATION: float = 0.35
+const DEFAULT_CHECKLIST: Array = [
+	{"id": "purchase_propellant", "step": 1, "label": "Purchase propellant at Earth", "done": {"on": ["order_executed"], "match": {"side": "BUY"}}},
+	{"id": "plot_orbital_burn", "step": 2, "label": "Plot orbital burn to Luna", "done": {"on": ["transit_departed"]}},
+	{"id": "profitable_trade_fill", "step": 3, "label": "Execute profitable trade fill", "done": {"on": ["order_executed"], "match": {"side": "SELL"}}},
+]
 
 const PATH := "res://data/onboarding.json"
 const VERSION: int = 1
@@ -51,12 +62,17 @@ static var _shipped: Dictionary = {}
 
 var settings: AccessibilitySettings
 var beats: Array = []
+var checklist: Array = []
 var load_error: String = ""
 var _ctx: Dictionary = {"tab": "MAP", "fills": 0, "hold_empty": true, "route_card": false, "in_transit": false}
 var _pending: Array[String] = []
 var _count: Dictionary = {}
 var _buy_stations: Dictionary = {}
 var _active: String = ""
+var _checklist_done: Array[String] = []
+var _run_number: int = 1
+var _round_pulse_count: int = 0
+var _last_pulse_round: int = 0
 
 
 ## `data` is a loaded table ({"ok", "beats"}); empty means the shipped data/onboarding.json.
@@ -65,6 +81,7 @@ func _init(p_settings: AccessibilitySettings = null, data: Dictionary = {}) -> v
 	var d: Dictionary = data if not data.is_empty() else shipped()
 	if bool(d.get("ok", false)):
 		beats = (d["beats"] as Array).duplicate(true)
+		checklist = (d.get("checklist", DEFAULT_CHECKLIST) as Array).duplicate(true)
 	else:
 		load_error = str(d.get("error", "no data"))
 	_refresh()
@@ -81,7 +98,14 @@ static func load_data(path: String = PATH) -> Dictionary:
 	var errs: Array[String] = validate(parsed)
 	if not errs.is_empty():
 		return {"ok": false, "error": "; ".join(errs), "beats": []}
-	return {"ok": true, "error": "", "beats": (parsed as Dictionary)["beats"]}
+	var pd: Dictionary = parsed as Dictionary
+	return {
+		"ok": true,
+		"error": "",
+		"beats": pd["beats"],
+		"checklist": pd.get("checklist", DEFAULT_CHECKLIST),
+		"round_pulse": pd.get("round_pulse", {"duration_sec": ROUND_PULSE_DURATION, "sound_id": "ROUND_PULSE"}),
+	}
 
 
 static func shipped() -> Dictionary:
@@ -323,14 +347,85 @@ func context() -> Dictionary:
 # ---- transitions ---------------------------------------------------------------------
 
 ## Folds one event in and returns the active beat id. Unknown or malformed events are ignored.
+func set_run_number(run_num: int) -> void:
+	_run_number = maxi(1, run_num)
+
+
+func is_checklist_active() -> bool:
+	return load_error == "" and settings.tutorial_enabled and _run_number == 1 and _checklist_done.size() < CHECKLIST_IDS.size()
+
+
+func is_checklist_complete() -> bool:
+	return _checklist_done.size() >= CHECKLIST_IDS.size()
+
+
+func checklist_steps() -> Array:
+	var src: Array = checklist if not checklist.is_empty() else DEFAULT_CHECKLIST
+	var out: Array = []
+	for item in src:
+		var d: Dictionary = item as Dictionary
+		var cid: String = str(d.get("id", ""))
+		out.append({
+			"id": cid,
+			"step": int(d.get("step", out.size() + 1)),
+			"label": str(d.get("label", cid)),
+			"done": _checklist_done.has(cid),
+		})
+	return out
+
+
+func checklist_state() -> Dictionary:
+	return {
+		"active": is_checklist_active(),
+		"completed": is_checklist_complete(),
+		"dismissed": not is_checklist_active(),
+		"run_number": _run_number,
+		"completed_count": _checklist_done.size(),
+		"total_steps": CHECKLIST_IDS.size(),
+		"steps": checklist_steps(),
+	}
+
+
+func round_pulse_count() -> int:
+	return _round_pulse_count
+
+
+func last_pulse_round() -> int:
+	return _last_pulse_round
+
+
+func _apply_checklist(t: String, event: Dictionary) -> void:
+	if not is_checklist_active():
+		return
+	var newly_done: String = ""
+	if t == "order_executed" and str(event.get("side", "")) == "BUY" and not _checklist_done.has("purchase_propellant"):
+		newly_done = "purchase_propellant"
+	elif t == "transit_departed" and not _checklist_done.has("plot_orbital_burn"):
+		newly_done = "plot_orbital_burn"
+	elif t == "order_executed" and str(event.get("side", "")) == "SELL" and not _checklist_done.has("profitable_trade_fill"):
+		newly_done = "profitable_trade_fill"
+	if newly_done != "":
+		_checklist_done.append(newly_done)
+		checklist_step_completed.emit(newly_done)
+		if _checklist_done.size() >= CHECKLIST_IDS.size():
+			checklist_completed.emit()
+
+
 func handle(event: Dictionary) -> String:
 	var t = event.get("type", null)
 	if not (t is String) or not EVENTS.has(t):
 		return _active
+	if t == "round_advanced":
+		_round_pulse_count += 1
+		_last_pulse_round = int(event.get("round", _round_pulse_count))
+		round_pulse_triggered.emit(_last_pulse_round)
+	_apply_checklist(t, event)
 	_apply_done(t, event)
 	_update_context(t, event)
-	if t == "run_ended" and settings.tutorial_enabled:
-		settings.set_tutorial_enabled(false)
+	if t == "run_ended":
+		_run_number += 1
+		if settings.tutorial_enabled:
+			settings.set_tutorial_enabled(false)
 	_latch(t)
 	_refresh()
 	return _active

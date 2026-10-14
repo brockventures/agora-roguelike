@@ -3,58 +3,243 @@
   "_note": "Beat table for the first-hour onboarding flow (docs/design/onboarding.md section 3). Pure data: core.Onboarding validates and reads it. 'fires' = when a beat may become active (context equals, requires seen, optional trigger events latch it); 'done' = the event that completes it (count events, counted only while active). 'holds' = the beat's text needs reading, so a later Main-level freeze may hold the game while it is up. Copy is keys only (ONB_*); the English is in localization/agora_strings.csv. 'title_key' is the beat's action headline (the first line under the chip), 'line_keys' are its details.",
   "beats": [
     {
-      "id": "tabs", "kind": "core", "holds": true,
-      "title_key": "ONB_TABS_TITLE", "line_keys": ["ONB_TABS_1", "ONB_TABS_2"],
-      "fires": {"context": {"tab": "MAP", "fills": 0}},
-      "done": {"on": ["tab_changed"], "match": {"tab": "MARKET"}}
+      "id": "tabs",
+      "kind": "core",
+      "holds": true,
+      "title_key": "ONB_TABS_TITLE",
+      "line_keys": [
+        "ONB_TABS_1",
+        "ONB_TABS_2"
+      ],
+      "fires": {
+        "context": {
+          "tab": "MAP",
+          "fills": 0
+        }
+      },
+      "done": {
+        "on": [
+          "tab_changed"
+        ],
+        "match": {
+          "tab": "MARKET"
+        }
+      }
     },
     {
-      "id": "order", "kind": "core", "holds": true,
-      "title_key": "ONB_ORDER_TITLE", "line_keys": ["ONB_ORDER_1", "ONB_ORDER_2", "ONB_ORDER_3"],
-      "fires": {"context": {"tab": "MARKET"}},
-      "done": {"on": ["order_executed"]}
+      "id": "order",
+      "kind": "core",
+      "holds": true,
+      "title_key": "ONB_ORDER_TITLE",
+      "line_keys": [
+        "ONB_ORDER_1",
+        "ONB_ORDER_2",
+        "ONB_ORDER_3"
+      ],
+      "fires": {
+        "context": {
+          "tab": "MARKET"
+        }
+      },
+      "done": {
+        "on": [
+          "order_executed"
+        ]
+      }
     },
     {
-      "id": "debt", "kind": "core", "holds": true,
-      "title_key": "ONB_DEBT_TITLE", "line_keys": ["ONB_DEBT_1", "ONB_DEBT_2"],
-      "fires": {"on": ["round_advanced"], "requires": ["order"]},
-      "done": {"on": ["round_advanced"], "count": 2}
+      "id": "debt",
+      "kind": "core",
+      "holds": true,
+      "title_key": "ONB_DEBT_TITLE",
+      "line_keys": [
+        "ONB_DEBT_1",
+        "ONB_DEBT_2"
+      ],
+      "fires": {
+        "on": [
+          "round_advanced"
+        ],
+        "requires": [
+          "order"
+        ]
+      },
+      "done": {
+        "on": [
+          "round_advanced"
+        ],
+        "count": 2
+      }
     },
     {
-      "id": "leave", "kind": "core", "holds": true,
-      "title_key": "ONB_LEAVE_TITLE", "line_keys": ["ONB_LEAVE_1", "ONB_LEAVE_2"],
-      "fires": {"context": {"tab": "MAP", "hold_empty": false, "route_card": true}},
-      "done": {"on": ["transit_departed"]}
+      "id": "leave",
+      "kind": "core",
+      "holds": true,
+      "title_key": "ONB_LEAVE_TITLE",
+      "line_keys": [
+        "ONB_LEAVE_1",
+        "ONB_LEAVE_2"
+      ],
+      "fires": {
+        "context": {
+          "tab": "MAP",
+          "hold_empty": false,
+          "route_card": true
+        }
+      },
+      "done": {
+        "on": [
+          "transit_departed"
+        ]
+      }
     },
     {
-      "id": "sell", "kind": "core", "holds": true, "disables_on_done": true,
-      "title_key": "ONB_SELL_TITLE", "line_keys": ["ONB_SELL_1", "ONB_SELL_2"],
-      "fires": {"on": ["transit_arrived"]},
-      "done": {"on": ["order_executed"], "match": {"side": "SELL"}, "away_from_buy": true}
+      "id": "sell",
+      "kind": "core",
+      "holds": true,
+      "disables_on_done": true,
+      "title_key": "ONB_SELL_TITLE",
+      "line_keys": [
+        "ONB_SELL_1",
+        "ONB_SELL_2"
+      ],
+      "fires": {
+        "on": [
+          "transit_arrived"
+        ]
+      },
+      "done": {
+        "on": [
+          "order_executed"
+        ],
+        "match": {
+          "side": "SELL"
+        },
+        "away_from_buy": true
+      }
     },
     {
-      "id": "raid", "kind": "conditional", "holds": false,
-      "title_key": "ONB_RAID_TITLE", "line_keys": ["ONB_RAID_1", "ONB_RAID_2"],
-      "fires": {"on": ["corridor_raid", "corridor_hazard"]},
-      "done": {"on": ["round_advanced"], "count": 2}
+      "id": "raid",
+      "kind": "conditional",
+      "holds": false,
+      "title_key": "ONB_RAID_TITLE",
+      "line_keys": [
+        "ONB_RAID_1",
+        "ONB_RAID_2"
+      ],
+      "fires": {
+        "on": [
+          "corridor_raid",
+          "corridor_hazard"
+        ]
+      },
+      "done": {
+        "on": [
+          "round_advanced"
+        ],
+        "count": 2
+      }
     },
     {
-      "id": "chapter11", "kind": "conditional", "holds": false,
-      "title_key": "ONB_CH11_TITLE", "line_keys": ["ONB_CH11_1", "ONB_CH11_2"],
-      "fires": {"on": ["bankruptcy_filed"]},
-      "done": {"on": ["round_advanced"], "count": 2}
+      "id": "chapter11",
+      "kind": "conditional",
+      "holds": false,
+      "title_key": "ONB_CH11_TITLE",
+      "line_keys": [
+        "ONB_CH11_1",
+        "ONB_CH11_2"
+      ],
+      "fires": {
+        "on": [
+          "bankruptcy_filed"
+        ]
+      },
+      "done": {
+        "on": [
+          "round_advanced"
+        ],
+        "count": 2
+      }
     },
     {
-      "id": "perks", "kind": "conditional", "holds": false,
-      "title_key": "ONB_PERKS_TITLE", "line_keys": ["ONB_PERKS_1"],
-      "fires": {"on": ["perk_screen_opened"]},
-      "done": {"on": ["perk_screen_closed"]}
+      "id": "perks",
+      "kind": "conditional",
+      "holds": false,
+      "title_key": "ONB_PERKS_TITLE",
+      "line_keys": [
+        "ONB_PERKS_1"
+      ],
+      "fires": {
+        "on": [
+          "perk_screen_opened"
+        ]
+      },
+      "done": {
+        "on": [
+          "perk_screen_closed"
+        ]
+      }
     },
     {
-      "id": "policy", "kind": "conditional", "holds": false,
-      "title_key": "ONB_POLICY_TITLE", "line_keys": ["ONB_POLICY_1"],
-      "fires": {"on": ["policy_pending"]},
-      "done": {"on": ["policy_adopted"]}
+      "id": "policy",
+      "kind": "conditional",
+      "holds": false,
+      "title_key": "ONB_POLICY_TITLE",
+      "line_keys": [
+        "ONB_POLICY_1"
+      ],
+      "fires": {
+        "on": [
+          "policy_pending"
+        ]
+      },
+      "done": {
+        "on": [
+          "policy_adopted"
+        ]
+      }
+    }
+  ],
+  "round_pulse": {
+    "duration_sec": 0.35,
+    "sound_id": "ROUND_PULSE"
+  },
+  "checklist": [
+    {
+      "id": "purchase_propellant",
+      "step": 1,
+      "label": "Purchase propellant at Earth",
+      "done": {
+        "on": [
+          "order_executed"
+        ],
+        "match": {
+          "side": "BUY"
+        }
+      }
+    },
+    {
+      "id": "plot_orbital_burn",
+      "step": 2,
+      "label": "Plot orbital burn to Luna",
+      "done": {
+        "on": [
+          "transit_departed"
+        ]
+      }
+    },
+    {
+      "id": "profitable_trade_fill",
+      "step": 3,
+      "label": "Execute profitable trade fill",
+      "done": {
+        "on": [
+          "order_executed"
+        ],
+        "match": {
+          "side": "SELL"
+        }
+      }
     }
   ]
 }
