@@ -320,29 +320,6 @@ func execute_focused_order() -> Dictionary:
 		_note_rejection(rej_audit)
 		return rej_audit
 
-	# Sol Central's call auction (Epic 3 task 6): at Earth, in an auction round, the
-	# commodity being auctioned takes limit orders into a buffer instead of sweeping
-	# the book. The focused level's price is the limit; the clear settles it.
-	if rc != null and rc.world != null:
-		var au: Dictionary = rc.world.auction_at(station, rc.get_current_round(), rc.run_seed)
-		if not au.is_empty() and str(au["commodity"]) == commodity:
-			var q: Dictionary = rc.world.submit_auction_order(rc, station, "BUY" if is_buy else "SELL", order_qty, int(round(px)))
-			if not bool(q["ok"]):
-				last_rejection_reason = str(q["reason"])
-				var rej_au: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote, "order_qty": order_qty}
-				_note_rejection(rej_au)
-				return rej_au
-			var queued: Dictionary = {
-				"ok": true, "buffered": true, "station": station, "commodity": commodity,
-				"side": "BUY" if is_buy else "SELL", "qty": order_qty, "limit_price": int(round(px)),
-				"close_round": int(au["close_round"]), "baron": str(au["baron"]),
-			}
-			last_executed_order = {}
-			last_rejection_reason = ""
-			last_rejection_payload = {}
-			auction_queued.emit(queued)
-			return queued
-
 	if not is_buy and rc != null:
 		var held_cargo: int = int(rc.cargo.get(commodity, 0))
 		if held_cargo < check_qty:
@@ -356,6 +333,29 @@ func execute_focused_order() -> Dictionary:
 			}
 			_note_rejection(rej_cargo_early)
 			return rej_cargo_early
+
+	# Sol Central's call auction (Epic 3 task 6): at Earth, in an auction round, the
+	# commodity being auctioned takes limit orders into a buffer instead of sweeping
+	# the book. The focused level's price is the limit; the clear settles it.
+	if rc != null and rc.world != null:
+		var au: Dictionary = rc.world.auction_at(station, rc.get_current_round(), rc.run_seed)
+		if not au.is_empty() and str(au["commodity"]) == commodity:
+			var q: Dictionary = rc.world.submit_auction_order(rc, station, "BUY" if is_buy else "SELL", check_qty, int(round(px)))
+			if not bool(q["ok"]):
+				last_rejection_reason = str(q["reason"])
+				var rej_au: Dictionary = {"ok": false, "reason": last_rejection_reason, "quote": quote, "order_qty": check_qty}
+				_note_rejection(rej_au)
+				return rej_au
+			var queued: Dictionary = {
+				"ok": true, "buffered": true, "station": station, "commodity": commodity,
+				"side": "BUY" if is_buy else "SELL", "qty": order_qty, "limit_price": int(round(px)),
+				"close_round": int(au["close_round"]), "baron": str(au["baron"]),
+			}
+			last_executed_order = {}
+			last_rejection_reason = ""
+			last_rejection_payload = {}
+			auction_queued.emit(queued)
+			return queued
 
 	# Live resting book (Earth/Mars): sweep it up to the focused level's price.
 	var mkt: StationMarket = hud.market
