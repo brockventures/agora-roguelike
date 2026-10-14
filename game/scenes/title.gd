@@ -51,6 +51,7 @@ var _continue_button: Button = null
 var _settings_button: Button = null
 var _settings_panel: Panel = null
 var _settings_view: SettingsView = null
+var _capture_label: Label = null
 var kit: HudKit = HudKit.new()
 var _drift: Tween = null
 
@@ -226,6 +227,19 @@ func _menu_button(parent: Control, key: String, handler: Callable) -> Button:
 
 
 func _build_footer() -> void:
+	_capture_label = Label.new()
+	_capture_label.text = capture_text()
+	_capture_label.visible = _capture_label.text != ""
+	_capture_label.add_theme_font_size_override("font_size", FOOTER_SIZE)
+	_capture_label.add_theme_color_override("font_color", SUBTITLE_COLOR)
+	_capture_label.anchor_top = 1.0
+	_capture_label.anchor_bottom = 1.0
+	_capture_label.offset_left = 80.0
+	_capture_label.offset_top = -74.0
+	_capture_label.offset_right = 900.0
+	_capture_label.offset_bottom = -46.0
+	_capture_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_page.add_child(_capture_label)
 	var foot := Label.new()
 	foot.text = Loc.t("TITLE_FOOTER")
 	foot.add_theme_font_size_override("font_size", FOOTER_SIZE)
@@ -238,6 +252,16 @@ func _build_footer() -> void:
 	foot.offset_bottom = -16.0
 	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_page.add_child(foot)
+
+
+## Regulatory Capture readout for the title screen; "" before any rescue or consultant is on file.
+func capture_text() -> String:
+	if save_store == null:
+		return ""
+	var p: MetaProfile = save_store.load_profile()
+	if p == null or (p.rescues_completed <= 0 and p.consultants.is_empty() and p.skeletons <= 0):
+		return ""
+	return Loc.t("TITLE_CAPTURE") % [Commission.capture_pct(p), p.consultants.size(), Commission.ids().size()]
 
 
 func _build_settings_panel() -> void:

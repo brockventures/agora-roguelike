@@ -192,7 +192,32 @@ static func advance(w: Barons, round_num: int, rc: RunController, market: Statio
 		var roll: int = _draw("rival", id, rc.run_seed, round_num).randint(0, 9999)
 		if roll < int(cfg["decide_chance_bps"]):
 			_try_depart(w, f, market, round_num, events)
+	if rc != null and Commission.has_favour(rc.profile, "press"):
+		events.append_array(press_tips(w, round_num, rc))
 	return events
+
+
+## Press favour (#149): pure look-ahead at next round's sail roll for fleets docked next round.
+## Never mutates RNG state or books; returns [{kind: "rival_press_tip", fleet, station, next_round}].
+static func press_tips(w: Barons, round_num: int, rc: RunController) -> Array:
+	var tips: Array = []
+	if w == null or rc == null or not Commission.has_favour(rc.profile, "press"):
+		return tips
+	var cfg: Dictionary = settings(w)
+	var next_round: int = round_num + 1
+	for id in w.rival_ids():
+		var f: RivalFleet = w.rival(id)
+		if f == null or f.gone:
+			continue
+		var dock: String = f.at
+		if f.in_flight():
+			if next_round < int(f.route.get("arrival_round", 0)) or int(f.route.get("front", 0)) == 1:
+				continue
+			dock = str(f.route.get("destination", f.at))
+		var roll: int = _draw("rival", id, rc.run_seed, next_round).randint(0, 9999)
+		if roll < int(cfg["decide_chance_bps"]):
+			tips.append({"kind": "rival_press_tip", "fleet": f.id, "station": dock, "next_round": next_round})
+	return tips
 
 
 ## The player's departure is public (decision 9.5): each idle fleet may break dock at

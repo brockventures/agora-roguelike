@@ -123,3 +123,22 @@ func test_project_main_scene_is_title() -> String:
 	if main_scene != TITLE_PATH:
 		return "application/run/main_scene is %s" % str(main_scene)
 	return "ok"
+
+func test_title_shows_regulatory_capture_when_profile_has_progress() -> String:
+	var store := _store()
+	var t0 := _title(store, [])
+	var empty_cap: String = t0.capture_text()
+	_release(t0)
+	var p := MetaProfile.new()
+	p.rescues_completed = 2
+	p.consultants = ["enforcement", "customs"] as Array[String]
+	store.save_profile(p)
+	var t1 := _title(store, [])
+	var cap: String = t1.capture_text()
+	_release(t1)
+	_cleanup(store)
+	if empty_cap != "":
+		return "fresh profile should not show capture on title, got: %s" % empty_cap
+	if not cap.contains("40%") or not cap.contains("2/5"):
+		return "expected 40%% (2/5) capture on title, got: %s" % cap
+	return "ok"

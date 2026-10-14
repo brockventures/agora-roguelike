@@ -32,6 +32,9 @@ const ORDER_CANCEL: String = "ORDER_CANCEL"
 const MARKET_BELL: String = "MARKET_BELL"
 const TICKER_BLIP: String = "TICKER_BLIP"
 const ROUND_PULSE: String = "ROUND_PULSE"
+const TRANSIT_BURN: String = "TRANSIT_BURN"
+const PIRATE_RAID: String = "PIRATE_RAID"
+const BARON_TAKEOVER: String = "BARON_TAKEOVER"
 const ALARM_WARNING: String = "ALARM_WARNING"
 const ALARM_CRITICAL: String = "ALARM_CRITICAL"
 ## The looping ambient pad. Still named DRONE_TENSION in code and bus names
@@ -176,11 +179,11 @@ func is_priority_sound(sound_id: String) -> bool:
 ## Maps sound ID to logical audio mixing bus
 func get_sound_bus(sound_id: String) -> String:
 	match sound_id:
-		KEY_CLICK_DOWN, KEY_CLICK_UP, NAV_TICK, NAV_BUMP, TAB_SWOOSH, MODAL_OPEN, MODAL_CLOSE, ROUND_PULSE:
+		KEY_CLICK_DOWN, KEY_CLICK_UP, NAV_TICK, NAV_BUMP, TAB_SWOOSH, MODAL_OPEN, MODAL_CLOSE, ROUND_PULSE, TRANSIT_BURN:
 			return BUS_UI
-		ORDER_BUY, ORDER_SELL, ORDER_FILL, ORDER_CANCEL, MARKET_BELL, TICKER_BLIP:
+		ORDER_BUY, ORDER_SELL, ORDER_FILL, ORDER_CANCEL, MARKET_BELL, TICKER_BLIP, BARON_TAKEOVER:
 			return BUS_MARKET
-		ALARM_WARNING, ALARM_CRITICAL:
+		ALARM_WARNING, ALARM_CRITICAL, PIRATE_RAID:
 			return BUS_ALERTS
 		DRONE_TENSION:
 			return BUS_AMBIENT
@@ -254,6 +257,39 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				var freq := 270.0 if second else 180.0
 				var env := exp(-tn * 45.0)
 				var val := int(sin(t * TAU * freq) * env * 22000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
+		TRANSIT_BURN:
+			# Orbital thruster ignition sweep (180ms, 110Hz -> 240Hz harmonic swell)
+			sample_count = 3969
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var freq := 110.0 + (130.0 * (t / 0.18))
+				var env := sin((t / 0.18) * PI) * exp(-t * 6.0)
+				var wave := 0.7 * sin(t * TAU * freq) + 0.3 * sin(t * TAU * freq * 1.5)
+				var val := int(wave * env * 22000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
+		PIRATE_RAID:
+			# Interdiction dual-staccato siren pulse (200ms, 740Hz / 554Hz)
+			sample_count = 4410
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var second: bool = t >= 0.10
+				var tn := t - (0.10 if second else 0.0)
+				var freq := 554.37 if second else 740.0
+				var env := exp(-tn * 18.0)
+				var val := int(sin(t * TAU * freq) * env * 23000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
+		BARON_TAKEOVER:
+			# Hostile buyout major triad chord chime (320ms, A4 + C#5 + E5)
+			sample_count = 7056
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var env := exp(-t * 7.5)
+				var chord := (sin(t * TAU * 440.0) + sin(t * TAU * 554.37) + sin(t * TAU * 659.25)) / 3.0
+				var val := int(chord * env * 26000.0)
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 		KEY_CLICK_DOWN:

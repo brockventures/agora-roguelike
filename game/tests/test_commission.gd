@@ -84,3 +84,34 @@ func test_dissolution_fails_at_five_only() -> String:
 	if not Commission.dissolution_fails(_p(0, five)):
 		return "five should fail dissolution"
 	return "ok"
+
+func test_hearing_modal_retains_consultant_and_shows_true_ending_at_full_capture() -> String:
+	var p := MetaProfile.new()
+	p.skeletons = 2
+	p.consultants = ["enforcement", "customs", "treasury"] as Array[String]
+	var rc := RunController.new(p, 21, null, {}, 30)
+	var scene = load("res://scenes/main.tscn").instantiate()
+	scene.initialize_systems(rc)
+	scene._resolve_child_nodes()
+	scene._build_readouts()
+	var lp: M0Loop = scene.loop
+	lp.open_hearing()
+	if lp.collapse_phase != M0Loop.PHASE_HEARING or lp.hearing_cursor != 3:
+		scene.free()
+		return "expected cursor on press (idx 3), got phase=%s cursor=%d" % [lp.collapse_phase, lp.hearing_cursor]
+	var m1: Dictionary = scene._resolution_model()
+	if not str(m1.get("eyebrow", "")).contains("CAPTURE: 60%"):
+		scene.free()
+		return "hearing eyebrow: %s" % str(m1.get("eyebrow", ""))
+	if not lp.dispatch_action(M0Loop.ACT_SUBMIT) or not p.consultants.has("press"):
+		scene.free()
+		return "failed to retain press via hearing modal"
+	lp.dispatch_action(M0Loop.ACT_DOWN)
+	if not lp.dispatch_action(M0Loop.ACT_SUBMIT) or not Commission.dissolution_fails(p):
+		scene.free()
+		return "failed to retain chair last for 100% capture"
+	var m2: Dictionary = scene._resolution_model()
+	scene.free()
+	if not str(m2.get("title", "")).contains("$SOL"):
+		return "expected $SOL true ending title at 100%% capture, got: %s" % str(m2.get("title", ""))
+	return "ok"

@@ -656,3 +656,36 @@ ONB_CHK_TODO,[ ] %d. %s
 ONB_CHK_1,Purchase propellant at Earth
 ONB_CHK_2,Plot orbital burn to Luna
 ONB_CHK_3,Execute profitable trade fill
+HL_RIVAL_PRESS_TIP,"Press tip: %s is clearing manifests at %s to sail next round"
+TITLE_CAPTURE,"REGULATORY CAPTURE: %d%% (%d/%d CONSULTANTS ON RETAINER)"
+COMM_HEARING_EYEBROW,"MINISTRY OF COMMERCE // SKELETONS: %d · CAPTURE: %d%%"
+COMM_HEARING_TITLE,EMERGENCY DISSOLUTION HEARING
+COMM_HEARING_BODY,"The Sol System Commerce Commission commends your rescue of the sun and hereby dissolves your corporation. Spend a Skeleton to place a Commissioner on private retainer."
+COMM_TRUE_EYEBROW,"SUN PRIVATIZATION ACT // REGULATORY CAPTURE 100%"
+COMM_TRUE_TITLE,DISSOLUTION VOTE DEFEATED — $SOL LISTED
+COMM_TRUE_BODY,"All five Commissioners vote in block as retained consultants. Sol's sovereign debt is swapped for equity in the Sun itself, now trading exclusively as $SOL."
+COMM_CAPTURE_KEY,REGULATORY CAPTURE
+COMM_CAPTURE_VALUE,%d%% (%d / %d CONSULTANTS)
+COMM_TRUE_TICKER_KEY,SOVEREIGN LISTING
+COMM_TRUE_TICKER_VAL,$SOL // THE SUN PRIVATIZED
+COMM_TAG_RETAINED,ON RETAINER
+COMM_TAG_COST,%d SKELETON
+COMM_TAG_CHAIR_LAST,CHAIR LAST
+COMM_TAG_LOCKED,LOCKED (%d)
+COMM_ACT_RETAIN,Retain
+COMM_ACT_PARACHUTES,Proceed to Parachutes
+COMM_NAME_ENFORCEMENT,Commissioner Vance
+COMM_PORTFOLIO_ENFORCEMENT,Enforcement
+COMM_DESC_ENFORCEMENT,"Delays Doomsday Stage 1 (UNSTABLE) threshold from 75% to 70% of clock."
+COMM_NAME_CUSTOMS,Commissioner Kael
+COMM_PORTFOLIO_CUSTOMS,Customs & Transit
+COMM_DESC_CUSTOMS,"Waives your first belt toll and first station docking toll each corporation."
+COMM_NAME_TREASURY,Commissioner Morozov
+COMM_PORTFOLIO_TREASURY,Treasury
+COMM_DESC_TREASURY,"Grants a Deferred Prosecution Agreement: waives the first Baron retaliation fine each corp."
+COMM_NAME_PRESS,Commissioner Lin
+COMM_PORTFOLIO_PRESS,GalNet Press
+COMM_DESC_PRESS,"Tips off GalNet one round early whenever a rival syndicate fleet will roll to sail."
+COMM_NAME_CHAIR,Chairwoman Sterling
+COMM_PORTFOLIO_CHAIR,The Chair
+COMM_DESC_CHAIR,"Can only be retained after the other four. Flips the final vote to defeat dissolution and pass the Sun Privatization Act ($SOL)."
