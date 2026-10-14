@@ -56,5 +56,11 @@
       "fires": {"on": ["policy_pending"]},
       "done": {"on": ["policy_adopted"]}
     }
+  ],
+  "round_pulse": {"duration_sec": 0.35, "sound_id": "ROUND_PULSE"},
+  "checklist": [
+    {"id": "purchase_propellant", "step": 1, "title_key": "ONB_CHK_1"},
+    {"id": "plot_orbital_burn", "step": 2, "title_key": "ONB_CHK_2"},
+    {"id": "profitable_trade_fill", "step": 3, "title_key": "ONB_CHK_3"}
   ]
 }

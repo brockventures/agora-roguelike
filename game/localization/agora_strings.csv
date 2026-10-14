@@ -650,3 +650,9 @@ TITLE_CONTINUE,Reconvene the Board
 TITLE_SETTINGS,Corporate Governance
 TITLE_QUIT,Adjourn
 TITLE_FOOTER,Agora Station Registry of Companies. All filings are final.
+ONB_CHK_CHIP,FLIGHT CHECKLIST %d/%d
+ONB_CHK_DONE,[x] %d. %s
+ONB_CHK_TODO,[ ] %d. %s
+ONB_CHK_1,Purchase propellant at Earth
+ONB_CHK_2,Plot orbital burn to Luna
+ONB_CHK_3,Execute profitable trade fill

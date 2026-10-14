@@ -31,6 +31,7 @@ const ORDER_FILL: String = "ORDER_FILL"
 const ORDER_CANCEL: String = "ORDER_CANCEL"
 const MARKET_BELL: String = "MARKET_BELL"
 const TICKER_BLIP: String = "TICKER_BLIP"
+const ROUND_PULSE: String = "ROUND_PULSE"
 const ALARM_WARNING: String = "ALARM_WARNING"
 const ALARM_CRITICAL: String = "ALARM_CRITICAL"
 ## The looping ambient pad. Still named DRONE_TENSION in code and bus names
@@ -175,7 +176,7 @@ func is_priority_sound(sound_id: String) -> bool:
 ## Maps sound ID to logical audio mixing bus
 func get_sound_bus(sound_id: String) -> String:
 	match sound_id:
-		KEY_CLICK_DOWN, KEY_CLICK_UP, NAV_TICK, NAV_BUMP, TAB_SWOOSH, MODAL_OPEN, MODAL_CLOSE:
+		KEY_CLICK_DOWN, KEY_CLICK_UP, NAV_TICK, NAV_BUMP, TAB_SWOOSH, MODAL_OPEN, MODAL_CLOSE, ROUND_PULSE:
 			return BUS_UI
 		ORDER_BUY, ORDER_SELL, ORDER_FILL, ORDER_CANCEL, MARKET_BELL, TICKER_BLIP:
 			return BUS_MARKET
@@ -243,6 +244,18 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 	var raw_bytes := PackedByteArray()
 
 	match sound_id:
+		ROUND_PULSE:
+			# Tactile round commit double-pulse (80ms, 180Hz -> 270Hz)
+			sample_count = 1764
+			for i in range(sample_count):
+				var t := float(i) / 22050.0
+				var second: bool = t >= 0.04
+				var tn := t - (0.04 if second else 0.0)
+				var freq := 270.0 if second else 180.0
+				var env := exp(-tn * 45.0)
+				var val := int(sin(t * TAU * freq) * env * 22000.0)
+				raw_bytes.append(val & 0xFF)
+				raw_bytes.append((val >> 8) & 0xFF)
 		KEY_CLICK_DOWN:
 			# Sharp tactile attack click with fast exponential decay (15ms)
 			sample_count = 330
