@@ -134,6 +134,8 @@ func test_finishing_the_last_phase_wins_the_run() -> String:
 		return "award %d, want %d (profile %d)" % [award, base + bonus, rc.profile.severance_points]
 	if rc.barons_broken_award != 3 or rc.profile.rescues_completed != 1:
 		return "broken %d, rescues %d" % [rc.barons_broken_award, rc.profile.rescues_completed]
+	if rc.profile.skeletons != 1:
+		return "a rescue win should pay one Skeleton, got %d" % rc.profile.skeletons
 	# Once only: a second call, a late collapse and a filing attempt change nothing.
 	if rc.finish_rescue() != 0:
 		return "banked twice"

@@ -591,6 +591,7 @@ func _bank_corp(reason: String, lost: Dictionary, filings: int, p_next_seed: int
 		if reason == "rescued" and rescue.is_complete():
 			rescue_severance_award = rescue.win_severance(int(doomsday.ticks_remaining / ticks_per_round) if ticks_per_round > 0 else 0)
 			profile.rescues_completed += 1
+			profile.skeletons += Commission.skeletons_per_rescue()
 		elif reason == "collapse":
 			consolation_severance_award = rescue.consolation_severance()
 	var total_rescue: int = rescue_severance_award + sovereign_severance_award
