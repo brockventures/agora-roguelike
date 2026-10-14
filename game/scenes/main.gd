@@ -2038,6 +2038,10 @@ func _build_ticket() -> void:
 	_ticket["qty_v"] = kit.label(p, "TicketQtyValue", HudTheme.ROLE_READOUT, 24, HudTheme.BONE)
 	_ticket["total_l"] = kit.label(p, "TicketTotalLabel", HudTheme.ROLE_LABEL, 12, HudTheme.BONE_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	_ticket["total_v"] = kit.label(p, "TicketTotalValue", HudTheme.ROLE_READOUT, 20, HudTheme.BONE, HORIZONTAL_ALIGNMENT_RIGHT)
+	_ticket["stock_l"] = kit.label(p, "TicketStockLabel", HudTheme.ROLE_LABEL, 12, HudTheme.BONE_DIM)
+	_ticket["stock_v"] = kit.label(p, "TicketStockValue", HudTheme.ROLE_READOUT, 16, HudTheme.BONE)
+	_ticket["hold_l"] = kit.label(p, "TicketHoldLabel", HudTheme.ROLE_LABEL, 12, HudTheme.BONE_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+	_ticket["hold_v"] = kit.label(p, "TicketHoldValue", HudTheme.ROLE_READOUT, 16, HudTheme.BONE, HORIZONTAL_ALIGNMENT_RIGHT)
 	var prompts: Array = []
 	for i in 4:
 		prompts.append(kit.pad_glyph(p, "Prompt%d" % i, "", "", HudTheme.BONE))
@@ -2054,7 +2058,11 @@ func prompts() -> Array:
 		out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_NEXT")])
 	elif not in_transit:
 		var depart: bool = loop != null and loop.tab == M0Loop.Tab.MAP
-		out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_DEPART") if depart else tr("HUD_PROMPT_SUBMIT")])
+		if depart:
+			out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_DEPART")])
+		else:
+			var can_sub: bool = hud != null and hud.gamepad_focus != null and hud.gamepad_focus.can_submit_order()
+			out.append([tr("HUD_PAD_A"), tr("HUD_PROMPT_SUBMIT") if can_sub else tr("HUD_ACT_LOCKED")])
 	out.append([tr("HUD_PAD_B"), tr("HUD_PROMPT_BACK")])
 	if not in_transit:
 		out.append([tr("HUD_PAD_X"), tr("HUD_PROMPT_CH11")])
@@ -2064,6 +2072,7 @@ func prompts() -> Array:
 
 func _refresh_ticket() -> void:
 	var f: GamepadFocus = hud.gamepad_focus
+	f.clamp_quantity()
 	var ladder: Dictionary = hud.get_sidebar_telemetry()["order_book_ladder"]
 	var asks: Array = ladder["asks"]
 	var bids: Array = ladder["bids"]
@@ -2081,9 +2090,15 @@ func _refresh_ticket() -> void:
 		# Under way there is no station to pick: the row shows the voyage instead.
 		var voyage: Dictionary = controller.transit_info()
 		station_text = tr("HUD_TRANSIT") % [Loc.station(str(voyage["destination"])), _rounds_text(int(voyage["eta_rounds"]))]
+	var in_transit: bool = controller.is_in_transit()
+	var stock_qty: int = f.get_station_stock() if not in_transit else 0
+	var stock_text: String = "—" if in_transit else (tr("HUD_TICKET_STOCK_VALUE") % stock_qty)
+	var held_qty: int = int(controller.cargo.get(hud.active_commodity, 0))
+	var free_cap: int = controller.get_remaining_cargo_capacity()
+	var hold_text: String = tr("HUD_TICKET_HOLD_VALUE") % [held_qty, free_cap]
 	var pr: Array = prompts()
 	var cargo: String = "%d/%d" % [controller.get_total_cargo(), controller.cargo_capacity]
-	if not _changed("ticket", [buy_px, sell_px, buying, f.order_qty, total, station_text, pr, cargo, Loc.current()]):
+	if not _changed("ticket", [buy_px, sell_px, buying, f.order_qty, total, station_text, pr, cargo, stock_text, hold_text, Loc.current()]):
 		return
 	var t: Dictionary = _ticket
 	var inner_w: float = ticket_panel.size.x - 2.0 * (HudLayout.BORDER + HudLayout.PAD)
@@ -2094,7 +2109,7 @@ func _refresh_ticket() -> void:
 	var th: float = HudKit.line_height(title)
 	title.position = Vector2(x0, y)
 	title.size = Vector2(kit.natural_width(title, title.text) + 2.0, th)
-	y += th + 6.0
+	y += th + 4.0
 	# Station row: LT / RT glyphs flank the name (the LT/RT station select).
 	var lt: Control = t["lt"]
 	var rt: Control = t["rt"]
@@ -2116,11 +2131,11 @@ func _refresh_ticket() -> void:
 		sh = maxf(sh, wh)
 		st.position.y = y + (sh - wh) * 0.5
 		st.size.y = wh
-	y += sh + 8.0
+	y += sh + 6.0
 	# BUY / SELL segmented control.
 	var buy_l: Label = t["buy_l"]
 	var sell_l: Label = t["sell_l"]
-	var seg_h: float = HudKit.line_height(buy_l) + 18.0
+	var seg_h: float = HudKit.line_height(buy_l) + 14.0
 	var cell_w: float = (inner_w - 6.0) * 0.5
 	var seg: HudKit.Plate = t["seg"]
 	seg.position = Vector2(x0, y)
@@ -2148,7 +2163,7 @@ func _refresh_ticket() -> void:
 	buy_l.size = buy_cell.size
 	sell_l.position = sell_cell.position
 	sell_l.size = sell_cell.size
-	y += seg_h + 10.0
+	y += seg_h + 6.0
 	# Quantity (left) and total / cargo (right).
 	var qty_l: Label = t["qty_l"]
 	var qty_v: Label = t["qty_v"]
@@ -2158,7 +2173,7 @@ func _refresh_ticket() -> void:
 	qty_v.text = tr("HUD_TICKET_QTY_VALUE") % f.order_qty
 	tot_l.text = tr("HUD_TICKET_TOTAL")
 	tot_v.text = tr("HUD_TICKET_TOTAL_VALUE") % [_fmt(total), controller.get_total_cargo(), controller.cargo_capacity]
-	var half: float = inner_w * 0.38
+	var half: float = inner_w * 0.42
 	var lh_l: float = HudKit.line_height(qty_l)
 	var lh_v: float = HudKit.line_height(qty_v)
 	kit.fit_text(qty_l, qty_l.text, half)
@@ -2175,6 +2190,31 @@ func _refresh_ticket() -> void:
 	tot_l.size = Vector2(rw, lh_l)
 	tot_v.position = Vector2(x0 + inner_w - rw, y + lh_l)
 	tot_v.size = Vector2(rw, lh_v2)
+	y += lh_l + maxf(lh_v, lh_v2) + 4.0
+	# Persistent Inventory: Station Stock (left) and Vessel Hold (right).
+	var stock_l: Label = t["stock_l"]
+	var stock_v: Label = t["stock_v"]
+	var hold_l: Label = t["hold_l"]
+	var hold_v: Label = t["hold_v"]
+	stock_l.text = tr("HUD_TICKET_STOCK")
+	stock_v.text = stock_text
+	hold_l.text = tr("HUD_TICKET_HOLD")
+	hold_v.text = hold_text
+	kit.fit_text(stock_l, stock_l.text, half)
+	kit.fit_text(stock_v, stock_v.text, half)
+	kit.fit_text(hold_l, hold_l.text, rw)
+	kit.fit_text(hold_v, hold_v.text, rw)
+	var slh_l: float = HudKit.line_height(stock_l)
+	var slh_v: float = HudKit.line_height(stock_v)
+	var hlh_v: float = HudKit.line_height(hold_v)
+	stock_l.position = Vector2(x0, y)
+	stock_l.size = Vector2(half, slh_l)
+	stock_v.position = Vector2(x0, y + slh_l)
+	stock_v.size = Vector2(half, slh_v)
+	hold_l.position = Vector2(x0 + inner_w - rw, y)
+	hold_l.size = Vector2(rw, slh_l)
+	hold_v.position = Vector2(x0 + inner_w - rw, y + slh_l)
+	hold_v.size = Vector2(rw, hlh_v)
 	# Pad prompts along the foot, flowing left to right.
 	var prompts_nodes: Array = t["prompts"]
 	var px: float = x0
@@ -2184,7 +2224,14 @@ func _refresh_ticket() -> void:
 		host.visible = i < pr.size()
 		if i >= pr.size():
 			continue
-		kit.set_pad_glyph(host, pr[i][0], pr[i][1], HudTheme.BONE)
+		var col: Color = HudTheme.BONE
+		if pr[i][1] == tr("HUD_ACT_LOCKED"):
+			col = HudTheme.BONE_DIM
+		kit.set_pad_glyph(host, pr[i][0], pr[i][1], col)
+		var disc: HudKit.Plate = host.get_meta("disc")
+		if disc != null:
+			disc.fill = col
+			disc.queue_redraw()
 		host.position = Vector2(px, foot - host.size.y)
 		px += host.size.x + 14.0
 

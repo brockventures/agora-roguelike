@@ -391,3 +391,54 @@ func test_depth_available_quantity_and_cargo_capacity_gates() -> String:
 		return "expected INSUFFICIENT_CARGO_CAPACITY, got %s" % str(rejections[-1])
 
 	return "ok"
+
+func test_order_ticket_clamping_and_station_stock() -> String:
+	var d := DoomsdayClock.new(36000, 0, 0, 0)
+	var rc := RunController.new(null, 1, d)
+	rc.docked_at = "ceres"
+	rc.cargo_capacity = 10
+	rc.cr = 5000
+	rc.cargo = {"ORE": 4}
+	var hud := OrbitalHUD.new(rc, "ceres", "ORE")
+	var focus := hud.gamepad_focus
+
+	# 1. Capacity clamping on BUY: remaining capacity is 6 (10 - 4), plenty of CR (5000).
+	focus.set_order_side(GamepadFocus.OrderSide.BUY)
+	focus.snap_depth_level(0)
+	var max_buy := focus.get_max_allowed_quantity()
+	if max_buy != 6:
+		return "expected max_buy 6 (clamped by remaining cargo capacity), got %d" % max_buy
+	if focus.get_station_stock() <= 0:
+		return "expected positive station stock on BUY"
+
+	# D-pad right cannot dial past max_buy (6)
+	for i in 10:
+		focus.handle_action("dpad_right")
+	if focus.order_qty != 6:
+		return "adjust_quantity on BUY failed to clamp at capacity 6, got %d" % focus.order_qty
+
+	# 2. Credit clamping on BUY: set CR to afford exactly 3 units at focused ask price
+	var ask_px: float = float(focus.get_focused_quote().get("price", 10.0))
+	rc.cr = int(ask_px * 3.0)
+	focus.clamp_quantity()
+	if focus.order_qty != 3:
+		return "expected credit clamp to reduce order_qty to 3, got %d" % focus.order_qty
+	if not focus.can_submit_order():
+		return "can_submit_order should be true at valid clamped BUY qty"
+
+	# 3. Flip to SELL: player holds 4 ORE -> adjust_quantity clamps at held 4
+	focus.set_order_side(GamepadFocus.OrderSide.SELL)
+	for i in 5:
+		focus.handle_action("dpad_right")
+	if focus.order_qty != 4:
+		return "dpad_right on SELL must not exceed held 4, got %d" % focus.order_qty
+
+	# Zero held cargo on SELL clamps to 0 and locks submit
+	rc.cargo["ORE"] = 0
+	focus.clamp_quantity()
+	if focus.order_qty != 0:
+		return "0 held cargo on SELL must clamp order_qty to 0, got %d" % focus.order_qty
+	if focus.can_submit_order():
+		return "can_submit_order must be false when order_qty is 0"
+
+	return "ok"
