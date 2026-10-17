@@ -212,3 +212,17 @@ func test_hud_unstepped_realtime_cooldown() -> String:
 		return "Third set_commodity after 30ms real delay did not play NAV_TICK (count=%d)" % played_nav_ticks.size()
 
 	return "ok"
+
+func test_transit_piracy_and_takeover_waveforms_and_buses() -> String:
+	var audio := TactileAudio.new()
+	if audio.get_sound_bus(TactileAudio.TRANSIT_BURN) != TactileAudio.BUS_UI:
+		return "TRANSIT_BURN should route to BUS_UI"
+	if audio.get_sound_bus(TactileAudio.PIRATE_RAID) != TactileAudio.BUS_ALERTS:
+		return "PIRATE_RAID should route to BUS_ALERTS"
+	if audio.get_sound_bus(TactileAudio.BARON_TAKEOVER) != TactileAudio.BUS_MARKET:
+		return "BARON_TAKEOVER should route to BUS_MARKET"
+	for sid in [TactileAudio.TRANSIT_BURN, TactileAudio.PIRATE_RAID, TactileAudio.BARON_TAKEOVER]:
+		var wav: AudioStreamWAV = audio.get_or_generate_waveform(sid)
+		if wav == null or wav.data.size() < 2000:
+			return "waveform %s failed to generate PCM data" % sid
+	return "ok"

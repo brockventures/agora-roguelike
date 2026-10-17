@@ -146,3 +146,24 @@ func test_waiver_flags_round_trip_and_are_absent_when_false() -> String:
 	if not back.customs_waiver_used or not back.treasury_waiver_used:
 		return "flags not restored"
 	return "ok"
+
+# --- Press ---
+
+func test_press_tips_name_fleets_sailing_next_round_only_when_retained() -> String:
+	var rc_off := _rc()
+	rc_off.world = Barons.for_new_run()
+	if not Rivals.press_tips(rc_off.world, 1, rc_off).is_empty():
+		return "tips emitted without press favour"
+	var rc_on := _rc(["press"] as Array[String])
+	rc_on.world = Barons.for_new_run()
+	var found_tip: Dictionary = {}
+	for rd in range(1, 30):
+		var tips: Array = Rivals.press_tips(rc_on.world, rd, rc_on)
+		if not tips.is_empty():
+			found_tip = tips[0]
+			break
+	if found_tip.is_empty():
+		return "no press tip generated across 30 rounds"
+	if str(found_tip.get("kind", "")) != "rival_press_tip" or str(found_tip.get("fleet", "")) == "" or str(found_tip.get("station", "")) == "":
+		return "malformed press tip: %s" % str(found_tip)
+	return "ok"

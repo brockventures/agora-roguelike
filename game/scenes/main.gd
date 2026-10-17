@@ -3072,6 +3072,8 @@ func _resolution_model() -> Dictionary:
 		return {"eyebrow": tr("CH11_EYEBROW"), "title": tr("CH11_TITLE"), "band": "alert", "wide": false,
 			"rows": [{"kind": "text", "text": tr("CH11_INSOLVENT") % [_fmt(int(a["total_debt"])), _fmt(int(a["liquidation_value"]))]}, {"kind": "muted", "text": tr("HUD_CLOCK_HALTED")}],
 			"actions": [[tr("HUD_PAD_X"), tr("HUD_ACT_FILE")]]}
+	if loop.collapse_phase == M0Loop.PHASE_HEARING:
+		return _hearing_model()
 	if loop.collapse_phase == M0Loop.PHASE_PERKS:
 		return _perks_model()
 	return _summary_model()
@@ -3351,6 +3353,53 @@ func _rescued_model() -> Dictionary:
 	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
 	return {"eyebrow": tr("RESC_EYEBROW"), "title": tr("RESC_TITLE"), "band": "teal", "wide": true, "rows": rows,
 		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
+
+
+func _hearing_model() -> Dictionary:
+	var p: MetaProfile = controller.profile if controller != null else MetaProfile.new()
+	var pct: int = Commission.capture_pct(p)
+	var true_ending: bool = Commission.dissolution_fails(p)
+	var rows: Array = []
+	if true_ending:
+		rows.append({"kind": "text", "text": tr("COMM_TRUE_BODY")})
+		rows.append({"kind": "kv", "key": tr("COMM_CAPTURE_KEY"), "value": tr("COMM_CAPTURE_VALUE") % [pct, p.consultants.size(), Commission.ids().size()]})
+		rows.append({"kind": "kv", "key": tr("COMM_TRUE_TICKER_KEY"), "value": tr("COMM_TRUE_TICKER_VAL")})
+		rows.append({"kind": "start", "cursor": true, "text": tr("COMM_ACT_PARACHUTES")})
+		return {
+			"eyebrow": tr("COMM_TRUE_EYEBROW"),
+			"title": tr("COMM_TRUE_TITLE"),
+			"band": "teal",
+			"wide": true,
+			"rows": rows,
+			"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")], [tr("HUD_PAD_B"), tr("HUD_ACT_BACK")]],
+		}
+	rows.append({"kind": "text", "text": tr("COMM_HEARING_BODY")})
+	var c_rows: Array = loop.commission_rows()
+	for i in c_rows.size():
+		var r: Dictionary = c_rows[i]
+		var cid: String = str(r["id"]).to_upper()
+		var tag: String = tr("COMM_TAG_RETAINED") if bool(r["retained"]) else (tr("COMM_TAG_COST") % int(r["cost"]) if bool(r["can_retain"]) else (tr("COMM_TAG_CHAIR_LAST") if str(r["reason"]) == "CHAIR_LAST" else tr("COMM_TAG_LOCKED") % int(r["cost"])))
+		rows.append({
+			"kind": "perk",
+			"cursor": i == loop.hearing_cursor,
+			"dim": not bool(r["can_retain"]) and not bool(r["retained"]),
+			"tier": "",
+			"name": tr("COMM_NAME_" + cid),
+			"branch": tr("COMM_PORTFOLIO_" + cid),
+			"tag": tag,
+		})
+	if loop.hearing_cursor < c_rows.size() and not c_rows.is_empty():
+		var cur_id: String = str(c_rows[clampi(loop.hearing_cursor, 0, c_rows.size() - 1)]["id"]).to_upper()
+		rows.append({"kind": "muted", "text": tr("COMM_DESC_" + cur_id)})
+	rows.append({"kind": "start", "cursor": loop.hearing_cursor >= c_rows.size(), "text": tr("COMM_ACT_PARACHUTES")})
+	return {
+		"eyebrow": tr("COMM_HEARING_EYEBROW") % [p.skeletons, pct],
+		"title": tr("COMM_HEARING_TITLE"),
+		"band": "teal",
+		"wide": true,
+		"rows": rows,
+		"actions": [[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")], [tr("HUD_PAD_A"), tr("COMM_ACT_RETAIN")], [tr("HUD_PAD_B"), tr("HUD_ACT_BACK")]],
+	}
 
 
 func _perks_model() -> Dictionary:

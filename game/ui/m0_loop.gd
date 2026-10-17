@@ -72,6 +72,7 @@ const OVERLAY_POLICY: String = "policy"
 ## Collapse flow: run summary, then Golden Parachutes perk select, then a new run.
 const PHASE_NONE: String = ""
 const PHASE_SUMMARY: String = "summary"
+const PHASE_HEARING: String = "hearing"
 const PHASE_PERKS: String = "perks"
 
 ## Where every run starts: docked at Arcadia Foundries on Mars (#34). Since #111
@@ -159,6 +160,9 @@ var last_depart_check: Dictionary = {}
 var collapse_phase: String = PHASE_NONE
 ## Cursor over perk_rows(); index perk_rows().size() is the START NEW RUN row.
 var perk_cursor: int = 0
+## Cursor over commission_rows() on the Ministry hearing screen; commission_rows().size() is CONTINUE.
+var hearing_cursor: int = 0
+var _hearing_done: bool = false
 ## The Policy Committee modal's cursor: an index into the offered nodes (UI state, never saved).
 var policy_cursor: int = 0
 ## The Sovereign Decree modal's cursor: an index into counter options (UI state, never saved).
@@ -476,6 +480,8 @@ func _refresh_world_mods() -> void:
 func _post_baron_event(e: Dictionary) -> void:
 	_post_baron_headline(e)
 	if str(e.get("kind", "")) == "takeover" and str(e.get("holder", "")) == Takeover.PLAYER:
+		if hud != null and hud.tactile_audio != null:
+			hud.tactile_audio.play_sfx(TactileAudio.BARON_TAKEOVER)
 		_raise_monopoly_if_any()
 		# The corp's first baron earns a policy pick (Takeover.take); the monopoly summary,
 		# when this takeover completed the set, outranks it.
@@ -712,6 +718,8 @@ func _post_rival_headline(e: Dictionary) -> void:
 		"rival_trade":
 			if here:
 				hud.post_headline_tr("HL_RIVAL_SELL", [fleet, int(e["qty"]), com, station, int(e["price"])], "MARKET", "INFO")
+		"rival_press_tip":
+			hud.post_headline_tr("HL_RIVAL_PRESS_TIP", [fleet, station], "MARKET", "INFO")
 
 
 ## GalNet lines for a rated lane (#139): a raid by the lane's own pirates and a storm or hull
@@ -720,6 +728,8 @@ func _post_corridor_headline(e: Dictionary) -> void:
 	var com: Dictionary = Loc.commodity_arg(str(e.get("commodity", "")))
 	match str(e.get("kind", "")):
 		"corridor_raid":
+			if hud != null and hud.tactile_audio != null:
+				hud.tactile_audio.play_sfx(TactileAudio.PIRATE_RAID)
 			if int(e.get("ransom", 0)) > 0:
 				hud.post_headline_tr("HL_RAID_PAID", [int(e["ransom"])], "CRISIS", "CRITICAL")
 			elif int(e.get("qty_taken", 0)) > 0:
@@ -1390,6 +1400,8 @@ func _on_transit_departed(info: Dictionary) -> void:
 		rival_events = controller.world.react_to_departure(controller, market, info)
 	if hud == null:
 		return
+	if hud.tactile_audio != null:
+		hud.tactile_audio.play_sfx(TactileAudio.TRANSIT_BURN)
 	var origin: Dictionary = Loc.station_arg(str(info["origin"]))
 	var dest: Dictionary = Loc.station_arg(str(info["destination"]))
 	var rounds: int = int(info["rounds"])
@@ -1601,13 +1613,14 @@ func handle_input(event: InputEvent) -> bool:
 		if not event.is_action(action):
 			continue
 		if event is InputEventJoypadMotion:
+			var motion := event as InputEventJoypadMotion
 			# is_action() ignores the stick direction, so check each action's
-			# own pressed state and track held axes per action.
-			if event.is_action_pressed(action):
+			# own pressed state and track held axes per action with hysteresis.
+			if event.is_action_pressed(action) and absf(motion.axis_value) >= SettingsMenu.STICK_PRESS:
 				if not _held.get(action, false):
 					_held[action] = true
 					handled = dispatch_action(action) or handled
-			else:
+			elif absf(motion.axis_value) < SettingsMenu.STICK_RELEASE:
 				_held[action] = false
 		elif not event.is_echo() and event.is_action_pressed(action):
 			return dispatch_action(action)
@@ -1886,6 +1899,37 @@ func perk_rows() -> Array:
 	return rows
 
 
+## Commission hearing rows (#149): the 5 commissioners in file order with live retain eligibility.
+func commission_rows() -> Array:
+	var out: Array = []
+	if controller == null or controller.profile == null:
+		return out
+	var p: MetaProfile = controller.profile
+	for id in Commission.ids():
+		var check: Dictionary = Commission.can_retain(p, id)
+		out.append({
+			"id": id,
+			"cost": Commission.cost(id),
+			"retained": p.consultants.has(id),
+			"can_retain": bool(check["ok"]),
+			"reason": str(check["reason"]),
+		})
+	return out
+
+
+## Opens the Ministry of Commerce hearing phase inside OVERLAY_COLLAPSED (#149).
+func open_hearing() -> void:
+	var rows: Array = commission_rows()
+	hearing_cursor = rows.size()
+	for i in rows.size():
+		if bool(rows[i]["can_retain"]):
+			hearing_cursor = i
+			break
+	if overlay_state != OVERLAY_COLLAPSED:
+		_set_overlay(OVERLAY_COLLAPSED)
+	_set_phase(PHASE_HEARING)
+
+
 func _set_phase(phase: String) -> void:
 	if collapse_phase != phase:
 		collapse_phase = phase
@@ -1905,6 +1949,28 @@ func _collapsed_action(action: String) -> bool:
 			return false
 		_open_perk_select()
 		return true
+	if collapse_phase == PHASE_HEARING:
+		var c_rows: Array = commission_rows()
+		match action:
+			ACT_UP:
+				hearing_cursor = maxi(0, hearing_cursor - 1)
+				return true
+			ACT_DOWN:
+				hearing_cursor = mini(c_rows.size(), hearing_cursor + 1)
+				return true
+			ACT_SUBMIT:
+				if hearing_cursor >= c_rows.size() or Commission.dissolution_fails(controller.profile):
+					_hearing_done = true
+					start_next_run()
+					return true
+				var res_c: Dictionary = Commission.retain(controller.profile, str(c_rows[hearing_cursor]["id"]))
+				if bool(res_c["ok"]):
+					controller._apply_commission()
+				return bool(res_c["ok"])
+			ACT_CANCEL:
+				_set_phase(PHASE_PERKS)
+				return true
+		return false
 	var rows: Array = perk_rows()
 	match action:
 		ACT_UP:
@@ -1915,6 +1981,9 @@ func _collapsed_action(action: String) -> bool:
 			return true
 		ACT_SUBMIT:
 			if perk_cursor >= rows.size():
+				if controller.is_rescued() and not _hearing_done:
+					open_hearing()
+					return true
 				start_next_run()
 				return true
 			var res: Dictionary = parachutes.buy(controller.profile, str(rows[perk_cursor]["id"]))
@@ -1961,6 +2030,8 @@ func start_next_run() -> RunController:
 	dock_at(M0_STATION)
 	collapse_phase = PHASE_NONE
 	perk_cursor = 0
+	hearing_cursor = 0
+	_hearing_done = false
 	collapse_phase_changed.emit(PHASE_NONE)
 	run_restarted.emit(rc)
 	tab_changed.emit(tab_name())
