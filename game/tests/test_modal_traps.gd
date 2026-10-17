@@ -273,6 +273,10 @@ func test_settings_menu_swallows_input() -> String:
 	var before: Dictionary = scene.loop._capture_focus()
 	var bad: Array = []
 	for button in [JOY_BUTTON_A, JOY_BUTTON_B, JOY_BUTTON_X, JOY_BUTTON_Y, JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]:
+		# B now closes the menu (ui_cancel carries the joypad face buttons), so reopen it
+		# before each press: the trap is about what an open menu lets through.
+		if not scene.settings_menu.is_open:
+			scene.settings_menu.open()
 		var e := InputEventJoypadButton.new()
 		e.button_index = button
 		e.pressed = true

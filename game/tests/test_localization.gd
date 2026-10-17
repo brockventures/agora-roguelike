@@ -100,7 +100,7 @@ func test_every_csv_key_is_reachable() -> String:
 	corpus += FileAccess.get_file_as_string("res://data/onboarding.json")
 	# A corporate policy's name and card line are named by its node in policies.json (#160).
 	corpus += FileAccess.get_file_as_string("res://data/policies.json")
-	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "POLICY_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_"]
+	var derived := ["STATION_", "COMMODITY_", "STAGE_", "TAB_", "CAT_", "CRISIS_TIER_", "PERK_BRANCH_", "POLICY_BRANCH_", "MAKER_", "MAKERTAG_", "LANG_", "SET_ACT_", "SET_PALETTE_", "LANE_", "COMM_NAME_", "COMM_PORTFOLIO_", "COMM_DESC_"]
 	var dead: Array = []
 	for k in rows:
 		var fam := false
