@@ -55,7 +55,6 @@ var _capture_label: Label = null
 var kit: HudKit = HudKit.new()
 var _drift: Tween = null
 var _held: Dictionary = {}
-var _last_stick_ms: Dictionary = {}
 var cursor: int = 0
 
 
@@ -139,16 +138,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _stick(event: InputEventJoypadMotion) -> void:
-	var now_ms: int = Time.get_ticks_msec()
 	for a in ["ui_up", "ui_down"]:
 		if event.is_action_pressed(a) and absf(event.axis_value) >= SettingsMenu.STICK_PRESS:
 			if not _held.get(a, false):
-				var last_ms: int = int(_last_stick_ms.get(a, -1000))
-				var dt: int = now_ms - last_ms
-				if dt > 0 and dt < SettingsMenu.STICK_DEBOUNCE_MSEC:
-					continue
 				_held[a] = true
-				_last_stick_ms[a] = now_ms
 				_move_focus(-1 if a == "ui_up" else 1)
 		elif event.is_action(a) and absf(event.axis_value) < SettingsMenu.STICK_RELEASE:
 			_held[a] = false

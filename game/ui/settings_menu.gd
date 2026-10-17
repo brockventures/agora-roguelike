@@ -19,7 +19,6 @@ enum Row { SCALE, PALETTE, LANGUAGE, CRT, ALERT_VOLUME, ALERT_MUTE, REDUCED_MOTI
 
 const STICK_PRESS: float = 0.55
 const STICK_RELEASE: float = 0.25
-const STICK_DEBOUNCE_MSEC: int = 220
 
 var settings: AccessibilitySettings = null
 var is_open: bool = false
@@ -34,7 +33,6 @@ var onboarding: Onboarding = null
 ## Translation key of the close row. The title screen sets SET_CLOSE_TITLE ("Back to title").
 var close_key: String = "SET_CLOSE"
 var _held: Dictionary = {}
-var _last_stick_ms: Dictionary = {}
 
 
 func _init(p_settings: AccessibilitySettings = null) -> void:
@@ -68,7 +66,6 @@ func open() -> void:
 	listening_action = ""
 	message = []
 	_held.clear()
-	_last_stick_ms.clear()
 
 
 func close() -> void:
@@ -269,18 +266,12 @@ static func _is_cancel(event: InputEvent) -> bool:
 	return event is InputEventJoypadButton and event.pressed and int(event.button_index) == JOY_BUTTON_B
 
 
-## A held stick steps once per push with hysteresis and a 220ms real-time debounce.
+## A held stick steps once per push with hysteresis.
 func _stick(event: InputEventJoypadMotion) -> void:
-	var now_ms: int = Time.get_ticks_msec()
 	for a in ["ui_up", "ui_down", "ui_left", "ui_right"]:
 		if event.is_action_pressed(a) and absf(event.axis_value) >= STICK_PRESS:
 			if not _held.get(a, false):
-				var last_ms: int = int(_last_stick_ms.get(a, -1000))
-				var dt: int = now_ms - last_ms
-				if dt > 0 and dt < STICK_DEBOUNCE_MSEC:
-					continue
 				_held[a] = true
-				_last_stick_ms[a] = now_ms
 				match a:
 					"ui_up": move(-1)
 					"ui_down": move(1)
