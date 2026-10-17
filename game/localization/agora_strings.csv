@@ -679,7 +679,7 @@ COMM_PORTFOLIO_ENFORCEMENT,Enforcement
 COMM_DESC_ENFORCEMENT,"Delays Doomsday Stage 1 (UNSTABLE) threshold from 75% to 70% of clock."
 COMM_NAME_CUSTOMS,Commissioner Kael
 COMM_PORTFOLIO_CUSTOMS,Customs & Transit
-COMM_DESC_CUSTOMS,"Waives your first belt toll and first station docking toll each corporation."
+COMM_DESC_CUSTOMS,"Waives the first toll each corporation pays, belt or docking, whichever comes first."
 COMM_NAME_TREASURY,Commissioner Morozov
 COMM_PORTFOLIO_TREASURY,Treasury
 COMM_DESC_TREASURY,"Grants a Deferred Prosecution Agreement: waives the first Baron retaliation fine each corp."
