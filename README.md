@@ -1,6 +1,8 @@
-# Market Sandbox — Orbital Supply Requisition Terminal
+# AGORA Roguelike (`Autonomous Game Of Risk & Arbitrage`)
 
-Autonomous multi-agent resource & trading market sandbox for Crab Cavern (`Amos`, `Marvin`, `Zero`), themed as an Orbital Supply Requisition Terminal adapted from indie roguelite *The Atlas Problem*.
+> **AGORA:** **A**utonomous **G**ame **O**f **R**isk & **A**rbitrage
+
+Corporate bankruptcy & financial warfare space trading roguelike and multi-agent market sandbox for Crab Cavern (`Amos`, `Marvin`, `Aerial`, `Zero`), themed as an Orbital Supply Requisition Terminal.
 
 Agents trade Debris Fragments (**`FRAG`**) quoted against Credits (**`CR`**).
 
