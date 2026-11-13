@@ -121,8 +121,10 @@ func test_dpad_walks_the_hulls_on_the_fleet_tab_only() -> String:
 		return "down at the last hull is a no-op, cursor %d" % lp.fleet_cursor
 	if not lp.dispatch_action(M0Loop.ACT_UP) or lp.fleet_cursor != 1:
 		return "up should step back"
-	if lp.dispatch_action(M0Loop.ACT_LEFT) or lp.dispatch_action(M0Loop.ACT_RIGHT) or lp.dispatch_action(M0Loop.ACT_COMMODITY_NEXT) or lp.dispatch_action(M0Loop.ACT_SUBMIT):
-		return "left/right/commodity/A stay inert on FLEET"
+	if lp.dispatch_action(M0Loop.ACT_LEFT) or lp.dispatch_action(M0Loop.ACT_COMMODITY_NEXT) or lp.dispatch_action(M0Loop.ACT_COMMODITY_PREV):
+		return "left at first upgrade and commodity actions stay inert on FLEET"
+	if not lp.dispatch_action(M0Loop.ACT_RIGHT) or lp.fleet_cursor != 1 or lp.upgrade_cursor != 1:
+		return "right on FLEET walks drydock upgrades without moving fleet_cursor"
 	if f.ladder_index != ladder or f.order_qty != qty:
 		return "Fleet navigation must not touch the order ladder"
 	lp.set_tab(M0Loop.Tab.MARKET)

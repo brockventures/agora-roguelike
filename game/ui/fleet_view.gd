@@ -86,3 +86,27 @@ static func step_cursor(cursor: int, delta: int, count: int) -> int:
 ## First visible row of a window of `rows` over `count` hulls that keeps `cursor` in view.
 static func window_start(cursor: int, count: int, rows: int) -> int:
 	return clampi(cursor - rows + 1, 0, maxi(0, count - rows)) if cursor >= rows else 0
+
+
+## Shipyard drydock upgrade catalog annotated for `rc`'s current round and owned tiers (#215).
+static func upgrade_catalog(rc: RunController) -> Array[Dictionary]:
+	if rc == null:
+		var empty: Array[Dictionary] = []
+		return empty
+	var tiers: Dictionary = rc.upgrades.tiers if rc.upgrades != null else {}
+	return Upgrades.catalog_for(rc.get_current_round(), tiers)
+
+
+## Eligibility check for fitting the next tier of `kind` on `rc` right now (#215).
+static func can_buy_upgrade(rc: RunController, kind: String) -> Dictionary:
+	if rc == null:
+		return Upgrades.can_buy_for({}, kind, 0, 0, false, true)
+	var tiers: Dictionary = rc.upgrades.tiers if rc.upgrades != null else {}
+	var docked: bool = not rc.is_in_transit() and rc.docked_at != ""
+	var over: bool = rc.is_run_over() or rc.pending_bankruptcy
+	return Upgrades.can_buy_for(tiers, kind, rc.get_current_round(), rc.cr, docked, over)
+
+
+## One step of the drydock upgrade cursor, clamped (no wrap) across Upgrades.ids().
+static func step_upgrade_cursor(cursor: int, delta: int) -> int:
+	return step_cursor(cursor, delta, Upgrades.ids().size())

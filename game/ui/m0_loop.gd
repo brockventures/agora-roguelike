@@ -1594,6 +1594,74 @@ func move_fleet_cursor(delta: int) -> bool:
 	return fleet_cursor != before
 
 
+## Cursor over Upgrades.ids() on the Fleet tab's station drydock (#215). UI only: never saved.
+var upgrade_cursor: int = 0
+var last_upgrade_reason: String = ""
+var last_upgrade_check: Dictionary = {}
+
+
+## The drydock upgrade id selected on the Fleet tab, clamped into Upgrades.ids().
+func selected_upgrade_id() -> String:
+	var id_list: Array[String] = Upgrades.ids()
+	if id_list.is_empty():
+		upgrade_cursor = 0
+		return ""
+	upgrade_cursor = FleetView.step_upgrade_cursor(upgrade_cursor, 0)
+	return id_list[upgrade_cursor]
+
+
+## Moves the Fleet tab's drydock upgrade cursor one slot (no wrap). False at either end.
+func move_upgrade_cursor(delta: int) -> bool:
+	var id_list: Array[String] = Upgrades.ids()
+	if id_list.is_empty():
+		upgrade_cursor = 0
+		return false
+	var before: int = FleetView.step_upgrade_cursor(upgrade_cursor, 0)
+	upgrade_cursor = FleetView.step_upgrade_cursor(before, delta)
+	return upgrade_cursor != before
+
+
+## Fits the selected drydock upgrade while docked on the Fleet tab (#215).
+func buy_selected_upgrade() -> bool:
+	if controller == null or tab != Tab.FLEET:
+		return false
+	if controller.is_in_transit() or controller.docked_at == "" or controller.is_run_over() or controller.pending_bankruptcy:
+		last_upgrade_reason = "IN_TRANSIT" if controller.is_in_transit() else "RUN_OVER"
+		return false
+	var upg_id: String = selected_upgrade_id()
+	if upg_id == "":
+		last_upgrade_reason = "UNKNOWN_UPGRADE"
+		return false
+	if controller.has_method("buy_upgrade"):
+		var res = (controller as Object).call("buy_upgrade", upg_id)
+		if res is Dictionary:
+			last_upgrade_check = res
+			last_upgrade_reason = "" if bool(res.get("ok", false)) else str(res.get("reason", ""))
+			return bool(res.get("ok", false))
+		return bool(res)
+	var check: Dictionary = FleetView.can_buy_upgrade(controller, upg_id)
+	last_upgrade_check = check
+	if not bool(check.get("ok", false)):
+		last_upgrade_reason = str(check.get("reason", ""))
+		return false
+	last_upgrade_reason = ""
+	if controller.upgrades == null:
+		controller.upgrades = Upgrades.new()
+	var rec: Dictionary = controller.upgrades.record_purchase(upg_id, controller.get_current_round())
+	if rec.is_empty():
+		return false
+	var price: int = int(rec["price"])
+	var cargo_delta: int = int(rec.get("cargo_delta", 0))
+	controller.cr -= price
+	if cargo_delta != 0:
+		controller.cargo_capacity = maxi(1, controller.cargo_capacity + cargo_delta)
+	if not controller.ships.is_empty() and controller.ships[0] is Dictionary:
+		controller.ships[0]["hull_value_cr"] = maxi(0, int(controller.ships[0].get("hull_value_cr", 0)) + price)
+	controller._track_peak(controller.assess())
+	controller.upgrade_purchased.emit(str(rec["id"]), int(rec["tier"]), price)
+	return true
+
+
 # --- Chapter 11 ---
 
 ## X: files Chapter 11 when insolvent or pending. Returns the filing report, or
@@ -1625,6 +1693,11 @@ func handle_input(event: InputEvent) -> bool:
 		elif not event.is_echo() and event.is_action_pressed(action):
 			return dispatch_action(action)
 	return handled
+
+
+## Alias for dispatch_action() so callers and headless tests can route m0_* actions uniformly.
+func handle_action(action: String) -> bool:
+	return dispatch_action(action)
 
 
 ## Applies one m0_* action. Returns true when it did something.
@@ -1743,13 +1816,24 @@ func dispatch_action(action: String) -> bool:
 		action_handled.emit(action)
 		return true
 	if tab == Tab.FLEET and (action == ACT_UP or action == ACT_DOWN):
-		# The ladder is not shown on the Fleet tab, so the D-pad and left stick walk the
-		# hull list instead. Every other order-entry action stays inert here.
+		# The ladder is not shown on the Fleet tab, so Up/Down walk the hull list.
 		var moved: bool = move_fleet_cursor(-1 if action == ACT_UP else 1)
 		if moved:
 			_click()
 			action_handled.emit(action)
 		return moved
+	if tab == Tab.FLEET and (action == ACT_LEFT or action == ACT_RIGHT):
+		var moved_upg: bool = move_upgrade_cursor(-1 if action == ACT_LEFT else 1)
+		if moved_upg:
+			_click()
+			action_handled.emit(action)
+		return moved_upg
+	if tab == Tab.FLEET and action == ACT_SUBMIT:
+		var bought: bool = buy_selected_upgrade()
+		if bought:
+			_click()
+			action_handled.emit(action)
+		return bought
 	if MARKET_ONLY_ACTIONS.has(action) and tab != Tab.MARKET:
 		return false
 	var handled: bool = false
@@ -2061,6 +2145,11 @@ func _on_bankruptcy_pending(_assessment: Dictionary) -> void:
 
 
 func _on_bankruptcy_filed(report: Dictionary) -> void:
+	if controller != null and controller.upgrades != null:
+		var old_bonus: int = controller.upgrades.cargo_bonus()
+		controller.upgrades.reset_for_new_corp()
+		if old_bonus > 0:
+			controller.cargo_capacity = maxi(1, controller.cargo_capacity - old_bonus)
 	_set_overlay(OVERLAY_NONE)
 	for e in report.get("forfeited_barons", []):
 		_post_baron_event(e)  # held barons revert to their own management
