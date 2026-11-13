@@ -49,6 +49,8 @@ signal margin_call_applied(amount_cr: int)
 signal transit_departed(info: Dictionary)
 ## The player's ship docked at its destination; docked_at already names it.
 signal transit_arrived(info: Dictionary)
+## Mid-run ship upgrade fitted while docked (#214).
+signal upgrade_purchased(id: String, tier: int, price: int)
 
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = DoomsdayClock.TICKS_PER_ROUND
@@ -97,6 +99,9 @@ var sovereign: SovereignTakeover = null
 var sovereign_enabled: bool = false
 var sovereign_severance_award: int = 0
 var consolation_severance_award: int = 0
+## Mid-run ship upgrades (#214). Null until attached or an upgrade is bought, so bare runs
+## and runs that buy none serialize and hash byte-for-byte as before.
+var upgrades: Upgrades = null
 
 # --- Travel (Epic 3 task 0, #111) ---
 
@@ -134,9 +139,11 @@ func can_depart(destination: String, mkt: StationMarket = null, lane: String = "
 	elif lane != "" and Corridors.smuggle_lane(docked_at, dest, lane).is_empty():
 		out["reason"] = "NO_ROUTE"
 	else:
-		var rounds: int = Transit.calculate_trip_rounds(docked_at, dest, get_current_round(), 0)
+		var eng_tier: int = engine_upgrade_tier()
+		var rounds: int = Transit.calculate_trip_rounds(docked_at, dest, get_current_round(), eng_tier)
+		var raw_ticks: int = Transit.calculate_transit_ticks(rounds, ticks_per_round)
 		out["rounds"] = rounds
-		out["ticks"] = Transit.calculate_transit_ticks(rounds, ticks_per_round)
+		out["ticks"] = upgrades.apply_transit_ticks(raw_ticks) if (upgrades != null and upgrades.has_any()) else raw_ticks
 		out["toll"] = Transit.calculate_toll(docked_at, dest, 0.0, toll_discount_bps())
 		if lane != "":
 			out["toll"] = int(Corridors.smuggle_lane(docked_at, dest, lane).get("toll_cr", 0))
@@ -148,7 +155,7 @@ func can_depart(destination: String, mkt: StationMarket = null, lane: String = "
 		else:
 			var short_of_fuel: bool = false
 			if mkt != null:
-				var units: int = Transit.calculate_fuel_burn(docked_at, dest, get_current_round(), 0, false, 0.0, fuel_discount_bps())
+				var units: int = Transit.calculate_fuel_burn(docked_at, dest, get_current_round(), eng_tier, false, 0.0, fuel_discount_bps())
 				var from_hold: int = mini(units, maxi(0, int(cargo.get("FUEL", 0))))
 				var to_buy: int = units - from_hold
 				var cost: int = 0
@@ -425,11 +432,33 @@ func treasury_waiver_available() -> bool:
 
 ## Hazard odds factor in bps (10000 = x1.0). Pass to Hazards.quote/roll as odds_bps.
 func hazard_odds_bps() -> int:
-	return maxi(0, Parachutes.apply_stat(modifiers, "hazard_odds_bps", Parachutes.BPS))
+	var base: int = maxi(0, Parachutes.apply_stat(modifiers, "hazard_odds_bps", Parachutes.BPS))
+	if upgrades != null and upgrades.has_any():
+		base = base * upgrades.hazard_odds_bps() / Parachutes.BPS
+	return base
+
+## Hull-breach cargo loss size factor in bps (10000 = x1.0; 7000 at Bulkheads tier 2+).
+func hazard_loss_size_bps() -> int:
+	return upgrades.loss_size_bps() if (upgrades != null and upgrades.has_any()) else Parachutes.BPS
+
+## Float hull-breach cargo loss size factor for Hazards.quote/roll.
+func hazard_loss_size_factor() -> float:
+	return upgrades.loss_size_factor() if (upgrades != null and upgrades.has_any()) else 1.0
 
 ## Piracy odds factor in bps (10000 = x1.0). Pass to Piracy.chance/roll_departure as odds_bps.
 func piracy_odds_bps() -> int:
-	return maxi(0, Parachutes.apply_stat(modifiers, "piracy_odds_bps", Parachutes.BPS))
+	var base: int = maxi(0, Parachutes.apply_stat(modifiers, "piracy_odds_bps", Parachutes.BPS))
+	if upgrades != null and upgrades.has_any():
+		base = base * upgrades.piracy_odds_bps() / Parachutes.BPS
+	return base
+
+## Transit tick duration factor in bps (10000 = x1.0) from Thruster Overdrive.
+func transit_ticks_bps() -> int:
+	return upgrades.transit_ticks_bps() if (upgrades != null and upgrades.has_any()) else Parachutes.BPS
+
+## Transit engine tier (0, 1, or 2) from Thruster Overdrive.
+func engine_upgrade_tier() -> int:
+	return upgrades.engine_tier() if (upgrades != null and upgrades.has_any()) else 0
 
 ## Live doomsday interest rate in bps per minute after modifiers (#137).
 func interest_rate_bps() -> int:

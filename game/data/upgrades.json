@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "_placeholder": "Tier prices, unlock rounds and bps factors for the 120-round roguelike arc (#214, ported from agora/upgrades.py).",
+  "capital_bps": 5000,
+  "upgrades": [
+    {
+      "id": "cargo_hold",
+      "name": "Cargo Hold Expansion",
+      "name_key": "UPG_CARGO_HOLD_NAME",
+      "desc": "Expands cargo hold capacity for larger freight runs.",
+      "desc_key": "UPG_CARGO_HOLD_DESC",
+      "prices": [2500, 5500, 10000],
+      "unlock_rounds": [0, 30, 65],
+      "tier_names": [
+        "Modular Cargo Pods",
+        "Pressurized Freight Bays",
+        "Orbital Bulk Hold"
+      ],
+      "tier_name_keys": [
+        "UPG_CARGO_HOLD_T1",
+        "UPG_CARGO_HOLD_T2",
+        "UPG_CARGO_HOLD_T3"
+      ],
+      "cargo_bonus": [50, 125, 250]
+    },
+    {
+      "id": "bulkheads",
+      "name": "Reinforced Bulkheads",
+      "name_key": "UPG_BULKHEADS_NAME",
+      "desc": "Lowers transit hazard odds and cuts hull-breach cargo losses from tier 2.",
+      "desc_key": "UPG_BULKHEADS_DESC",
+      "prices": [3000, 7000, 14000],
+      "unlock_rounds": [0, 35, 75],
+      "tier_names": [
+        "Just-in-Time Hold Pods",
+        "Supply Chain Optimization Bays",
+        "Vertical Integration Storage"
+      ],
+      "tier_name_keys": [
+        "UPG_BULKHEADS_T1",
+        "UPG_BULKHEADS_T2",
+        "UPG_BULKHEADS_T3"
+      ],
+      "hazard_odds_bps": [7500, 4500, 2500],
+      "delay_odds_bps": [8500, 6000, 3500],
+      "loss_size_bps": [10000, 7000, 7000]
+    },
+    {
+      "id": "thrusters",
+      "name": "Thruster Overdrive",
+      "name_key": "UPG_THRUSTERS_NAME",
+      "desc": "Cuts transit ticks across Sol lanes, trims 3-round voyages and lowers fuel burn at higher tiers.",
+      "desc_key": "UPG_THRUSTERS_DESC",
+      "prices": [4000, 9000, 16000],
+      "unlock_rounds": [10, 45, 85],
+      "tier_names": [
+        "Turnaround Thrusters",
+        "Hyper-Growth Propellant Loops",
+        "Overdrive Fusion Torch"
+      ],
+      "tier_name_keys": [
+        "UPG_THRUSTERS_T1",
+        "UPG_THRUSTERS_T2",
+        "UPG_THRUSTERS_T3"
+      ],
+      "transit_ticks_bps": [8500, 7000, 5500],
+      "engine_tier": [1, 2, 2]
+    },
+    {
+      "id": "transponders",
+      "name": "Decoy Transponders",
+      "name_key": "UPG_TRANSPONDERS_NAME",
+      "desc": "Masks ship transponders to evade corridor piracy and privateer raids.",
+      "desc_key": "UPG_TRANSPONDERS_DESC",
+      "prices": [3500, 8000, 15000],
+      "unlock_rounds": [0, 40, 80],
+      "tier_names": [
+        "Synergy Plating",
+        "Hostile Takeover Countermeasures",
+        "Ghost-Signal Transponder Array"
+      ],
+      "tier_name_keys": [
+        "UPG_TRANSPONDERS_T1",
+        "UPG_TRANSPONDERS_T2",
+        "UPG_TRANSPONDERS_T3"
+      ],
+      "piracy_odds_bps": [7000, 4500, 2500]
+    }
+  ],
+  "aliases": {
+    "bulk_storage": "cargo_hold",
+    "cargo_hold_expansion": "cargo_hold",
+    "hold": "bulkheads",
+    "shielding": "bulkheads",
+    "reinforced_bulkheads": "bulkheads",
+    "engines": "thrusters",
+    "thruster_overdrive": "thrusters",
+    "armor": "transponders",
+    "stealth_drives": "transponders",
+    "decoy_transponders": "transponders"
+  }
+}
