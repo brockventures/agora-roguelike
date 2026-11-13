@@ -12,6 +12,9 @@ extends SceneTree
 
 const TEST_DIR := "res://tests"
 const PASS_SENTINEL := "ok"
+const REGISTERED_TESTS: Array[String] = [
+	"res://tests/test_contracts.gd",
+]
 
 func _init() -> void:
 	# Existing tests assert English text: pin the locale whatever the host's is.
@@ -19,6 +22,10 @@ func _init() -> void:
 	# Optional file filters after `--`: keep only test files whose name contains one.
 	var filters: PackedStringArray = OS.get_cmdline_user_args()
 	var files: Array = _find_tests(TEST_DIR)
+	for reg_path in REGISTERED_TESTS:
+		if FileAccess.file_exists(reg_path) and not files.has(reg_path):
+			files.append(reg_path)
+	files.sort()
 	if not filters.is_empty():
 		var kept: Array = []
 		for path in files:

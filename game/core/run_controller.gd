@@ -51,6 +51,10 @@ signal transit_departed(info: Dictionary)
 signal transit_arrived(info: Dictionary)
 ## Mid-run ship upgrade fitted while docked (#214).
 signal upgrade_purchased(id: String, tier: int, price: int)
+## Timed station-to-station delivery contracts (#216).
+signal contract_accepted(contract: Dictionary)
+signal contract_fulfilled(contract: Dictionary, reward_cr: int)
+signal contract_expired(contract: Dictionary, penalty_cr: int)
 
 ## 15 seconds per round at 1x (60 ticks per second).
 const DEFAULT_TICKS_PER_ROUND: int = DoomsdayClock.TICKS_PER_ROUND
@@ -102,6 +106,9 @@ var consolation_severance_award: int = 0
 ## Mid-run ship upgrades (#214). Null until attached or an upgrade is bought, so bare runs
 ## and runs that buy none serialize and hash byte-for-byte as before.
 var upgrades: Upgrades = null
+## Timed station-to-station delivery contracts (#216). Null until attached or a contract is
+## accepted, so bare runs and runs without contracts serialize and hash byte-for-byte as before.
+var contracts: Contracts = null
 
 # --- Travel (Epic 3 task 0, #111) ---
 
@@ -769,6 +776,84 @@ func attach_policies() -> void:
 func attach_sovereign() -> void:
 	sovereign_enabled = true
 
+## Attach a fresh Contracts engine (idempotent). Bare controllers and replay goldens never call
+## this unless contracts are opted in, so existing runs stay untouched (#216).
+func attach_contracts(auto_post: bool = false) -> void:
+	if contracts == null:
+		contracts = Contracts.new()
+	if auto_post:
+		contracts.auto_post_offers = true
+
+## Accept a station-to-station delivery contract (offer ID or Dictionary) on this controller (#216).
+func accept_contract(contract_or_id) -> Dictionary:
+	var over: bool = is_run_over() or pending_bankruptcy
+	if contracts == null:
+		var probe := Contracts.new()
+		var preview: Dictionary = probe.can_accept(contract_or_id, get_current_round(), over)
+		if not bool(preview.get("ok", false)):
+			return preview
+		contracts = probe
+	var res: Dictionary = contracts.accept_contract(contract_or_id, get_current_round(), over)
+	if bool(res.get("ok", false)):
+		contract_accepted.emit(res["contract"])
+	return res
+
+## Fulfill active delivery contracts while docked at `station` (defaults to `docked_at`, #216).
+func fulfill_at_station(station: String = "", allow_partial: bool = false) -> Dictionary:
+	var empty_fulfilled: Array[Dictionary] = []
+	var empty_partial: Array[Dictionary] = []
+	var empty_res: Dictionary = {
+		"fulfilled": empty_fulfilled,
+		"partial": empty_partial,
+		"reward_cr": 0,
+		"count": 0,
+	}
+	if contracts == null or not contracts.has_active() or is_run_over() or is_in_transit() or docked_at == "":
+		return empty_res
+	var st: String = (docked_at if station == "" else station).strip_edges().to_lower()
+	if st == "" or st != docked_at:
+		return empty_res
+	var res: Dictionary = contracts.fulfill_at_station(st, cargo, get_current_round(), allow_partial)
+	var paid: int = int(res.get("reward_cr", 0))
+	if paid > 0:
+		cr += paid
+		_track_peak(assess())
+	for c in res["fulfilled"]:
+		contract_fulfilled.emit(c, int(c.get("reward_paid", c.get("reward_cr", 0))))
+	return res
+
+## Expire overdue active contracts (`deadline_round < round_num`), charging cash first and
+## recording any unpaid shortfall against corporate principal debt (#216).
+func expire_overdue_contracts(round_num: int = -1) -> Dictionary:
+	var empty_expired: Array[Dictionary] = []
+	var empty_offers: Array[String] = []
+	var empty_res: Dictionary = {
+		"expired": empty_expired,
+		"expired_offers": empty_offers,
+		"penalty_cr": 0,
+		"paid_cr": 0,
+		"shortfall_cr": 0,
+		"count": 0,
+	}
+	if contracts == null or is_run_over():
+		return empty_res
+	var rnd: int = get_current_round() if round_num < 0 else round_num
+	var res: Dictionary = contracts.expire_overdue(rnd)
+	var total_pen: int = int(res.get("penalty_cr", 0))
+	var paid_cr: int = 0
+	var shortfall_cr: int = 0
+	if total_pen > 0:
+		paid_cr = mini(total_pen, maxi(0, cr))
+		cr -= paid_cr
+		shortfall_cr = total_pen - paid_cr
+		if shortfall_cr > 0 and doomsday != null:
+			doomsday.add_principal(shortfall_cr)
+	res["paid_cr"] = paid_cr
+	res["shortfall_cr"] = shortfall_cr
+	for c in res["expired"]:
+		contract_expired.emit(c, int(c.get("penalty_cr", 0)))
+	return res
+
 ## Adopt a policy with the pending pick. The caller resumes the clock (as it does after a
 ## contract). False when nothing is pending or `id` is not on offer.
 func adopt_policy(id: String) -> bool:
@@ -823,6 +908,8 @@ func file_bankruptcy() -> Dictionary:
 		policies.reset_for_new_corp()
 		if held:
 			_refresh_modifiers()
+	if contracts != null:
+		contracts.reset_for_new_corp()
 	cargo = (new_run["cargo"] as Dictionary).duplicate(true)
 	ships = (new_run["ships"] as Array).duplicate(true)
 	pending_bankruptcy = false
@@ -1033,6 +1120,11 @@ func _on_sub_ticked(total: int) -> void:
 		audit_units_traded = 0
 		if policies != null and policies.on_round(round_num) > 0:
 			policy_pending.emit(policies.pending())
+		if contracts != null:
+			if contracts.has_any():
+				expire_overdue_contracts(round_num)
+			if contracts.auto_post_offers:
+				contracts.post_round_offers(round_num, run_seed)
 		if crisis_deck != null:
 			_advance_crisis_deck(round_num)
 		round_advanced.emit(round_num)

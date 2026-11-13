@@ -15,6 +15,8 @@ extends RefCounted
 ##               controller carries one, so a run that never opens it hashes as before.
 ##   policies    PolicyState (#160): the run-only corporate policies. Present only once the
 ##               first pick has been granted, so a run before that hashes as before.
+##   contracts   Contracts (#216): timed station-to-station delivery contracts. Present only when
+##               non-empty, so a run without contracts hashes as before.
 ##   bags        Bags (streak counters, drawn/remaining marbles, forced queue),
 ##               so bad-luck protection is never wiped by a save/load cycle
 ##
@@ -39,6 +41,9 @@ static func capture(controller: RunController, market: StationMarket, bags: Bags
 	# as it does with no policies attached.
 	if controller.policies != null and controller.policies.has_granted():
 		out["policies"] = controller.policies.to_dict()
+	# #216: omit contracts when null or empty so existing saves and replay goldens hash as before.
+	if controller.contracts != null and controller.contracts.has_any():
+		out["contracts"] = controller.contracts.to_dict()
 	return out
 
 
@@ -71,6 +76,9 @@ static func restore(data: Dictionary) -> Dictionary:
 	if pol is Dictionary:
 		rc.policies = PolicyState.from_dict(pol)
 		rc._refresh_modifiers()  # the picks stack over the perk base, which from_dict rebuilt
+	var kd = data.get("contracts", null)
+	if kd is Dictionary:
+		rc.contracts = Contracts.from_dict(kd)
 	# The world's mods include the open project's site embargo, so they are rebuilt only now.
 	if rc.world != null:
 		mkt.world_mods = rc.world_mods()
