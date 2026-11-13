@@ -318,3 +318,155 @@ func test_run_controller_and_run_save_hash_invariance_fulfillment_expiry_and_ban
 	if RunSave.capture(bare, StationMarket.new(), Bags.new("t", null, 1)).has("contracts"):
 		return "after Chapter 11 reset, empty contracts must be omitted from RunSave"
 	return "ok"
+
+
+func test_fleet_view_active_contracts_and_station_offers_board() -> String:
+	if not FleetView.active_contracts_of(null).is_empty() or not FleetView.station_offers_of(null).is_empty():
+		return "null controller must return empty arrays"
+	if not FleetView.station_offers_of(null, "ceres").is_empty() or FleetView.nearest_contract_deadline_of(null) != -1:
+		return "null controller station filter or deadline sentinel failed"
+	if bool(FleetView.can_accept_contract(null, "any").get("ok", true)):
+		return "can_accept_contract(null) must refuse"
+
+	var rc := RunController.new(null, 217, DoomsdayClock.new(36000, 0, 0, 100), {}, 4)
+	var hash_before: String = _hash(rc)
+	if not FleetView.active_contracts_of(rc).is_empty() or not FleetView.station_offers_of(rc).is_empty():
+		return "bare controller without contracts must return empty arrays"
+	if rc.contracts != null or _hash(rc) != hash_before:
+		return "reading FleetView contracts helpers must not allocate contracts or alter state_hash"
+
+	rc.sim_clock.total_ticks = 2 * rc.ticks_per_round  # round 2
+	rc.attach_contracts()
+	var o_ceres: Dictionary = rc.contracts.post_from_template("ceres_earth_ore", 2)  # ceres -> earth, lead 8 -> r10
+	var o_luna: Dictionary = rc.contracts.post_from_template("luna_mars_fuel", 2)    # luna -> mars, lead 7 -> r9
+	if o_ceres.is_empty() or o_luna.is_empty():
+		return "failed to seed template offers"
+
+	var all_offers: Array[Dictionary] = FleetView.station_offers_of(rc)
+	if all_offers.size() != 2:
+		return "unfiltered station_offers_of expected 2 offers, got %d" % all_offers.size()
+	if int(all_offers[0].get("rounds_remaining", -1)) != 8 or str(all_offers[0].get("display_name", "")) == "":
+		return "offer annotation mismatch: %s" % str(all_offers[0])
+
+	var ceres_offers: Array[Dictionary] = FleetView.station_offers_of(rc, " CERES ")
+	if ceres_offers.size() != 1 or str(ceres_offers[0]["id"]) != str(o_ceres["id"]):
+		return "ceres station filter mismatch: %s" % str(ceres_offers)
+	var mars_offers: Array[Dictionary] = FleetView.station_offers_of(rc, "mars")
+	if mars_offers.size() != 1 or str(mars_offers[0]["id"]) != str(o_luna["id"]):
+		return "mars destination station filter mismatch: %s" % str(mars_offers)
+	if not FleetView.station_offers_of(rc, "jupiter").is_empty():
+		return "unknown station must return no offers"
+
+	# Mutating returned snapshots must not mutate underlying Contracts arrays.
+	ceres_offers[0]["qty"] = 999999
+	if int(rc.contracts.available[0]["qty"]) == 999999:
+		return "station_offers_of leaked mutable reference to Contracts.available"
+
+	if not bool(FleetView.can_accept_contract(rc, o_ceres["id"]).get("ok", false)):
+		return "can_accept_contract should approve open offer"
+	if not bool(rc.accept_contract(o_ceres["id"]).get("ok", false)):
+		return "accept_contract failed on open offer"
+
+	if FleetView.station_offers_of(rc).size() != 1:
+		return "accepted offer must leave station_offers_of"
+	var act: Array[Dictionary] = FleetView.active_contracts_of(rc)
+	if act.size() != 1 or str(act[0]["id"]) != str(o_ceres["id"]) or int(act[0]["rounds_remaining"]) != 8:
+		return "active_contracts_of mismatch after accept: %s" % str(act)
+	if bool(act[0].get("deliverable_now", true)):
+		return "contract must not report deliverable_now without required ORE in hold"
+
+	# Docked at earth (destination of ceres_earth_ore) with enough ORE -> deliverable_now becomes true.
+	rc.docked_at = "earth"
+	rc.cargo["ORE"] = int(act[0]["qty_remaining"])
+	var act_ready: Array[Dictionary] = FleetView.active_contracts_of(rc)
+	if not bool(act_ready[0].get("deliverable_now", false)):
+		return "contract should report deliverable_now when docked at destination with cargo: %s" % str(act_ready[0])
+	act_ready[0]["reward_cr"] = 0
+	if int(rc.contracts.active[0]["reward_cr"]) == 0:
+		return "active_contracts_of leaked mutable reference to Contracts.active"
+	return "ok"
+
+
+func test_orbital_hud_contract_deadline_telemetry_across_accept_fulfill_and_expiry() -> String:
+	var unbound_hud := OrbitalHUD.new()
+	var uh: Dictionary = unbound_hud.get_header_telemetry()
+	var us: Dictionary = unbound_hud.get_sidebar_telemetry()
+	if int(uh.get("active_contracts_count", -1)) != 0 or int(uh.get("nearest_contract_deadline", 0)) != -1:
+		return "unbound header contract telemetry wrong: %s" % str(uh)
+	if int(us.get("active_contracts_count", -1)) != 0 or int(us.get("nearest_contract_deadline", 0)) != -1:
+		return "unbound sidebar contract telemetry wrong: %s" % str(us)
+
+	var tpr: int = 4
+	var rc := RunController.new(null, 217, DoomsdayClock.new(36000, 0, 0, 100), {}, tpr)
+	var hud := OrbitalHUD.new(rc, "ceres", "ORE")
+	if int(hud.get_header_telemetry()["active_contracts_count"]) != 0 or int(hud.get_header_telemetry()["nearest_contract_deadline"]) != -1:
+		return "bare controller must report 0 active contracts and -1 deadline"
+	if rc.contracts != null:
+		return "HUD telemetry read must not allocate rc.contracts"
+
+	# Advance to round 1, post station offer, and accept two contracts with deadlines r9 and r4.
+	rc.sim_clock.total_ticks = 1 * tpr
+	rc.attach_contracts()
+	rc.contracts.post_from_template("ceres_earth_ore", 1)
+	if (hud.get_sidebar_telemetry()["station_offers"] as Array).size() != 1:
+		return "sidebar at ceres should list ceres_earth_ore offer"
+	hud.set_station("luna")
+	if not (hud.get_sidebar_telemetry()["station_offers"] as Array).is_empty():
+		return "sidebar at luna should filter out ceres->earth offer"
+
+	var c_later: Dictionary = Contracts.make_contract("ORE", 40, "ceres", "earth", 1600, 400, 9, "c_r9")
+	var c_urgent: Dictionary = Contracts.make_contract("FOOD", 30, "earth", "luna", 1200, 300, 4, "c_r4")
+	if not bool(rc.accept_contract(c_later)["ok"]) or not bool(rc.accept_contract(c_urgent)["ok"]):
+		return "failed to accept test contracts"
+
+	var h_r1: Dictionary = hud.get_header_telemetry()
+	var s_r1: Dictionary = hud.get_sidebar_telemetry()
+	if int(h_r1["active_contracts_count"]) != 2 or int(h_r1["nearest_contract_deadline"]) != 3:
+		return "round 1 header expected count=2 nearest=3, got %s" % str(h_r1)
+	if int(s_r1["active_contracts_count"]) != 2 or int(s_r1["nearest_contract_deadline"]) != 3:
+		return "round 1 sidebar expected count=2 nearest=3, got %s" % str(s_r1)
+
+	# Advance to round 4 (exact deadline round of c_r4): 0 rounds remaining (not -1!).
+	while rc.get_current_round() < 4:
+		rc.sim_clock.paused = false
+		rc.advance(rc.sim_clock.tick_delta + 0.0001)
+	var h_r4: Dictionary = hud.get_header_telemetry()
+	if int(h_r4["active_contracts_count"]) != 2 or int(h_r4["nearest_contract_deadline"]) != 0:
+		return "on deadline round 4 expected count=2 nearest=0, got %s" % str(h_r4)
+
+	# Fulfill c_r4 at luna: nearest deadline jumps to c_r9 (9 - 4 = 5 rounds remaining).
+	rc.docked_at = "luna"
+	rc.cargo["FOOD"] = 30
+	if int(rc.fulfill_at_station()["count"]) != 1:
+		return "expected c_r4 fulfillment at luna"
+	var h_post_fulfill: Dictionary = hud.get_header_telemetry()
+	if int(h_post_fulfill["active_contracts_count"]) != 1 or int(h_post_fulfill["nearest_contract_deadline"]) != 5:
+		return "after fulfilling urgent contract expected count=1 nearest=5, got %s" % str(h_post_fulfill)
+
+	# Accept a tight contract due at round 5 and step to round 6 so it expires overdue.
+	var c_exp: Dictionary = Contracts.make_contract("FUEL", 25, "luna", "mars", 900, 225, 5, "c_r5")
+	if not bool(rc.accept_contract(c_exp)["ok"]):
+		return "failed to accept c_r5"
+	if int(hud.get_header_telemetry()["nearest_contract_deadline"]) != 1:
+		return "at round 4 with c_r5 expected nearest=1"
+	while rc.get_current_round() < 6:
+		rc.sim_clock.paused = false
+		rc.advance(rc.sim_clock.tick_delta + 0.0001)
+	var h_r6: Dictionary = hud.get_header_telemetry()
+	if int(h_r6["active_contracts_count"]) != 1 or int(h_r6["nearest_contract_deadline"]) != 3:
+		return "at round 6 after c_r5 expiry expected count=1 nearest=3 (9-6), got %s" % str(h_r6)
+
+	# Fulfill final contract c_r9 at earth -> telemetry returns to count=0, nearest=-1.
+	rc.docked_at = "earth"
+	rc.cargo["ORE"] = 40
+	if int(rc.fulfill_at_station()["count"]) != 1:
+		return "expected c_r9 fulfillment at earth"
+	var h_done: Dictionary = hud.get_header_telemetry()
+	var s_done: Dictionary = hud.get_sidebar_telemetry()
+	if int(h_done["active_contracts_count"]) != 0 or int(h_done["nearest_contract_deadline"]) != -1:
+		return "after all contracts cleared header expected count=0 nearest=-1, got %s" % str(h_done)
+	if int(s_done["active_contracts_count"]) != 0 or int(s_done["nearest_contract_deadline"]) != -1:
+		return "after all contracts cleared sidebar expected count=0 nearest=-1, got %s" % str(s_done)
+	if JSON.stringify(hud.to_dict()) == "":
+		return "hud.to_dict() failed JSON serialization"
+	return "ok"

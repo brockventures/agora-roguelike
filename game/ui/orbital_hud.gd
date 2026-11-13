@@ -179,6 +179,8 @@ func get_header_telemetry() -> Dictionary:
 	var pending_bankrupt: bool = false
 	var docked: String = ""
 	var voyage: Dictionary = {}
+	var active_contracts_cnt: int = FleetView.active_contracts_count_of(controller)
+	var nearest_deadline: int = FleetView.nearest_contract_deadline_of(controller)
 
 	if controller != null:
 		docked = controller.docked_at
@@ -218,6 +220,8 @@ func get_header_telemetry() -> Dictionary:
 		"transit_destination": str(voyage.get("destination", "")),
 		"transit_eta_rounds": int(voyage.get("eta_rounds", 0)),
 		"transit_progress": float(voyage.get("progress", 0.0)),
+		"active_contracts_count": active_contracts_cnt,
+		"nearest_contract_deadline": nearest_deadline,
 	}
 
 # --- Sidebar & Order Book Ladder Telemetry ---
@@ -236,7 +240,11 @@ func get_sidebar_telemetry() -> Dictionary:
 		"market_quote": base_quote,
 		"order_book_ladder": ladder,
 		"cargo_held": cargo_qty,
-		"all_cargo": all_cargo
+		"all_cargo": all_cargo,
+		"active_contracts_count": FleetView.active_contracts_count_of(controller),
+		"nearest_contract_deadline": FleetView.nearest_contract_deadline_of(controller),
+		"active_contracts": FleetView.active_contracts_of(controller),
+		"station_offers": FleetView.station_offers_of(controller, active_station),
 	}
 
 func get_market_quote() -> Dictionary:

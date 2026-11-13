@@ -110,3 +110,74 @@ static func can_buy_upgrade(rc: RunController, kind: String) -> Dictionary:
 ## One step of the drydock upgrade cursor, clamped (no wrap) across Upgrades.ids().
 static func step_upgrade_cursor(cursor: int, delta: int) -> int:
 	return step_cursor(cursor, delta, Upgrades.ids().size())
+
+
+## Active delivery contracts held by `rc`'s corporation, annotated with `rounds_remaining`
+## and `deliverable_now` (#217). Pure read: returns [] when `rc` or `rc.contracts` is null.
+static func active_contracts_of(rc: RunController) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if rc == null or rc.contracts == null:
+		return out
+	var cur_round: int = rc.get_current_round()
+	var is_docked: bool = not rc.is_in_transit() and rc.docked_at != ""
+	for row in rc.contracts.active_contracts():
+		var deadline: int = int(row.get("deadline_round", 0))
+		var dest: String = str(row.get("destination", ""))
+		var comm: String = str(row.get("commodity", ""))
+		var rem_qty: int = int(row.get("qty_remaining", 0))
+		var have_qty: int = maxi(0, int(rc.cargo.get(comm, 0)))
+		row["rounds_remaining"] = maxi(0, deadline - cur_round)
+		row["deliverable_now"] = is_docked and rc.docked_at == dest and cur_round <= deadline and rem_qty > 0 and have_qty >= rem_qty
+		if row.has("template_id"):
+			row["display_name"] = Contracts.contract_name(str(row["template_id"]))
+		out.append(row)
+	return out
+
+
+## Open delivery contract offers on `rc`'s board, optionally filtered to `station`
+## (matching `origin` or `destination` when non-empty), annotated with `rounds_remaining` (#217).
+## Pure read: returns [] when `rc` or `rc.contracts` is null without allocating state.
+static func station_offers_of(rc: RunController, station: String = "") -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if rc == null or rc.contracts == null:
+		return out
+	var st: String = station.strip_edges().to_lower()
+	var cur_round: int = rc.get_current_round()
+	for offer in rc.contracts.available_contracts():
+		if st != "" and str(offer.get("origin", "")) != st and str(offer.get("destination", "")) != st:
+			continue
+		offer["rounds_remaining"] = maxi(0, int(offer.get("deadline_round", 0)) - cur_round)
+		if offer.has("template_id"):
+			offer["display_name"] = Contracts.contract_name(str(offer["template_id"]))
+		out.append(offer)
+	return out
+
+
+## Number of active delivery contracts on `rc` (0 when null or none active, #217).
+static func active_contracts_count_of(rc: RunController) -> int:
+	if rc == null or rc.contracts == null:
+		return 0
+	return rc.contracts.active.size()
+
+
+## Rounds remaining on the most urgent active delivery contract on `rc`, or -1 when none (#217).
+static func nearest_contract_deadline_of(rc: RunController) -> int:
+	if rc == null or rc.contracts == null or rc.contracts.active.is_empty():
+		return -1
+	var cur_round: int = rc.get_current_round()
+	var nearest: int = -1
+	for c in rc.contracts.active:
+		var rem: int = maxi(0, int(c.get("deadline_round", 0)) - cur_round)
+		if nearest < 0 or rem < nearest:
+			nearest = rem
+	return nearest
+
+
+## Pure eligibility check for accepting `contract_or_id` on `rc` right now (#217).
+static func can_accept_contract(rc: RunController, contract_or_id) -> Dictionary:
+	if rc == null:
+		return Contracts.new().can_accept(contract_or_id, 0, true)
+	var over: bool = rc.is_run_over() or rc.pending_bankruptcy
+	if rc.contracts == null:
+		return Contracts.new().can_accept(contract_or_id, rc.get_current_round(), over)
+	return rc.contracts.can_accept(contract_or_id, rc.get_current_round(), over)
