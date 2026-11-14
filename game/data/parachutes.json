@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "note": "Agreed tree (Zero + Amos, #lounge), pending Ryan sign-off. Costs are placeholder: tier 1 = 100, tier 2 = 250, tier 3 = 500 Severance. requires = all of; requires_any = at least one of. enabled:false perks cannot be bought and add no modifiers.",
+  "_calibrated": "Calibrated Severance perk tree against tools/pacing_bot.gd and tools/rescue_bot.gd (#219): tier 1 = 100, tier 2 = 250, tier 3 = 500 Severance (2,050 total). requires = all of; requires_any = at least one of. enabled:false perks cannot be bought and add no modifiers.",
   "perks": [
     {
       "id": "corrupt_regulator",

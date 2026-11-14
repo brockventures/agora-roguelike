@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan, in bps / shares / ticks / CR. Copy lives in the CSV under the name_key and desc_key.",
+  "_calibrated": "Calibrated for the 120-round roguelike arc against tools/pacing_bot.gd and tools/rescue_bot.gd (#219), in bps / shares / ticks / CR. Copy lives in the CSV under the name_key and desc_key.",
   "milestones": [20, 50, 80],
   "takeover_pick": true,
   "policies": [

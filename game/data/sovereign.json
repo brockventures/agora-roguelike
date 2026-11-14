@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan pending design sign-off, in rounds / ticks / CR. Costs and countdown timer are placeholders (#33, #160).",
+  "_calibrated": "Calibrated endgame Sovereign Takeover countdown and counter-strategy thresholds against tools/pacing_bot.gd and tools/rescue_bot.gd (#219, #33, #160), in rounds / ticks / CR.",
   "decree_title": "Emergency Sovereign Expropriation Decree",
   "timer_rounds": 15,
   "ticks_per_round": 900,

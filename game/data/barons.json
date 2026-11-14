@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan, in CR / bps / rounds / shares. Read by Epic 3 tasks 2-8 (docs/design/epic3-barons.md).",
+  "_calibrated": "Calibrated for the 120-round roguelike arc against tools/pacing_bot.gd and tools/rescue_bot.gd (#219), in CR / bps / rounds / shares. Read by core/barons.gd (docs/design/epic3-barons.md).",
   "victory": {"barons_required": "all"},
   "takeover": {"float_shares": 1000, "threshold_shares": 501, "auction_cap": 100, "auction_discount_bps": 7000, "bankrupt_rounds": 6,
                "auction_price_floor": 10, "reset_treasury_bps": 4000, "rent_units": 100, "rent_spread_bps": 600,

@@ -1,5 +1,5 @@
 {
-  "_placeholder": "Costs and payout are placeholders pending Ryan's arc-length answer (commission-cycle.md section 8, question 1).",
+  "_calibrated": "Calibrated for the 6-rescue Sol Commerce Commission arc against tools/pacing_bot.gd and tools/rescue_bot.gd (#219, docs/design/commission-cycle.md).",
   "skeletons_per_rescue": 1,
   "commissioners": [
     {"id": "enforcement", "cost": 1, "unstable_ratio_bps": 7000},

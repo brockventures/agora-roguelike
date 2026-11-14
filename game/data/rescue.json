@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess for Ryan, in CR / units / bps / rounds. Task 5 (docs/design/rescue-project.md) measured them with tools/pacing_bot.gd and kept every value; they stay Ryan's to sign off.",
+  "_calibrated": "Calibrated post-monopoly Stabiliser haul against tools/pacing_bot.gd and tools/rescue_bot.gd (#219, docs/design/rescue-project.md), in CR / units / bps / rounds.",
   "unlock": "monopoly",
   "rent_multiplier_bps": 20000,
   "phases": [

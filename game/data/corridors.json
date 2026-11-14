@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "Every number is a tuning guess, in bps (10000 = x1.0), CR or units. Read by core/corridors.gd (#139). A lane rating MULTIPLIES the base odds: piracy on top of Piracy.P_BELT / P_INNER (0.15 / 0.04) and the hold-value steps; hazard on top of the base delay and loss odds below. Lanes are listed once, the two station ids in sorted order, and apply both ways.",
+  "_calibrated": "Calibrated against tools/pacing_bot.gd and tools/rescue_bot.gd (#219), in bps (10000 = x1.0), CR or units. Read by core/corridors.gd (#139). A lane rating MULTIPLIES the base odds: piracy on top of Piracy.P_BELT / P_INNER (0.15 / 0.04) and the hold-value steps; hazard on top of the base delay and loss odds below. Lanes are listed once, the two station ids in sorted order, and apply both ways.",
   "piracy": {
     "min_hold_value": 500
   },

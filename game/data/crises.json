@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_placeholder": "PLACEHOLDER numbers for Ryan to tune. Every odds, magnitude, duration and threshold below is a conservative guess, not a balance pass. Percentages are in basis points (10000 = x1.0 / 100%). Rounds are sim rounds (15 s at 1x).",
+  "_calibrated": "Calibrated for the 120-round roguelike arc against tools/pacing_bot.gd and tools/rescue_bot.gd (#219). Percentages are in basis points (10000 = x1.0 / 100%). Rounds are sim rounds (15 s at 1x).",
   "grace_rounds": 2,
   "max_active": 2,
   "salvage_beacons": {
