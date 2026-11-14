@@ -3,6 +3,12 @@
   "_placeholder": "PLACEHOLDER numbers for Ryan to tune. Every odds, magnitude, duration and threshold below is a conservative guess, not a balance pass. Percentages are in basis points (10000 = x1.0 / 100%). Rounds are sim rounds (15 s at 1x).",
   "grace_rounds": 2,
   "max_active": 2,
+  "salvage_beacons": {
+    "success_prob": 0.65,
+    "reward_cr": [350, 900],
+    "hazard_cost_cr": [150, 450],
+    "cargo_bonus_qty": 4
+  },
   "bands": [
     {"id": "low", "min_net_worth": -1000000000},
     {"id": "mid", "min_net_worth": 6000},
@@ -46,7 +52,8 @@
       "duration_rounds": [3, 5],
       "stations": ["mars"],
       "commodities": [],
-      "effects": {"depth_bps": 4000, "price_bps": 2500, "spread_bps": 15000}
+      "effects": {"depth_bps": 4000, "price_bps": 2500, "spread_bps": 15000},
+      "dilemma": {"relieve_qty": 5, "relieve_reward_cr": 650, "heat_relief": 15}
     },
     {
       "id": "supply_chain_shortage",
@@ -59,7 +66,8 @@
       "duration_rounds": [3, 5],
       "stations": ["mars"],
       "commodities": [],
-      "effects": {"depth_bps": 2500, "price_bps": 4000, "spread_bps": 20000}
+      "effects": {"depth_bps": 2500, "price_bps": 4000, "spread_bps": 20000},
+      "dilemma": {"relieve_qty": 5, "relieve_reward_cr": 650, "heat_relief": 15}
     },
     {
       "id": "antitrust_audit",

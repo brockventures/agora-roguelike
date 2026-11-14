@@ -513,6 +513,66 @@ func record_audit_trade(qty: int) -> void:
 func trade_fee(cost: int) -> int:
 	return crisis_deck.fee_for(cost) if crisis_deck != null else 0
 
+## Resolves an active shortage crisis dilemma ("relieve" vs "profiteer", #218).
+func resolve_crisis_dilemma(choice: String) -> Dictionary:
+	var norm: String = choice.strip_edges().to_lower()
+	if norm == "profiteer":
+		if crisis_deck != null:
+			crisis_deck.acknowledge()
+		return {"ok": true, "choice": "profiteer"}
+	if norm == "relieve":
+		if crisis_deck == null:
+			return {"ok": false, "reason": "NO_ACTIVE_SHORTAGE"}
+		var c: Dictionary = crisis_deck.pending_crisis()
+		if c.is_empty() or str(c.get("kind", "")) != "shortage":
+			c = {}
+			for entry in crisis_deck.active:
+				if str(entry.get("kind", "")) == "shortage":
+					c = entry
+					break
+		if c.is_empty():
+			return {"ok": false, "reason": "NO_ACTIVE_SHORTAGE"}
+		var dil: Dictionary = crisis_deck.dilemma_for(str(c.get("id", "")))
+		var com: String = str(c.get("commodity", ""))
+		var need_qty: int = int(dil.get("relieve_qty", 5))
+		var have_qty: int = int(cargo.get(com, 0))
+		if have_qty < need_qty:
+			return {"ok": false, "reason": "INSUFFICIENT_CARGO"}
+		var rem_qty: int = have_qty - need_qty
+		if rem_qty <= 0:
+			cargo.erase(com)
+		else:
+			cargo[com] = rem_qty
+		var reward_cr: int = int(dil.get("relieve_reward_cr", 650))
+		var heat_relief: int = int(dil.get("heat_relief", 15))
+		cr += reward_cr
+		if world != null and heat_relief > 0:
+			var bid: String = world.baron_at(str(c.get("station", "")))
+			if bid != "":
+				var bs: BaronState = world.state(bid)
+				if bs != null:
+					bs.heat = maxi(0, bs.heat - heat_relief)
+		crisis_deck.relieve_shortage(int(c.get("uid", -1)))
+		_track_peak(assess())
+		return {
+			"ok": true,
+			"choice": "relieve",
+			"reward_cr": reward_cr,
+			"heat_relief": heat_relief,
+		}
+	return {"ok": false, "reason": "INVALID_CHOICE"}
+
+## Resolves a derelict salvage beacon encounter and applies delta_cr to liquid CR (#218).
+func resolve_salvage_encounter(choice: String, station: String = "earth") -> Dictionary:
+	var deck: CrisisDeck = crisis_deck if crisis_deck != null else CrisisDeck.new(run_seed)
+	var res: Dictionary = deck.resolve_salvage_beacon(choice, get_current_round(), station)
+	var delta_cr: int = int(res.get("delta_cr", 0))
+	if delta_cr != 0:
+		cr = maxi(0, cr + delta_cr)
+		if delta_cr > 0:
+			_track_peak(assess())
+	return res
+
 ## Net worth in CR: liquidation value minus total debt. May be negative.
 func net_worth() -> int:
 	var a := assess()

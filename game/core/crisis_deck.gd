@@ -322,6 +322,81 @@ func acknowledge() -> int:
 	return n
 
 
+## Tactical dilemma config for `crisis_id` from crises.json ({} when none).
+func dilemma_for(crisis_id: String) -> Dictionary:
+	for def in data.get("crises", []):
+		if def is Dictionary and str(def.get("id", "")) == crisis_id:
+			var raw = def.get("dilemma", {})
+			if not (raw is Dictionary):
+				return {}
+			var out: Dictionary = {}
+			for k in raw:
+				var v = raw[k]
+				if v is int or (v is float and v == float(int(v))):
+					out[str(k)] = int(v)
+				else:
+					out[str(k)] = v
+			return out
+	return {}
+
+
+## Relieves an active shortage crisis early (uid if > 0, else pending_crisis() or first active shortage).
+func relieve_shortage(uid: int = -1) -> Dictionary:
+	var c: Dictionary = {}
+	if uid > 0:
+		for entry in active:
+			if int(entry.get("uid", -1)) == uid and str(entry.get("kind", "")) == "shortage":
+				c = entry
+				break
+	else:
+		var pend: Dictionary = pending_crisis()
+		if not pend.is_empty() and str(pend.get("kind", "")) == "shortage":
+			c = pend
+		else:
+			for entry in active:
+				if str(entry.get("kind", "")) == "shortage":
+					c = entry
+					break
+	if c.is_empty():
+		return {"ok": false, "reason": "NO_ACTIVE_SHORTAGE"}
+	active.erase(c)
+	awaiting_ack.erase(int(c.get("uid", -1)))
+	crisis_expired.emit(c)
+	changed.emit()
+	return {"ok": true, "crisis": c, "dilemma": dilemma_for(str(c.get("id", "")))}
+
+
+## Resolves a derelict salvage beacon encounter deterministically from (seed_val, station, round_num).
+func resolve_salvage_beacon(choice: String, round_num: int, station: String) -> Dictionary:
+	if choice.strip_edges().to_lower() != "salvage":
+		return {"ok": true, "choice": "ignore", "outcome": "ignored", "delta_cr": 0, "cargo_qty": 0}
+	var cfg: Dictionary = data.get("salvage_beacons", {}) if data.get("salvage_beacons") is Dictionary else {}
+	var rng := NativeDrawSource.new(StableHash.hash32("salvage-%d-%s-%d" % [seed_val, station.to_lower(), round_num]))
+	if rng.random() < float(cfg.get("success_prob", 0.65)):
+		var rew_arr: Array = cfg.get("reward_cr", [350, 900]) if cfg.get("reward_cr") is Array else [350, 900]
+		var r_lo: int = int(rew_arr[0]) if not rew_arr.is_empty() else 350
+		var r_hi: int = int(rew_arr[maxi(0, rew_arr.size() - 1)]) if not rew_arr.is_empty() else 900
+		var reward: int = rng.randint(mini(r_lo, r_hi), maxi(r_lo, r_hi))
+		return {
+			"ok": true,
+			"choice": "salvage",
+			"outcome": "recovered",
+			"delta_cr": reward,
+			"cargo_qty": int(cfg.get("cargo_bonus_qty", 4)),
+		}
+	var haz_arr: Array = cfg.get("hazard_cost_cr", [150, 450]) if cfg.get("hazard_cost_cr") is Array else [150, 450]
+	var c_lo: int = int(haz_arr[0]) if not haz_arr.is_empty() else 150
+	var c_hi: int = int(haz_arr[maxi(0, haz_arr.size() - 1)]) if not haz_arr.is_empty() else 450
+	var cost: int = rng.randint(mini(c_lo, c_hi), maxi(c_lo, c_hi))
+	return {
+		"ok": true,
+		"choice": "salvage",
+		"outcome": "hazard",
+		"delta_cr": -cost,
+		"cargo_qty": 0,
+	}
+
+
 # --- Derived effects ---
 
 ## Book modifiers for StationMarket.set_crisis_mods(): one entry per active

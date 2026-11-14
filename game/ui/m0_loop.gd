@@ -343,6 +343,31 @@ func acknowledge_crisis() -> bool:
 	return true
 
 
+## Resolves a two-choice crisis dilemma ("relieve" vs "profiteer", #218).
+func resolve_crisis_choice(choice: String) -> Dictionary:
+	if controller == null:
+		return {"ok": false, "reason": "NO_CONTROLLER"}
+	var norm: String = choice.strip_edges().to_lower()
+	if norm == "profiteer":
+		var acked: bool = acknowledge_crisis()
+		if not acked and overlay_state == OVERLAY_NONE and crisis_deck != null and crisis_deck.has_pending_ack():
+			return controller.resolve_crisis_dilemma("profiteer")
+		return {"ok": acked, "choice": "profiteer"}
+	if norm == "relieve":
+		var res: Dictionary = controller.resolve_crisis_dilemma("relieve")
+		if bool(res.get("ok", false)):
+			if market != null and crisis_deck != null:
+				market.set_crisis_mods(crisis_deck.market_mods())
+			if overlay_state == OVERLAY_CRISIS:
+				_set_overlay(OVERLAY_NONE)
+				_raise_crisis_if_pending()
+				_raise_contract_if_pending()
+				if overlay_state == OVERLAY_NONE:
+					controller.sim_clock.resume()
+		return res
+	return {"ok": false, "reason": "INVALID_CHOICE"}
+
+
 # --- Baron contracts (Epic 3 task 4, Ares Heavy) ---
 
 ## Raises the offer modal and halts the clock when a defense contract awaits an

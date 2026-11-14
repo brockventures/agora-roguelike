@@ -341,3 +341,130 @@ func test_round_trip_keeps_active_effects() -> String:
 	if back.order_cap() != deck.order_cap() or back.fee_bps() != deck.fee_bps() or not back.has_pending_ack():
 		return "active audit lost in the round trip"
 	return "ok"
+
+
+func test_shortage_dilemma_relieve_vs_profiteer() -> String:
+	var base_deck := _deck(17)
+	var dil_early: Dictionary = base_deck.dilemma_for("localized_shortage")
+	var dil_mid: Dictionary = base_deck.dilemma_for("supply_chain_shortage")
+	var want_dil := {"relieve_qty": 5, "relieve_reward_cr": 650, "heat_relief": 15}
+	if dil_early != want_dil or dil_mid != want_dil:
+		return "shortage dilemma data mismatch: %s / %s" % [str(dil_early), str(dil_mid)]
+	if not base_deck.dilemma_for("antitrust_audit").is_empty():
+		return "non-shortage should have empty dilemma"
+	var miss: Dictionary = base_deck.relieve_shortage()
+	if bool(miss.get("ok", true)) or str(miss.get("reason", "")) != "NO_ACTIVE_SHORTAGE":
+		return "expected NO_ACTIVE_SHORTAGE when idle: %s" % str(miss)
+
+	# Relieve path through M0Loop + RunController + StationMarket.
+	var rc := RunController.new(null, 17, null, {}, 4)
+	var hud := OrbitalHUD.new(rc)
+	var lp := M0Loop.new(hud)
+	lp.dock_at("mars")
+	var fresh := StationMarket.new()
+	var c: Dictionary = _force(lp.crisis_deck, "localized_shortage", 3, RICH)
+	if c.is_empty() or lp.overlay_state != M0Loop.OVERLAY_CRISIS:
+		return "shortage did not raise OVERLAY_CRISIS"
+	var com: String = str(c["commodity"])
+	if lp.market.ladder("mars", com, 5) == fresh.ladder("mars", com, 5):
+		return "shortage did not thin market before choice"
+	rc.cargo[com] = 4
+	var short_res: Dictionary = lp.resolve_crisis_choice("relieve")
+	if bool(short_res.get("ok", true)) or str(short_res.get("reason", "")) != "INSUFFICIENT_CARGO":
+		return "expected INSUFFICIENT_CARGO: %s" % str(short_res)
+	if lp.overlay_state != M0Loop.OVERLAY_CRISIS or int(rc.cargo.get(com, 0)) != 4:
+		return "failed relieve must keep modal up and cargo intact"
+
+	rc.cargo[com] = 5
+	var cr_before: int = rc.cr
+	var expired_seen := {"n": 0}
+	lp.crisis_deck.crisis_expired.connect(func(_c): expired_seen["n"] += 1)
+	var ok_res: Dictionary = lp.resolve_crisis_choice("relieve")
+	if not bool(ok_res.get("ok", false)) or str(ok_res.get("choice", "")) != "relieve":
+		return "relieve failed: %s" % str(ok_res)
+	if int(ok_res.get("reward_cr", 0)) != 650 or int(ok_res.get("heat_relief", 0)) != 15:
+		return "relieve payload wrong: %s" % str(ok_res)
+	if rc.cargo.has(com):
+		return "exact 5-unit cargo should be erased on zero: %s" % str(rc.cargo)
+	if rc.cr != cr_before + 650:
+		return "CR %d, want %d" % [rc.cr, cr_before + 650]
+	if not lp.crisis_deck.active.is_empty() or lp.crisis_deck.has_pending_ack() or expired_seen["n"] != 1:
+		return "relieved shortage should leave active list and emit crisis_expired"
+	if lp.overlay_state != M0Loop.OVERLAY_NONE or rc.sim_clock.paused:
+		return "relieve should close OVERLAY_CRISIS and resume clock"
+	if _snapshot(lp.market) != _snapshot(fresh):
+		return "market mods did not revert on relieve"
+
+	# Profiteer path keeps shortage active while clearing pending ack and closing modal.
+	var rc2 := RunController.new(null, 23, null, {}, 4)
+	var hud2 := OrbitalHUD.new(rc2)
+	var lp2 := M0Loop.new(hud2)
+	lp2.dock_at("mars")
+	var c2: Dictionary = _force(lp2.crisis_deck, "supply_chain_shortage", 4, MID_NW)
+	if c2.is_empty() or lp2.overlay_state != M0Loop.OVERLAY_CRISIS:
+		return "mid shortage did not raise OVERLAY_CRISIS"
+	var prof_res: Dictionary = lp2.resolve_crisis_choice("profiteer")
+	if not bool(prof_res.get("ok", false)) or str(prof_res.get("choice", "")) != "profiteer":
+		return "profiteer choice failed: %s" % str(prof_res)
+	if lp2.overlay_state != M0Loop.OVERLAY_NONE or rc2.sim_clock.paused or lp2.crisis_deck.has_pending_ack():
+		return "profiteer should acknowledge and resume clock"
+	if lp2.crisis_deck.active.size() != 1:
+		return "profiteer must leave shortage active on book"
+	return "ok"
+
+
+func test_salvage_beacon_deterministic_rolls() -> String:
+	var d1 := _deck(42)
+	var d2 := _deck(42)
+	var ign: Dictionary = d1.resolve_salvage_beacon("ignore", 5, "mars")
+	if ign != {"ok": true, "choice": "ignore", "outcome": "ignored", "delta_cr": 0, "cargo_qty": 0}:
+		return "ignore outcome wrong: %s" % str(ign)
+
+	var saw_recovered := false
+	var saw_hazard := false
+	var recovered_round: int = -1
+	var hazard_round: int = -1
+	for r in range(1, 41):
+		var a: Dictionary = d1.resolve_salvage_beacon("salvage", r, "mars")
+		var b: Dictionary = d2.resolve_salvage_beacon("salvage", r, "MARS")
+		if a != b:
+			return "round %d diverged for same seed/station: %s vs %s" % [r, str(a), str(b)]
+		var outcome: String = str(a.get("outcome", ""))
+		var delta: int = int(a.get("delta_cr", 0))
+		var qty: int = int(a.get("cargo_qty", -1))
+		if outcome == "recovered":
+			saw_recovered = true
+			if recovered_round < 0:
+				recovered_round = r
+			if delta < 350 or delta > 900 or qty != 4:
+				return "recovered bounds wrong: %s" % str(a)
+		elif outcome == "hazard":
+			saw_hazard = true
+			if hazard_round < 0:
+				hazard_round = r
+			if delta < -450 or delta > -150 or qty != 0:
+				return "hazard bounds wrong: %s" % str(a)
+		else:
+			return "unexpected outcome: %s" % str(a)
+	if not saw_recovered or not saw_hazard:
+		return "expected both recovered and hazard across 40 rounds"
+
+	# RunController.resolve_salvage_encounter applies delta_cr deterministically at current_round().
+	var rc_win := RunController.new(null, 42, null, {}, 4)
+	rc_win.sim_clock.total_ticks = recovered_round * 4
+	var cr0: int = rc_win.cr
+	var win_res: Dictionary = rc_win.resolve_salvage_encounter("salvage", "mars")
+	if win_res != d1.resolve_salvage_beacon("salvage", recovered_round, "mars"):
+		return "controller salvage mismatch on recovered round: %s" % str(win_res)
+	if rc_win.cr != cr0 + int(win_res["delta_cr"]):
+		return "CR not credited on recovered salvage: %d vs %d" % [rc_win.cr, cr0 + int(win_res["delta_cr"])]
+
+	var rc_haz := RunController.new(null, 42, null, {}, 4)
+	rc_haz.sim_clock.total_ticks = hazard_round * 4
+	var cr1: int = rc_haz.cr
+	var haz_res: Dictionary = rc_haz.resolve_salvage_encounter("salvage", "mars")
+	if haz_res != d1.resolve_salvage_beacon("salvage", hazard_round, "mars"):
+		return "controller salvage mismatch on hazard round: %s" % str(haz_res)
+	if rc_haz.cr != cr1 + int(haz_res["delta_cr"]):
+		return "CR not debited on hazard salvage: %d vs %d" % [rc_haz.cr, cr1 + int(haz_res["delta_cr"])]
+	return "ok"
