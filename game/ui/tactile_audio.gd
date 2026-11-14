@@ -16,6 +16,7 @@ signal sound_played(sound_id: String, bus: String, volume_db: float, pitch: floa
 signal bus_volume_changed(bus_name: String, volume: float)
 signal bus_mute_changed(bus_name: String, muted: bool)
 signal tension_level_changed(stage: int, drone_freq: float)
+signal station_ambient_changed(station_id: String, profile: Dictionary)
 
 ## Sound IDs
 const KEY_CLICK_DOWN: String = "KEY_CLICK_DOWN"
@@ -40,6 +41,62 @@ const ALARM_CRITICAL: String = "ALARM_CRITICAL"
 ## The looping ambient pad. Still named DRONE_TENSION in code and bus names
 ## ("Ambient_Drone") so saved layouts and callers keep working.
 const DRONE_TENSION: String = "DRONE_TENSION"
+## Station-specific procedural orbital ambient soundscape IDs (#220).
+const AMBIENT_EARTH: String = "AMBIENT_EARTH"
+const AMBIENT_LUNA: String = "AMBIENT_LUNA"
+const AMBIENT_MARS: String = "AMBIENT_MARS"
+const AMBIENT_CERES: String = "AMBIENT_CERES"
+const STATION_AMBIENT_SOUNDS: Array[String] = [
+	AMBIENT_EARTH,
+	AMBIENT_LUNA,
+	AMBIENT_MARS,
+	AMBIENT_CERES,
+]
+## Station-specific procedural orbital ambient soundscape profiles (#220).
+## Frequencies are integer Hz so 1.0s at 22050 Hz contains an exact integer number of cycles for seamless looping.
+const STATION_AMBIENT_PROFILES: Dictionary = {
+	"earth": {
+		"station": "earth",
+		"sound_id": AMBIENT_EARTH,
+		"root_hz": 220.0,
+		"partials_hz": [220.0, 275.0, 330.0, 440.0],
+		"weights": [0.36, 0.22, 0.24, 0.12],
+		"detune_hz": 1.0,
+		"volume_offset_db": 0.0,
+		"character": "civic_exchange_pad",
+	},
+	"luna": {
+		"station": "luna",
+		"sound_id": AMBIENT_LUNA,
+		"root_hz": 264.0,
+		"partials_hz": [264.0, 396.0, 528.0, 660.0],
+		"weights": [0.34, 0.26, 0.20, 0.10],
+		"detune_hz": 1.0,
+		"volume_offset_db": -1.5,
+		"character": "crystalline_vacuum_hum",
+	},
+	"mars": {
+		"station": "mars",
+		"sound_id": AMBIENT_MARS,
+		"root_hz": 165.0,
+		"partials_hz": [165.0, 220.0, 330.0, 495.0],
+		"weights": [0.38, 0.24, 0.20, 0.12],
+		"detune_hz": 1.0,
+		"volume_offset_db": 1.0,
+		"character": "industrial_foundry_thrum",
+	},
+	"ceres": {
+		"station": "ceres",
+		"sound_id": AMBIENT_CERES,
+		"root_hz": 196.0,
+		"partials_hz": [196.0, 294.0, 343.0, 392.0],
+		"weights": [0.35, 0.25, 0.22, 0.12],
+		"detune_hz": 2.0,
+		"volume_offset_db": -0.5,
+		"character": "belt_outpost_resonance",
+	},
+}
+var current_station_ambient: String = "earth"
 ## Sounds that raise an alert. Each plays once per event and must never loop.
 const ALERT_SOUNDS: Array[String] = [ALARM_WARNING, ALARM_CRITICAL]
 ## Alert volume steps (settings): linear volume of the Alerts bus.
@@ -185,7 +242,7 @@ func get_sound_bus(sound_id: String) -> String:
 			return BUS_MARKET
 		ALARM_WARNING, ALARM_CRITICAL, PIRATE_RAID:
 			return BUS_ALERTS
-		DRONE_TENSION:
+		DRONE_TENSION, AMBIENT_EARTH, AMBIENT_LUNA, AMBIENT_MARS, AMBIENT_CERES:
 			return BUS_AMBIENT
 		_:
 			return BUS_UI
@@ -232,6 +289,90 @@ func set_alert_volume(volume_lin: float) -> void:
 
 func set_alert_mute(muted: bool) -> void:
 	set_bus_mute(BUS_ALERTS, muted)
+
+
+## Station-specific procedural orbital ambient soundscape controls (#220).
+func set_station_ambient(station_id: String) -> bool:
+	var norm: String = station_id.strip_edges().to_lower()
+	if norm.begins_with("station_"):
+		norm = norm.substr(8)
+	elif norm.begins_with("card_"):
+		norm = norm.substr(5)
+	elif norm.begins_with("ambient_"):
+		norm = norm.substr(8)
+	if not STATION_AMBIENT_PROFILES.has(norm):
+		return false
+	current_station_ambient = norm
+	var prof: Dictionary = get_station_ambient(norm)
+	station_ambient_changed.emit(norm, prof)
+	var sid: String = str(prof.get("sound_id", DRONE_TENSION))
+	var pitch: float = float(prof.get("root_hz", PAD_BASE_HZ)) / PAD_BASE_HZ
+	var vol_offset: float = float(prof.get("volume_offset_db", 0.0))
+	play_sfx(sid, pitch, vol_offset)
+	return true
+
+
+## Returns the station ambient profile dictionary for `station_id` (or `current_station_ambient` when empty),
+## enriched with live Ambient_Drone bus mute/volume state (#220).
+func get_station_ambient(station_id: String = "") -> Dictionary:
+	var norm: String = station_id.strip_edges().to_lower() if not station_id.is_empty() else current_station_ambient
+	if norm.begins_with("station_"):
+		norm = norm.substr(8)
+	elif norm.begins_with("card_"):
+		norm = norm.substr(5)
+	elif norm.begins_with("ambient_"):
+		norm = norm.substr(8)
+	if not STATION_AMBIENT_PROFILES.has(norm):
+		norm = current_station_ambient if STATION_AMBIENT_PROFILES.has(current_station_ambient) else "earth"
+	var prof: Dictionary = (STATION_AMBIENT_PROFILES[norm] as Dictionary).duplicate(true)
+	var muted: bool = is_bus_muted(BUS_AMBIENT) or is_bus_muted(BUS_MASTER)
+	var lin_gain: float = 0.0 if muted else clampf(get_bus_volume(BUS_AMBIENT) * get_bus_volume(BUS_MASTER), 0.0, 1.0)
+	prof["bus"] = BUS_AMBIENT
+	prof["muted"] = muted
+	prof["effective_gain"] = snappedf(lin_gain, 0.001)
+	prof["effective_volume_db"] = -80.0 if muted else snappedf(get_bus_base_db(BUS_AMBIENT) + float(prof.get("volume_offset_db", 0.0)), 0.1)
+	return prof
+
+
+## Synthesizes deterministic 16-bit mono PCM bytes for a station's orbital ambient soundscape (#220).
+## When `respect_bus` is true, scales amplitude by the Ambient_Drone & Master linear bus volumes
+## and outputs silence (all zeros) when Ambient_Drone or Master is muted.
+func generate_station_ambient_pcm(station_id: String = "", duration_sec: float = 1.0, respect_bus: bool = true) -> PackedByteArray:
+	var norm: String = station_id.strip_edges().to_lower() if not station_id.is_empty() else current_station_ambient
+	if norm.begins_with("station_"):
+		norm = norm.substr(8)
+	elif norm.begins_with("card_"):
+		norm = norm.substr(5)
+	elif norm.begins_with("ambient_"):
+		norm = norm.substr(8)
+	if not STATION_AMBIENT_PROFILES.has(norm):
+		norm = current_station_ambient if STATION_AMBIENT_PROFILES.has(current_station_ambient) else "earth"
+	var prof: Dictionary = STATION_AMBIENT_PROFILES[norm]
+	var sample_count: int = maxi(2, int(round(clampf(duration_sec, 0.05, 10.0) * 22050.0)))
+	var raw_bytes := PackedByteArray()
+	raw_bytes.resize(sample_count * 2)
+	var muted: bool = respect_bus and (is_bus_muted(BUS_AMBIENT) or is_bus_muted(BUS_MASTER))
+	var bus_gain: float = 1.0
+	if respect_bus:
+		bus_gain = 0.0 if muted else clampf(get_bus_volume(BUS_AMBIENT) * get_bus_volume(BUS_MASTER), 0.0, 1.0)
+	if bus_gain <= 0.0001:
+		raw_bytes.fill(0)
+		return raw_bytes
+	var partials: Array = prof.get("partials_hz", [220.0, 330.0, 440.0])
+	var weights: Array = prof.get("weights", [0.34, 0.22, 0.10])
+	var detune: float = float(prof.get("detune_hz", 1.0))
+	var amp_scale: float = 16000.0 * bus_gain
+	for i in range(sample_count):
+		var t: float = float(i) / 22050.0
+		var v: float = 0.0
+		for p_idx in range(partials.size()):
+			var f: float = float(partials[p_idx])
+			var w: float = float(weights[p_idx]) if p_idx < weights.size() else 0.1
+			v += w * 0.5 * (sin(t * TAU * f) + sin(t * TAU * (f + detune)))
+		var val: int = clampi(int(v * amp_scale), -32767, 32767)
+		raw_bytes[i * 2] = val & 0xFF
+		raw_bytes[i * 2 + 1] = (val >> 8) & 0xFF
+	return raw_bytes
 
 ## Procedural Waveform Audio Synthesis (Self-contained, 0 assets required)
 func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
@@ -349,6 +490,13 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				var val := int(v * 0.5 * 18000.0)
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
+		AMBIENT_EARTH, AMBIENT_LUNA, AMBIENT_MARS, AMBIENT_CERES:
+			sample_count = 22050
+			stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			stream.loop_begin = 0
+			stream.loop_end = sample_count
+			var st_key: String = sound_id.substr(8).to_lower()
+			raw_bytes = generate_station_ambient_pcm(st_key, 1.0, false)
 		_:
 			# Default navigation blip (1000Hz, 20ms)
 			sample_count = 441
@@ -359,8 +507,8 @@ func get_or_generate_waveform(sound_id: String) -> AudioStreamWAV:
 				raw_bytes.append(val & 0xFF)
 				raw_bytes.append((val >> 8) & 0xFF)
 
-	# Only the ambient pad loops. Everything else, alerts included, plays once.
-	if sound_id != DRONE_TENSION:
+	# Only the ambient pads loop. Everything else, alerts included, plays once.
+	if sound_id != DRONE_TENSION and not STATION_AMBIENT_SOUNDS.has(sound_id):
 		stream.loop_mode = AudioStreamWAV.LOOP_DISABLED
 	stream.data = raw_bytes
 	cached_streams[sound_id] = stream
@@ -378,6 +526,7 @@ func to_dict() -> Dictionary:
 		"doomsday_stage": current_doomsday_stage,
 		"drone_freq_hz": current_drone_freq,
 		"drone_volume_db": current_drone_volume_db,
+		"station_ambient": current_station_ambient,
 		"recent_events_count": recent_sound_events.size(),
 		"last_event": recent_sound_events[0] if recent_sound_events.size() > 0 else {}
 	}

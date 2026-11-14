@@ -129,3 +129,66 @@ func test_station_overview_cards_load_and_have_4x3_aspect() -> String:
 	return "ok"
 
 
+func test_vessel_hull_textures_and_aliases() -> String:
+	CardArt.clear_cache()
+	if CardArt.vessel_texture("") != null:
+		return "empty hull_id should return null"
+	if CardArt.vessel_texture("nonexistent_hull_9999") != null:
+		return "unknown hull_id should return null"
+	if CardArt.has_vessel_art("nonexistent_hull_9999"):
+		return "has_vessel_art for unknown hull should return false"
+
+	var hulls: Array[String] = [
+		"hauler",
+		"interceptor",
+		"freighter",
+		"scout",
+		"scrap_barge",
+	]
+	for h_id in hulls:
+		var tex256: Texture2D = CardArt.vessel_texture(h_id, 256)
+		if tex256 == null:
+			return "CardArt.vessel_texture('%s', 256) returned null" % h_id
+		if tex256.get_width() != 256 or tex256.get_height() != 256:
+			return "expected 256x256 for '%s', got %dx%d" % [h_id, tex256.get_width(), tex256.get_height()]
+		var tex128: Texture2D = CardArt.vessel_texture(h_id, 128)
+		if tex128 == null:
+			return "CardArt.vessel_texture('%s', 128) returned null" % h_id
+		if tex128.get_width() != 128 or tex128.get_height() != 128:
+			return "expected 128x128 for '%s', got %dx%d" % [h_id, tex128.get_width(), tex128.get_height()]
+		var tex_upper: Texture2D = CardArt.vessel_texture(h_id.to_upper(), 256)
+		var tex_prefixed: Texture2D = CardArt.vessel_texture("vessel_" + h_id, 256)
+		var tex_hull_prefix: Texture2D = CardArt.vessel_texture("hull-" + h_id, 256)
+		if tex_upper != tex256 or tex_prefixed != tex256 or tex_hull_prefix != tex256:
+			return "vessel_texture aliases should resolve to cached 256px texture for '%s'" % h_id
+	return "ok"
+
+
+func test_salvage_and_hazard_encounter_aliases_load_4x3_art() -> String:
+	CardArt.clear_cache()
+	var aliases: Array[String] = [
+		"cme_relay_blackout",
+		"solar_storm",
+		"storm_delay",
+		"hull_breach",
+		"salvage_beacon",
+		"salvage_beacons",
+		"derelict_salvage",
+		"salvage_recovered",
+		"salvage_hazard",
+		"pirate_raid",
+		"dark_run",
+		"shortage_dilemma",
+	]
+	for aid in aliases:
+		if not CardArt.has_art(aid):
+			return "CardArt.has_art('%s') returned false" % aid
+		var tex: Texture2D = CardArt.texture(aid)
+		if tex == null:
+			return "CardArt.texture('%s') returned null" % aid
+		var aspect: float = float(tex.get_width()) / float(tex.get_height())
+		if absf(aspect - 4.0 / 3.0) > 0.02:
+			return "encounter alias '%s' must be 4:3 aspect (got %f)" % [aid, aspect]
+	return "ok"
+
+

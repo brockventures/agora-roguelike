@@ -226,3 +226,72 @@ func test_transit_piracy_and_takeover_waveforms_and_buses() -> String:
 		if wav == null or wav.data.size() < 2000:
 			return "waveform %s failed to generate PCM data" % sid
 	return "ok"
+
+func _pcm_rms(pcm: PackedByteArray) -> float:
+	if pcm.size() < 2:
+		return 0.0
+	var sum_sq: float = 0.0
+	var count: int = pcm.size() / 2
+	for i in range(count):
+		var v: int = pcm[i * 2] | (pcm[i * 2 + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		var f: float = float(v)
+		sum_sq += f * f
+	return sqrt(sum_sq / float(count))
+
+func test_station_ambient_profiles_and_pcm_generation() -> String:
+	var audio := TactileAudio.new()
+	if audio.set_station_ambient("nonexistent_station"):
+		return "set_station_ambient should reject unknown station"
+
+	var stations: Array[String] = ["earth", "luna", "mars", "ceres"]
+	var pcms: Dictionary = {}
+	for st in stations:
+		OS.delay_msec(30)
+		if not audio.set_station_ambient(st):
+			return "set_station_ambient('%s') failed" % st
+		var prof: Dictionary = audio.get_station_ambient()
+		if str(prof.get("station", "")) != st:
+			return "get_station_ambient station mismatch: %s vs %s" % [str(prof.get("station", "")), st]
+		if str(prof.get("bus", "")) != TactileAudio.BUS_AMBIENT:
+			return "station ambient must route to BUS_AMBIENT"
+		var sid: String = str(prof.get("sound_id", ""))
+		if audio.get_sound_bus(sid) != TactileAudio.BUS_AMBIENT:
+			return "sound_id %s must map to BUS_AMBIENT" % sid
+		var wav: AudioStreamWAV = audio.get_or_generate_waveform(sid)
+		if wav == null or wav.loop_mode != AudioStreamWAV.LOOP_FORWARD or wav.data.size() != 44100:
+			return "station ambient waveform %s must be 1.0s looped 16-bit PCM" % sid
+		var pcm: PackedByteArray = audio.generate_station_ambient_pcm(st, 0.25, true)
+		if pcm.size() != int(round(0.25 * 22050.0)) * 2:
+			return "unexpected PCM byte count for %s: %d" % [st, pcm.size()]
+		if _pcm_rms(pcm) < 500.0:
+			return "station %s ambient PCM RMS too low: %f" % [st, _pcm_rms(pcm)]
+		pcms[st] = pcm
+
+	# Distinctness across stations
+	if pcms["earth"] == pcms["mars"] or pcms["luna"] == pcms["ceres"] or pcms["earth"] == pcms["luna"]:
+		return "each station ambient profile must synthesize distinct PCM waveforms"
+
+	# Volume scaling and mute compliance on BUS_AMBIENT and BUS_MASTER
+	audio.set_bus_volume(TactileAudio.BUS_AMBIENT, 1.0)
+	var full_rms: float = _pcm_rms(audio.generate_station_ambient_pcm("mars", 0.2, true))
+	audio.set_bus_volume(TactileAudio.BUS_AMBIENT, 0.25)
+	var quarter_rms: float = _pcm_rms(audio.generate_station_ambient_pcm("mars", 0.2, true))
+	if quarter_rms >= full_rms * 0.4 or quarter_rms <= full_rms * 0.15:
+		return "ambient PCM amplitude should scale linearly with BUS_AMBIENT volume (full=%f, quarter=%f)" % [full_rms, quarter_rms]
+
+	audio.set_bus_mute(TactileAudio.BUS_AMBIENT, true)
+	var muted_prof: Dictionary = audio.get_station_ambient("mars")
+	if not bool(muted_prof.get("muted", false)) or float(muted_prof.get("effective_gain", 1.0)) != 0.0:
+		return "get_station_ambient should report muted=true and effective_gain=0.0 when BUS_AMBIENT is muted"
+	var muted_pcm: PackedByteArray = audio.generate_station_ambient_pcm("mars", 0.2, true)
+	if _pcm_rms(muted_pcm) != 0.0:
+		return "muted BUS_AMBIENT must produce silent PCM (RMS=0)"
+
+	audio.set_bus_mute(TactileAudio.BUS_AMBIENT, false)
+	audio.set_bus_mute(TactileAudio.BUS_MASTER, true)
+	if _pcm_rms(audio.generate_station_ambient_pcm("mars", 0.2, true)) != 0.0:
+		return "muted BUS_MASTER must produce silent PCM (RMS=0)"
+
+	return "ok"
