@@ -443,3 +443,76 @@ func test_toasts_wait_behind_a_modal_and_show_once_it_closes() -> String:
 	var shown: bool = (scene._toast_rows[0]["host"] as Control).visible
 	scene.free()
 	return "ok" if shown else "the toast did not come back after the modal closed"
+
+
+# --- Extracted Modal Controllers (#221) ---
+
+func test_commission_modal_controller_builders_and_delegation() -> String:
+	var p := MetaProfile.new()
+	p.skeletons = 2
+	p.consultants = ["enforcement", "customs"] as Array[String]
+	var rc := RunController.new(p, 9, null, {}, TPR)
+	rc.world = Barons.for_new_run()
+	rc.cr = 100000
+	var scene = load("res://scenes/main.tscn").instantiate()
+	scene.initialize_systems(rc)
+	scene._resolve_child_nodes()
+	scene._build_readouts()
+	var loop: M0Loop = scene.loop
+
+	loop.open_hearing()
+	var h_direct: Dictionary = CommissionModal.hearing_model(loop, rc)
+	var h_delegated: Dictionary = scene._hearing_model()
+	if h_direct != h_delegated:
+		scene.free()
+		return "scene._hearing_model() did not match CommissionModal.hearing_model()"
+	if not str(h_direct.get("eyebrow", "")).contains("CAPTURE: 40%"):
+		scene.free()
+		return "unexpected hearing eyebrow: %s" % str(h_direct.get("eyebrow", ""))
+
+	for id in rc.world.ids():
+		loop._post_baron_event(Takeover.take(rc.world, id, Takeover.PLAYER, rc))
+	loop.acknowledge_monopoly()
+	loop.show_sovereign_decree()
+	var s_direct: Dictionary = CommissionModal.sovereign_decree_model(loop, rc)
+	var s_delegated: Dictionary = scene._sovereign_decree_model()
+	scene.free()
+	if s_direct != s_delegated:
+		return "scene._sovereign_decree_model() did not match CommissionModal.sovereign_decree_model()"
+	if str(s_direct.get("band", "")) != "alert" or (s_direct.get("rows", []) as Array).size() < 6:
+		return "unexpected sovereign decree model: %s" % str(s_direct)
+	return "ok"
+
+
+func test_takeover_modal_controller_builders_and_delegation() -> String:
+	var scene := _scene()
+	var rc: RunController = scene.controller
+	var loop: M0Loop = scene.loop
+
+	var id: String = rc.world.baron_at("mars")
+	var bs: BaronState = rc.world.state(id)
+	bs.strain = 1
+	var d_direct: Dictionary = TakeoverModal.distress_model(loop, rc, "mars")
+	var d_delegated: Dictionary = scene._distress_model("mars")
+	if d_direct != d_delegated or str(d_direct.get("state", "")) != "distress":
+		scene.free()
+		return "distress_model mismatch: %s vs %s" % [str(d_direct), str(d_delegated)]
+
+	if not _raise(scene, "monopoly"):
+		scene.free()
+		return "could not raise monopoly"
+	var t_direct: Dictionary = TakeoverModal.takeover_model(loop, rc)
+	var t_delegated: Dictionary = scene._takeover_model()
+	if t_direct != t_delegated or scene._monopoly_model() != t_direct:
+		scene.free()
+		return "takeover_model mismatch: %s vs %s" % [str(t_direct), str(t_delegated)]
+
+	loop.acknowledge_monopoly()
+	rc.finish_rescue()
+	var r_direct: Dictionary = TakeoverModal.rescued_model(loop, rc)
+	var r_delegated: Dictionary = scene._rescued_model()
+	scene.free()
+	if r_direct != r_delegated or str(r_direct.get("band", "")) != "teal":
+		return "rescued_model mismatch: %s vs %s" % [str(r_direct), str(r_delegated)]
+	return "ok"
+

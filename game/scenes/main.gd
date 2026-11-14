@@ -3060,7 +3060,7 @@ func _resolution_model() -> Dictionary:
 	if loop.overlay_state == M0Loop.OVERLAY_CONTRACT:
 		return _contract_model()
 	if loop.overlay_state == M0Loop.OVERLAY_MONOPOLY:
-		return _monopoly_model()
+		return _takeover_model()
 	if loop.overlay_state == M0Loop.OVERLAY_POLICY:
 		return _policy_model()
 	if loop.overlay_state == M0Loop.OVERLAY_RESCUED:
@@ -3204,126 +3204,30 @@ func _summary_model() -> Dictionary:
 		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_PARACHUTES")]]}
 
 
-## The monopoly summary state (Epic 3 task 9, design doc 5.4): every baron held. The
+## The monopoly / Baron takeover summary state (Epic 3 task 9, design doc 5.4): every baron held. The
 ## Sol System Rescue that turns this into the run win is #32, so A only continues.
+func _takeover_model() -> Dictionary:
+	return TakeoverModal.takeover_model(loop, controller)
+
+
 func _monopoly_model() -> Dictionary:
-	var r: Dictionary = loop.monopoly_summary()
-	return {"eyebrow": tr("MONO_EYEBROW"), "title": tr("MONO_TITLE"), "band": "teal", "wide": true,
-		"rows": [
-			{"kind": "text", "text": tr("MONO_BODY") % Loc.station(str(r["first_site"]))},
-			{"kind": "kv", "key": tr("MONO_HELD"), "value": tr("MONO_HELD_VALUE") % [int(r["barons_held"]), int(r["barons_total"])]},
-			{"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))},
-			{"kind": "kv", "key": tr("SUM_PEAK"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["peak_net_worth"]))},
-			{"kind": "kv", "key": tr("SUM_ROUNDS"), "value": str(int(r["rounds"]))},
-			{"kind": "kv", "key": tr("MONO_SEVERANCE"), "value": tr("MONO_SEVERANCE_VALUE") % int(r["severance_pending"])},
-			{"kind": "muted", "text": tr("MONO_NEXT")},
-			{"kind": "muted", "text": tr("HUD_CLOCK_HALTED")}],
-		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
+	return _takeover_model()
+
+
+func _distress_model(station: String = "") -> Dictionary:
+	return TakeoverModal.distress_model(loop, controller, station)
 
 
 ## The rescue rows of the run summary: a win's round, clock left and counter (the phases, units
 ## hauled and CR paid are on the rescued modal: the summary is already the tallest screen), or on a lost run
 ## with a project the phase it reached.
 func _rescue_summary_rows(r: Dictionary) -> Array:
-	var rows: Array = []
-	var st: Dictionary = r.get("rescue", {})
-	if st.is_empty():
-		return rows
-	if bool(st["rescued"]) and str(r["reason"]) == "rescued":
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_ROUND"), "value": str(int(st["round"]))})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_CLOCK"), "value": str(int(st["clock_rounds_left"]))})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_COUNT"), "value": tr("SUM_RESC_COUNT_VALUE") % int(st["rescues_completed"])})
-	elif str(r["reason"]) == "collapse":
-		rows.append({"kind": "kv", "key": tr("SUM_STAB_PHASE"), "value": tr("SUM_STAB_PHASE_VALUE") % [mini(int(st["phases_done"]) + 1, int(st["phases_total"])), int(st["phases_total"])]})
-	return rows
+	return TakeoverModal.rescue_summary_rows(r)
 
 
-## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
-## run summary, then the Golden Parachutes perks and a new run.
 func _sovereign_decree_model() -> Dictionary:
-	var sov: SovereignTakeover = loop.controller.sovereign if (loop != null and loop.controller != null) else null
-	var rounds_left: int = sov.rounds_remaining(loop.controller.ticks_per_round) if sov != null else 0
-	var reg: bool = loop.controller.has_regulatory_perk() if (loop != null and loop.controller != null) else false
-	var lev: bool = loop.controller.has_debt_leverage() if (loop != null and loop.controller != null) else false
-	var buy: bool = loop.controller.has_buyout_perk() if (loop != null and loop.controller != null) else false
-	var cr: int = loop.controller.cr if (loop != null and loop.controller != null) else 0
-	var debt: int = loop.controller.doomsday.principal_debt if (loop != null and loop.controller != null and loop.controller.doomsday != null) else 0
+	return CommissionModal.sovereign_decree_model(loop, controller)
 
-	var can_b: bool = sov.can_bribe(cr, reg) if sov != null else false
-	var can_d: bool = sov.can_debt_choke(cr, debt, lev) if sov != null else false
-	var can_p: bool = sov.can_privatize(cr, buy) if sov != null else false
-
-	var rows: Array = [
-		{"kind": "text", "text": tr("SOVEREIGN_DECREE_BODY")},
-		{"kind": "kv", "key": tr("SOVEREIGN_SEIZURE_TIMER"), "value": tr("SOVEREIGN_ROUNDS_LEFT") % rounds_left},
-	]
-
-	var b_cost: int = sov.get_bribe_cost(reg) if sov != null else 0
-	var d_req: int = (sov.debt_choke_leverage_debt if lev else sov.debt_choke_required_debt) if sov != null else 0
-	var d_cost: int = sov.get_debt_choke_cost(lev) if sov != null else 0
-	var p_cost: int = sov.get_privatize_cost(buy) if sov != null else 0
-
-	var options: Array = [
-		{
-			"name": tr("SOVEREIGN_ACT_BRIBE"),
-			"branch": tr("SOVEREIGN_BRANCH_CORRUPT"),
-			"tag": tr("HUD_CR_VALUE") % _fmt(b_cost),
-			"enabled": can_b,
-			"desc": tr("SOVEREIGN_DESC_BRIBE") % _fmt(b_cost),
-		},
-		{
-			"name": tr("SOVEREIGN_ACT_DEBT_CHOKE"),
-			"branch": tr("SOVEREIGN_BRANCH_LEVERAGE"),
-			"tag": tr("SOVEREIGN_TAG_DEBT") % [_fmt(d_req), _fmt(d_cost)],
-			"enabled": can_d,
-			"desc": tr("SOVEREIGN_DESC_DEBT_CHOKE") % [_fmt(d_req), _fmt(d_cost)],
-		},
-		{
-			"name": tr("SOVEREIGN_ACT_PRIVATIZE"),
-			"branch": tr("SOVEREIGN_BRANCH_BUYOUT"),
-			"tag": tr("HUD_CR_VALUE") % _fmt(p_cost),
-			"enabled": can_p,
-			"desc": tr("SOVEREIGN_DESC_PRIVATIZE") % _fmt(p_cost),
-		},
-		{
-			"name": tr("SOVEREIGN_ACT_DISMISS"),
-			"branch": tr("SOVEREIGN_BRANCH_STAND_DOWN"),
-			"tag": tr("SOVEREIGN_TAG_RESUME"),
-			"enabled": true,
-			"desc": tr("SOVEREIGN_DESC_DISMISS"),
-		},
-	]
-
-	var cursor_idx: int = loop.sovereign_cursor if loop != null else 0
-	for i in range(options.size()):
-		var opt: Dictionary = options[i]
-		rows.append({
-			"kind": "perk",
-			"cursor": i == cursor_idx,
-			"dim": not bool(opt["enabled"]),
-			"branch_share": 0.28,
-			"tier": "",
-			"name": str(opt["name"]),
-			"branch": str(opt["branch"]),
-			"tag": str(opt["tag"]),
-		})
-
-	var cur_opt: Dictionary = options[clampi(cursor_idx, 0, options.size() - 1)]
-	rows.append({"kind": "muted", "text": str(cur_opt["desc"])})
-	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
-
-	return {
-		"eyebrow": tr("SOVEREIGN_DECREE_EYEBROW"),
-		"title": tr("SOVEREIGN_DECREE_TITLE"),
-		"band": "alert",
-		"wide": true,
-		"rows": rows,
-		"actions": [
-			[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")],
-			[tr("HUD_PAD_A"), tr("HUD_ACT_EXECUTE") if bool(cur_opt["enabled"]) else tr("HUD_ACT_LOCKED")],
-			[tr("HUD_PAD_B"), tr("HUD_ACT_DISMISS")]
-		]
-	}
 
 func _demo_complete_model() -> Dictionary:
 	var r: Dictionary = loop.run_summary()
@@ -3338,68 +3242,14 @@ func _demo_complete_model() -> Dictionary:
 		"rows": rows, "actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
 
 
+## The win modal (#32, design 6.1): wide and teal like the monopoly summary. A goes on to the
+## run summary, then the Golden Parachutes perks and a new run.
 func _rescued_model() -> Dictionary:
-	var r: Dictionary = loop.run_summary()
-	var st: Dictionary = r.get("rescue", {})
-	var rows: Array = [{"kind": "text", "text": tr("RESC_BODY")}]
-	if not st.is_empty():
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_ROUND"), "value": str(int(st["round"]))})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_CLOCK"), "value": str(int(st["clock_rounds_left"]))})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_PHASES"), "value": tr("SUM_RESC_PHASES_VALUE") % [int(st["phases_done"]), int(st["phases_total"])]})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_UNITS"), "value": _fmt(int(st["units"]))})
-		rows.append({"kind": "kv", "key": tr("SUM_RESC_CR"), "value": tr("HUD_CR_VALUE") % _fmt(int(st["cr_paid"]))})
-	rows.append({"kind": "kv", "key": tr("SUM_NET_WORTH"), "value": tr("HUD_CR_VALUE") % _fmt(int(r["net_worth"]))})
-	rows.append({"kind": "kv", "key": tr("SUM_SEV_RESCUE"), "value": tr("SUM_SEV_VALUE") % int(r["severance_rescue_pts"])})
-	rows.append({"kind": "muted", "text": tr("HUD_CLOCK_HALTED")})
-	return {"eyebrow": tr("RESC_EYEBROW"), "title": tr("RESC_TITLE"), "band": "teal", "wide": true, "rows": rows,
-		"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")]]}
+	return TakeoverModal.rescued_model(loop, controller)
 
 
 func _hearing_model() -> Dictionary:
-	var p: MetaProfile = controller.profile if controller != null else MetaProfile.new()
-	var pct: int = Commission.capture_pct(p)
-	var true_ending: bool = Commission.dissolution_fails(p)
-	var rows: Array = []
-	if true_ending:
-		rows.append({"kind": "text", "text": tr("COMM_TRUE_BODY")})
-		rows.append({"kind": "kv", "key": tr("COMM_CAPTURE_KEY"), "value": tr("COMM_CAPTURE_VALUE") % [pct, p.consultants.size(), Commission.ids().size()]})
-		rows.append({"kind": "kv", "key": tr("COMM_TRUE_TICKER_KEY"), "value": tr("COMM_TRUE_TICKER_VAL")})
-		rows.append({"kind": "start", "cursor": true, "text": tr("COMM_ACT_PARACHUTES")})
-		return {
-			"eyebrow": tr("COMM_TRUE_EYEBROW"),
-			"title": tr("COMM_TRUE_TITLE"),
-			"band": "teal",
-			"wide": true,
-			"rows": rows,
-			"actions": [[tr("HUD_PAD_A"), tr("HUD_ACT_CONTINUE")], [tr("HUD_PAD_B"), tr("HUD_ACT_BACK")]],
-		}
-	rows.append({"kind": "text", "text": tr("COMM_HEARING_BODY")})
-	var c_rows: Array = loop.commission_rows()
-	for i in c_rows.size():
-		var r: Dictionary = c_rows[i]
-		var cid: String = str(r["id"]).to_upper()
-		var tag: String = tr("COMM_TAG_RETAINED") if bool(r["retained"]) else (tr("COMM_TAG_COST") % int(r["cost"]) if bool(r["can_retain"]) else (tr("COMM_TAG_CHAIR_LAST") if str(r["reason"]) == "CHAIR_LAST" else tr("COMM_TAG_LOCKED") % int(r["cost"])))
-		rows.append({
-			"kind": "perk",
-			"cursor": i == loop.hearing_cursor,
-			"dim": not bool(r["can_retain"]) and not bool(r["retained"]),
-			"tier": "",
-			"name": tr("COMM_NAME_" + cid),
-			"branch": tr("COMM_PORTFOLIO_" + cid),
-			"tag": tag,
-		})
-	if loop.hearing_cursor < c_rows.size() and not c_rows.is_empty():
-		var cur_id: String = str(c_rows[clampi(loop.hearing_cursor, 0, c_rows.size() - 1)]["id"]).to_upper()
-		rows.append({"kind": "muted", "text": tr("COMM_DESC_" + cur_id)})
-	rows.append({"kind": "start", "cursor": loop.hearing_cursor >= c_rows.size(), "text": tr("COMM_ACT_PARACHUTES")})
-	return {
-		"eyebrow": tr("COMM_HEARING_EYEBROW") % [p.skeletons, pct],
-		"title": tr("COMM_HEARING_TITLE"),
-		"band": "teal",
-		"wide": true,
-		"rows": rows,
-		"actions": [[tr("HUD_PAD_DPAD"), tr("HUD_ACT_SELECT")], [tr("HUD_PAD_A"), tr("COMM_ACT_RETAIN")], [tr("HUD_PAD_B"), tr("HUD_ACT_BACK")]],
-	}
+	return CommissionModal.hearing_model(loop, controller)
 
 
 func _perks_model() -> Dictionary:
