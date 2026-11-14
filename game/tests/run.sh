@@ -9,6 +9,11 @@
 # Each filter is a plain substring of a test file name; with filters, only the
 # matching test_*.gd files run. No filters runs the full suite.
 set -uo pipefail
+
+if [ -f "/workspace/tools/modal_godot_verify.py" ] && [ -z "${GITHUB_ACTIONS:-}" ]; then
+  exec python3 /workspace/tools/modal_godot_verify.py "$@"
+fi
+
 GODOT="${1:-${GODOT:-godot}}"
 if [ $# -gt 0 ]; then shift; fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
